@@ -16,10 +16,10 @@
 # Build (multi-arch, requires buildx / buildkit):
 #   docker buildx build --platform linux/amd64,linux/arm64 -t ichoi:dev .
 #
-# The Rust builder and web UI stages CROSS-compile on the native build host (no QEMU):
-# ring's aarch64 assembly SIGSEGVs under QEMU emulation, so the arm64 binary is built
-# with the gnu cross toolchain + arm64 target headers instead. Only the ffmpeg stage
-# still builds per-target (emulated when the target is arm64).
+# Every build stage CROSS-compiles for the target arch on the native build host — NO QEMU.
+# Under emulation, ring's aarch64 assembly SIGSEGVs and ffmpeg's configure mis-probes libm.
+# So the arm64 Rust binary and ffmpeg are built with a real aarch64 musl cross toolchain, and
+# the web UI (arch-independent) is built once on the host.
 
 # -----------------------------------------------------------------------------
 # Stage 1: build a static, audio-only, LGPL ffmpeg from source.
@@ -35,26 +35,42 @@
 # recipe; ffmpeg stays a separate, subprocessed program, so Ichoi is unaffected.
 # See docs/ffmpeg.md for the source-offer details.
 # -----------------------------------------------------------------------------
-FROM debian:bookworm-slim AS ffmpeg
+# Cross-compile on the native build host (no QEMU): ffmpeg's configure mis-probes libm under
+# emulation (concludes erf() is missing, then conflicts with the real declaration). amd64
+# builds natively; arm64 uses a real aarch64 musl cross toolchain (musl.cc), yielding a fully
+# static musl binary that runs in scratch.
+FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS ffmpeg
 ARG FFMPEG_VERSION=7.1
 ARG LAME_VERSION=3.100
+ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential nasm yasm pkg-config curl xz-utils ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      curl -fsSL https://musl.cc/aarch64-linux-musl-cross.tgz -o /tmp/x.tgz && \
+      tar -xzf /tmp/x.tgz -C /opt && rm /tmp/x.tgz ; \
+    fi
+ENV PATH="/opt/aarch64-linux-musl-cross/bin:${PATH}"
 
-# Static libmp3lame (LGPL-2.0). Linked only into the ffmpeg subprocess, never
-# into Ichoi (DESIGN Sec.13).
+# Static libmp3lame (LGPL-2.0). Linked only into the ffmpeg subprocess, never into Ichoi
+# (DESIGN Sec.13). --host=<triple> makes autotools use <triple>-gcc for the arm64 cross.
 WORKDIR /src
 RUN curl -fsSL "https://downloads.sourceforge.net/project/lame/lame/${LAME_VERSION}/lame-${LAME_VERSION}.tar.gz" -o lame.tar.gz && \
     tar -xzf lame.tar.gz && cd "lame-${LAME_VERSION}" && \
-    ./configure --prefix=/opt/lame --disable-shared --enable-static --disable-frontend && \
+    if [ "$TARGETARCH" = "arm64" ]; then CH="--host=aarch64-linux-musl"; else CH=""; fi && \
+    ./configure --prefix=/opt/lame --disable-shared --enable-static --disable-frontend $CH && \
     make -j"$(nproc)" && make install
 
-# ffmpeg (LGPL config, audio only, fully static binary).
+# ffmpeg (LGPL config, audio only, fully static binary). The license gate (DESIGN Sec.5.3)
+# inspects config.h so it works for cross builds without running the target binary.
 RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o ffmpeg.tar.xz && \
     tar -xf ffmpeg.tar.xz && cd "ffmpeg-${FFMPEG_VERSION}" && \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+      CROSS="--enable-cross-compile --arch=aarch64 --target-os=linux --cross-prefix=aarch64-linux-musl-"; \
+    else CROSS=""; fi && \
     PKG_CONFIG_PATH=/opt/lame/lib/pkgconfig ./configure \
       --prefix=/opt/ffmpeg \
+      $CROSS \
       --pkg-config-flags=--static \
       --extra-cflags="-I/opt/lame/include" \
       --extra-ldflags="-L/opt/lame/lib -static" \
@@ -74,14 +90,10 @@ RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o 
       --enable-encoder=aac,libmp3lame \
       --enable-muxer=adts,mp3,ipod,mp4 \
       --enable-filter=aresample,aformat,anull,atrim && \
+    if grep -qE '^#define CONFIG_GPL 1' config.h; then echo "FATAL: ffmpeg is GPL, not LGPL"; exit 1; fi && \
+    if grep -qE '^#define CONFIG_NONFREE 1' config.h; then echo "FATAL: ffmpeg is nonfree"; exit 1; fi && \
+    echo "OK: ffmpeg is a clean LGPL build" && \
     make -j"$(nproc)" && make install
-
-# Build-time license gate (DESIGN Sec.5.3): fail the image if any component
-# pulled in GPL or nonfree. LGPL only.
-RUN /opt/ffmpeg/bin/ffmpeg -hide_banner -buildconf | tee /tmp/buildconf && \
-    if grep -q -- '--enable-gpl' /tmp/buildconf; then echo "FATAL: ffmpeg is GPL, not LGPL"; exit 1; fi && \
-    if grep -q -- '--enable-nonfree' /tmp/buildconf; then echo "FATAL: ffmpeg is nonfree"; exit 1; fi && \
-    echo "OK: ffmpeg is a clean LGPL build"
 
 # -----------------------------------------------------------------------------
 # Stage 2: build the ichoi binary as a fully static musl executable.
