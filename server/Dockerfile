@@ -92,14 +92,18 @@ RUN /opt/ffmpeg/bin/ffmpeg -hide_banner -buildconf | tee /tmp/buildconf && \
 # -----------------------------------------------------------------------------
 FROM --platform=$BUILDPLATFORM rust:1-bookworm AS builder
 ARG TARGETARCH
-# Cross-compile on the native build host (no QEMU). musl-tools links the amd64 musl
-# target; the aarch64 gnu cross gcc + arm64 target headers (libc6-dev-arm64-cross) compile
-# ring/libsqlite3-sys's C and assemble ring's aarch64 asm for the arm64 target.
+# Cross-compile on the native build host (no QEMU). musl-tools links the amd64 musl target;
+# a real aarch64 musl cross toolchain (musl.cc) compiles+links ring's asm and sqlite's C for
+# arm64. A glibc cross gcc mis-links musl (open64/stat64/... don't exist); QEMU SIGSEGVs on
+# ring's arm64 asm.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      pkg-config musl-tools gcc-aarch64-linux-gnu libc6-dev-arm64-cross && \
+      pkg-config musl-tools curl && \
     rm -rf /var/lib/apt/lists/*
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc \
-    CC_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc
+RUN curl -fsSL https://musl.cc/aarch64-linux-musl-cross.tgz -o /tmp/aarch64-musl.tgz && \
+    tar -xzf /tmp/aarch64-musl.tgz -C /opt && rm /tmp/aarch64-musl.tgz
+ENV PATH="/opt/aarch64-linux-musl-cross/bin:${PATH}" \
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc \
+    CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
 RUN case "$TARGETARCH" in \
       amd64) echo x86_64-unknown-linux-musl  > /tmp/triple ;; \
       arm64) echo aarch64-unknown-linux-musl > /tmp/triple ;; \

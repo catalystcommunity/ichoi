@@ -151,8 +151,16 @@ build_target_artifacts() {
   out=$3
   case "${target}" in
     server)
-      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
-      export CC_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc
+      # Real aarch64 musl cross toolchain (a glibc cross gcc mis-links musl's sqlite:
+      # open64/stat64/mmap64 don't exist in musl). Native cross-compiler → ring's asm and
+      # sqlite's C both build for aarch64-musl, no QEMU. Idempotent across target calls.
+      if [ ! -x "${HOME}/aarch64-linux-musl-cross/bin/aarch64-linux-musl-gcc" ]; then
+        wget -q https://musl.cc/aarch64-linux-musl-cross.tgz -O /tmp/aarch64-musl.tgz
+        tar -xzf /tmp/aarch64-musl.tgz -C "${HOME}"
+      fi
+      export PATH="${HOME}/aarch64-linux-musl-cross/bin:$PATH"
+      export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
+      export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
       for PAIR in "amd64:x86_64-unknown-linux-musl" "arm64:aarch64-unknown-linux-musl"; do
         ARCH="${PAIR%%:*}"
         TRIPLE="${PAIR#*:}"
