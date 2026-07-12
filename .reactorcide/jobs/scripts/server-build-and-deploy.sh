@@ -12,9 +12,9 @@ VERSION="$(cat version/VERSION.txt)"
 echo "Building version: ${VERSION}"
 
 # The `builder` capability provides a buildkitd sidecar reachable via
-# BUILDKIT_HOST. We only need the buildctl client; the sidecar's buildkitd
-# is operator-configured to treat the internal registry as plaintext HTTP and
-# provides QEMU emulators so the arm64 stages build under emulation.
+# BUILDKIT_HOST. We only need the buildctl client; the sidecar's buildkitd is
+# operator-configured to treat the internal registry as plaintext HTTP. The
+# Dockerfile cross-compiles every arch on the native builder (no QEMU).
 export HOME="${HOME:-/home/runner}"
 LOCAL_BIN="$HOME/.local/bin"
 mkdir -p "$HOME/.docker" "$LOCAL_BIN"
