@@ -5,7 +5,7 @@ job:
   command: |
     set -e
     # Ichoi is a single static binary with zero system-library link deps
-    # (DESIGN Sec.1): SQLite is compiled in via diesel's bundled libsqlite3-sys,
+    # (DESIGN Sec.1): SQLite is compiled in via the diesel bundled libsqlite3-sys,
     # ffmpeg and libasound are never linked. So we build the musl targets, which
     # produce fully static binaries that run in a scratch container. musl-tools
     # gives the amd64 musl gcc; the aarch64 musl cross toolchain is installed below.
@@ -29,10 +29,10 @@ job:
     cd "${REACTORCIDE_CODE_DIR:-/job/src}/server"
     export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/ichoi-target}"
 
-    # Compile + link the bundled SQLite C and ring's asm for aarch64-musl with a REAL
+    # Compile + link the bundled SQLite C and ring asm for aarch64-musl with a REAL
     # musl cross toolchain. A glibc cross gcc mis-links here: musl has no *64 LFS symbols
     # (open64/stat64/mmap64), so sqlite fails to link. This native cross-compiler also
-    # avoids QEMU, under which ring's arm64 asm SIGSEGVs.
+    # avoids QEMU, under which ring arm64 asm SIGSEGVs.
     curl -fsSL https://musl.cc/aarch64-linux-musl-cross.tgz -o /tmp/aarch64-musl.tgz
     tar -xzf /tmp/aarch64-musl.tgz -C "$HOME"
     export PATH="$HOME/aarch64-linux-musl-cross/bin:$PATH"

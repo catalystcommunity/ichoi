@@ -34,7 +34,7 @@ job:
 
       # csilgen loads code generators as WASM plugins from ~/.csilgen/generators/. A fresh
       # clone ships none; build + install just the Rust server generator (all gen-server
-      # needs). Built with csilgen's own target dir, not the job-wide CARGO_TARGET_DIR.
+      # needs). Built with the csilgen target dir, not the job-wide CARGO_TARGET_DIR.
       echo "=== Installing the Rust server generator ==="
       rustup target add wasm32-unknown-unknown
       CARGO_TARGET_DIR=/tmp/csilgen/target cargo build --manifest-path /tmp/csilgen/Cargo.toml --release --target wasm32-unknown-unknown --package csilgen-rust-generator
@@ -51,7 +51,7 @@ job:
     echo "=== Verifying generated server code is current ==="
     if ! git diff --exit-code -- server/generated/rust-server; then
       echo ""
-      echo "Generated server code is stale. Run './tools.sh gen-server' and commit the result."
+      echo "Generated server code is stale. Run tools.sh gen-server and commit the result."
       echo "Generated code is never hand-edited (see CONTRIBUTING.md)."
       exit 1
     fi
