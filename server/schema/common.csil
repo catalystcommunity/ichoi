@@ -1,0 +1,44 @@
+;; Ichoi — shared types. Assembled via ichoi.csil; fragments are not standalone.
+
+;; Identities and opaque ids.
+AccountId  = text            ;; "UUID@domain.tld" (§8)
+Handle     = text .size (1..64)
+TrackId    = text
+AlbumId    = text
+ArtistId   = text
+PlaylistId = text
+NodeId     = text
+DeviceId   = text
+PlayerId   = text
+
+;; Roles (§6.6).
+Role = "admin" / "member" / "guest"
+
+;; Playback status shared by the player and node surfaces.
+PlayerStatus = "stopped" / "playing" / "paused"
+
+;; Edge-decodable / transcode-source codecs (§1). Opus, HE-AAC and WMA are read only via
+;; transcode (§5.6); listing them here lets the UI show the real source codec.
+Codec = "mp3" / "aac" / "vorbis" / "flac" / "alac" / "opus" / "wav" / "wma"
+
+;; Transcode targets — never opus (§5.2, §5.6).
+TranscodeCodec = "aac" / "mp3"
+
+;; Per-stream consumer preferences (§5.1).
+StreamPref = {
+    ? max_bitrate_kbps: uint,                        ;; absent/0 = uncapped
+    ? prefer_original: bool .default false,
+    ? transcode_codec: TranscodeCodec .default "aac"
+}
+
+;; Generic pagination / low-argument request.
+Page = { ? offset: uint .default 0, ? limit: uint .default 100 }
+
+;; Simple acknowledgement.
+Ok = { ok: bool }
+
+;; Uniform error channel, carried on the error arm of operations. `ServiceError` is a
+;; csilgen-reserved type: `code` MUST be an integer (the generated routing scaffolding
+;; constructs it with integer codes). Ichoi codes: 400 malformed, 401 unauthenticated,
+;; 403 forbidden, 404 not_found, 409 conflict, 415 unsupported, 500 internal, 503 unavailable.
+ServiceError = { code: int, message: text }

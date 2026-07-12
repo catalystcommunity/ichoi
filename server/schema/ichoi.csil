@@ -1,0 +1,21 @@
+;; Ichoi — CSIL service surface (entry point). See docs/DESIGN.md.
+;;
+;; This file assembles the fragment files into one compilation unit. The fragments
+;; reference each other's and common's types by name and are not standalone; generate
+;; and validate through this entry point (or the schema/ directory).
+;;
+;; Services:
+;;   SessionService  — authenticate / whoami / logout
+;;   LibraryService  — browse, search, playlists, cover art          (member+)
+;;   PlayerService   — queues, transport, shared-target subscription, satellite toggle
+;;   MediaService    — the bidi media stream                          (clients + satellites)
+;;   NodeService     — satellite registration + directive/report loop (dumb; no library)
+;;   AdminService    — accounts, trust, nodes, settings, cross-server import   (admin)
+
+include "common.csil"
+include "session.csil"
+include "library.csil"
+include "player.csil"
+include "media.csil"
+include "node.csil"
+include "admin.csil"

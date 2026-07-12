@@ -1,0 +1,57 @@
+;; Ichoi — administration (admin role; §6.6). Accounts, trust, nodes, settings, import.
+
+Account = { id: AccountId, handle: Handle, ? display_name: text, role: Role, created_at: timestamp }
+
+ListAccountsResponse = { accounts: [* Account] }
+SetRoleRequest       = { account_id: AccountId, role: Role }
+
+TrustDomainRequest = { domain: text }
+TrustedDomains     = { domains: [* text] }
+
+NodeKind          = "core" / "satellite" / "client"
+AudioOutputsState = "none" / "some"      ;; "none" = scratch container, no audio (§6.1)
+DeviceInfo = { id: DeviceId, os_device_id: text, friendly_name: text, is_default: bool .default false }
+NodeInfo = {
+    id: NodeId,
+    kind: NodeKind,
+    hostname: text,
+    friendly_name: text,
+    platform: text,
+    arch: text,
+    ? last_seen: timestamp,
+    audio_outputs: AudioOutputsState,
+    devices: [* DeviceInfo]
+}
+ListNodesResponse = { nodes: [* NodeInfo] }
+
+RenameNodeRequest   = { node_id: NodeId, friendly_name: text .size (1..64) }
+RenameDeviceRequest = { device_id: DeviceId, friendly_name: text .size (1..64) }
+
+CreateNodeTokenRequest = { ? label: text }
+NodeTokenResult        = { token: text, fingerprints: [+ text] }   ;; token + core key fingerprints, shown once (§4.2)
+
+;; Cross-server copy destination (§7): client-mediated import of one file + its metadata.
+ImportTrackRequest = {
+    root_relative_path: text,
+    content_type: text,
+    ? content_hash: text,            ;; skip if already present
+    data: bytes
+}
+ImportResult = { imported: bool, ? track_id: TrackId, skipped_existing: bool .default false }
+
+Settings          = { entries: {text => text} }
+SetSettingRequest = { key: text, value: text }
+
+service AdminService {
+    list-accounts: Page -> ListAccountsResponse / ServiceError,
+    set-role: SetRoleRequest -> Account / ServiceError,
+    trust-domain: TrustDomainRequest -> TrustedDomains / ServiceError,
+    list-trusted-domains: Page -> TrustedDomains / ServiceError,
+    list-nodes: Page -> ListNodesResponse / ServiceError,
+    rename-node: RenameNodeRequest -> NodeInfo / ServiceError,
+    rename-device: RenameDeviceRequest -> DeviceInfo / ServiceError,
+    create-node-token: CreateNodeTokenRequest -> NodeTokenResult / ServiceError,
+    import-track: ImportTrackRequest -> ImportResult / ServiceError,
+    get-settings: Page -> Settings / ServiceError,
+    set-setting: SetSettingRequest -> Settings / ServiceError
+}

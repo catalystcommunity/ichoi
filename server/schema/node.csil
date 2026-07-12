@@ -1,0 +1,34 @@
+;; Ichoi — satellite surface (token-authenticated, no library access). §6.
+;; A satellite pulls actual audio via MediaService (reusing the client media path).
+
+AudioOutput = {
+    os_device_id: DeviceId,
+    ? friendly_name: text,
+    channels: uint,
+    sample_rates: [* uint],
+    is_default: bool .default false
+}
+
+RegisterNodeRequest = {
+    hostname: text,
+    platform: text,
+    arch: text,
+    outputs: [* AudioOutput]         ;; empty = scratch container, no audio (§6.1)
+}
+RegisterNodeResponse = { node_id: NodeId, players: [* Player] }
+
+;; Server -> node directives for this node's targets, discriminated on `op`.
+DirLoad   = { op: "load", player_id: PlayerId, track_id: TrackId, pref: StreamPref, ? position_ms: uint }
+DirPause  = { op: "pause", player_id: PlayerId }
+DirResume = { op: "resume", player_id: PlayerId }
+DirStop   = { op: "stop", player_id: PlayerId }
+DirVolume = { op: "volume", player_id: PlayerId, volume: uint .le 100 }
+NodeDirective = DirLoad / DirPause / DirResume / DirStop / DirVolume
+
+;; Node -> server authoritative status/position.
+NodeReport = { player_id: PlayerId, status: PlayerStatus, ? position_ms: uint }
+
+service NodeService {
+    register: RegisterNodeRequest -> RegisterNodeResponse / ServiceError,
+    session: NodeReport <-> NodeDirective
+}

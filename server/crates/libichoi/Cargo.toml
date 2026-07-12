@@ -1,0 +1,10 @@
+[package]
+name = "libichoi"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Pure, I/O-free domain logic and the generated CSIL surface for Ichoi. WASM-viable."
+
+[dependencies]
+# The generated CSIL codec decodes CBOR tag-0 timestamps into chrono types.
+chrono = { workspace = true }

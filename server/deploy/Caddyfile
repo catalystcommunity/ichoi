@@ -1,0 +1,57 @@
+# Example Caddyfile — TLS termination in front of an Ichoi core.
+#
+# Why this exists (DESIGN Sec.4.2): Ichoi's HTTP listener (:4042) is PLAIN HTTP
+# by default and browser TLS is deliberately out of scope for the server. To
+# serve a browser UI over HTTPS/WSS, front Ichoi with a reverse proxy that
+# terminates TLS. Caddy is the documented choice — it gets and renews certs
+# automatically.
+#
+# What Caddy proxies: the single :4042 HTTP listener, which serves the SPA
+# static assets AND accepts the WebSocket upgrade at /ws (the CSIL-Events browser
+# carrier, DESIGN Sec.4.1). Caddy proxies HTTP and WebSockets transparently, so
+# no special WebSocket config is required — the upgrade headers pass through.
+#
+# What Caddy does NOT touch: the CSIL+TLS listener on :4043. That channel is for
+# native clients and satellites; it runs its own rustls TLS with pinned
+# fingerprints (DESIGN Sec.4.2) and must be reached directly, not through this
+# proxy. Expose :4043 straight through your firewall/NAT to the core.
+#
+# Usage:
+#   1. Replace music.example.com with your domain (A/AAAA record -> this host).
+#   2. Point `reverse_proxy` at wherever ichoi's :4042 listens (here: the
+#      docker-compose service name `ichoi`; use 127.0.0.1:4042 for a host run).
+#   3. caddy run --config ./Caddyfile
+
+music.example.com {
+	# Automatic HTTPS: Caddy provisions and renews the certificate via ACME.
+	# Remove/adjust `tls` if you want a specific email or an internal CA.
+	# tls you@example.com
+
+	encode zstd gzip
+
+	# Proxy everything (SPA assets + the /ws WebSocket upgrade) to Ichoi's HTTP
+	# listener. Caddy forwards WebSocket upgrades automatically.
+	reverse_proxy ichoi:4042 {
+		# Give the backend the real client info. Ichoi treats the connection as
+		# a browser client (user identity, not a node token — DESIGN Sec.4.2).
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+
+		# WebSocket audio streams are long-lived; don't cut them short.
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+
+	log {
+		output stderr
+		format console
+	}
+}
+
+# Local / no-DNS testing: browse to http://localhost and Caddy serves plain
+# HTTP (no cert). Uncomment to use.
+# :80 {
+# 	reverse_proxy ichoi:4042
+# }
