@@ -8,10 +8,10 @@ job:
     # (DESIGN Sec.1): SQLite is compiled in via diesel's bundled libsqlite3-sys,
     # ffmpeg and libasound are never linked. So we build the musl targets, which
     # produce fully static binaries that run in a scratch container. musl-tools
-    # gives the amd64 linker; the aarch64 cross gcc links + compiles the bundled
-    # SQLite C for arm64. No libpq (SQLite-only, DESIGN Sec.2).
+    # gives the amd64 musl gcc; the aarch64 musl cross toolchain is installed below.
+    # No libpq (SQLite-only, DESIGN Sec.2).
     sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-      pkg-config build-essential musl-tools gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+      pkg-config build-essential musl-tools
 
     export HOME=/home/runner
     export PATH="/usr/local/cargo/bin:$HOME/.cargo/bin:$PATH"
@@ -29,10 +29,15 @@ job:
     cd "${REACTORCIDE_CODE_DIR:-/job/src}/server"
     export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/ichoi-target}"
 
-    # Link + compile the bundled SQLite C for the aarch64 musl target with the
-    # gnu cross toolchain (musl target + gnu cross linker is fine for our deps).
-    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
-    export CC_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc
+    # Compile + link the bundled SQLite C and ring's asm for aarch64-musl with a REAL
+    # musl cross toolchain. A glibc cross gcc mis-links here: musl has no *64 LFS symbols
+    # (open64/stat64/mmap64), so sqlite fails to link. This native cross-compiler also
+    # avoids QEMU, under which ring's arm64 asm SIGSEGVs.
+    curl -fsSL https://musl.cc/aarch64-linux-musl-cross.tgz -o /tmp/aarch64-musl.tgz
+    tar -xzf /tmp/aarch64-musl.tgz -C "$HOME"
+    export PATH="$HOME/aarch64-linux-musl-cross/bin:$PATH"
+    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
+    export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
 
     for T in x86_64-unknown-linux-musl aarch64-unknown-linux-musl; do
       echo "=== Building workspace for ${T} ==="
