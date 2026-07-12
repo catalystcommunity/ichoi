@@ -1,0 +1,20 @@
+;; Ichoi — session establishment. Identity is LinkKeys (§7); the minted token rides $hello.
+
+AuthRequest = {
+    ? linkkeys_assertion: bytes,     ;; sealed assertion from the LinkKeys RP flow
+    ? bootstrap_token: text          ;; first-admin bootstrap (§7.4), only while zero accounts exist
+}
+
+SessionInfo = {
+    account_id: AccountId,
+    handle: Handle,
+    ? display_name: text,
+    role: Role,
+    ? token: text                    ;; minted session token, returned once on authenticate
+}
+
+service SessionService {
+    authenticate: AuthRequest -> SessionInfo / ServiceError,
+    whoami: Page -> SessionInfo / ServiceError,
+    logout: Page -> Ok / ServiceError
+}

@@ -1,0 +1,55 @@
+# Example deployment: an Ichoi core behind Caddy (TLS termination for browsers).
+#
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# - Caddy terminates HTTPS/WSS for the browser UI and reverse-proxies to ichoi's
+#   plain-HTTP :4042 (DESIGN Sec.4.2). Edit deploy/Caddyfile with your domain.
+# - The CSIL+TLS listener :4043 (native clients + satellites) is published
+#   directly, NOT through Caddy — it runs its own pinned-fingerprint rustls TLS
+#   (DESIGN Sec.4.2). Forward :4043 through your NAT/firewall to this host.
+# - Point ICHOI_MUSIC_DIR at your library via the ./music bind mount.
+
+services:
+  ichoi:
+    image: containers.catalystsquad.com/public/catalystcommunity/ichoi:latest
+    restart: unless-stopped
+    environment:
+      # Core is the default role (DESIGN Sec.9); shown for clarity.
+      ICHOI_ROLE: core
+      # Required for a core: where the library (and, by default, the SQLite DB)
+      # lives inside the container.
+      ICHOI_MUSIC_DIR: /music
+      # Keep the WAL database beside the media by default; override to separate.
+      # ICHOI_DB_DIR: /data
+      ICHOI_LOG: info
+      # First-run bootstrap: unlocks admin account creation while zero accounts
+      # exist, then is consumed (DESIGN Sec.8). Set to a strong secret, then
+      # remove after bootstrapping.
+      # ICHOI_ADMIN_TOKEN: change-me-once
+    volumes:
+      - ./music:/music
+      # - ./data:/data
+    # :4043 must be reachable directly by native clients and satellites.
+    ports:
+      - "4043:4043"
+    # :4042 is intentionally NOT published to the host — only Caddy reaches it,
+    # over the internal compose network.
+    expose:
+      - "4042"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - ichoi
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

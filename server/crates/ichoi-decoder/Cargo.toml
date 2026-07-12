@@ -1,0 +1,13 @@
+[package]
+name = "ichoi-decoder"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+description = "Shared audio decode core for Ichoi: compiles to WASM for browsers (§5.5) and runs natively on satellite nodes."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Kept dependency-free for now so it builds for both the host and wasm32 targets. The
+# Symphonia decode implementation and wasm-bindgen surface are tracked as TODO (§16).

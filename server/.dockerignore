@@ -1,0 +1,39 @@
+# Build-context hygiene for the server/ image build (context = server/).
+#
+# The Dockerfile builds from server/ and COPYs only specific paths
+# (Cargo.toml, Cargo.lock, crates/, schema/, generated/, migrations/, web/themes/).
+# buildkit otherwise tars the ENTIRE clone as context on every build — including
+# .git and build output — which bloats the transfer and invalidates the cache.
+# Exclude everything no COPY references; this only shrinks the context, it never
+# removes a build input.
+.git
+.gitignore
+
+# Cargo build output (absent in a fresh CI clone, huge locally).
+target
+**/target
+
+# Node / web build intermediates (the built themes under web/themes/ ARE copied;
+# node_modules and per-theme build caches are not).
+node_modules
+**/node_modules
+web/**/node_modules
+dist
+**/dist
+
+# CI definitions, deploy overlays, docs, and local tooling — none are build inputs.
+.reactorcide
+deploy
+docs
+version
+scratch
+.claude
+.codex
+.agents
+.playwright-mcp
+
+# Databases / media never belong in an image.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite

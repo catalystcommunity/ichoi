@@ -1,0 +1,32 @@
+;; Ichoi — media streaming (clients and satellites). Bidi: control up, chunks down (§5).
+
+;; Client -> server control, discriminated on `kind`.
+MediaOpen   = { kind: "open", track_id: TrackId, pref: StreamPref }
+MediaSeek   = { kind: "seek", position_ms: uint }
+MediaPause  = { kind: "pause" }
+MediaResume = { kind: "resume" }
+MediaStop   = { kind: "stop" }
+MediaControl = MediaOpen / MediaSeek / MediaPause / MediaResume / MediaStop
+
+;; Sent once per (re)open. `codec` is the codec of the packets that follow: the original
+;; in direct mode, the transcode target otherwise (§5.1).
+MediaHeader = {
+    kind: "header",
+    codec: Codec,
+    transcoded: bool,
+    sample_rate: uint,
+    channels: uint,
+    ? duration_ms: uint,
+    trim_start_samples: uint .default 0,     ;; gapless (§5.4)
+    trim_end_samples: uint .default 0,
+    ? codec_config: bytes                    ;; decoder init (FLAC STREAMINFO, AAC ASC, ...)
+}
+MediaEndReason = "eos" / "stopped"
+MediaChunk = { kind: "chunk", seq: uint, ? timestamp_ms: uint, data: bytes }
+MediaEnd   = { kind: "end", ? reason: MediaEndReason }
+MediaFail  = { kind: "error", error: ServiceError }
+MediaEvent = MediaHeader / MediaChunk / MediaEnd / MediaFail
+
+service MediaService {
+    stream: MediaControl <-> MediaEvent
+}

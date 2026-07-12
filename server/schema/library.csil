@@ -1,0 +1,69 @@
+;; Ichoi — library browse/search/read (member+). Satellites never see this service.
+
+Track = {
+    id: TrackId,
+    title: text,
+    ? artist_id: ArtistId,
+    ? album_id: AlbumId,
+    ? track_no: uint,
+    ? disc_no: uint,
+    duration_ms: uint,
+    codec: Codec,
+    ? bitrate_kbps: uint,
+    sample_rate: uint,
+    channels: uint,
+    ? bit_depth: uint,
+    root_relative_path: text,        ;; playlist portability (§7)
+    ? content_hash: text             ;; cross-server dedupe
+}
+
+Album = {
+    id: AlbumId,
+    title: text,
+    ? artist_id: ArtistId,
+    ? year: uint,
+    has_cover_art: bool .default false,
+    track_count: uint
+}
+
+Artist = { id: ArtistId, name: text, album_count: uint }
+
+Playlist = {
+    id: PlaylistId,
+    name: text,
+    ? owner: AccountId,
+    entry_count: uint,
+    root_relative_path: text         ;; the m3u path from the collection root
+}
+
+Library = "music" / "audiobook"
+
+BrowseRequest   = { ? library: Library .default "music", ? offset: uint .default 0, ? limit: uint .default 100 }
+AlbumsResponse  = { albums: [* Album], total: uint }
+ArtistsResponse = { artists: [* Artist], total: uint }
+
+AlbumRequest  = { album_id: AlbumId }
+AlbumDetail   = { album: Album, tracks: [* Track] }
+ArtistRequest = { artist_id: ArtistId }
+ArtistDetail  = { artist: Artist, albums: [* Album] }
+
+SearchRequest  = { query: text .size (1..256), ? limit: uint .default 50 }
+SearchResponse = { artists: [* Artist], albums: [* Album], tracks: [* Track] }
+
+PlaylistsResponse = { playlists: [* Playlist] }
+PlaylistRequest   = { playlist_id: PlaylistId }
+PlaylistDetail    = { playlist: Playlist, tracks: [* Track] }   ;; resolved; unresolved m3u entries omitted (§7)
+
+CoverArtRequest = { album_id: AlbumId, ? max_size: uint }
+CoverArt        = { content_type: text, data: bytes }
+
+service LibraryService {
+    list-albums: BrowseRequest -> AlbumsResponse / ServiceError,
+    list-artists: BrowseRequest -> ArtistsResponse / ServiceError,
+    get-album: AlbumRequest -> AlbumDetail / ServiceError,
+    get-artist: ArtistRequest -> ArtistDetail / ServiceError,
+    search: SearchRequest -> SearchResponse / ServiceError,
+    list-playlists: BrowseRequest -> PlaylistsResponse / ServiceError,
+    get-playlist: PlaylistRequest -> PlaylistDetail / ServiceError,
+    get-cover-art: CoverArtRequest -> CoverArt / ServiceError
+}

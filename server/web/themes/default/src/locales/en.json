@@ -1,0 +1,159 @@
+{
+  "app": {
+    "name": "Ichoi",
+    "tagline": "Your library. Every room."
+  },
+  "nav": {
+    "library": "Library",
+    "search": "Search",
+    "playlists": "Playlists",
+    "jukebox": "Jukebox",
+    "nowPlaying": "Now Playing",
+    "settings": "Settings",
+    "skipToContent": "Skip to content"
+  },
+  "servers": {
+    "title": "Servers",
+    "add": "Add server",
+    "addTitle": "Connect a server",
+    "name": "Name",
+    "namePlaceholder": "Home core",
+    "url": "WebSocket address",
+    "urlPlaceholder": "ws://localhost:4042/ws",
+    "connect": "Connect",
+    "cancel": "Cancel",
+    "remove": "Disconnect",
+    "active": "Active server",
+    "switchTo": "Switch to {{name}}",
+    "state": {
+      "idle": "Idle",
+      "connecting": "Connecting",
+      "ready": "Connected",
+      "closed": "Disconnected",
+      "error": "Connection error"
+    },
+    "empty": "No servers yet. Connect one to start browsing."
+  },
+  "auth": {
+    "guest": "Guest",
+    "signIn": "Sign in with LinkKeys",
+    "signOut": "Sign out",
+    "signedInAs": "Signed in as {{handle}}",
+    "role": "Role: {{role}}",
+    "linkkeysTodo": "LinkKeys sign-in is not wired up yet.",
+    "loginless": "Browsing as a guest on the local network."
+  },
+  "library": {
+    "title": "Library",
+    "albums": "Albums",
+    "artists": "Artists",
+    "albumsCount": "{{count}} albums",
+    "tracksCount": "{{count}} tracks",
+    "byArtist": "by {{artist}}",
+    "noAlbums": "No albums here yet.",
+    "noArtists": "No artists here yet.",
+    "loading": "Loading library…"
+  },
+  "album": {
+    "back": "All albums",
+    "playAll": "Play album",
+    "queueAll": "Add album to queue",
+    "track": "Track",
+    "title": "Title",
+    "duration": "Duration"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search artists, albums, tracks",
+    "prompt": "Type to search your library.",
+    "noResults": "Nothing matched “{{query}}”.",
+    "artists": "Artists",
+    "albums": "Albums",
+    "tracks": "Tracks"
+  },
+  "playlists": {
+    "title": "Playlists",
+    "empty": "No playlists yet.",
+    "entries": "{{count}} entries",
+    "ownedBy": "by {{owner}}",
+    "note": "Playlists are m3u files with library-relative paths. Missing tracks are skipped at playback."
+  },
+  "jukebox": {
+    "title": "Jukebox",
+    "subtitle": "Shared targets you can control.",
+    "empty": "No shared targets. A satellite that connects will appear here.",
+    "private": "Private players",
+    "shared": "Shared targets",
+    "onAir": "On air",
+    "idle": "Idle",
+    "play": "Play",
+    "pause": "Pause",
+    "next": "Next track",
+    "previous": "Previous track",
+    "volume": "Volume",
+    "shareThisDevice": "Share this device",
+    "shareTitle": "Make this device a shared target",
+    "suffix": "Device name",
+    "suffixHint": "Shown as “<your handle>'s <name>”. Must be unique on this server.",
+    "enableShare": "Share",
+    "stopSharing": "Stop sharing",
+    "stopSharingThisDevice": "Stop sharing this device",
+    "playHere": "Play here",
+    "outputHere": "Playing here",
+    "noQueue": "Queue is empty."
+  },
+  "nowPlaying": {
+    "title": "Now Playing",
+    "queue": "Queue",
+    "empty": "Nothing is playing.",
+    "emptyHint": "Pick an album or track to start.",
+    "localPlayer": "This device",
+    "decoderMissing": "The audio decoder isn't installed on this server, so local playback is unavailable. You can still control shared targets.",
+    "upNext": "Up next",
+    "nowPlaying": "Now playing",
+    "played": "Played",
+    "clear": "Clear queue"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "themeSystem": "Match system",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "language": "Language",
+    "playback": "Playback",
+    "transcode": "Preferred transcode codec",
+    "preferOriginal": "Prefer original quality (no transcode)",
+    "maxBitrate": "Max bitrate (kbps, 0 = uncapped)",
+    "server": "Server settings",
+    "serverNote": "These are read from the server and shared across every UI.",
+    "adminOnly": "Server settings require the admin role.",
+    "save": "Save"
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "resume": "Resume",
+    "stop": "Stop",
+    "seek": "Seek",
+    "nothingPlaying": "Nothing playing",
+    "playHere": "Play on this device",
+    "target": "Output target",
+    "thisDevice": "This device"
+  },
+  "codecBadge": {
+    "transcoded": "transcoded",
+    "original": "original"
+  },
+  "errors": {
+    "generic": "Something went wrong.",
+    "connectFirst": "Connect a server first.",
+    "forbidden": "You don't have permission for that.",
+    "retry": "Try again"
+  },
+  "common": {
+    "close": "Close",
+    "loading": "Loading…"
+  }
+}

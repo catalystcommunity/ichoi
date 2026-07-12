@@ -1,0 +1,56 @@
+;; Ichoi — jukebox control: players, queues, transport, shared-target subscription (§6).
+
+PlayerKind = "shared" / "private"
+
+Player = {
+    id: PlayerId,
+    kind: PlayerKind,
+    name: text,                      ;; "Kitchen · Main Speakers" or "Ann's Device"
+    ? node_id: NodeId,
+    ? device_id: DeviceId,
+    ? owner: AccountId
+}
+
+QueueItem = { track_id: TrackId, ? title: text, ? artist: text, ? duration_ms: uint }
+
+PlayerState = {
+    player_id: PlayerId,
+    status: PlayerStatus,
+    ? current_index: uint,
+    ? position_ms: uint,
+    volume: uint .le 100 .default 100,
+    queue: [* QueueItem]
+}
+
+ListPlayersRequest  = { ? kind: PlayerKind }
+ListPlayersResponse = { players: [* Player] }
+
+SubscribeRequest = { player_id: PlayerId }
+
+;; Transport/queue commands (client -> server), discriminated on `op`.
+CmdEnqueue  = { op: "enqueue", track_ids: [+ TrackId], ? at_index: uint }
+CmdRemove   = { op: "remove", index: uint }
+CmdReorder  = { op: "reorder", from_index: uint, to_index: uint }
+CmdClear    = { op: "clear" }
+CmdPlay     = { op: "play", ? index: uint }
+CmdPause    = { op: "pause" }
+CmdNext     = { op: "next" }
+CmdPrevious = { op: "previous" }
+CmdSeek     = { op: "seek", position_ms: uint }
+CmdVolume   = { op: "volume", volume: uint .le 100 }
+PlayerCommand = CmdEnqueue / CmdRemove / CmdReorder / CmdClear / CmdPlay / CmdPause / CmdNext / CmdPrevious / CmdSeek / CmdVolume
+
+CommandRequest = { player_id: PlayerId, command: PlayerCommand }
+
+;; Client satellite mode (§6.4): target named "<Handle>'s <suffix>", suffix unique per server.
+EnableShareRequest  = { ? suffix: text .size (1..48) .default "Device" }
+DisableShareRequest = { player_id: PlayerId }
+ShareResult         = { player: Player }
+
+service PlayerService {
+    list-players: ListPlayersRequest -> ListPlayersResponse / ServiceError,
+    subscribe: SubscribeRequest <-> PlayerState,
+    control: CommandRequest -> PlayerState / ServiceError,
+    enable-share: EnableShareRequest -> ShareResult / ServiceError,
+    disable-share: DisableShareRequest -> Ok / ServiceError
+}

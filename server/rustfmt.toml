@@ -1,0 +1,4 @@
+# Generated CSIL output is not yet rustfmt-normalized (tracked upstream in
+# csilgen-requests/rust-generator-clean-build.md); skip it so `cargo fmt` does not
+# churn build artifacts we never hand-edit.
+ignore = ["generated"]
