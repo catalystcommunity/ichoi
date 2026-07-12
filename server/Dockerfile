@@ -16,8 +16,10 @@
 # Build (multi-arch, requires buildx / buildkit):
 #   docker buildx build --platform linux/amd64,linux/arm64 -t ichoi:dev .
 #
-# Each stage below builds natively for the target platform (buildkit runs the
-# non-native stages under QEMU emulation), so no cross toolchains are needed.
+# The Rust builder and web UI stages CROSS-compile on the native build host (no QEMU):
+# ring's aarch64 assembly SIGSEGVs under QEMU emulation, so the arm64 binary is built
+# with the gnu cross toolchain + arm64 target headers instead. Only the ffmpeg stage
+# still builds per-target (emulated when the target is arm64).
 
 # -----------------------------------------------------------------------------
 # Stage 1: build a static, audio-only, LGPL ffmpeg from source.
@@ -88,11 +90,16 @@ RUN /opt/ffmpeg/bin/ffmpeg -hide_banner -buildconf | tee /tmp/buildconf && \
 # so it runs in scratch. SQLite is compiled in via diesel's bundled
 # libsqlite3-sys; no libpq (SQLite-only, DESIGN Sec.2).
 # -----------------------------------------------------------------------------
-FROM rust:1-bookworm AS builder
+FROM --platform=$BUILDPLATFORM rust:1-bookworm AS builder
 ARG TARGETARCH
+# Cross-compile on the native build host (no QEMU). musl-tools links the amd64 musl
+# target; the aarch64 gnu cross gcc + arm64 target headers (libc6-dev-arm64-cross) compile
+# ring/libsqlite3-sys's C and assemble ring's aarch64 asm for the arm64 target.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      musl-tools pkg-config && \
+      pkg-config musl-tools gcc-aarch64-linux-gnu libc6-dev-arm64-cross && \
     rm -rf /var/lib/apt/lists/*
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc \
+    CC_aarch64_unknown_linux_musl=aarch64-linux-gnu-gcc
 RUN case "$TARGETARCH" in \
       amd64) echo x86_64-unknown-linux-musl  > /tmp/triple ;; \
       arm64) echo aarch64-unknown-linux-musl > /tmp/triple ;; \
@@ -101,8 +108,8 @@ RUN case "$TARGETARCH" in \
     rustup target add "$(cat /tmp/triple)"
 
 WORKDIR /build
-# Build context is the repo root. COPY only what the build needs (the .dockerignore
-# excludes everything else). The web UI is served as static files, not built here.
+# Build context is server/. COPY only what the build needs (the .dockerignore
+# excludes everything else).
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ crates/
 COPY schema/ schema/
@@ -110,6 +117,15 @@ COPY generated/ generated/
 COPY migrations/ migrations/
 RUN cargo build --release --target "$(cat /tmp/triple)" --bin ichoi && \
     cp "target/$(cat /tmp/triple)/release/ichoi" /ichoi
+
+# -----------------------------------------------------------------------------
+# Stage 2b: build the web UI (SolidJS SPA). The output is arch-independent static
+# assets, built once on the native host and served from /app in the final image.
+# -----------------------------------------------------------------------------
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS web
+WORKDIR /web
+COPY web/ ./
+RUN cd themes/default && npm ci && npm run build
 
 # -----------------------------------------------------------------------------
 # Stage 3: the minimal runtime image.
@@ -122,9 +138,10 @@ COPY --from=builder /ichoi /usr/local/bin/ichoi
 COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /usr/local/bin/ffmpeg
 # CA roots for the LinkKeys RP client / outbound TLS.
 COPY --from=ffmpeg /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-# The web UI themes (DESIGN Sec.11) — the only distributable served from disk
-# rather than baked into the binary. Built by the web toolchain into web/themes/.
-COPY web/themes/ /app/web/themes/
+# The web UI (DESIGN Sec.11) — the only distributable served from disk rather than
+# baked into the binary. The server serves web_dir directly (default
+# web/themes/default, relative to WORKDIR /app), so the BUILT SPA contents go there.
+COPY --from=web /web/themes/default/dist/ /app/web/themes/default/
 
 WORKDIR /app
 # HTTP (browser SPA + /ws) and CSIL+TLS listeners (DESIGN Sec.4.1). Both are
