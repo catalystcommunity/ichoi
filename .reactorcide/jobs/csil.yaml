@@ -31,6 +31,17 @@ job:
       echo "=== Cloning csilgen ==="
       git clone --depth 1 https://github.com/catalystcommunity/csilgen.git /tmp/csilgen
       export CSILGEN_REPO=/tmp/csilgen
+
+      # csilgen loads code generators as WASM plugins from ~/.csilgen/generators/. A fresh
+      # clone ships none; build + install just the Rust server generator (all gen-server
+      # needs). Use csilgen's own target dir, not the job-wide CARGO_TARGET_DIR.
+      echo "=== Installing the Rust server generator (wasm) ==="
+      rustup target add wasm32-unknown-unknown
+      ( cd /tmp/csilgen && CARGO_TARGET_DIR=/tmp/csilgen/target \
+        cargo build --release --target wasm32-unknown-unknown --package csilgen-rust-generator )
+      mkdir -p "$HOME/.csilgen/generators"
+      cp /tmp/csilgen/target/wasm32-unknown-unknown/release/csilgen_rust_generator.wasm \
+        "$HOME/.csilgen/generators/"
     fi
 
     echo "=== Validating CSIL schema ==="

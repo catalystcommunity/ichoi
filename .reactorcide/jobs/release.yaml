@@ -10,7 +10,7 @@ job:
   command: |
     set -e
     sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-      pkg-config git wget build-essential musl-tools gcc-aarch64-linux-gnu
+      pkg-config git wget build-essential musl-tools gcc-aarch64-linux-gnu libc6-dev-arm64-cross
 
     export HOME=/home/runner
     export PATH="/usr/local/cargo/bin:$HOME/.cargo/bin:$PATH"
