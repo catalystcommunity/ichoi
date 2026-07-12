@@ -1,0 +1,24 @@
+name: ichoi-server-build-and-deploy
+description: "Build the multi-arch ichoi server image (amd64 + arm64) and push to registries"
+triggers:
+  events:
+    - push
+  branches:
+    - main
+paths:
+  include: ["server/version/VERSION.txt"]
+job:
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:dev
+  command: "bash ${REACTORCIDE_CODE_DIR:-/job/src}/.reactorcide/jobs/scripts/server-build-and-deploy.sh"
+  timeout: 3600
+  capabilities:
+    - builder
+  run_as:
+    user: runner
+environment:
+  REGISTRY_INTERNAL: "containers.catalystsquad.com"
+  REGISTRY_INTERNAL_PATH: "public/catalystcommunity/ichoi"
+  REGISTRY_EXTERNAL: "containers.catalystsquad.com"
+  REGISTRY_EXTERNAL_PATH: "public/catalystcommunity/ichoi"
+  REGISTRY_USER: "${secret:catalystcommunity/registry:user}"
+  REGISTRY_PASSWORD: "${secret:catalystcommunity/registry:password}"

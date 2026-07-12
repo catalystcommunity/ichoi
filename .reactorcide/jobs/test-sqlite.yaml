@@ -1,0 +1,37 @@
+name: ichoi-test-sqlite
+description: "Run the workspace test suite against the SQLite backend"
+job:
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:dev
+  command: |
+    set -e
+    # SQLite is the only backend (DESIGN Sec.2); the bundled libsqlite3-sys needs
+    # a C toolchain but no system libsqlite3/libpq.
+    sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+      pkg-config build-essential
+
+    export HOME=/home/runner
+    export PATH="/usr/local/cargo/bin:$HOME/.cargo/bin:$PATH"
+
+    if ! command -v cargo >/dev/null 2>&1; then
+      curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+    fi
+
+    if [ -f "$HOME/.cargo/env" ]; then
+      . "$HOME/.cargo/env"
+    elif [ -f /usr/local/cargo/env ]; then
+      . /usr/local/cargo/env
+    fi
+
+    cd "${REACTORCIDE_CODE_DIR:-/job/src}/server"
+    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/ichoi-target}"
+
+    echo "=== Running tests (SQLite backend) ==="
+    TEST_DATABASE_BACKEND=sqlite cargo test --workspace 2>&1
+
+    echo "=== SQLite tests passed ==="
+  timeout: 1800
+  priority: 10
+  run_as:
+    user: runner
+run_local:
+  as_runner: true
