@@ -11,18 +11,27 @@ DESIGN.md.
   which connected over the **real CSIL-Events WebSocket wire** (`$hello`→`$hello-ack`),
   listed albums with real scanned data, opened an album showing per-track FLAC metadata
   (codec / 44.1 kHz / 16-bit / duration), and on **Play** fired `GET /media/<id>` returning
-  `206` audio to a native `<audio>` element. (Actual sound needs a real audio device + user
-  gesture; headless autoplay is blocked — that's the only step not machine-verified here.)
+  `206` audio to a native `<audio>` element.
 - **CSIL-Events transport** (`transport.rs`): verbose-profile envelope
   `{event, payload:24(bstr), service?, id?}`, the `$hello`/`$hello-ack` handshake with auth
   → identity resolution, request/response correlation by `id`, errors carried as a
   `{code,message}` map — matching the web UI's vector-conformant codec. Covered by
   integration tests that build the exact browser frames.
-- **HTTP media** (`media_http.rs`): direct byte-range serving (verified `206` with correct
+- **Browser HTTP media** (`media_http.rs`): direct byte-range serving (verified `206` with correct
   `Content-Range`) and ffmpeg transcode piping — verified producing real **AAC** (`?bitrate=96`)
   and **MP3** (`?format=mp3&bitrate=64`) below source bitrate, and serving the original when
   the cap is above source.
-- **22 tests pass**, incl. DataUtils integration tests (real SQLite, rolled-back
+- **Satellite CSIL media**: satellite mode is outbound-only. It authenticates to the core
+  CSIL/TCP listener with a pre-shared node token, registers output devices, receives
+  `NodeService.Session` directives, requests `MediaService.Stream`, receives `MediaEvent`
+  chunks, and sends `NodeReport` progress on the same duplex CSIL/TCP connection. Frame reads
+  are handled by dedicated reader tasks so outbound writes cannot cancel a partial length-
+  prefixed read. It starts decoding as soon as `MediaHeader` + chunks arrive, decodes locally
+  with Symphonia, and writes PCM to ALSA via runtime `dlopen` on Linux. The satellite path
+  does not expose or call HTTP. Verified on a local Linux/PipeWire/ALSA host by selecting the
+  satellite target in the guest UI and playing a real MP3 with audible output and advancing UI
+  progress.
+- **28 tests pass**, incl. DataUtils integration tests (real SQLite, rolled-back
   transactions, `DataMap` factories) and the CSIL-Events wire tests. `cargo clippy
   --workspace` is clean.
 - **`ichoi serve`**: migrations → transforms → background scan → HTTP `:4042` + CSIL/TCP
@@ -35,23 +44,23 @@ DESIGN.md.
 All request/response operations of SessionService, LibraryService, PlayerService (+ share
 enable/disable with the `"<Handle>'s <suffix>"` naming), AdminService, and
 NodeService.register are wired to the store and reachable over both the WS and TCP paths.
-`player.Subscribe` pushes a one-time state snapshot.
+`player.Subscribe` gets an initial snapshot and live pushes when player state changes.
 
 ## Stubbed / TODO (honest gaps)
 
-- **Symphonia→WASM decoder** (`ichoi-decoder.wasm`) does not exist (no wasm toolchain here).
-  The design's pure media path (CSIL-Events chunks → WASM decode → AudioWorklet) is therefore
-  inert; **the HTTP `/media` + `<audio>` path is a testing bridge** until it lands
-  (`server/media_http.rs`, `stores/playback.tsx`). This is the main deviation from §5.
-- **Live jukebox push**: `player.Subscribe` sends one snapshot, not a live stream; controlling
-  a shared target doesn't yet fan updates to other subscribers (§6.5). `media.Stream` /
-  `node.Session` are accepted but push nothing.
+- **Browser playback is still native HTTP audio.** Satellites no longer need a WASM decoder:
+  they use native Symphonia on the node. The only reason to revive
+  `ichoi-decoder.wasm` would be a future browser-only CSIL media path
+  (`CSIL-Events chunks -> AudioWorklet`) instead of the current `/media` + `<audio>` path.
+- **Live jukebox polish**: player state fan-out is in place for control/report changes. The
+  remaining work is persistence/replay for subscribers that reconnect mid-transition.
+- **Satellite stream seeking is functional but simple.** A seeked load starts the CSIL media
+  stream from the beginning and discards decoded PCM until the requested position. That keeps
+  the protocol working without HTTP, but large seeks should eventually become range-aware.
 - **LinkKeys auth**: first-admin bootstrap + session minting work; the LinkKeys assertion path
   is a placeholder (no `linkkeys-rpc-client` verification yet, §7.1).
 - **TLS + key rotation** (§4.2): the CSIL/TCP surface is plain; the three auto-rotating pinned
   keys are not implemented. Browser TLS is expected via a reverse proxy (deploy/Caddyfile).
-- **Satellite role**: outbound node client, dlopen PCM playback, and the directive/report loop
-  are not built; `--role satellite` warns and runs core surfaces.
 
 ## Known upstream issue
 

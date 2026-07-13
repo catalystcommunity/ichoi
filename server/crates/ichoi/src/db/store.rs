@@ -242,7 +242,11 @@ pub fn album_track_counts(conn: &mut SqliteConnection) -> QueryResult<Vec<(Strin
         .load(conn)
 }
 
-pub fn set_track_album(conn: &mut SqliteConnection, track_id: &str, album_id: &str) -> QueryResult<()> {
+pub fn set_track_album(
+    conn: &mut SqliteConnection,
+    track_id: &str,
+    album_id: &str,
+) -> QueryResult<()> {
     diesel::update(tracks::table.find(track_id))
         .set(tracks::album_id.eq(album_id))
         .execute(conn)?;
@@ -341,6 +345,14 @@ pub fn get_track(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<Tr
         .optional()
 }
 
+pub fn track_by_root_path(conn: &mut SqliteConnection, path: &str) -> QueryResult<Option<Track>> {
+    tracks::table
+        .filter(tracks::root_relative_path.eq(path))
+        .select(Track::as_select())
+        .first(conn)
+        .optional()
+}
+
 pub fn tracks_for_album(conn: &mut SqliteConnection, album_id: &str) -> QueryResult<Vec<Track>> {
     tracks::table
         .filter(tracks::album_id.eq(album_id))
@@ -428,6 +440,7 @@ pub fn upsert_playlist(conn: &mut SqliteConnection, row: &Playlist) -> QueryResu
             playlists::name.eq(&row.name),
             playlists::owner.eq(&row.owner),
             playlists::root_relative_path.eq(&row.root_relative_path),
+            playlists::visibility.eq(&row.visibility),
         ))
         .execute(conn)?;
     Ok(())
@@ -456,6 +469,41 @@ pub fn ensure_core_node(conn: &mut SqliteConnection, hostname: &str) -> QueryRes
             .values(&row)
             .execute(conn)?;
     }
+    Ok(())
+}
+
+pub fn sync_core_outputs(
+    conn: &mut SqliteConnection,
+    hostname: &str,
+    outputs: &[crate::audio::AudioOutput],
+) -> QueryResult<()> {
+    let node_id = format!("core:{hostname}");
+    diesel::update(nodes::table.find(&node_id))
+        .set(nodes::audio_outputs.eq(if outputs.is_empty() { "none" } else { "some" }))
+        .execute(conn)?;
+
+    for out in outputs {
+        let dev = OutputDevice {
+            id: format!("{node_id}:{}", out.os_device_id),
+            node_id: node_id.clone(),
+            os_device_id: out.os_device_id.clone(),
+            friendly_name: out.friendly_name.clone(),
+            is_default: i32::from(out.is_default),
+        };
+        upsert_device(conn, &dev)?;
+        create_player(
+            conn,
+            &Player {
+                id: format!("player:{}", dev.id),
+                kind: "shared".to_string(),
+                output_device_id: Some(dev.id.clone()),
+                owner_account_id: None,
+                name: format!("{hostname} · {}", dev.friendly_name),
+                name_suffix: None,
+            },
+        )?;
+    }
+
     Ok(())
 }
 

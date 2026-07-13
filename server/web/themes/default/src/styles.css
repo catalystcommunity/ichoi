@@ -1125,3 +1125,25 @@ h3 {
   cursor: pointer;
 }
 .transport-target:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* --- Toasts --------------------------------------------------------------- */
+.toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 104px;
+  z-index: 60;
+  display: grid;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 36px));
+}
+.toast {
+  text-align: left;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.toast:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }

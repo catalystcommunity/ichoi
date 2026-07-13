@@ -12,4 +12,5 @@ pub mod handlers;
 pub mod media;
 pub mod scan;
 pub mod server;
+pub mod satellite;
 pub mod transport;

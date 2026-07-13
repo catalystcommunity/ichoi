@@ -4221,6 +4221,17 @@ fn csil_dec_media_control(csil_v: &CsilCborValue) -> Result<MediaControl, CsilCb
     }
 }
 
+/// Encode a MediaControl to canonical CSIL CBOR bytes.
+pub fn encode_media_control(csil_v: &MediaControl) -> Vec<u8> {
+    cbor_encode(&csil_enc_media_control(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a MediaControl.
+pub fn decode_media_control(csil_data: &[u8]) -> Result<MediaControl, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_media_control(&csil_root)
+}
+
 /// Encode a MediaEndReason enum as its bare literal value.
 fn csil_enc_media_end_reason(csil_v: &MediaEndReason) -> CsilCborValue {
     match csil_v {
@@ -4297,6 +4308,17 @@ fn csil_dec_media_event(csil_v: &CsilCborValue) -> Result<MediaEvent, CsilCborEr
     }
 }
 
+/// Encode a MediaEvent to canonical CSIL CBOR bytes.
+pub fn encode_media_event(csil_v: &MediaEvent) -> Vec<u8> {
+    cbor_encode(&csil_enc_media_event(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a MediaEvent.
+pub fn decode_media_event(csil_data: &[u8]) -> Result<MediaEvent, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_media_event(&csil_root)
+}
+
 /// Encode a NodeDirective union as a tagged sum `[variant_index, value]`.
 fn csil_enc_node_directive(csil_v: &NodeDirective) -> CsilCborValue {
     match csil_v {
@@ -4360,6 +4382,17 @@ fn csil_dec_node_directive(csil_v: &CsilCborValue) -> Result<NodeDirective, Csil
             "csil cbor: unknown NodeDirective variant {csil_other}"
         ))),
     }
+}
+
+/// Encode a NodeDirective to canonical CSIL CBOR bytes.
+pub fn encode_node_directive(csil_v: &NodeDirective) -> Vec<u8> {
+    cbor_encode(&csil_enc_node_directive(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a NodeDirective.
+pub fn decode_node_directive(csil_data: &[u8]) -> Result<NodeDirective, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_node_directive(&csil_root)
 }
 
 /// Encode a NodeKind enum as its bare literal value.

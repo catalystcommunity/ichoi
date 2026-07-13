@@ -3,7 +3,8 @@
 mod common;
 
 use common::DataMap;
-use libichoi::csil::services::{LibraryService, PlayerService};
+use libichoi::csil::codec::decode_node_directive;
+use libichoi::csil::services::{LibraryService, NodeService, PlayerService};
 use libichoi::csil::types::*;
 
 #[test]
@@ -124,6 +125,49 @@ fn anonymous_cannot_share_once_users_exist() {
 }
 
 #[test]
+fn anonymous_cannot_control_shared_device_once_users_exist() {
+    let (app, pool) = common::test_app();
+    {
+        let mut conn = pool.get().unwrap();
+        ichoi::db::store::upsert_account(
+            &mut conn,
+            &ichoi::db::models::Account {
+                id: "a@b".into(),
+                handle: "a".into(),
+                display_name: None,
+                role: "admin".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+            },
+        )
+        .unwrap();
+        ichoi::db::store::create_player(
+            &mut conn,
+            &ichoi::db::models::Player {
+                id: "speaker-1".into(),
+                kind: "shared".into(),
+                output_device_id: None,
+                owner_account_id: None,
+                name: "Kitchen".into(),
+                name_suffix: None,
+            },
+        )
+        .unwrap();
+    }
+    let err = app
+        .control(
+            &common::ctx_anon(),
+            CommandRequest {
+                player_id: "speaker-1".into(),
+                command: PlayerCommand::Variant5(CmdPause {
+                    op: "pause".into(),
+                }),
+            },
+        )
+        .expect_err("anonymous control is not allowed once accounts exist");
+    assert_eq!(err.code, 401);
+}
+
+#[test]
 fn shared_devices_are_listed_only_while_a_connection_owns_them() {
     let (app, _pool) = common::test_app();
     let share = app
@@ -212,4 +256,69 @@ fn control_enqueues_and_plays() {
     let state = app.control(&common::ctx_anon(), play).expect("play");
     assert!(matches!(state.status, PlayerStatus::Playing));
     assert_eq!(state.current_index, Some(0));
+}
+
+#[test]
+fn satellite_player_receives_load_directive() {
+    let (app, pool) = common::test_app();
+    {
+        let mut conn = pool.get().unwrap();
+        common::create_artist(&mut conn, &DataMap::new());
+        common::create_album(&mut conn, &DataMap::new());
+        common::create_track(&mut conn, &DataMap::new());
+    }
+
+    let registered = app
+        .register(
+            &common::ctx_node("pending:test-token"),
+            RegisterNodeRequest {
+                hostname: "kitchenpi".to_string(),
+                platform: "linux".to_string(),
+                arch: "aarch64".to_string(),
+                outputs: vec![AudioOutput {
+                    os_device_id: "default".to_string(),
+                    friendly_name: Some("Main".to_string()),
+                    channels: 2,
+                    sample_rates: vec![44_100, 48_000],
+                    is_default: true,
+                }],
+            },
+        )
+        .expect("register satellite");
+    let player_id = registered.players[0].id.clone();
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    app.nodes.subscribe(player_id.clone(), 7, tx);
+
+    app.control(
+        &common::ctx_anon(),
+        CommandRequest {
+            player_id: player_id.clone(),
+            command: PlayerCommand::Variant0(CmdEnqueue {
+                op: "enqueue".to_string(),
+                track_ids: vec!["track-1".to_string()],
+                at_index: None,
+            }),
+        },
+    )
+    .expect("enqueue");
+    app.control(
+        &common::ctx_anon(),
+        CommandRequest {
+            player_id,
+            command: PlayerCommand::Variant4(CmdPlay {
+                op: "play".to_string(),
+                index: None,
+            }),
+        },
+    )
+    .expect("play");
+
+    let payload = rx.try_recv().expect("directive pushed");
+    let directive = decode_node_directive(&payload).expect("decode directive");
+    let NodeDirective::Variant0(load) = directive else {
+        panic!("expected load directive")
+    };
+    assert_eq!(load.track_id, "track-1");
+    assert!(matches!(load.pref.transcode_codec, Some(TranscodeCodec::Aac)));
 }

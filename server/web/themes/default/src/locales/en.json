@@ -76,7 +76,9 @@
     "empty": "No playlists yet.",
     "entries": "{{count}} entries",
     "ownedBy": "by {{owner}}",
-    "note": "Playlists are m3u files with library-relative paths. Missing tracks are skipped at playback."
+    "note": "Playlists are m3u files with library-relative paths. Missing tracks are skipped at playback.",
+    "saveQueue": "Save queue",
+    "savePrompt": "Playlist name"
   },
   "jukebox": {
     "title": "Jukebox",
