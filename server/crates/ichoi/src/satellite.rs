@@ -9,13 +9,13 @@ use std::time::Duration;
 
 use ciborium::value::Value;
 use libichoi::csil::codec::{
-    decode_media_event, decode_node_directive, decode_register_node_response, encode_media_control,
-    encode_node_report, encode_register_node_request,
+    decode_register_node_response, encode_node_report, encode_register_node_request,
 };
 use libichoi::csil::types::{
     AudioOutput as WireAudioOutput, Codec, MediaControl, MediaEndReason, MediaEvent, MediaOpen,
     NodeDirective, NodeReport, PlayerStatus, RegisterNodeRequest, StreamPref, TranscodeCodec,
 };
+use libichoi::csil_channel::{decode_media_event, decode_node_directive, encode_media_control};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -178,12 +178,7 @@ fn report_frame(player_id: &str, status: PlayerStatus, position_ms: Option<u64>)
         status,
         position_ms,
     };
-    event_frame(
-        Some("node"),
-        "Session",
-        None,
-        encode_node_report(&report),
-    )
+    event_frame(Some("node"), "Session", None, encode_node_report(&report))
 }
 
 async fn read_frame(read: &mut tokio::net::tcp::OwnedReadHalf) -> anyhow::Result<Option<Vec<u8>>> {
@@ -275,7 +270,11 @@ async fn apply_directive(
                 media.player_id = None;
             }
             states.insert(stop.player_id.clone(), PlayerStatus::Stopped);
-            out_tx.send(report_frame(&stop.player_id, PlayerStatus::Stopped, Some(0)))?;
+            out_tx.send(report_frame(
+                &stop.player_id,
+                PlayerStatus::Stopped,
+                Some(0),
+            ))?;
         }
         NodeDirective::Variant4(vol) => {
             let status = states
@@ -554,9 +553,14 @@ fn decode_stream_to_default_output(
         };
         played_frames += sink.write_s16le(bytes)?;
         if sample_rate > 0 {
-            let position_ms = seek_ms + (played_frames.saturating_mul(1000) / u64::from(sample_rate));
+            let position_ms =
+                seek_ms + (played_frames.saturating_mul(1000) / u64::from(sample_rate));
             if position_ms.saturating_sub(last_report_ms) >= 1000 {
-                let _ = out_tx.send(report_frame(player_id, PlayerStatus::Playing, Some(position_ms)));
+                let _ = out_tx.send(report_frame(
+                    player_id,
+                    PlayerStatus::Playing,
+                    Some(position_ms),
+                ));
                 last_report_ms = position_ms;
             }
         }

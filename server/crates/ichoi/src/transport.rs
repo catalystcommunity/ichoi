@@ -14,6 +14,7 @@ use ciborium::value::Value;
 use libichoi::csil::codec::*;
 use libichoi::csil::services::*;
 use libichoi::csil::types::{MediaControl, MediaOpen, PlayerState, ServiceError};
+use libichoi::csil_channel::decode_media_control;
 use serde::{Deserialize, Serialize};
 
 use crate::handlers::{App, Ctx, Identity};
@@ -504,11 +505,10 @@ fn handle_control(
                             let hash = crate::auth::sha256_hex(tok);
                             if let Ok(mut conn) = app.pool.get() {
                                 let pending_key = format!("node_token:{hash}");
-                                let configured = app
-                                    .config
-                                    .node_token
-                                    .as_ref()
-                                    .is_some_and(|configured| crate::auth::sha256_hex(configured) == hash);
+                                let configured =
+                                    app.config.node_token.as_ref().is_some_and(|configured| {
+                                        crate::auth::sha256_hex(configured) == hash
+                                    });
                                 if configured
                                     || crate::db::store::get_setting(&mut conn, &pending_key)
                                         .ok()

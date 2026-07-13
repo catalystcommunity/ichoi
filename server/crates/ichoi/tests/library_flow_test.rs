@@ -3,9 +3,9 @@
 mod common;
 
 use common::DataMap;
-use libichoi::csil::codec::decode_node_directive;
 use libichoi::csil::services::{LibraryService, NodeService, PlayerService};
 use libichoi::csil::types::*;
+use libichoi::csil_channel::decode_node_directive;
 
 #[test]
 fn lists_albums_with_track_counts() {
@@ -158,9 +158,7 @@ fn anonymous_cannot_control_shared_device_once_users_exist() {
             &common::ctx_anon(),
             CommandRequest {
                 player_id: "speaker-1".into(),
-                command: PlayerCommand::Variant5(CmdPause {
-                    op: "pause".into(),
-                }),
+                command: PlayerCommand::Variant5(CmdPause { op: "pause".into() }),
             },
         )
         .expect_err("anonymous control is not allowed once accounts exist");
@@ -171,7 +169,12 @@ fn anonymous_cannot_control_shared_device_once_users_exist() {
 fn shared_devices_are_listed_only_while_a_connection_owns_them() {
     let (app, _pool) = common::test_app();
     let share = app
-        .enable_share(&common::ctx_anon(), EnableShareRequest { suffix: Some("TodPhone".into()) })
+        .enable_share(
+            &common::ctx_anon(),
+            EnableShareRequest {
+                suffix: Some("TodPhone".into()),
+            },
+        )
         .expect("share");
     let id = share.player.id.clone();
 
@@ -189,12 +192,20 @@ fn shared_devices_are_listed_only_while_a_connection_owns_them() {
     let listed = app
         .list_players(&common::ctx_anon(), ListPlayersRequest { kind: None })
         .expect("list");
-    assert!(listed.players.iter().any(|p| p.id == id), "a claimed device is live");
+    assert!(
+        listed.players.iter().any(|p| p.id == id),
+        "a claimed device is live"
+    );
 
     // Re-claiming the same device by the same owner is idempotent (no 409), so a client can
     // re-attach after a refresh instead of failing on its own device.
     let again = app
-        .enable_share(&common::ctx_anon(), EnableShareRequest { suffix: Some("TodPhone".into()) })
+        .enable_share(
+            &common::ctx_anon(),
+            EnableShareRequest {
+                suffix: Some("TodPhone".into()),
+            },
+        )
         .expect("re-claiming your own device must succeed");
     assert_eq!(again.player.id, id);
 
@@ -320,5 +331,8 @@ fn satellite_player_receives_load_directive() {
         panic!("expected load directive")
     };
     assert_eq!(load.track_id, "track-1");
-    assert!(matches!(load.pref.transcode_codec, Some(TranscodeCodec::Aac)));
+    assert!(matches!(
+        load.pref.transcode_codec,
+        Some(TranscodeCodec::Aac)
+    ));
 }
