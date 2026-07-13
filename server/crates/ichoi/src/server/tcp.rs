@@ -4,11 +4,12 @@
 use std::io::Read;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use libichoi::csil::codec::{decode_node_report, encode_media_event};
+use libichoi::csil::codec::decode_node_report;
 use libichoi::csil::types::{
     Codec, MediaChunk, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen,
     ServiceError,
 };
+use libichoi::csil_channel::encode_media_event;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;

@@ -7,6 +7,7 @@
 pub mod account;
 pub mod codec;
 pub mod csil;
+pub mod csil_channel;
 pub mod error;
 pub mod m3u;
 pub mod share;

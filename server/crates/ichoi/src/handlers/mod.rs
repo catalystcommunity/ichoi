@@ -631,8 +631,10 @@ impl App {
         };
         db(store::upsert_state(&mut conn, &row))?;
         let state = self.load_player_state(&mut conn, &report.player_id)?;
-        self.subs
-            .publish(&report.player_id, &crate::transport::player_state_frame(&state));
+        self.subs.publish(
+            &report.player_id,
+            &crate::transport::player_state_frame(&state),
+        );
         Ok(state)
     }
 }
@@ -719,7 +721,7 @@ impl PlayerService for App {
             if player.output_device_id.is_some() && !pid.starts_with("player:core:") {
                 if let Some(dir) = directive_for(&input.command, pid, &st, &queue) {
                     self.nodes
-                        .publish(pid, libichoi::csil::codec::encode_node_directive(&dir));
+                        .publish(pid, libichoi::csil_channel::encode_node_directive(&dir));
                 }
             }
         }
