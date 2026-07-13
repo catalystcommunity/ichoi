@@ -6,6 +6,7 @@ import { I18nProvider } from "./lib/i18n.tsx";
 import { ThemeProvider } from "./stores/theme.tsx";
 import { ServersProvider } from "./stores/servers.tsx";
 import { PlaybackProvider } from "./stores/playback.tsx";
+import { ToastProvider } from "./stores/toasts.tsx";
 import { Layout } from "./components/Layout.tsx";
 import { LibraryPage } from "./routes/LibraryPage.tsx";
 
@@ -27,19 +28,21 @@ export function App(): JSX.Element {
     <I18nProvider>
       <ThemeProvider>
         <ServersProvider>
-          <PlaybackProvider>
-            <Router root={Layout}>
-              <Route path="/" component={LibraryPage} />
-              <Route path="/album/:id" component={AlbumPage} />
-              <Route path="/artist/:id" component={ArtistPage} />
-              <Route path="/search" component={SearchPage} />
-              <Route path="/playlists" component={PlaylistsPage} />
-              <Route path="/jukebox" component={JukeboxPage} />
-              <Route path="/now-playing" component={NowPlayingPage} />
-              <Route path="/settings" component={SettingsPage} />
-              <Route path="*" component={LibraryPage} />
-            </Router>
-          </PlaybackProvider>
+          <ToastProvider>
+            <PlaybackProvider>
+              <Router root={Layout}>
+                <Route path="/" component={LibraryPage} />
+                <Route path="/album/:id" component={AlbumPage} />
+                <Route path="/artist/:id" component={ArtistPage} />
+                <Route path="/search" component={SearchPage} />
+                <Route path="/playlists" component={PlaylistsPage} />
+                <Route path="/jukebox" component={JukeboxPage} />
+                <Route path="/now-playing" component={NowPlayingPage} />
+                <Route path="/settings" component={SettingsPage} />
+                <Route path="*" component={LibraryPage} />
+              </Router>
+            </PlaybackProvider>
+          </ToastProvider>
         </ServersProvider>
       </ThemeProvider>
     </I18nProvider>

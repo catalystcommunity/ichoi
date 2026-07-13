@@ -169,6 +169,7 @@ mod tests {
             log: "warn".into(),
             fetch_art: false,
             split_dump_folders: false,
+            require_music: false,
         };
         let pref = StreamPref {
             max_bitrate_kbps: None,

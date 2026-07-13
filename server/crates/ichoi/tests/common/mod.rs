@@ -32,6 +32,7 @@ pub fn test_config() -> Config {
         log: "warn".to_string(),
         fetch_art: false,
         split_dump_folders: false,
+        require_music: false,
     }
 }
 
@@ -53,6 +54,14 @@ pub fn ctx_user(account_id: &str) -> Ctx {
         identity: Identity::User {
             account_id: account_id.to_string(),
             role: "member".to_string(),
+        },
+    }
+}
+
+pub fn ctx_node(node_id: &str) -> Ctx {
+    Ctx {
+        identity: Identity::Node {
+            node_id: node_id.to_string(),
         },
     }
 }

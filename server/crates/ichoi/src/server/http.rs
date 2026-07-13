@@ -8,9 +8,11 @@ use std::time::Duration;
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -38,6 +40,7 @@ pub fn router(app: App, web_dir: PathBuf) -> Router {
         .route("/status", get(status))
         .route("/ws", get(ws_upgrade))
         .route("/media/:track_id", get(media_http::stream_media))
+        .route("/api/playlists/from-queue", post(save_queue_playlist))
         .fallback_service(assets)
         .with_state(state)
 }
@@ -64,6 +67,153 @@ async fn status(State(s): State<AppState>) -> impl IntoResponse {
     .await
     .unwrap_or_else(|_| serde_json::json!({ "service": "ichoi", "status": "degraded" }));
     Json(value)
+}
+
+#[derive(Debug, Deserialize)]
+struct SaveQueuePlaylistRequest {
+    name: String,
+    track_ids: Vec<String>,
+    #[serde(default)]
+    visibility: Option<String>,
+    #[serde(default)]
+    owner: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct SaveQueuePlaylistResponse {
+    id: String,
+    name: String,
+    root_relative_path: String,
+    visibility: String,
+    entry_count: usize,
+}
+
+async fn save_queue_playlist(
+    State(s): State<AppState>,
+    Json(req): Json<SaveQueuePlaylistRequest>,
+) -> impl IntoResponse {
+    let result = tokio::task::spawn_blocking(move || save_queue_playlist_sync(&s.app, req)).await;
+    match result {
+        Ok(Ok(saved)) => (StatusCode::OK, Json(saved)).into_response(),
+        Ok(Err((status, message))) => (status, message).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")).into_response(),
+    }
+}
+
+fn save_queue_playlist_sync(
+    app: &App,
+    req: SaveQueuePlaylistRequest,
+) -> Result<SaveQueuePlaylistResponse, (StatusCode, String)> {
+    let name = req.name.trim();
+    if name.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "playlist name is required".to_string(),
+        ));
+    }
+    if req.track_ids.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "queue is empty".to_string()));
+    }
+    let root = app.config.music_dir.as_ref().ok_or_else(|| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "no music directory configured".to_string(),
+        )
+    })?;
+    let owner = req.owner.filter(|s| !s.trim().is_empty());
+    let visibility = if req.visibility.as_deref() == Some("private") && owner.is_some() {
+        "private"
+    } else {
+        "public"
+    }
+    .to_string();
+
+    let mut conn = app
+        .pool
+        .get()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
+    let mut entries = Vec::new();
+    for id in &req.track_ids {
+        let track = crate::db::store::get_track(&mut conn, id)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?
+            .ok_or_else(|| (StatusCode::BAD_REQUEST, format!("track not found: {id}")))?;
+        entries.push(track.root_relative_path);
+    }
+
+    let dir = root.join("playlists");
+    std::fs::create_dir_all(&dir).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("creating playlists dir: {e}"),
+        )
+    })?;
+    let filename = unique_playlist_filename(&dir, name);
+    let root_relative_path = format!("playlists/{filename}");
+    let full_path = root.join(&root_relative_path);
+    std::fs::write(&full_path, libichoi::m3u::write(&entries)).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("writing playlist: {e}"),
+        )
+    })?;
+
+    let id = format!("playlist:{}", root_relative_path);
+    crate::db::store::upsert_playlist(
+        &mut conn,
+        &crate::db::models::Playlist {
+            id: id.clone(),
+            name: name.to_string(),
+            owner,
+            root_relative_path: root_relative_path.clone(),
+            visibility: visibility.clone(),
+        },
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
+
+    Ok(SaveQueuePlaylistResponse {
+        id,
+        name: name.to_string(),
+        root_relative_path,
+        visibility,
+        entry_count: entries.len(),
+    })
+}
+
+fn unique_playlist_filename(dir: &std::path::Path, name: &str) -> String {
+    let slug = playlist_slug(name);
+    let mut candidate = format!("{slug}.m3u");
+    let mut n = 2;
+    while dir.join(&candidate).exists() {
+        candidate = format!("{slug}-{n}.m3u");
+        n += 1;
+    }
+    candidate
+}
+
+fn playlist_slug(name: &str) -> String {
+    let slug: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else if c == '-' || c == '_' || c.is_whitespace() {
+                '-'
+            } else {
+                '\0'
+            }
+        })
+        .filter(|c| *c != '\0')
+        .collect();
+    let collapsed = slug
+        .split('-')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    if collapsed.is_empty() {
+        "queue".to_string()
+    } else {
+        collapsed
+    }
 }
 
 async fn ws_upgrade(ws: WebSocketUpgrade, State(s): State<AppState>) -> impl IntoResponse {

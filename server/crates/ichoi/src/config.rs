@@ -37,6 +37,7 @@ struct FileConfig {
     transcode_codec: Option<String>,
     web_dir: Option<PathBuf>,
     log: Option<String>,
+    require_music: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +62,9 @@ pub struct Config {
     /// Split "dump" folders (many artists / many loose files) into per-artist "Singles"
     /// albums instead of one folder-album (default off; `ICHOI_SPLIT_DUMP_FOLDERS=1`).
     pub split_dump_folders: bool,
+    /// Fail startup when the configured music directory is absent or empty. Intended for
+    /// Docker Compose/local deployments where an empty bind mount usually means a bad mount.
+    pub require_music: bool,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -122,6 +126,14 @@ impl Config {
             ),
             split_dump_folders: matches!(
                 env("ICHOI_SPLIT_DUMP_FOLDERS").as_deref(),
+                Some("1") | Some("true") | Some("yes")
+            ),
+            require_music: matches!(
+                env("ICHOI_REQUIRE_MUSIC")
+                    .or_else(|| file
+                        .require_music
+                        .map(|v| if v { "1" } else { "0" }.to_string()))
+                    .as_deref(),
                 Some("1") | Some("true") | Some("yes")
             ),
         })

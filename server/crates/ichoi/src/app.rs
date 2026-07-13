@@ -6,7 +6,7 @@ use std::sync::Arc;
 use crate::config::{Config, Role};
 use crate::db::{self, models, store};
 use crate::handlers::App;
-use crate::{scan, server};
+use crate::{audio, scan, server};
 
 pub fn hostname() -> String {
     std::env::var("HOSTNAME")
@@ -21,6 +21,8 @@ pub fn prepare_db(config: &Config) -> anyhow::Result<db::SqlitePool> {
     let mut conn = pool.get()?;
     db::run_migrations(&mut conn)?;
     db::run_transforms(&mut conn, &hostname())?;
+    let outputs = audio::enumerate();
+    store::sync_core_outputs(&mut conn, &hostname(), &outputs)?;
     Ok(pool)
 }
 
@@ -40,12 +42,12 @@ fn ensure_music_library(pool: &db::SqlitePool, path: &std::path::Path) -> anyhow
 
 /// The `serve` command.
 pub async fn serve(config: Config) -> anyhow::Result<()> {
+    validate_runtime_config(&config)?;
+    if config.role == Role::Satellite {
+        return crate::satellite::run(config).await;
+    }
     let config = Arc::new(config);
     let pool = prepare_db(&config)?;
-
-    if config.role == Role::Satellite {
-        log::warn!("satellite role is not yet implemented; running core surfaces only");
-    }
 
     let app = App::new(pool.clone(), config.clone());
 
@@ -110,5 +112,39 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
         r = tcp => r?,
         _ = tokio::signal::ctrl_c() => log::info!("shutting down"),
     }
+    Ok(())
+}
+
+fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
+    if config.role == Role::Satellite {
+        if config.core_addr.as_deref().unwrap_or_default().is_empty() {
+            anyhow::bail!("satellite role requires ICHOI_CORE_ADDR");
+        }
+        if config.node_token.as_deref().unwrap_or_default().is_empty() {
+            anyhow::bail!("satellite role requires ICHOI_NODE_TOKEN");
+        }
+    }
+
+    if config.require_music {
+        let music = config
+            .music_dir
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("ICHOI_REQUIRE_MUSIC=1 requires ICHOI_MUSIC_DIR"))?;
+        if !music.is_dir() {
+            anyhow::bail!(
+                "music dir {} does not exist or is not a directory",
+                music.display()
+            );
+        }
+        let mut entries = std::fs::read_dir(music)
+            .map_err(|e| anyhow::anyhow!("reading music dir {}: {e}", music.display()))?;
+        if entries.next().is_none() {
+            anyhow::bail!(
+                "music dir {} is empty; mount your music library or unset ICHOI_REQUIRE_MUSIC",
+                music.display()
+            );
+        }
+    }
+
     Ok(())
 }

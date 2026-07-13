@@ -6,14 +6,14 @@
 //! - `handle_json` — a text JSON envelope (payload still canonical CBOR) kept for shell-level
 //!   debugging over the TCP port.
 //!
-//! The streaming push loops (media chunks, live jukebox updates) are still pre-alpha:
-//! `player.Subscribe` pushes a one-time state snapshot; other channel ops are validated but
-//! push nothing yet.
+//! Channel operations are routed through the owning transport: browser/player subscriptions
+//! fan out state frames, and native TCP satellites use node directives plus media stream
+//! effects returned from `handle_events_frame`.
 
 use ciborium::value::Value;
 use libichoi::csil::codec::*;
 use libichoi::csil::services::*;
-use libichoi::csil::types::{PlayerState, ServiceError};
+use libichoi::csil::types::{MediaControl, MediaOpen, PlayerState, ServiceError};
 use serde::{Deserialize, Serialize};
 
 use crate::handlers::{App, Ctx, Identity};
@@ -339,6 +339,10 @@ pub struct FrameEffects {
     pub subscribe: Option<String>,
     /// A successful `player.EnableShare`: this connection is now the device's output (§6).
     pub attach: Option<String>,
+    /// A `node.Session`: register this connection for directives to this satellite player.
+    pub node_session: Option<String>,
+    /// A `media.Stream` open request: start sending MediaEvent frames for the requested track.
+    pub media_open: Option<MediaOpen>,
 }
 
 /// Handle one inbound frame. Returns the (possibly updated) identity, an optional immediate
@@ -401,6 +405,8 @@ pub fn handle_events_frame(
             FrameEffects {
                 subscribe: None,
                 attach,
+                node_session: None,
+                media_open: None,
             },
         );
     }
@@ -414,11 +420,48 @@ pub fn handle_events_frame(
                 FrameEffects {
                     subscribe: Some(player_id),
                     attach: None,
+                    node_session: None,
+                    media_open: None,
                 },
             );
         }
     }
-    // media.Stream / node.Session: streaming push loops are pre-alpha (§16); accepted, no push.
+    if service == "node" && env.event == "Session" {
+        if !matches!(ident, Identity::Node { .. }) {
+            return (ident, None, FrameEffects::default());
+        }
+        if let Ok(report) = decode_node_report(&env.payload) {
+            let player_id = report.player_id.clone();
+            let _ = app.record_node_report(report);
+            return (
+                ident,
+                None,
+                FrameEffects {
+                    subscribe: None,
+                    attach: None,
+                    node_session: Some(player_id),
+                    media_open: None,
+                },
+            );
+        }
+    }
+    if service == "media" && env.event == "Stream" {
+        if !matches!(ident, Identity::Node { .. }) {
+            return (ident, None, FrameEffects::default());
+        }
+        if let Ok(MediaControl::Variant0(open)) = decode_media_control(&env.payload) {
+            return (
+                ident,
+                None,
+                FrameEffects {
+                    subscribe: None,
+                    attach: None,
+                    node_session: None,
+                    media_open: Some(open),
+                },
+            );
+        }
+    }
     let _ = &ctx;
     (ident, None, FrameEffects::default())
 }
@@ -457,6 +500,26 @@ fn handle_control(
                                     };
                                 }
                             }
+                        } else if key == "node_token" {
+                            let hash = crate::auth::sha256_hex(tok);
+                            if let Ok(mut conn) = app.pool.get() {
+                                let pending_key = format!("node_token:{hash}");
+                                let configured = app
+                                    .config
+                                    .node_token
+                                    .as_ref()
+                                    .is_some_and(|configured| crate::auth::sha256_hex(configured) == hash);
+                                if configured
+                                    || crate::db::store::get_setting(&mut conn, &pending_key)
+                                        .ok()
+                                        .flatten()
+                                        .is_some()
+                                {
+                                    ident = Identity::Node {
+                                        node_id: format!("pending:{hash}"),
+                                    };
+                                }
+                            }
                         }
                     }
                 }
@@ -492,4 +555,3 @@ fn subscribe_snapshot(app: &App, payload: &[u8]) -> Option<(Vec<u8>, String)> {
     let state = app.load_player_state(&mut conn, &req.player_id).ok()?;
     Some((player_state_frame(&state), req.player_id))
 }
-

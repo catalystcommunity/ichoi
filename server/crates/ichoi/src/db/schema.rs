@@ -89,6 +89,7 @@ diesel::table! {
         name -> Text,
         owner -> Nullable<Text>,
         root_relative_path -> Text,
+        visibility -> Text,
     }
 }
 

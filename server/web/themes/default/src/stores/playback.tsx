@@ -27,6 +27,7 @@ import type {
   Track,
 } from "../lib/schema.ts";
 import { useServers } from "./servers.tsx";
+import { useToast } from "./toasts.tsx";
 
 export const LOCAL_TARGET = "local";
 
@@ -85,6 +86,7 @@ interface PlaybackContextValue {
   stop: () => void;
   removeAt: (index: number) => void;
   move: (from: number, to: number) => void;
+  saveQueueAsPlaylist: (name: string) => Promise<void>;
   /** Output target: `LOCAL_TARGET` (this browser) or a shared player id. */
   target: Accessor<string>;
   setTarget: (id: string) => void;
@@ -105,6 +107,7 @@ const PlaybackContext = createContext<PlaybackContextValue>();
 
 export function PlaybackProvider(props: ParentProps): JSX.Element {
   const servers = useServers();
+  const toast = useToast();
   const [queue, setQueue] = createStore<Track[]>([]);
   const [currentIndex, setCurrentIndex] = createSignal(-1);
   const [snapshot, setSnapshot] = createSignal<PlaybackSnapshot>({
@@ -370,6 +373,26 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
   }
 
+  createEffect(() => {
+    const t = target();
+    if (t === LOCAL_TARGET) return;
+    const loaded = playersRes() !== undefined;
+    if (!loaded) return;
+    if (sharedTargets().some((p) => p.id === t)) return;
+
+    const remoteQueue = queue.slice();
+    const remoteIndex = currentIndex();
+    const localQueue = savedLocal?.tracks ?? [];
+    if (localQueue.length === 0) {
+      savedLocal = { tracks: remoteQueue, index: remoteIndex };
+    } else {
+      toast.show("Target device has left");
+    }
+    setTarget(LOCAL_TARGET);
+    audio?.pause();
+    setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "paused" }));
+  });
+
   // --- Auto-advance ---------------------------------------------------------
   createEffect(
     on(
@@ -494,6 +517,25 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "idle", positionMs: 0 }));
   }
 
+  async function saveQueueAsPlaylist(name: string): Promise<void> {
+    const base = mediaBase();
+    if (!base) throw new Error("Connect a server first.");
+    const session = servers.active()?.session;
+    const visibility = session && session.role !== "guest" ? "private" : "public";
+    const res = await fetch(`${base}/api/playlists/from-queue`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name,
+        visibility,
+        owner: visibility === "private" ? session?.account_id : undefined,
+        track_ids: queue.map((track) => track.id),
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast.show("Queue saved as playlist");
+  }
+
   function removeAt(index: number): void {
     if (!isLocal()) {
       control({ op: "remove", index });
@@ -501,15 +543,14 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
     if (index < 0 || index >= queue.length) return;
     const cur = currentIndex();
-    const currentId = current()?.id;
     const wasCurrent = index === cur;
+    const beforeLen = queue.length;
     setQueue((q) => q.filter((_, i) => i !== index));
     if (wasCurrent) {
-      if (queue.length === 0) stop();
-      else void openIndex(Math.min(index, queue.length - 1));
-    } else if (currentId) {
-      const ni = queue.findIndex((tr) => tr.id === currentId);
-      if (ni >= 0) setCurrentIndex(ni);
+      if (beforeLen <= 1) stop();
+      else void openIndex(Math.min(index, beforeLen - 2));
+    } else if (index < cur) {
+      setCurrentIndex(cur - 1);
     }
   }
 
@@ -519,17 +560,16 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       return;
     }
     if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
-    const currentId = current()?.id;
+    const cur = currentIndex();
     setQueue((q) => {
       const arr = [...q];
       const [item] = arr.splice(from, 1);
       if (item) arr.splice(to, 0, item);
       return arr;
     });
-    if (currentId) {
-      const ni = queue.findIndex((tr) => tr.id === currentId);
-      if (ni >= 0) setCurrentIndex(ni);
-    }
+    if (from === cur) setCurrentIndex(to);
+    else if (from < cur && to >= cur) setCurrentIndex(cur - 1);
+    else if (from > cur && to <= cur) setCurrentIndex(cur + 1);
   }
 
   onCleanup(() => {
@@ -553,6 +593,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     stop,
     removeAt,
     move,
+    saveQueueAsPlaylist,
     target,
     setTarget,
     sharedTargets,

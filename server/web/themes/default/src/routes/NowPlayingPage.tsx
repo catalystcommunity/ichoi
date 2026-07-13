@@ -4,9 +4,11 @@ import { usePlayback } from "../stores/playback.tsx";
 import { EmptyState, Meter } from "../components/common.tsx";
 import { formatDuration } from "../lib/format.ts";
 import { IconStop } from "../components/Icons.tsx";
+import { useToast } from "../stores/toasts.tsx";
 
 export function NowPlayingPage(): JSX.Element {
   const pb = usePlayback();
+  const toast = useToast();
   const { t } = useI18n();
   const playing = () => pb.snapshot().status === "playing";
 
@@ -32,6 +34,16 @@ export function NowPlayingPage(): JSX.Element {
     return d > 0 ? Math.min(100, (s.positionMs / d) * 100) : 0;
   };
 
+  const saveQueue = async () => {
+    const name = window.prompt(t("playlists.savePrompt"));
+    if (!name?.trim()) return;
+    try {
+      await pb.saveQueueAsPlaylist(name.trim());
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : String(e));
+    }
+  };
+
   return (
     <div class="page">
       <header class="page-head row spread">
@@ -40,9 +52,14 @@ export function NowPlayingPage(): JSX.Element {
           <h1 class="page-title">{t("nowPlaying.title")}</h1>
         </div>
         <Show when={pb.queue.length > 0}>
-          <button type="button" class="btn btn-ghost" onClick={() => pb.stop()}>
-            <IconStop size={16} /> {t("nowPlaying.clear")}
-          </button>
+          <div class="row" style={{ gap: "8px" }}>
+            <button type="button" class="btn btn-ghost" onClick={saveQueue}>
+              {t("playlists.saveQueue")}
+            </button>
+            <button type="button" class="btn btn-ghost" onClick={() => pb.stop()}>
+              <IconStop size={16} /> {t("nowPlaying.clear")}
+            </button>
+          </div>
         </Show>
       </header>
 

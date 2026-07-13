@@ -97,6 +97,7 @@ pub struct Playlist {
     pub name: String,
     pub owner: Option<String>,
     pub root_relative_path: String,
+    pub visibility: String,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]

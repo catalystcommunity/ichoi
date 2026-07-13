@@ -19,6 +19,9 @@ services:
       # Required for a core: where the library (and, by default, the SQLite DB)
       # lives inside the container.
       ICHOI_MUSIC_DIR: /music
+      # Fail startup if /music is missing or empty. This catches the common
+      # "forgot to mount my library" case before the server starts.
+      ICHOI_REQUIRE_MUSIC: "1"
       # Keep the WAL database beside the media by default; override to separate.
       # ICHOI_DB_DIR: /data
       ICHOI_LOG: info
@@ -27,7 +30,7 @@ services:
       # remove after bootstrapping.
       # ICHOI_ADMIN_TOKEN: change-me-once
     volumes:
-      - ./music:/music
+      - ./music:/music:ro
       # - ./data:/data
     # :4043 must be reachable directly by native clients and satellites.
     ports:

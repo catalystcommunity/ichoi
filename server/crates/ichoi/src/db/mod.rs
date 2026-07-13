@@ -56,6 +56,9 @@ pub fn run_migrations(conn: &mut SqliteConnection) -> anyhow::Result<()> {
 /// (§12). Currently ensures the core node row exists.
 pub fn run_transforms(conn: &mut SqliteConnection, hostname: &str) -> anyhow::Result<()> {
     store::ensure_core_node(conn, hostname)?;
+    if store::get_setting(conn, "server_output_enabled")?.is_none() {
+        store::set_setting(conn, "server_output_enabled", "false")?;
+    }
     Ok(())
 }
 

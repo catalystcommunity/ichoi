@@ -52,6 +52,42 @@ impl SubHub {
     }
 }
 
+/// Live directive channels to satellite nodes. A satellite opens `NodeService.session` for
+/// each player it owns; core controls publish encoded `NodeDirective` payloads here.
+#[derive(Clone, Default)]
+pub struct NodeHub {
+    inner: Arc<Mutex<HashMap<String, Vec<(u64, UnboundedSender<Vec<u8>>)>>>>,
+}
+
+impl NodeHub {
+    pub fn new() -> NodeHub {
+        NodeHub::default()
+    }
+
+    pub fn subscribe(&self, player_id: String, conn_id: u64, tx: UnboundedSender<Vec<u8>>) {
+        let mut map = self.inner.lock().unwrap();
+        let list = map.entry(player_id).or_default();
+        list.retain(|(c, _)| *c != conn_id);
+        list.push((conn_id, tx));
+    }
+
+    pub fn unsubscribe_conn(&self, conn_id: u64) {
+        let mut map = self.inner.lock().unwrap();
+        for list in map.values_mut() {
+            list.retain(|(c, _)| *c != conn_id);
+        }
+    }
+
+    pub fn publish(&self, player_id: &str, payload: Vec<u8>) {
+        let map = self.inner.lock().unwrap();
+        if let Some(list) = map.get(player_id) {
+            for (_, tx) in list {
+                let _ = tx.send(payload.clone());
+            }
+        }
+    }
+}
+
 /// Live output presence (§6): which connections are acting as the OUTPUT (speaker) for a
 /// shared device. A shared device is "live" — listed and controllable — only while at least
 /// one connection owns its output. This reconciles the persisted device rows against the
@@ -116,6 +152,7 @@ pub struct App {
     pub config: Arc<Config>,
     pub subs: SubHub,
     pub presence: Presence,
+    pub nodes: NodeHub,
 }
 
 impl App {
@@ -125,6 +162,7 @@ impl App {
             config,
             subs: SubHub::new(),
             presence: Presence::new(),
+            nodes: NodeHub::new(),
         }
     }
 
@@ -146,6 +184,16 @@ fn internal<E: std::fmt::Display>(e: E) -> ServiceError {
 }
 fn db<T>(r: diesel::QueryResult<T>) -> Result<T, ServiceError> {
     r.map_err(internal)
+}
+
+fn setting_enabled(
+    conn: &mut diesel::sqlite::SqliteConnection,
+    key: &str,
+) -> Result<bool, ServiceError> {
+    Ok(matches!(
+        db(store::get_setting(conn, key))?.as_deref(),
+        Some("1") | Some("true") | Some("yes") | Some("on")
+    ))
 }
 
 // ------------------------------------------------------------------ enum mapping
@@ -181,6 +229,13 @@ fn to_status(s: &str) -> PlayerStatus {
         "playing" => PlayerStatus::Playing,
         "paused" => PlayerStatus::Paused,
         _ => PlayerStatus::Stopped,
+    }
+}
+fn status_str(s: &PlayerStatus) -> &'static str {
+    match s {
+        PlayerStatus::Playing => "playing",
+        PlayerStatus::Paused => "paused",
+        PlayerStatus::Stopped => "stopped",
     }
 }
 fn parse_dt(s: &str) -> DateTime<Utc> {
@@ -458,16 +513,32 @@ impl LibraryService for App {
         let mut conn = self.conn()?;
         let p = db(store::get_playlist(&mut conn, &input.playlist_id))?
             .ok_or_else(|| err(404, "playlist not found"))?;
-        // TODO: parse the m3u, resolve entries to tracks, skip unresolved (§7).
+        let tracks: Vec<Track> = self
+            .config
+            .music_dir
+            .as_ref()
+            .and_then(|root| std::fs::read_to_string(root.join(&p.root_relative_path)).ok())
+            .map(|text| {
+                libichoi::m3u::parse(&text)
+                    .into_iter()
+                    .filter_map(|path| {
+                        db(store::track_by_root_path(&mut conn, &path))
+                            .ok()
+                            .flatten()
+                    })
+                    .map(|t| map_track(&t))
+                    .collect()
+            })
+            .unwrap_or_default();
         std::result::Result::Ok(PlaylistDetail {
             playlist: Playlist {
                 id: p.id,
                 name: p.name,
                 owner: p.owner,
-                entry_count: 0,
+                entry_count: tracks.len() as u64,
                 root_relative_path: p.root_relative_path,
             },
-            tracks: Vec::new(),
+            tracks,
         })
     }
 
@@ -545,6 +616,25 @@ impl App {
             queue,
         })
     }
+
+    pub fn record_node_report(&self, report: NodeReport) -> Result<PlayerState, ServiceError> {
+        let mut conn = self.conn()?;
+        let row = models::PlayerStateRow {
+            player_id: report.player_id.clone(),
+            status: status_str(&report.status).to_string(),
+            current_index: db(store::get_state(&mut conn, &report.player_id))?
+                .and_then(|s| s.current_index),
+            position_ms: report.position_ms.map(|p| p as i64),
+            volume: db(store::get_state(&mut conn, &report.player_id))?
+                .map(|s| s.volume)
+                .unwrap_or(100),
+        };
+        db(store::upsert_state(&mut conn, &row))?;
+        let state = self.load_player_state(&mut conn, &report.player_id)?;
+        self.subs
+            .publish(&report.player_id, &crate::transport::player_state_frame(&state));
+        Ok(state)
+    }
 }
 
 impl PlayerService for App {
@@ -560,11 +650,20 @@ impl PlayerService for App {
             PlayerKind::Shared => "shared",
             PlayerKind::Private => "private",
         });
-        let players = db(store::list_players(&mut conn, kind))?
+        let server_output_enabled = setting_enabled(&mut conn, "server_output_enabled")?;
+        let mut players: Vec<Player> = db(store::list_players(&mut conn, kind))?
             .into_iter()
             // Reconcile against live connections: a shared device is only listed while a
             // connection is actually acting as its output (§6). Private players are unaffected.
-            .filter(|p| p.kind != "shared" || self.presence.is_present(&p.id))
+            .filter(|p| {
+                if p.kind != "shared" {
+                    return true;
+                }
+                if p.id.starts_with("player:core:") {
+                    return server_output_enabled;
+                }
+                p.output_device_id.is_some() || self.presence.is_present(&p.id)
+            })
             .map(|p| Player {
                 id: p.id,
                 kind: if p.kind == "private" {
@@ -578,6 +677,7 @@ impl PlayerService for App {
                 owner: p.owner_account_id,
             })
             .collect();
+        players.sort_by(|a, b| a.name.cmp(&b.name));
         std::result::Result::Ok(ListPlayersResponse { players })
     }
 
@@ -587,9 +687,17 @@ impl PlayerService for App {
         std::result::Result::Ok(())
     }
 
-    fn control(&self, _ctx: &Ctx, input: CommandRequest) -> Result<PlayerState, ServiceError> {
+    fn control(&self, ctx: &Ctx, input: CommandRequest) -> Result<PlayerState, ServiceError> {
         let mut conn = self.conn()?;
         let pid = &input.player_id;
+        if let Some(player) = db(store::get_player(&mut conn, pid))? {
+            if player.kind == "shared" && db(store::count_accounts(&mut conn))? > 0 {
+                match &ctx.identity {
+                    Identity::User { .. } => {}
+                    _ => return Err(err(401, "must be signed in to control shared devices")),
+                }
+            }
+        }
         let mut st = db(store::get_state(&mut conn, pid))?.unwrap_or(models::PlayerStateRow {
             player_id: pid.clone(),
             status: "stopped".to_string(),
@@ -607,6 +715,14 @@ impl PlayerService for App {
         db(store::set_queue(&mut conn, pid, &queue))?;
         db(store::upsert_state(&mut conn, &st))?;
         let state = self.load_player_state(&mut conn, pid)?;
+        if let Some(player) = db(store::get_player(&mut conn, pid))? {
+            if player.output_device_id.is_some() && !pid.starts_with("player:core:") {
+                if let Some(dir) = directive_for(&input.command, pid, &st, &queue) {
+                    self.nodes
+                        .publish(pid, libichoi::csil::codec::encode_node_directive(&dir));
+                }
+            }
+        }
         // Push the new state to everyone subscribed to this player (§6.5).
         self.subs
             .publish(pid, &crate::transport::player_state_frame(&state));
@@ -748,6 +864,60 @@ fn apply_command(cmd: &PlayerCommand, st: &mut models::PlayerStateRow, queue: &m
     }
 }
 
+fn directive_for(
+    cmd: &PlayerCommand,
+    player_id: &str,
+    st: &models::PlayerStateRow,
+    queue: &[String],
+) -> Option<NodeDirective> {
+    match cmd {
+        PlayerCommand::Variant3(_) => Some(NodeDirective::Variant3(DirStop {
+            op: "stop".to_string(),
+            player_id: player_id.to_string(),
+        })),
+        PlayerCommand::Variant4(_) | PlayerCommand::Variant6(_) | PlayerCommand::Variant7(_) => {
+            let idx = st.current_index? as usize;
+            let track_id = queue.get(idx)?.clone();
+            Some(NodeDirective::Variant0(DirLoad {
+                op: "load".to_string(),
+                player_id: player_id.to_string(),
+                track_id,
+                pref: StreamPref {
+                    max_bitrate_kbps: None,
+                    prefer_original: Some(false),
+                    transcode_codec: Some(TranscodeCodec::Aac),
+                },
+                position_ms: st.position_ms.map(|p| p.max(0) as u64),
+            }))
+        }
+        PlayerCommand::Variant5(_) => Some(NodeDirective::Variant1(DirPause {
+            op: "pause".to_string(),
+            player_id: player_id.to_string(),
+        })),
+        PlayerCommand::Variant8(seek) => {
+            let idx = st.current_index? as usize;
+            let track_id = queue.get(idx)?.clone();
+            Some(NodeDirective::Variant0(DirLoad {
+                op: "load".to_string(),
+                player_id: player_id.to_string(),
+                track_id,
+                pref: StreamPref {
+                    max_bitrate_kbps: None,
+                    prefer_original: Some(false),
+                    transcode_codec: Some(TranscodeCodec::Aac),
+                },
+                position_ms: Some(seek.position_ms),
+            }))
+        }
+        PlayerCommand::Variant9(vol) => Some(NodeDirective::Variant4(DirVolume {
+            op: "volume".to_string(),
+            player_id: player_id.to_string(),
+            volume: vol.volume.min(100),
+        })),
+        _ => None,
+    }
+}
+
 // ================================================================== MediaService
 
 impl MediaService for App {
@@ -782,9 +952,12 @@ impl NodeService for App {
 
     fn register(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         input: RegisterNodeRequest,
     ) -> Result<RegisterNodeResponse, ServiceError> {
+        if !matches!(ctx.identity, Identity::Node { .. }) {
+            return Err(err(401, "node token required"));
+        }
         let mut conn = self.conn()?;
         let node_id = format!("sat:{}", input.hostname);
         let audio = if input.outputs.is_empty() {
@@ -797,7 +970,12 @@ impl NodeService for App {
             kind: "satellite".to_string(),
             hostname: input.hostname.clone(),
             friendly_name: input.hostname.clone(),
-            token_sha256: None,
+            token_sha256: match &ctx.identity {
+                Identity::Node { node_id } if node_id.starts_with("pending:") => {
+                    Some(node_id.trim_start_matches("pending:").to_string())
+                }
+                _ => None,
+            },
             platform: input.platform,
             arch: input.arch,
             audio_outputs: audio.to_string(),
@@ -840,8 +1018,11 @@ impl NodeService for App {
         std::result::Result::Ok(RegisterNodeResponse { node_id, players })
     }
 
-    fn session(&self, _ctx: &Ctx, _msg: NodeReport) -> Result<(), ServiceError> {
-        // TODO: fan directives down / accept position reports (§6.5).
+    fn session(&self, ctx: &Ctx, msg: NodeReport) -> Result<(), ServiceError> {
+        if !matches!(ctx.identity, Identity::Node { .. }) {
+            return Err(err(401, "node token required"));
+        }
+        self.record_node_report(msg)?;
         std::result::Result::Ok(())
     }
 }
@@ -984,11 +1165,15 @@ impl AdminService for App {
         _input: CreateNodeTokenRequest,
     ) -> Result<NodeTokenResult, ServiceError> {
         let minted = auth::mint_token();
-        // TODO: persist the token hash against a pending node and return the core's real key
-        // fingerprints (§4.2, §6.7).
+        let mut conn = self.conn()?;
+        db(store::set_setting(
+            &mut conn,
+            &format!("node_token:{}", minted.sha256_hex),
+            &Utc::now().to_rfc3339(),
+        ))?;
         std::result::Result::Ok(NodeTokenResult {
             token: minted.token,
-            fingerprints: vec!["<core-key-fingerprint-pending>".to_string()],
+            fingerprints: Vec::new(),
         })
     }
 
