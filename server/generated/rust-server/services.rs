@@ -115,9 +115,11 @@ where
     H: PlayerService,
 {
     match method {
-        "Subscribe" => {
-            let msg = decode_subscribe_request(bytes)
-                .map_err(|err| ServiceError { code: 400, message: err.to_string() })?;
+        "subscribe" => {
+            let msg = decode_subscribe_request(bytes).map_err(|err| ServiceError {
+                code: 400,
+                message: err.to_string(),
+            })?;
             handlers.subscribe(ctx, msg)
         }
         other => Err(ServiceError {
@@ -127,10 +129,10 @@ where
     }
 }
 
-/// Encode a `Subscribe` message pushed from PlayerService's server
+/// Encode a `subscribe` message pushed from PlayerService's server
 /// side; the implementer frames `(method, bytes)` onto its connection.
 pub fn encode_player_service_subscribe(msg: &PlayerState) -> (String, Vec<u8>) {
-    ("Subscribe".to_string(), encode_player_state(msg))
+    ("subscribe".to_string(), encode_player_state(msg))
 }
 
 /// MediaService service trait
@@ -185,9 +187,11 @@ where
     H: NodeService,
 {
     match method {
-        "Session" => {
-            let msg = decode_node_report(bytes)
-                .map_err(|err| ServiceError { code: 400, message: err.to_string() })?;
+        "session" => {
+            let msg = decode_node_report(bytes).map_err(|err| ServiceError {
+                code: 400,
+                message: err.to_string(),
+            })?;
             handlers.session(ctx, msg)
         }
         other => Err(ServiceError {
@@ -208,7 +212,8 @@ pub trait AdminService {
         input: Page,
     ) -> Result<ListAccountsResponse, ServiceError>;
     /// set-role (request/response).
-    fn set_role(&self, ctx: &Self::Context, input: SetRoleRequest) -> Result<Account, ServiceError>;
+    fn set_role(&self, ctx: &Self::Context, input: SetRoleRequest)
+        -> Result<Account, ServiceError>;
     /// trust-domain (request/response).
     fn trust_domain(
         &self,

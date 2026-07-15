@@ -76,7 +76,7 @@ async fn run_once(core_addr: &str, node_token: &str) -> anyhow::Result<()> {
         &mut write_half,
         &event_frame(
             Some("node"),
-            "Register",
+            "register",
             Some(1),
             encode_register_node_request(&req),
         ),
@@ -132,11 +132,11 @@ async fn run_once(core_addr: &str, node_token: &str) -> anyhow::Result<()> {
                 let env = decode_event_envelope(&frame)?;
                 let service = env.service.as_deref().unwrap_or("").strip_suffix("Service").unwrap_or(env.service.as_deref().unwrap_or("")).to_ascii_lowercase();
                 match (service.as_str(), env.event.as_str()) {
-                    ("node", "Session") => {
+                    ("node", "session") => {
                         let directive = decode_node_directive(&env.payload)?;
                         apply_directive(&out_tx, &mut states, &mut playback, &mut media, directive).await?;
                     }
-                    ("media", "Stream") => {
+                    ("media", "stream") => {
                         handle_media_event(&out_tx, &mut playback, &mut media, decode_media_event(&env.payload)?).await?;
                     }
                     _ => {}
@@ -178,7 +178,7 @@ fn report_frame(player_id: &str, status: PlayerStatus, position_ms: Option<u64>)
         status,
         position_ms,
     };
-    event_frame(Some("node"), "Session", None, encode_node_report(&report))
+    event_frame(Some("node"), "session", None, encode_node_report(&report))
 }
 
 async fn read_frame(read: &mut tokio::net::tcp::OwnedReadHalf) -> anyhow::Result<Option<Vec<u8>>> {
@@ -244,7 +244,7 @@ async fn apply_directive(
             });
             out_tx.send(event_frame(
                 Some("media"),
-                "Stream",
+                "stream",
                 None,
                 encode_media_control(&open),
             ))?;

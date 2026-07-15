@@ -117,60 +117,60 @@ pub fn dispatch(
         .to_ascii_lowercase();
     match (svc.as_str(), op) {
         // SessionService
-        ("session", "Authenticate") => rr!(decode_auth_request, authenticate, encode_session_info),
-        ("session", "Whoami") => rr!(decode_page, whoami, encode_session_info),
-        ("session", "Logout") => rr!(decode_page, logout, encode_ok),
+        ("session", "authenticate") => rr!(decode_auth_request, authenticate, encode_session_info),
+        ("session", "whoami") => rr!(decode_page, whoami, encode_session_info),
+        ("session", "logout") => rr!(decode_page, logout, encode_ok),
 
         // LibraryService
-        ("library", "ListAlbums") => {
+        ("library", "list-albums") => {
             rr!(decode_browse_request, list_albums, encode_albums_response)
         }
-        ("library", "ListArtists") => {
+        ("library", "list-artists") => {
             rr!(decode_browse_request, list_artists, encode_artists_response)
         }
-        ("library", "GetAlbum") => rr!(decode_album_request, get_album, encode_album_detail),
-        ("library", "GetArtist") => rr!(decode_artist_request, get_artist, encode_artist_detail),
-        ("library", "Search") => rr!(decode_search_request, search, encode_search_response),
-        ("library", "ListPlaylists") => {
+        ("library", "get-album") => rr!(decode_album_request, get_album, encode_album_detail),
+        ("library", "get-artist") => rr!(decode_artist_request, get_artist, encode_artist_detail),
+        ("library", "search") => rr!(decode_search_request, search, encode_search_response),
+        ("library", "list-playlists") => {
             rr!(
                 decode_browse_request,
                 list_playlists,
                 encode_playlists_response
             )
         }
-        ("library", "GetPlaylist") => {
+        ("library", "get-playlist") => {
             rr!(
                 decode_playlist_request,
                 get_playlist,
                 encode_playlist_detail
             )
         }
-        ("library", "GetCoverArt") => {
+        ("library", "get-cover-art") => {
             rr!(decode_cover_art_request, get_cover_art, encode_cover_art)
         }
 
-        // PlayerService (request/response subset; Subscribe is a channel op)
-        ("player", "ListPlayers") => {
+        // PlayerService (request/response subset; subscribe is a channel op)
+        ("player", "list-players") => {
             rr!(
                 decode_list_players_request,
                 list_players,
                 encode_list_players_response
             )
         }
-        ("player", "Control") => rr!(decode_command_request, control, encode_player_state),
-        ("player", "EnableShare") => {
+        ("player", "control") => rr!(decode_command_request, control, encode_player_state),
+        ("player", "enable-share") => {
             rr!(
                 decode_enable_share_request,
                 enable_share,
                 encode_share_result
             )
         }
-        ("player", "DisableShare") => {
+        ("player", "disable-share") => {
             rr!(decode_disable_share_request, disable_share, encode_ok)
         }
 
         // NodeService (register is request/response; session is a channel op)
-        ("node", "Register") => {
+        ("node", "register") => {
             rr!(
                 decode_register_node_request,
                 register,
@@ -179,48 +179,48 @@ pub fn dispatch(
         }
 
         // AdminService
-        ("admin", "ListAccounts") => {
+        ("admin", "list-accounts") => {
             rr!(decode_page, list_accounts, encode_list_accounts_response)
         }
-        ("admin", "SetRole") => rr!(decode_set_role_request, set_role, encode_account),
-        ("admin", "TrustDomain") => {
+        ("admin", "set-role") => rr!(decode_set_role_request, set_role, encode_account),
+        ("admin", "trust-domain") => {
             rr!(
                 decode_trust_domain_request,
                 trust_domain,
                 encode_trusted_domains
             )
         }
-        ("admin", "ListTrustedDomains") => {
+        ("admin", "list-trusted-domains") => {
             rr!(decode_page, list_trusted_domains, encode_trusted_domains)
         }
-        ("admin", "ListNodes") => rr!(decode_page, list_nodes, encode_list_nodes_response),
-        ("admin", "RenameNode") => rr!(decode_rename_node_request, rename_node, encode_node_info),
-        ("admin", "RenameDevice") => {
+        ("admin", "list-nodes") => rr!(decode_page, list_nodes, encode_list_nodes_response),
+        ("admin", "rename-node") => rr!(decode_rename_node_request, rename_node, encode_node_info),
+        ("admin", "rename-device") => {
             rr!(
                 decode_rename_device_request,
                 rename_device,
                 encode_device_info
             )
         }
-        ("admin", "CreateNodeToken") => {
+        ("admin", "create-node-token") => {
             rr!(
                 decode_create_node_token_request,
                 create_node_token,
                 encode_node_token_result
             )
         }
-        ("admin", "ImportTrack") => {
+        ("admin", "import-track") => {
             rr!(
                 decode_import_track_request,
                 import_track,
                 encode_import_result
             )
         }
-        ("admin", "GetSettings") => rr!(decode_page, get_settings, encode_settings),
-        ("admin", "SetSetting") => rr!(decode_set_setting_request, set_setting, encode_settings),
+        ("admin", "get-settings") => rr!(decode_page, get_settings, encode_settings),
+        ("admin", "set-setting") => rr!(decode_set_setting_request, set_setting, encode_settings),
 
         // Channel operations require the streaming transport (not this request path).
-        ("player", "Subscribe") | ("media", "Stream") | ("node", "Session") => Err(ServiceError {
+        ("player", "subscribe") | ("media", "stream") | ("node", "session") => Err(ServiceError {
             code: 501,
             message: format!(
                 "{service}.{op} is a streaming op; not available over the request path (pre-alpha)"
@@ -381,7 +381,7 @@ pub fn handle_events_frame(
         let result = dispatch(app, &ctx, &service, &env.event, &env.payload);
         // A successful EnableShare makes this connection the device's output; capture the id
         // so the caller can register live presence for it.
-        let attach = if service == "player" && env.event == "EnableShare" {
+        let attach = if service == "player" && env.event == "enable-share" {
             result
                 .as_ref()
                 .ok()
@@ -413,7 +413,7 @@ pub fn handle_events_frame(
     }
 
     // Channel event (no id): a subscribe registers for live pushes and gets an initial state.
-    if service == "player" && env.event == "Subscribe" {
+    if service == "player" && env.event == "subscribe" {
         if let Some((reply, player_id)) = subscribe_snapshot(app, &env.payload) {
             return (
                 ident,
@@ -427,7 +427,7 @@ pub fn handle_events_frame(
             );
         }
     }
-    if service == "node" && env.event == "Session" {
+    if service == "node" && env.event == "session" {
         if !matches!(ident, Identity::Node { .. }) {
             return (ident, None, FrameEffects::default());
         }
@@ -446,7 +446,7 @@ pub fn handle_events_frame(
             );
         }
     }
-    if service == "media" && env.event == "Stream" {
+    if service == "media" && env.event == "stream" {
         if !matches!(ident, Identity::Node { .. }) {
             return (ident, None, FrameEffects::default());
         }
@@ -467,11 +467,11 @@ pub fn handle_events_frame(
     (ident, None, FrameEffects::default())
 }
 
-/// Encode a `PlayerState` as a `player.Subscribe` channel-push frame.
+/// Encode a `PlayerState` as a `player.subscribe` channel-push frame.
 pub fn player_state_frame(state: &PlayerState) -> Vec<u8> {
     encode_event_envelope(&EventEnvelope {
         service: Some("player".to_string()),
-        event: "Subscribe".to_string(),
+        event: "subscribe".to_string(),
         id: None,
         payload: encode_player_state(state),
     })
@@ -548,7 +548,7 @@ fn handle_control(
     }
 }
 
-/// On player.Subscribe, return the initial state frame and the subscribed player id.
+/// On player.subscribe, return the initial state frame and the subscribed player id.
 fn subscribe_snapshot(app: &App, payload: &[u8]) -> Option<(Vec<u8>, String)> {
     let req = decode_subscribe_request(payload).ok()?;
     let mut conn = app.pool.get().ok()?;

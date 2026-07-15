@@ -21,7 +21,10 @@ fn tag24(payload: Vec<u8>) -> Value {
 /// Encode the `$hello` control frame exactly as the web UI does.
 fn hello_frame(auth: Option<&str>) -> Vec<u8> {
     let mut entries = vec![
-        (Value::Text("versions".into()), Value::Array(vec![Value::Integer(1.into())])),
+        (
+            Value::Text("versions".into()),
+            Value::Array(vec![Value::Integer(1.into())]),
+        ),
         (
             Value::Text("profiles".into()),
             Value::Array(vec![Value::Text("verbose".into())]),
@@ -58,7 +61,7 @@ fn request_reply_round_trips_over_the_wire() {
         common::create_track(&mut conn, &DataMap::new());
     }
 
-    // Build the exact frame the browser sends for library.ListAlbums.
+    // Build the exact frame the browser sends for library.list-albums.
     let req_payload = encode_browse_request(&BrowseRequest {
         library: None,
         offset: None,
@@ -66,7 +69,7 @@ fn request_reply_round_trips_over_the_wire() {
     });
     let frame = encode_event_envelope(&EventEnvelope {
         service: Some("library".to_string()),
-        event: "ListAlbums".to_string(),
+        event: "list-albums".to_string(),
         id: Some(7),
         payload: req_payload,
     });
@@ -91,7 +94,7 @@ fn error_rides_as_service_error_map() {
     });
     let frame = encode_event_envelope(&EventEnvelope {
         service: Some("library".to_string()),
-        event: "GetAlbum".to_string(), // wrong request type → decode error → 400
+        event: "get-album".to_string(), // wrong request type → decode error → 400
         id: Some(9),
         payload: req,
     });
@@ -100,7 +103,9 @@ fn error_rides_as_service_error_map() {
     assert_eq!(env.id, Some(9));
     // Decode the payload as a generic CBOR map and assert it's a {code, message} error.
     let v: Value = ciborium::from_reader(env.payload.as_slice()).unwrap();
-    let Value::Map(m) = v else { panic!("payload not a map") };
+    let Value::Map(m) = v else {
+        panic!("payload not a map")
+    };
     let keys: Vec<String> = m
         .iter()
         .filter_map(|(k, _)| match k {
@@ -133,8 +138,11 @@ fn hello_auth_token_resolves_identity() {
             .unwrap();
     }
 
-    let (ident, _reply, _fx) =
-        handle_events_frame(&app, Identity::Anonymous, &hello_frame(Some("secret-token")));
+    let (ident, _reply, _fx) = handle_events_frame(
+        &app,
+        Identity::Anonymous,
+        &hello_frame(Some("secret-token")),
+    );
     match ident {
         Identity::User { account_id, role } => {
             assert_eq!(account_id, "u@example.com");
@@ -147,7 +155,7 @@ fn hello_auth_token_resolves_identity() {
 #[test]
 fn player_state_push_frame_matches_the_subscribe_channel() {
     // The server pushes live state as a channel event the browser listens for under
-    // PlayerService.subscribe. Lock the wire shape: service "player", event "Subscribe",
+    // PlayerService.subscribe. Lock the wire shape: service "player", event "subscribe",
     // and a payload the same codec the client uses can decode back to a PlayerState.
     let state = PlayerState {
         player_id: "share:guest:TodPhone".to_string(),
@@ -156,15 +164,28 @@ fn player_state_push_frame_matches_the_subscribe_channel() {
         position_ms: Some(4200),
         volume: 100,
         queue: vec![
-            QueueItem { track_id: "t1".into(), title: Some("One".into()), artist: None, duration_ms: Some(1000) },
-            QueueItem { track_id: "t2".into(), title: Some("Two".into()), artist: None, duration_ms: Some(2000) },
+            QueueItem {
+                track_id: "t1".into(),
+                title: Some("One".into()),
+                artist: None,
+                duration_ms: Some(1000),
+            },
+            QueueItem {
+                track_id: "t2".into(),
+                title: Some("Two".into()),
+                artist: None,
+                duration_ms: Some(2000),
+            },
         ],
     };
 
     let env = decode_event_envelope(&player_state_frame(&state)).unwrap();
     assert_eq!(env.service.as_deref(), Some("player"));
-    assert_eq!(env.event, "Subscribe");
-    assert_eq!(env.id, None, "pushes are fire-and-forget, not correlated replies");
+    assert_eq!(env.event, "subscribe");
+    assert_eq!(
+        env.id, None,
+        "pushes are fire-and-forget, not correlated replies"
+    );
 
     let decoded = decode_player_state(&env.payload).expect("payload decodes as PlayerState");
     assert_eq!(decoded.player_id, "share:guest:TodPhone");
