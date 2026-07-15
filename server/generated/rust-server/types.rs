@@ -1,5 +1,7 @@
 //! Generated types from CSIL specification
 
+#![allow(non_camel_case_types, clippy::large_enum_variant)]
+
 /// Returned by a generated `validate` method when a field violates one of its
 /// CSIL constraints. `field` names the offending field; `message` explains.
 #[derive(Debug, Clone, PartialEq)]
@@ -10,7 +12,11 @@ pub struct ValidationError {
 
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "validation failed for `{}`: {}", self.field, self.message)
+        write!(
+            f,
+            "validation failed for `{}`: {}",
+            self.field, self.message
+        )
     }
 }
 
@@ -222,8 +228,11 @@ impl SearchRequest {
     pub fn validate(&self) -> Result<(), ValidationError> {
         {
             let v = &self.query;
-            if v.len() < 1usize || v.len() > 256usize {
-                return Err(ValidationError { field: "query".to_string(), message: "length must be in 1..=256".to_string() });
+            if v.is_empty() || v.len() > 256usize {
+                return Err(ValidationError {
+                    field: "query".to_string(),
+                    message: "length must be in 1..=256".to_string(),
+                });
             }
         }
         Ok(())
@@ -308,7 +317,10 @@ impl PlayerState {
         {
             let v = &self.volume;
             if *v > 100 {
-                return Err(ValidationError { field: "volume".to_string(), message: "is above maximum".to_string() });
+                return Err(ValidationError {
+                    field: "volume".to_string(),
+                    message: "is above maximum".to_string(),
+                });
             }
         }
         Ok(())
@@ -395,7 +407,10 @@ impl CmdVolume {
         {
             let v = &self.volume;
             if *v > 100 {
-                return Err(ValidationError { field: "volume".to_string(), message: "is above maximum".to_string() });
+                return Err(ValidationError {
+                    field: "volume".to_string(),
+                    message: "is above maximum".to_string(),
+                });
             }
         }
         Ok(())
@@ -434,8 +449,11 @@ impl EnableShareRequest {
     /// Validate this value against the constraints declared in the CSIL spec.
     pub fn validate(&self) -> Result<(), ValidationError> {
         if let Some(v) = &self.suffix {
-            if v.len() < 1usize || v.len() > 48usize {
-                return Err(ValidationError { field: "suffix".to_string(), message: "length must be in 1..=48".to_string() });
+            if v.is_empty() || v.len() > 48usize {
+                return Err(ValidationError {
+                    field: "suffix".to_string(),
+                    message: "length must be in 1..=48".to_string(),
+                });
             }
         }
         Ok(())
@@ -606,7 +624,10 @@ impl DirVolume {
         {
             let v = &self.volume;
             if *v > 100 {
-                return Err(ValidationError { field: "volume".to_string(), message: "is above maximum".to_string() });
+                return Err(ValidationError {
+                    field: "volume".to_string(),
+                    message: "is above maximum".to_string(),
+                });
             }
         }
         Ok(())
@@ -714,8 +735,11 @@ impl RenameNodeRequest {
     pub fn validate(&self) -> Result<(), ValidationError> {
         {
             let v = &self.friendly_name;
-            if v.len() < 1usize || v.len() > 64usize {
-                return Err(ValidationError { field: "friendly_name".to_string(), message: "length must be in 1..=64".to_string() });
+            if v.is_empty() || v.len() > 64usize {
+                return Err(ValidationError {
+                    field: "friendly_name".to_string(),
+                    message: "length must be in 1..=64".to_string(),
+                });
             }
         }
         Ok(())
@@ -734,8 +758,11 @@ impl RenameDeviceRequest {
     pub fn validate(&self) -> Result<(), ValidationError> {
         {
             let v = &self.friendly_name;
-            if v.len() < 1usize || v.len() > 64usize {
-                return Err(ValidationError { field: "friendly_name".to_string(), message: "length must be in 1..=64".to_string() });
+            if v.is_empty() || v.len() > 64usize {
+                return Err(ValidationError {
+                    field: "friendly_name".to_string(),
+                    message: "length must be in 1..=64".to_string(),
+                });
             }
         }
         Ok(())

@@ -122,7 +122,7 @@ async fn handle_binary_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::
             Some(payload) = node_rx.recv() => {
                 let frame = transport::encode_event_envelope(&transport::EventEnvelope {
                     service: Some("node".to_string()),
-                    event: "Session".to_string(),
+                    event: "session".to_string(),
                     id: None,
                     payload,
                 });
@@ -274,7 +274,7 @@ fn send_reader_chunks(
 fn media_frame(event: &MediaEvent) -> Vec<u8> {
     transport::encode_event_envelope(&transport::EventEnvelope {
         service: Some("media".to_string()),
-        event: "Stream".to_string(),
+        event: "stream".to_string(),
         id: None,
         payload: encode_media_event(event),
     })
@@ -310,7 +310,7 @@ async fn handle_json_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::Re
             Some(payload) = rx.recv() => {
                 let line = serde_json::to_string(&WirePush {
                     service: "NodeService",
-                    op: "Session",
+                    op: "session",
                     payload_hex: hex::encode(payload),
                 })?;
                 write_half.write_all(line.as_bytes()).await?;
@@ -334,7 +334,7 @@ fn handle_node_session_line(
         .strip_suffix("Service")
         .unwrap_or(&env.service)
         .to_ascii_lowercase();
-    if service != "node" || env.op != "Session" || env.id != 0 {
+    if service != "node" || env.op != "session" || env.id != 0 {
         return None;
     }
     let payload = hex::decode(env.payload_hex).ok()?;

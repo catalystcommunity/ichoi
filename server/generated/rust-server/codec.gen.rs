@@ -406,10 +406,14 @@ fn csil_enc_timestamp(t: &chrono::DateTime<chrono::Utc>) -> CsilCborValue {
 /// Decode a CBOR tag 0 RFC3339 timestamp back to a UTC instant.
 fn csil_as_timestamp(v: &CsilCborValue) -> Result<chrono::DateTime<chrono::Utc>, CsilCborError> {
     let CsilCborValue::Tag(0, inner) = v else {
-        return Err(CsilCborError("csil cbor: expected CBOR tag 0 timestamp".to_string()));
+        return Err(CsilCborError(
+            "csil cbor: expected CBOR tag 0 timestamp".to_string(),
+        ));
     };
     let CsilCborValue::Text(s) = inner.as_ref() else {
-        return Err(CsilCborError("csil cbor: timestamp content must be text".to_string()));
+        return Err(CsilCborError(
+            "csil cbor: timestamp content must be text".to_string(),
+        ));
     };
     chrono::DateTime::parse_from_rfc3339(s)
         .map(|dt| dt.with_timezone(&chrono::Utc))
@@ -3948,7 +3952,9 @@ fn csil_dec_role(csil_v: &CsilCborValue) -> Result<Role, CsilCborError> {
         "admin" => Ok(Role::Admin),
         "member" => Ok(Role::Member),
         "guest" => Ok(Role::Guest),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown Role value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown Role value {csil_other:?}"
+        ))),
     }
 }
 
@@ -3968,7 +3974,9 @@ fn csil_dec_player_status(csil_v: &CsilCborValue) -> Result<PlayerStatus, CsilCb
         "stopped" => Ok(PlayerStatus::Stopped),
         "playing" => Ok(PlayerStatus::Playing),
         "paused" => Ok(PlayerStatus::Paused),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown PlayerStatus value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown PlayerStatus value {csil_other:?}"
+        ))),
     }
 }
 
@@ -3998,7 +4006,9 @@ fn csil_dec_codec(csil_v: &CsilCborValue) -> Result<Codec, CsilCborError> {
         "opus" => Ok(Codec::Opus),
         "wav" => Ok(Codec::Wav),
         "wma" => Ok(Codec::Wma),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown Codec value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown Codec value {csil_other:?}"
+        ))),
     }
 }
 
@@ -4016,7 +4026,9 @@ fn csil_dec_transcode_codec(csil_v: &CsilCborValue) -> Result<TranscodeCodec, Cs
     match csil_val.as_str() {
         "aac" => Ok(TranscodeCodec::Aac),
         "mp3" => Ok(TranscodeCodec::Mp3),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown TranscodeCodec value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown TranscodeCodec value {csil_other:?}"
+        ))),
     }
 }
 
@@ -4034,7 +4046,9 @@ fn csil_dec_library(csil_v: &CsilCborValue) -> Result<Library, CsilCborError> {
     match csil_val.as_str() {
         "music" => Ok(Library::Music),
         "audiobook" => Ok(Library::Audiobook),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown Library value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown Library value {csil_other:?}"
+        ))),
     }
 }
 
@@ -4052,7 +4066,9 @@ fn csil_dec_player_kind(csil_v: &CsilCborValue) -> Result<PlayerKind, CsilCborEr
     match csil_val.as_str() {
         "shared" => Ok(PlayerKind::Shared),
         "private" => Ok(PlayerKind::Private),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown PlayerKind value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown PlayerKind value {csil_other:?}"
+        ))),
     }
 }
 
@@ -4235,7 +4251,9 @@ fn csil_dec_media_end_reason(csil_v: &CsilCborValue) -> Result<MediaEndReason, C
     match csil_val.as_str() {
         "eos" => Ok(MediaEndReason::Eos),
         "stopped" => Ok(MediaEndReason::Stopped),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown MediaEndReason value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown MediaEndReason value {csil_other:?}"
+        ))),
     }
 }
 
@@ -4378,7 +4396,9 @@ fn csil_dec_node_kind(csil_v: &CsilCborValue) -> Result<NodeKind, CsilCborError>
         "core" => Ok(NodeKind::Core),
         "satellite" => Ok(NodeKind::Satellite),
         "client" => Ok(NodeKind::Client),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown NodeKind value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown NodeKind value {csil_other:?}"
+        ))),
     }
 }
 
@@ -4391,11 +4411,15 @@ fn csil_enc_audio_outputs_state(csil_v: &AudioOutputsState) -> CsilCborValue {
 }
 
 /// Decode a bare literal value into a AudioOutputsState enum.
-fn csil_dec_audio_outputs_state(csil_v: &CsilCborValue) -> Result<AudioOutputsState, CsilCborError> {
+fn csil_dec_audio_outputs_state(
+    csil_v: &CsilCborValue,
+) -> Result<AudioOutputsState, CsilCborError> {
     let csil_val = cbor_as_text(csil_v)?;
     match csil_val.as_str() {
         "none" => Ok(AudioOutputsState::None),
         "some" => Ok(AudioOutputsState::Some),
-        csil_other => Err(CsilCborError(format!("csil cbor: unknown AudioOutputsState value {csil_other:?}"))),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown AudioOutputsState value {csil_other:?}"
+        ))),
     }
 }

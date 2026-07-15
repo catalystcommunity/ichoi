@@ -109,21 +109,9 @@ function isServiceError(obj: unknown): obj is ServiceError {
   );
 }
 
-/**
- * Map a CSIL operation name (kebab-case as written in `schema/*.csil`) to its
- * on-the-wire event name.
- *
- * ASSUMPTION the Rust side must honor: csilgen's generated channel router names
- * channel operations in PascalCase (observed: `Subscribe`, `Session`, `Stream`
- * in `generated/rust-server/services.rs`). We apply the same PascalCase mapping
- * to request/response operations for a single, uniform convention. If csilgen's
- * verbose event names turn out to be the raw kebab operation names instead, this
- * one function is the only change needed. */
+/** Return the CSIL operation name exactly as written in `schema/*.csil`. */
 export function wireOp(kebab: string): string {
-  return kebab
-    .split("-")
-    .map((s) => (s.length ? s[0]!.toUpperCase() + s.slice(1) : s))
-    .join("");
+  return kebab;
 }
 
 /** Canonicalize a service name for channel keying. The client names services in full
