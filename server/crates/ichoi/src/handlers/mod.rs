@@ -16,11 +16,14 @@ use crate::config::Config;
 use crate::db::{models, store, SqlitePool};
 use crate::{auth, media};
 
+type Subscriber = (u64, UnboundedSender<Vec<u8>>);
+type SubscriberMap = Arc<Mutex<HashMap<String, Vec<Subscriber>>>>;
+
 /// Live pub/sub for shared-player state (§6.5): connections subscribe to a player and get a
 /// pushed `PlayerState` frame whenever anyone controls it. Cheap in-memory fan-out.
 #[derive(Clone, Default)]
 pub struct SubHub {
-    inner: Arc<Mutex<HashMap<String, Vec<(u64, UnboundedSender<Vec<u8>>)>>>>,
+    inner: SubscriberMap,
 }
 
 impl SubHub {
@@ -56,7 +59,7 @@ impl SubHub {
 /// each player it owns; core controls publish encoded `NodeDirective` payloads here.
 #[derive(Clone, Default)]
 pub struct NodeHub {
-    inner: Arc<Mutex<HashMap<String, Vec<(u64, UnboundedSender<Vec<u8>>)>>>>,
+    inner: SubscriberMap,
 }
 
 impl NodeHub {
