@@ -19,19 +19,25 @@ services:
       # Required for a core: where the library (and, by default, the SQLite DB)
       # lives inside the container.
       ICHOI_MUSIC_DIR: /music
+      # Writable persistent state: SQLite, DNS-less RP keys, and CSIL/TLS identity.
+      ICHOI_DB_DIR: /data
       # Fail startup if /music is missing or empty. This catches the common
       # "forgot to mount my library" case before the server starts.
       ICHOI_REQUIRE_MUSIC: "1"
-      # Keep the WAL database beside the media by default; override to separate.
-      # ICHOI_DB_DIR: /data
       ICHOI_LOG: info
       # First-run bootstrap: unlocks admin account creation while zero accounts
       # exist, then is consumed (DESIGN Sec.8). Set to a strong secret, then
       # remove after bootstrapping.
       # ICHOI_ADMIN_TOKEN: change-me-once
+      # Optional DNS-less LinkKeys login. Only exact lowercase "true" enables it.
+      # The RP identity is generated once and stored in ichoi.db with the rest
+      # of Ichoi's state under /data.
+      # ICHOI_LINKKEYS_LOCAL_RP: "true"
+      # ICHOI_LINKKEYS_LOCAL_RP_NAME: "Home Ichoi"
+      # ICHOI_LINKKEYS_TRUSTED_IDENTITIES: "family.example,alice@friends.example"
     volumes:
       - ./music:/music:ro
-      # - ./data:/data
+      - ./data:/data
     # :4043 must be reachable directly by native clients and satellites.
     ports:
       - "4043:4043"

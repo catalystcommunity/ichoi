@@ -57,10 +57,21 @@ NodeService.register are wired to the store and reachable over both the WS and T
 - **Satellite stream seeking is functional but simple.** A seeked load starts the CSIL media
   stream from the beginning and discards decoded PCM until the requested position. That keeps
   the protocol working without HTTP, but large seeks should eventually become range-aware.
-- **LinkKeys auth**: first-admin bootstrap + session minting work; the LinkKeys assertion path
-  is a placeholder (no `linkkeys-rpc-client` verification yet, §7.1).
-- **TLS + key rotation** (§4.2): the CSIL/TCP surface is plain; the three auto-rotating pinned
-  keys are not implemented. Browser TLS is expected via a reverse proxy (deploy/Caddyfile).
+- **LinkKeys auth**: DNS-less local-RP login is implemented as an exact opt-in mode with a
+  database-backed SDK identity, domain/handle admission rules, single-use browser attempts,
+  and ordinary Ichoi session minting. The regular full-RP assertion path remains a placeholder.
+- **CSIL/TLS** (§4.2): native TCP and satellite traffic is encrypted with rustls. The core
+  generates a persistent keypair, satellites pin its SHA-256 SPKI fingerprint, and node
+  tokens are sent only inside the established TLS channel. Multiple accepted pins make
+  staged rotation possible; automatic rolling rotation and in-band pin updates remain.
+- **Native satellite installation**: `ichoi install satellite` plans and installs systemd
+  units on Linux, a per-user LaunchAgent on macOS, and either an `ONLOGON` task or native
+  Windows Service. Its configuration contains the core address, pins, and node token with
+  private file permissions. `--dry-run` is serviced by the same deterministic planner used
+  for real installation.
+- **Native satellite audio**: Linux retains the runtime-loaded ALSA backend. macOS and
+  Windows compile target-gated CPAL backends over CoreAudio and WASAPI, respectively.
+  Browser TLS remains expected via a reverse proxy (deploy/Caddyfile).
 
 ## Known upstream issue
 

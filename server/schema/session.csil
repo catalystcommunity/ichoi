@@ -2,6 +2,7 @@
 
 AuthRequest = {
     ? linkkeys_assertion: bytes,     ;; sealed assertion from the LinkKeys RP flow
+    ? linkkeys_exchange_code: text, ;; one-shot result of the DNS-less local RP browser flow
     ? bootstrap_token: text          ;; first-admin bootstrap (§7.4), only while zero accounts exist
 }
 

@@ -45,6 +45,14 @@ lofty = "0.21"
 walkdir = "2"
 libloading = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking", "json"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rcgen = { version = "0.13", default-features = false, features = ["crypto", "pem", "ring"] }
+x509-parser = "0.16"
+
+# DNS-less LinkKeys relying-party SDK. Pin the repository revision so releases
+# remain reproducible even before the SDK has an independently versioned crate.
+linkkeys-local-rp = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "57cebd1f53ff6eb86154e9f05b350d78ca6ee730" }
 
 [profile.release]
 lto = "thin"

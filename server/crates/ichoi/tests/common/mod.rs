@@ -24,6 +24,8 @@ pub fn test_config() -> Config {
         csil_addr: "127.0.0.1:0".to_string(),
         core_addr: None,
         core_keys: vec![],
+        tls_cert: None,
+        tls_key: None,
         node_token: None,
         admin_token: Some("test-admin-token".to_string()),
         ffmpeg: None,
@@ -33,6 +35,9 @@ pub fn test_config() -> Config {
         fetch_art: false,
         split_dump_folders: false,
         require_music: false,
+        linkkeys_local_rp: false,
+        linkkeys_local_rp_name: None,
+        linkkeys_trusted_identities: vec![],
     }
 }
 

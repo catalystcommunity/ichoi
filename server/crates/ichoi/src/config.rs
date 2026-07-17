@@ -31,6 +31,8 @@ struct FileConfig {
     csil_addr: Option<String>,
     core_addr: Option<String>,
     core_keys: Option<Vec<String>>,
+    tls_cert: Option<PathBuf>,
+    tls_key: Option<PathBuf>,
     node_token: Option<String>,
     admin_token: Option<String>,
     ffmpeg: Option<PathBuf>,
@@ -38,6 +40,9 @@ struct FileConfig {
     web_dir: Option<PathBuf>,
     log: Option<String>,
     require_music: Option<bool>,
+    linkkeys_local_rp: Option<bool>,
+    linkkeys_local_rp_name: Option<String>,
+    linkkeys_trusted_identities: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +55,10 @@ pub struct Config {
     pub csil_addr: String,
     pub core_addr: Option<String>,
     pub core_keys: Vec<String>,
+    /// Core CSIL/TLS certificate. Generated on first core startup when absent.
+    pub tls_cert: Option<PathBuf>,
+    /// Core CSIL/TLS private key. Generated on first core startup when absent.
+    pub tls_key: Option<PathBuf>,
     pub node_token: Option<String>,
     pub admin_token: Option<String>,
     pub ffmpeg: Option<PathBuf>,
@@ -65,10 +74,21 @@ pub struct Config {
     /// Fail startup when the configured music directory is absent or empty. Intended for
     /// Docker Compose/local deployments where an empty bind mount usually means a bad mount.
     pub require_music: bool,
+    /// DNS-less LinkKeys RP mode. An environment override enables it only
+    /// when its value is exactly `true`.
+    pub linkkeys_local_rp: bool,
+    /// Human-readable name embedded in the local RP's signed descriptor.
+    pub linkkeys_local_rp_name: Option<String>,
+    /// Admission selectors: either `domain` or `handle@domain`.
+    pub linkkeys_trusted_identities: Vec<String>,
 }
 
 fn env(key: &str) -> Option<String> {
     std::env::var(key).ok().filter(|s| !s.is_empty())
+}
+
+fn exactly_true(value: Option<&str>) -> bool {
+    value == Some("true")
 }
 
 impl Config {
@@ -88,6 +108,10 @@ impl Config {
             |envk: &str, filev: Option<String>| -> Option<String> { env(envk).or(filev) };
 
         let role = Role::parse(&pick("ICHOI_ROLE", file.role, "core"));
+        let linkkeys_local_rp = match std::env::var("ICHOI_LINKKEYS_LOCAL_RP") {
+            Ok(value) => exactly_true(Some(&value)),
+            Err(_) => file.linkkeys_local_rp.unwrap_or(false),
+        };
         let music_dir =
             pick_opt("ICHOI_MUSIC_DIR", file.music_dir.map(pb_to_string)).map(PathBuf::from);
         let audiobook_dir = pick_opt("ICHOI_AUDIOBOOK_DIR", file.audiobook_dir.map(pb_to_string))
@@ -110,6 +134,9 @@ impl Config {
                         .collect()
                 })
                 .unwrap_or_default(),
+            tls_cert: pick_opt("ICHOI_TLS_CERT", file.tls_cert.map(pb_to_string))
+                .map(PathBuf::from),
+            tls_key: pick_opt("ICHOI_TLS_KEY", file.tls_key.map(pb_to_string)).map(PathBuf::from),
             node_token: pick_opt("ICHOI_NODE_TOKEN", file.node_token),
             admin_token: pick_opt("ICHOI_ADMIN_TOKEN", file.admin_token),
             ffmpeg: pick_opt("ICHOI_FFMPEG", file.ffmpeg.map(pb_to_string)).map(PathBuf::from),
@@ -136,6 +163,23 @@ impl Config {
                     .as_deref(),
                 Some("1") | Some("true") | Some("yes")
             ),
+            linkkeys_local_rp,
+            linkkeys_local_rp_name: pick_opt(
+                "ICHOI_LINKKEYS_LOCAL_RP_NAME",
+                file.linkkeys_local_rp_name,
+            ),
+            linkkeys_trusted_identities: pick_opt(
+                "ICHOI_LINKKEYS_TRUSTED_IDENTITIES",
+                file.linkkeys_trusted_identities.map(|v| v.join(",")),
+            )
+            .map(|s| {
+                s.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(ToOwned::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default(),
         })
     }
 
@@ -148,8 +192,47 @@ impl Config {
             .unwrap_or_else(|| PathBuf::from("."));
         dir.join("ichoi.db").to_string_lossy().into_owned()
     }
+
+    /// Directory used for generated core transport identity files.
+    pub fn tls_dir(&self) -> PathBuf {
+        self.db_dir
+            .clone()
+            .or_else(|| self.music_dir.clone())
+            .unwrap_or_else(|| PathBuf::from("."))
+    }
 }
 
 fn pb_to_string(p: PathBuf) -> String {
     p.to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::{exactly_true, FileConfig};
+
+    #[test]
+    fn local_rp_environment_enablement_is_exact() {
+        for value in ["1", "yes", "TRUE", "True", "false", "true ", " true"] {
+            assert!(!exactly_true(Some(value)), "enabled for {value:?}");
+        }
+        assert!(exactly_true(Some("true")));
+        assert!(!exactly_true(None));
+    }
+
+    #[test]
+    fn transport_security_fields_parse_from_toml() {
+        let parsed: FileConfig = toml::from_str(
+            r#"
+core_keys = ["sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"]
+tls_cert = "/state/cert.der"
+tls_key = "/state/key.der"
+"#,
+        )
+        .unwrap();
+        assert_eq!(parsed.core_keys.unwrap().len(), 1);
+        assert_eq!(parsed.tls_cert.unwrap(), PathBuf::from("/state/cert.der"));
+        assert_eq!(parsed.tls_key.unwrap(), PathBuf::from("/state/key.der"));
+    }
 }

@@ -30,6 +30,35 @@ pub fn upsert_account(conn: &mut SqliteConnection, row: &Account) -> QueryResult
     Ok(())
 }
 
+/// Refresh LinkKeys-owned profile fields without changing local authorization.
+pub fn upsert_linkkeys_account(
+    conn: &mut SqliteConnection,
+    id: &str,
+    handle: &str,
+    display_name: Option<&str>,
+) -> QueryResult<Account> {
+    let now = chrono::Utc::now().to_rfc3339();
+    diesel::insert_into(accounts::table)
+        .values((
+            accounts::id.eq(id),
+            accounts::handle.eq(handle),
+            accounts::display_name.eq(display_name),
+            accounts::role.eq("member"),
+            accounts::created_at.eq(&now),
+        ))
+        .on_conflict(accounts::id)
+        .do_update()
+        .set((
+            accounts::handle.eq(handle),
+            accounts::display_name.eq(display_name),
+        ))
+        .execute(conn)?;
+    accounts::table
+        .find(id)
+        .select(Account::as_select())
+        .first(conn)
+}
+
 pub fn set_role(conn: &mut SqliteConnection, id: &str, role: &str) -> QueryResult<()> {
     diesel::update(accounts::table.find(id))
         .set(accounts::role.eq(role))
@@ -113,6 +142,138 @@ pub fn set_setting(conn: &mut SqliteConnection, key: &str, value: &str) -> Query
 
 pub fn all_settings(conn: &mut SqliteConnection) -> QueryResult<Vec<Setting>> {
     settings::table.select(Setting::as_select()).load(conn)
+}
+
+// ----------------------------------------------------------- LinkKeys local RP
+
+pub fn active_local_rp_identity(
+    conn: &mut SqliteConnection,
+) -> QueryResult<Option<LinkkeysLocalRpIdentity>> {
+    linkkeys_local_rp_identities::table
+        .filter(linkkeys_local_rp_identities::active.eq(1))
+        .select(LinkkeysLocalRpIdentity::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn insert_local_rp_identity(
+    conn: &mut SqliteConnection,
+    row: &LinkkeysLocalRpIdentity,
+) -> QueryResult<()> {
+    diesel::insert_into(linkkeys_local_rp_identities::table)
+        .values(row)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn add_linkkeys_trust(
+    conn: &mut SqliteConnection,
+    domain: &str,
+    handle: Option<&str>,
+    source: &str,
+) -> QueryResult<()> {
+    let row = LinkkeysTrustedIdentity {
+        domain: domain.to_string(),
+        handle: handle.unwrap_or_default().to_string(),
+        source: source.to_string(),
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+    diesel::insert_into(linkkeys_trusted_identities::table)
+        .values(&row)
+        .on_conflict((
+            linkkeys_trusted_identities::domain,
+            linkkeys_trusted_identities::handle,
+        ))
+        .do_nothing()
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn linkkeys_identity_is_trusted(
+    conn: &mut SqliteConnection,
+    domain: &str,
+    handle: Option<&str>,
+) -> QueryResult<bool> {
+    let legacy_domain_count: i64 = trusted_domains::table
+        .filter(trusted_domains::domain.eq(domain))
+        .count()
+        .get_result(conn)?;
+    if legacy_domain_count > 0 {
+        return Ok(true);
+    }
+    let handle = handle.unwrap_or_default();
+    let count: i64 = linkkeys_trusted_identities::table
+        .filter(linkkeys_trusted_identities::domain.eq(domain))
+        .filter(
+            linkkeys_trusted_identities::handle
+                .eq("")
+                .or(linkkeys_trusted_identities::handle.eq(handle)),
+        )
+        .count()
+        .get_result(conn)?;
+    Ok(count > 0)
+}
+
+pub fn create_linkkeys_attempt(
+    conn: &mut SqliteConnection,
+    row: &LinkkeysLoginAttempt,
+) -> QueryResult<()> {
+    diesel::insert_into(linkkeys_login_attempts::table)
+        .values(row)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn purge_expired_linkkeys_state(conn: &mut SqliteConnection, now: &str) -> QueryResult<()> {
+    diesel::delete(
+        linkkeys_login_attempts::table.filter(linkkeys_login_attempts::expires_at.le(now)),
+    )
+    .execute(conn)?;
+    diesel::delete(
+        linkkeys_login_exchanges::table.filter(linkkeys_login_exchanges::expires_at.le(now)),
+    )
+    .execute(conn)?;
+    Ok(())
+}
+
+pub fn consume_linkkeys_attempt(
+    conn: &mut SqliteConnection,
+    attempt_sha256: &str,
+) -> QueryResult<Option<LinkkeysLoginAttempt>> {
+    conn.transaction(|conn| {
+        let row = linkkeys_login_attempts::table
+            .find(attempt_sha256)
+            .select(LinkkeysLoginAttempt::as_select())
+            .first(conn)
+            .optional()?;
+        diesel::delete(linkkeys_login_attempts::table.find(attempt_sha256)).execute(conn)?;
+        Ok(row)
+    })
+}
+
+pub fn create_linkkeys_exchange(
+    conn: &mut SqliteConnection,
+    row: &LinkkeysLoginExchange,
+) -> QueryResult<()> {
+    diesel::insert_into(linkkeys_login_exchanges::table)
+        .values(row)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn consume_linkkeys_exchange(
+    conn: &mut SqliteConnection,
+    code_sha256: &str,
+) -> QueryResult<Option<LinkkeysLoginExchange>> {
+    conn.transaction(|conn| {
+        let row = linkkeys_login_exchanges::table
+            .find(code_sha256)
+            .select(LinkkeysLoginExchange::as_select())
+            .first(conn)
+            .optional()?;
+        diesel::delete(linkkeys_login_exchanges::table.find(code_sha256)).execute(conn)?;
+        Ok(row)
+    })
 }
 
 // ------------------------------------------------------------------- trusted domains

@@ -24,6 +24,7 @@ export interface ServerRecord {
   state: ConnState;
   detail?: string;
   session?: SessionInfo;
+  token?: string;
 }
 
 interface LiveConn {
@@ -35,6 +36,7 @@ interface PersistedServer {
   id: string;
   name: string;
   url: string;
+  token?: string;
 }
 
 const STORAGE_KEY = "ichoi.servers";
@@ -50,6 +52,7 @@ interface ServersContextValue {
   setActive: (id: string) => void;
   apiFor: (id: string) => ServerApi | undefined;
   reconnect: (id: string) => Promise<void>;
+  completeLinkkeysExchange: (code: string) => Promise<void>;
 }
 
 const ServersContext = createContext<ServersContextValue>();
@@ -81,7 +84,12 @@ function randomId(): string {
 }
 
 function savePersisted(servers: ServerRecord[]): void {
-  const persist: PersistedServer[] = servers.map((s) => ({ id: s.id, name: s.name, url: s.url }));
+  const persist: PersistedServer[] = servers.map((s) => ({
+    id: s.id,
+    name: s.name,
+    url: s.url,
+    token: s.token,
+  }));
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
   } catch {
@@ -95,6 +103,16 @@ function defaultServerUrl(): string {
   if (typeof location === "undefined") return "ws://localhost:4042/ws";
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   return `${proto}//${location.host}/ws`;
+}
+
+function isThisOriginServer(url: string): boolean {
+  if (typeof location === "undefined") return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.host === location.host;
+  } catch {
+    return false;
+  }
 }
 
 export function ServersProvider(props: ParentProps): JSX.Element {
@@ -124,6 +142,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
   async function openConnection(rec: ServerRecord): Promise<void> {
     const conn = new CsilConnection({
       url: rec.url,
+      auth: rec.token,
       onState: (state, detail) => patch(rec.id, { state, detail }),
     });
     const api = new ServerApi(conn);
@@ -177,6 +196,18 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     await openConnection(rec);
   }
 
+  async function completeLinkkeysExchange(code: string): Promise<void> {
+    const id = activeId();
+    if (!id) throw new Error("no active server");
+    const liveConn = live.get(id);
+    if (!liveConn) throw new Error("active server is not connected");
+    const session = await liveConn.api.session.authenticate({ linkkeys_exchange_code: code });
+    if (!session.token) throw new Error("server did not return a session token");
+    patch(id, { session, token: session.token });
+    savePersisted(servers);
+    await reconnect(id);
+  }
+
   // Restore persisted servers on boot and auto-connect them.
   const persisted = loadPersisted();
   const seed: ServerRecord[] =
@@ -185,8 +216,25 @@ export function ServersProvider(props: ParentProps): JSX.Element {
       : [{ id: randomId(), name: "This server", url: defaultServerUrl(), state: "idle" }];
   setServers(seed);
   setActiveId(seed[0]?.id);
+  const exchangeCode =
+    typeof location === "undefined"
+      ? null
+      : new URLSearchParams(location.hash.replace(/^#/, "")).get("linkkeys_exchange");
+  const exchangeServer = exchangeCode ? seed.find((server) => isThisOriginServer(server.url)) : undefined;
+  if (exchangeServer) setActiveId(exchangeServer.id);
   for (const rec of seed) {
-    void openConnection(rec).catch((e) => patch(rec.id, { state: "error", detail: String(e) }));
+    const opening = openConnection(rec).catch((e) => {
+      patch(rec.id, { state: "error", detail: String(e) });
+      throw e;
+    });
+    if (exchangeCode && rec.id === exchangeServer?.id) {
+      void opening
+        .then(() => completeLinkkeysExchange(exchangeCode))
+        .then(() => history.replaceState(null, "", `${location.pathname}${location.search}`))
+        .catch((e) => patch(rec.id, { state: "error", detail: String(e) }));
+    } else {
+      void opening;
+    }
   }
 
   onCleanup(() => {
@@ -204,6 +252,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     setActive,
     apiFor,
     reconnect,
+    completeLinkkeysExchange,
   };
 
   return <ServersContext.Provider value={value}>{props.children}</ServersContext.Provider>;

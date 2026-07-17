@@ -21,6 +21,9 @@ pub fn prepare_db(config: &Config) -> anyhow::Result<db::SqlitePool> {
     let mut conn = pool.get()?;
     db::run_migrations(&mut conn)?;
     db::run_transforms(&mut conn, &hostname())?;
+    drop(conn);
+    crate::auth::local_rp::initialize_database(&pool, config)?;
+    let mut conn = pool.get()?;
     let outputs = audio::enumerate();
     store::sync_core_outputs(&mut conn, &hostname(), &outputs)?;
     Ok(pool)
@@ -123,6 +126,7 @@ fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
         if config.node_token.as_deref().unwrap_or_default().is_empty() {
             anyhow::bail!("satellite role requires ICHOI_NODE_TOKEN");
         }
+        crate::tls::client_config(&config.core_keys)?;
     }
 
     if config.require_music {
@@ -143,6 +147,26 @@ fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
                 "music dir {} is empty; mount your music library or unset ICHOI_REQUIRE_MUSIC",
                 music.display()
             );
+        }
+    }
+
+    if config.linkkeys_local_rp {
+        if config
+            .linkkeys_local_rp_name
+            .as_deref()
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
+        {
+            anyhow::bail!("ICHOI_LINKKEYS_LOCAL_RP=true requires ICHOI_LINKKEYS_LOCAL_RP_NAME");
+        }
+        if config.linkkeys_trusted_identities.is_empty() {
+            anyhow::bail!(
+                "ICHOI_LINKKEYS_LOCAL_RP=true requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES"
+            );
+        }
+        for selector in &config.linkkeys_trusted_identities {
+            crate::auth::local_rp::parse_selector(selector)?;
         }
     }
 

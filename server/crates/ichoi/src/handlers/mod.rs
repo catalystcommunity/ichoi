@@ -156,17 +156,32 @@ pub struct App {
     pub subs: SubHub,
     pub presence: Presence,
     pub nodes: NodeHub,
+    pub local_rp: Option<crate::auth::local_rp::DynBackend>,
 }
 
 impl App {
     pub fn new(pool: SqlitePool, config: Arc<Config>) -> App {
+        let local_rp = if config.linkkeys_local_rp {
+            Some(Arc::new(
+                crate::auth::local_rp::SdkBackend::load(&pool)
+                    .expect("validated local RP configuration must have an initialized identity"),
+            ) as crate::auth::local_rp::DynBackend)
+        } else {
+            None
+        };
         App {
             pool,
             config,
             subs: SubHub::new(),
             presence: Presence::new(),
             nodes: NodeHub::new(),
+            local_rp,
         }
+    }
+
+    pub fn with_local_rp_backend(mut self, backend: crate::auth::local_rp::DynBackend) -> App {
+        self.local_rp = Some(backend);
+        self
     }
 
     fn conn(&self) -> Result<crate::db::PooledConn, ServiceError> {
@@ -341,6 +356,12 @@ impl SessionService for App {
         // LinkKeys assertion path. TODO: verify via linkkeys-rpc-client and extract
         // uuid@domain + the `handle` claim (§7.1). Pre-alpha accepts a placeholder identity.
         if input.linkkeys_assertion.is_some() {
+            if self.config.linkkeys_local_rp {
+                return Err(err(
+                    400,
+                    "full-RP assertions are not accepted while local RP mode is enabled",
+                ));
+            }
             let acct = models::Account {
                 id: "user@example.com".to_string(),
                 handle: "user".to_string(),
@@ -349,6 +370,21 @@ impl SessionService for App {
                 created_at: Utc::now().to_rfc3339(),
             };
             db(store::upsert_account(&mut conn, &acct))?;
+            return self.mint_session(&mut conn, acct);
+        }
+
+        if let Some(code) = input.linkkeys_exchange_code.as_deref() {
+            if !self.config.linkkeys_local_rp {
+                return Err(err(401, "LinkKeys local RP mode is disabled"));
+            }
+            let exchange = db(store::consume_linkkeys_exchange(
+                &mut conn,
+                &auth::sha256_hex(code),
+            ))?
+            .filter(|row| !crate::auth::local_rp::is_expired(&row.expires_at))
+            .ok_or_else(|| err(401, "invalid or expired LinkKeys login exchange"))?;
+            let acct = db(store::get_account(&mut conn, &exchange.account_id))?
+                .ok_or_else(|| err(401, "LinkKeys account no longer exists"))?;
             return self.mint_session(&mut conn, acct);
         }
 
@@ -1065,7 +1101,18 @@ impl AdminService for App {
         input: TrustDomainRequest,
     ) -> Result<TrustedDomains, ServiceError> {
         let mut conn = self.conn()?;
-        db(store::add_trusted_domain(&mut conn, &input.domain))?;
+        let selector = crate::auth::local_rp::parse_selector(&input.domain)
+            .map_err(|e| err(400, e.to_string()))?;
+        if selector.handle.is_some() {
+            return Err(err(400, "trust-domain accepts a domain, not a handle"));
+        }
+        db(store::add_trusted_domain(&mut conn, &selector.domain))?;
+        db(store::add_linkkeys_trust(
+            &mut conn,
+            &selector.domain,
+            None,
+            "admin",
+        ))?;
         std::result::Result::Ok(TrustedDomains {
             domains: db(store::list_trusted_domains(&mut conn))?,
         })

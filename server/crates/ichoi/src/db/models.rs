@@ -174,3 +174,46 @@ pub struct NewQueueItem {
 pub struct TrustedDomain {
     pub domain: String,
 }
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable)]
+#[diesel(table_name = linkkeys_local_rp_identities, primary_key(fingerprint))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct LinkkeysLocalRpIdentity {
+    pub fingerprint: String,
+    pub name: String,
+    pub identity_bundle: Vec<u8>,
+    pub active: i32,
+    pub created_at: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable)]
+#[diesel(table_name = linkkeys_trusted_identities, primary_key(domain, handle))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct LinkkeysTrustedIdentity {
+    pub domain: String,
+    pub handle: String,
+    pub source: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = linkkeys_login_attempts)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct LinkkeysLoginAttempt {
+    pub attempt_sha256: String,
+    pub pending_login: String,
+    pub expected_handle: Option<String>,
+    pub created_at: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = linkkeys_login_exchanges)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct LinkkeysLoginExchange {
+    pub code_sha256: String,
+    pub account_id: String,
+    pub created_at: String,
+    pub expires_at: String,
+}

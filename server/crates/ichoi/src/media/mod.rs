@@ -161,6 +161,8 @@ mod tests {
             csil_addr: String::new(),
             core_addr: None,
             core_keys: vec![],
+            tls_cert: None,
+            tls_key: None,
             node_token: None,
             admin_token: None,
             ffmpeg: None,
@@ -170,6 +172,9 @@ mod tests {
             fetch_art: false,
             split_dump_folders: false,
             require_music: false,
+            linkkeys_local_rp: false,
+            linkkeys_local_rp_name: None,
+            linkkeys_trusted_identities: vec![],
         };
         let pref = StreamPref {
             max_bitrate_kbps: None,

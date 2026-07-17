@@ -33,6 +33,45 @@ diesel::table! {
 }
 
 diesel::table! {
+    linkkeys_local_rp_identities (fingerprint) {
+        fingerprint -> Text,
+        name -> Text,
+        identity_bundle -> Binary,
+        active -> Integer,
+        created_at -> Text,
+        expires_at -> Text,
+    }
+}
+
+diesel::table! {
+    linkkeys_trusted_identities (domain, handle) {
+        domain -> Text,
+        handle -> Text,
+        source -> Text,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
+    linkkeys_login_attempts (attempt_sha256) {
+        attempt_sha256 -> Text,
+        pending_login -> Text,
+        expected_handle -> Nullable<Text>,
+        created_at -> Text,
+        expires_at -> Text,
+    }
+}
+
+diesel::table! {
+    linkkeys_login_exchanges (code_sha256) {
+        code_sha256 -> Text,
+        account_id -> Text,
+        created_at -> Text,
+        expires_at -> Text,
+    }
+}
+
+diesel::table! {
     libraries (id) {
         id -> Text,
         kind -> Text,
@@ -169,6 +208,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     sessions,
     settings,
     trusted_domains,
+    linkkeys_local_rp_identities,
+    linkkeys_trusted_identities,
+    linkkeys_login_attempts,
+    linkkeys_login_exchanges,
     libraries,
     artists,
     albums,
