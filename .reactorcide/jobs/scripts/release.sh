@@ -4,6 +4,10 @@ set -e
 SEMVER_TAGS_VERSION="v0.4.0"
 GHCLI_VERSION="2.63.2"
 
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=release-lib.sh
+. "${SCRIPT_DIR}/release-lib.sh"
+
 # PWD is set by the caller (release.yaml) to REACTORCIDE_CODE_DIR (the repo root).
 
 # -------------------------------------------------------------------
@@ -55,7 +59,7 @@ VER_LIST=$(echo "${OUTPUT}" | grep -o '"New_release_version":"[^"]*"' | cut -d'"
 TAG_LIST=$(echo "${OUTPUT}" | grep -o '"New_release_git_tag":"[^"]*"' | cut -d'"' -f4)
 
 # Record the PUBLISHED targets as "target version tag" lines. semver-tags has already
-# created and pushed each target's git tag by this point; here we only decide which
+# created and pushed each target's git tag by this point; here we decide which
 # version files to stamp and which GitHub releases to cut.
 : > /tmp/published-targets.txt
 i=1
@@ -72,8 +76,20 @@ for t in ${TARGETS}; do
   i=$((i + 1))
 done
 
+# Install gh before deciding there is nothing to do: a previous attempt may have
+# pushed its tag and then failed before creating the GitHub Release. semver-tags
+# reports no new release on that retry, so we explicitly recover that partial state.
+if [ "${SKIP_GITHUB:-false}" != "true" ]; then
+  echo "=== Installing gh CLI ${GHCLI_VERSION} ==="
+  wget -q "https://github.com/cli/cli/releases/download/v${GHCLI_VERSION}/gh_${GHCLI_VERSION}_linux_amd64.tar.gz" -O /tmp/gh.tar.gz
+  tar -xzf /tmp/gh.tar.gz -C /tmp
+  export PATH="/tmp/gh_${GHCLI_VERSION}_linux_amd64/bin:$PATH"
+
+  recover_unreleased_targets "${TARGETS}" /tmp/published-targets.txt "${REACTORCIDE_REPO}"
+fi
+
 if [ ! -s /tmp/published-targets.txt ]; then
-  echo "No new release needed for any target."
+  echo "No new or incomplete release found for any target."
   exit 0
 fi
 
@@ -181,21 +197,13 @@ build_target_artifacts() {
 }
 
 # -------------------------------------------------------------------
-# 5. Install gh CLI and create a GitHub release per published target
+# 5. Create a GitHub release per published target
 # -------------------------------------------------------------------
-if [ "${SKIP_GITHUB:-false}" != "true" ]; then
-  echo "=== Installing gh CLI ${GHCLI_VERSION} ==="
-  wget -q "https://github.com/cli/cli/releases/download/v${GHCLI_VERSION}/gh_${GHCLI_VERSION}_linux_amd64.tar.gz" -O /tmp/gh.tar.gz
-  tar -xzf /tmp/gh.tar.gz -C /tmp
-  export PATH="/tmp/gh_${GHCLI_VERSION}_linux_amd64/bin:$PATH"
-fi
 
 # NOTE: do NOT guard on "tag already exists" here. `semver-tags run` (step 2) created and
 # pushed each target's tag before we got here, so the tags ALWAYS exist at this point —
-# guarding on them would skip release creation every time (the bug that left tags without
-# GitHub Releases). semver-tags is also what makes this idempotent: on a re-run of an
-# already-released version it reports no new release and we exit in step 2, so we only reach
-# here for genuinely new releases.
+# guarding on them would skip release creation every time. The recovery pass above handles
+# a tag left without a GitHub Release by an interrupted earlier attempt.
 while read -r t v tag; do
   RELEASE_DIR="/tmp/release/${t}"
   mkdir -p "${RELEASE_DIR}"

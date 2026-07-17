@@ -25,6 +25,9 @@ job:
     cd "${REACTORCIDE_CODE_DIR:-/job/src}/server"
     export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/ichoi-target}"
 
+    echo "=== Running release state-machine tests ==="
+    sh ../.reactorcide/jobs/scripts/release-lib-test.sh
+
     echo "=== Running tests (SQLite backend) ==="
     TEST_DATABASE_BACKEND=sqlite cargo test --workspace 2>&1
 
