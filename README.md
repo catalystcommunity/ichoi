@@ -71,7 +71,12 @@ settings:
 | Core address (satellite) | `ICHOI_CORE_ADDR` | *(required for a satellite)* |
 | Core key fingerprints (satellite) | `ICHOI_CORE_KEYS` | *(required for a satellite)* |
 | Node token (satellite) | `ICHOI_NODE_TOKEN` | *(required for a satellite)* |
+| CSIL/TLS certificate (core) | `ICHOI_TLS_CERT` | `<db-dir>/csil-cert.der` |
+| CSIL/TLS private key (core) | `ICHOI_TLS_KEY` | `<db-dir>/csil-key.der` |
 | Admin bootstrap token | `ICHOI_ADMIN_TOKEN` | unset |
+| DNS-less LinkKeys RP | `ICHOI_LINKKEYS_LOCAL_RP` | disabled; only exact `true` enables |
+| Local RP name | `ICHOI_LINKKEYS_LOCAL_RP_NAME` | unset |
+| Trusted LinkKeys identities | `ICHOI_LINKKEYS_TRUSTED_IDENTITIES` | unset |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → `PATH` |
 | Default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
 | Log level | `ICHOI_LOG` | `warn` |
@@ -80,6 +85,70 @@ The database is a single SQLite file (WAL) in the database directory. ffmpeg is 
 bundled-next-to-the-binary first, then `PATH`; if neither is found, transcoding is
 disabled and the core serves direct mode only — Ichoi never fails to start for lack of
 ffmpeg.
+
+### DNS-less LinkKeys login on a LAN
+
+Local-RP login is completely opt-in and gives Ichoi a key-fingerprint identity rather than
+a public DNS identity or RP sidecar. Enable it with all three settings:
+
+```sh
+ICHOI_LINKKEYS_LOCAL_RP=true
+ICHOI_LINKKEYS_LOCAL_RP_NAME="Kitchen Ichoi"
+ICHOI_LINKKEYS_TRUSTED_IDENTITIES="family.example,alice@friends.example"
+```
+
+Only the exact lowercase value `true` enables the mode. A domain entry accepts every
+verified handle at that LinkKeys domain; `handle@domain` accepts only that verified handle.
+Users normally enter `handle@domain` in Ichoi's sign-in dialog. Ichoi derives its callback
+from the browser's same-origin LAN address, so no public URL setting or public availability
+is required.
+
+The first enabled start generates the local RP signing/encryption identity and stores the
+SDK's opaque key bundle in `ichoi.db`. It remains stable across restarts; changing the name
+does not silently rotate it. Backups of the database therefore contain private RP key
+material and must be protected. Approve the fingerprint reported in the log or `/api/auth`
+at each trusted LinkKeys domain before users log in.
+
+## Native satellite installation
+
+Satellites authenticate with a node token only after establishing rustls TLS to a pinned
+core key. No DNS name or public CA is involved. On the core, print the fingerprint that must
+be provisioned out of band:
+
+```sh
+ichoi core-fingerprint
+```
+
+Then install the same binary on the output machine. Reading the token from a file or stdin
+keeps it out of shell history and process listings:
+
+```sh
+ichoi install satellite \
+  --core 192.168.1.20:4043 \
+  --core-key sha256:<fingerprint> \
+  --node-token-file ./theater-node.token
+```
+
+Use `--dry-run` to print every file and service-manager command without changing the host.
+`--scope user` selects a per-user installation; the defaults are a system service on Linux
+and a user service on macOS and Windows.
+
+Inspect or remove the same installation with:
+
+```sh
+ichoi status --scope user
+ichoi uninstall --scope user --keep-config
+```
+
+- Linux installs a systemd system or user unit. System scope uses
+  `/etc/ichoi/ichoi.toml`; user scope follows `$XDG_CONFIG_HOME`.
+- macOS installs a LaunchAgent under `~/Library/LaunchAgents` and keeps its configuration
+  under `~/Library/Application Support/Ichoi`.
+- Windows user scope installs an `ONLOGON` scheduled task. System scope installs a native
+  Windows Service and stores configuration under `%PROGRAMDATA%\Ichoi`.
+
+Linux retains its runtime-loaded ALSA backend. macOS and Windows builds compile only their
+native CoreAudio/WASAPI backend, so those dependencies never enter Linux artifacts.
 
 ## Repository layout
 

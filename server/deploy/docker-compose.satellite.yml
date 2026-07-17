@@ -1,6 +1,7 @@
 # Example deployment: an Ichoi satellite output node.
 #
 #   ICHOI_CORE_ADDR=ichoi.example.com:4043 \
+#   ICHOI_CORE_KEYS='sha256:...' \
 #   ICHOI_NODE_TOKEN='...' \
 #   docker compose -f deploy/docker-compose.satellite.yml up -d
 #
@@ -14,6 +15,7 @@ services:
     environment:
       ICHOI_ROLE: satellite
       ICHOI_CORE_ADDR: ${ICHOI_CORE_ADDR}
+      ICHOI_CORE_KEYS: ${ICHOI_CORE_KEYS}
       ICHOI_NODE_TOKEN: ${ICHOI_NODE_TOKEN}
       ICHOI_LOG: info
     devices:

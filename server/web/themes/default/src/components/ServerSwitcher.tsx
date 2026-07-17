@@ -1,7 +1,7 @@
 // The multi-server switcher in the nav rail (DESIGN §7). Lists connected servers
 // with a live status lamp, lets you switch the active one, add another, and kick
-// off (stubbed) LinkKeys sign-in. Each server is a separate session.
-import { createSignal, For, Show, type JSX } from "solid-js";
+// off LinkKeys sign-in. Each server is a separate session.
+import { createSignal, For, onMount, Show, type JSX } from "solid-js";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { Dialog } from "./Dialog.tsx";
@@ -111,27 +111,52 @@ function AuthArea(): JSX.Element {
   const servers = useServers();
   const { t } = useI18n();
   const session = () => servers.active()?.session;
+  const activeIsThisServer = () => {
+    const url = servers.active()?.url;
+    if (!url || typeof location === "undefined") return false;
+    try {
+      return new URL(url).host === location.host;
+    } catch {
+      return false;
+    }
+  };
+  const [available, setAvailable] = createSignal(false);
+  const [showLogin, setShowLogin] = createSignal(false);
+  const [identity, setIdentity] = createSignal("");
+  const [error, setError] = createSignal("");
 
-  const startLinkKeys = () => {
-    // TODO(linkkeys): kick off the LinkKeys RP flow.
-    //   1. Redirect/pop to the configured LinkKeys RP authorize endpoint.
-    //   2. Receive the sealed assertion (the `linkkeys_assertion` bytes).
-    //   3. Call SessionService.authenticate({ linkkeys_assertion }) on the active
-    //      server, store the returned `token`, and reconnect with it as Hello.auth.
-    // The server, DB, and CSIL surface for this exist; only the RP handshake and
-    // token persistence remain to wire up here.
-    alert(t("auth.linkkeysTodo"));
+  onMount(() => {
+    void fetch("/api/auth")
+      .then((response) => response.json())
+      .then((body: { local_rp?: unknown }) => setAvailable(Boolean(body.local_rp)))
+      .catch(() => setAvailable(false));
+  });
+
+  const startLinkKeys = async (e: Event) => {
+    e.preventDefault();
+    setError("");
+    const response = await fetch("/auth/linkkeys/local/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ identity: identity() }),
+    });
+    if (!response.ok) {
+      setError((await response.text()) || t("auth.loginFailed"));
+      return;
+    }
+    const body = (await response.json()) as { redirect_url: string };
+    window.location.assign(body.redirect_url);
   };
 
   return (
     <div style={{ "margin-top": "12px" }}>
       <Show
         when={session() && session()!.role !== "guest"}
-        fallback={
-          <button type="button" class="btn" style={{ width: "100%" }} onClick={startLinkKeys}>
+        fallback={<Show when={available() && activeIsThisServer()}>
+          <button type="button" class="btn" style={{ width: "100%" }} onClick={() => setShowLogin(true)}>
             <IconBroadcast size={16} /> {t("auth.signIn")}
           </button>
-        }
+        </Show>}
       >
         <div class="chip" style={{ "line-height": "1.6" }}>
           {t("auth.signedInAs", { handle: session()!.display_name ?? session()!.handle })}
@@ -139,6 +164,28 @@ function AuthArea(): JSX.Element {
           <span class="badge role">{session()!.role}</span>
         </div>
       </Show>
+      <Dialog open={showLogin()} title={t("auth.signIn")} onClose={() => setShowLogin(false)}>
+        <form onSubmit={startLinkKeys}>
+          <div class="field">
+            <label for="linkkeys-identity">{t("auth.identity")}</label>
+            <input
+              id="linkkeys-identity"
+              class="input"
+              required
+              value={identity()}
+              placeholder={t("auth.identityPlaceholder")}
+              onInput={(e) => setIdentity(e.currentTarget.value)}
+            />
+          </div>
+          <Show when={error()}><p class="error">{error()}</p></Show>
+          <div class="dialog-actions">
+            <button type="button" class="btn btn-ghost" onClick={() => setShowLogin(false)}>
+              {t("servers.cancel")}
+            </button>
+            <button type="submit" class="btn btn-primary">{t("auth.signIn")}</button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

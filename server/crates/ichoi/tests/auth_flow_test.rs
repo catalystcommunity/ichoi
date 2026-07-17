@@ -14,6 +14,7 @@ fn bootstrap_creates_admin_and_mints_token() {
             &common::ctx_anon(),
             AuthRequest {
                 linkkeys_assertion: None,
+                linkkeys_exchange_code: None,
                 bootstrap_token: Some("test-admin-token".to_string()),
             },
         )
@@ -32,6 +33,7 @@ fn bootstrap_rejects_wrong_token() {
         &common::ctx_anon(),
         AuthRequest {
             linkkeys_assertion: None,
+            linkkeys_exchange_code: None,
             bootstrap_token: Some("wrong".to_string()),
         },
     );
@@ -48,6 +50,7 @@ fn bootstrap_is_one_shot() {
         &common::ctx_anon(),
         AuthRequest {
             linkkeys_assertion: None,
+            linkkeys_exchange_code: None,
             bootstrap_token: Some("test-admin-token".to_string()),
         },
     )
@@ -59,6 +62,7 @@ fn bootstrap_is_one_shot() {
         &common::ctx_anon(),
         AuthRequest {
             linkkeys_assertion: None,
+            linkkeys_exchange_code: None,
             bootstrap_token: Some("test-admin-token".to_string()),
         },
     );

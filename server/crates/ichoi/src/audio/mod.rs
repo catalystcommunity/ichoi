@@ -17,9 +17,12 @@ pub fn enumerate() -> Vec<AudioOutput> {
     {
         linux::enumerate()
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     {
-        // TODO: cpal/native backend on macOS/Windows, where the framework always exists.
+        native::enumerate()
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
         Vec::new()
     }
 }
@@ -37,6 +40,8 @@ pub fn state_label() -> &'static str {
 pub struct PcmSink {
     #[cfg(target_os = "linux")]
     inner: linux::AlsaSink,
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    inner: native::NativeSink,
     channels: u16,
 }
 
@@ -51,7 +56,14 @@ impl PcmSink {
                 channels,
             })
         }
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        {
+            Ok(PcmSink {
+                inner: native::NativeSink::open(sample_rate, channels)?,
+                channels,
+            })
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
         {
             let _ = (sample_rate, channels);
             anyhow::bail!("PCM output is not implemented on this platform")
@@ -63,11 +75,207 @@ impl PcmSink {
         {
             self.inner.write_s16le(bytes, self.channels)
         }
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        {
+            self.inner.write_s16le(bytes, self.channels)
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
         {
             let _ = bytes;
             anyhow::bail!("PCM output is not implemented on this platform")
         }
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+mod native {
+    use std::collections::{BTreeSet, VecDeque};
+    use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
+
+    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+    use cpal::{SampleFormat, SampleRate, Stream, StreamConfig, SupportedStreamConfig};
+
+    use super::AudioOutput;
+
+    pub fn enumerate() -> Vec<AudioOutput> {
+        let host = cpal::default_host();
+        let Some(device) = host.default_output_device() else {
+            return Vec::new();
+        };
+        let Ok(name) = device.name() else {
+            return Vec::new();
+        };
+        let Ok(configs) = device.supported_output_configs() else {
+            return Vec::new();
+        };
+        let configs: Vec<_> = configs.collect();
+        let channels = configs.iter().map(|c| c.channels()).max().unwrap_or(2);
+        let mut rates = BTreeSet::new();
+        if let Ok(default) = device.default_output_config() {
+            rates.insert(default.sample_rate().0);
+        }
+        for config in &configs {
+            rates.insert(config.min_sample_rate().0);
+            rates.insert(config.max_sample_rate().0);
+        }
+        vec![AudioOutput {
+            os_device_id: "default".to_string(),
+            friendly_name: name,
+            channels,
+            sample_rates: rates.into_iter().collect(),
+            is_default: true,
+        }]
+    }
+
+    pub struct NativeSink {
+        sender: SyncSender<Vec<i16>>,
+        // The stream must stay alive for callbacks to continue.
+        _stream: Stream,
+    }
+
+    impl NativeSink {
+        pub fn open(sample_rate: u32, channels: u16) -> anyhow::Result<Self> {
+            let host = cpal::default_host();
+            let device = host
+                .default_output_device()
+                .ok_or_else(|| anyhow::anyhow!("no default audio output"))?;
+            let supported = select_config(&device, sample_rate, channels)?;
+            let format = supported.sample_format();
+            let config = supported.config();
+            let (sender, receiver) = sync_channel::<Vec<i16>>(8);
+            let err = |e| log::error!("native audio output stream failed: {e}");
+            let stream = match format {
+                SampleFormat::I16 => build_i16(&device, &config, receiver, err)?,
+                SampleFormat::F32 => build_f32(&device, &config, receiver, err)?,
+                SampleFormat::U16 => build_u16(&device, &config, receiver, err)?,
+                other => anyhow::bail!("unsupported native output sample format {other:?}"),
+            };
+            stream.play()?;
+            Ok(Self {
+                sender,
+                _stream: stream,
+            })
+        }
+
+        pub fn write_s16le(&mut self, bytes: &[u8], channels: u16) -> anyhow::Result<u64> {
+            let samples: Vec<i16> = bytes
+                .chunks_exact(2)
+                .map(|b| i16::from_le_bytes([b[0], b[1]]))
+                .collect();
+            let frames = samples.len() as u64 / u64::from(channels.max(1));
+            self.sender
+                .send(samples)
+                .map_err(|_| anyhow::anyhow!("native audio output stream closed"))?;
+            Ok(frames)
+        }
+    }
+
+    fn select_config(
+        device: &cpal::Device,
+        sample_rate: u32,
+        channels: u16,
+    ) -> anyhow::Result<SupportedStreamConfig> {
+        let mut configs = device.supported_output_configs()?;
+        configs
+            .find(|c| {
+                c.channels() == channels
+                    && c.min_sample_rate().0 <= sample_rate
+                    && c.max_sample_rate().0 >= sample_rate
+                    && matches!(
+                        c.sample_format(),
+                        SampleFormat::I16 | SampleFormat::F32 | SampleFormat::U16
+                    )
+            })
+            .map(|c| c.with_sample_rate(SampleRate(sample_rate)))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "default output does not support {sample_rate} Hz with {channels} channels"
+                )
+            })
+    }
+
+    fn refill(queue: &mut VecDeque<i16>, receiver: &Receiver<Vec<i16>>) {
+        if queue.is_empty() {
+            match receiver.try_recv() {
+                Ok(samples) => queue.extend(samples),
+                Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
+            }
+        }
+    }
+
+    fn build_i16<E>(
+        device: &cpal::Device,
+        config: &StreamConfig,
+        receiver: Receiver<Vec<i16>>,
+        err: E,
+    ) -> Result<Stream, cpal::BuildStreamError>
+    where
+        E: FnMut(cpal::StreamError) + Send + 'static,
+    {
+        let mut queue = VecDeque::new();
+        device.build_output_stream(
+            config,
+            move |out: &mut [i16], _| {
+                for sample in out {
+                    refill(&mut queue, &receiver);
+                    *sample = queue.pop_front().unwrap_or(0);
+                }
+            },
+            err,
+            None,
+        )
+    }
+
+    fn build_f32<E>(
+        device: &cpal::Device,
+        config: &StreamConfig,
+        receiver: Receiver<Vec<i16>>,
+        err: E,
+    ) -> Result<Stream, cpal::BuildStreamError>
+    where
+        E: FnMut(cpal::StreamError) + Send + 'static,
+    {
+        let mut queue = VecDeque::new();
+        device.build_output_stream(
+            config,
+            move |out: &mut [f32], _| {
+                for sample in out {
+                    refill(&mut queue, &receiver);
+                    *sample = queue
+                        .pop_front()
+                        .map(|s| f32::from(s) / 32768.0)
+                        .unwrap_or(0.0);
+                }
+            },
+            err,
+            None,
+        )
+    }
+
+    fn build_u16<E>(
+        device: &cpal::Device,
+        config: &StreamConfig,
+        receiver: Receiver<Vec<i16>>,
+        err: E,
+    ) -> Result<Stream, cpal::BuildStreamError>
+    where
+        E: FnMut(cpal::StreamError) + Send + 'static,
+    {
+        let mut queue = VecDeque::new();
+        device.build_output_stream(
+            config,
+            move |out: &mut [u16], _| {
+                for sample in out {
+                    refill(&mut queue, &receiver);
+                    *sample = queue
+                        .pop_front()
+                        .map(|s| (i32::from(s) + 32768) as u16)
+                        .unwrap_or(32768);
+                }
+            },
+            err,
+            None,
+        )
     }
 }
 

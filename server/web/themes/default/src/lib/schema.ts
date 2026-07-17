@@ -37,6 +37,7 @@ export interface ServiceError {
 
 export interface AuthRequest {
   linkkeys_assertion?: Uint8Array;
+  linkkeys_exchange_code?: string;
   bootstrap_token?: string;
 }
 

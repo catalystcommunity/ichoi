@@ -40,7 +40,9 @@
     "signOut": "Sign out",
     "signedInAs": "Signed in as {{handle}}",
     "role": "Role: {{role}}",
-    "linkkeysTodo": "LinkKeys sign-in is not wired up yet.",
+    "identity": "LinkKeys identity",
+    "identityPlaceholder": "handle@example.com",
+    "loginFailed": "LinkKeys sign-in failed.",
     "loginless": "Browsing as a guest on the local network."
   },
   "library": {

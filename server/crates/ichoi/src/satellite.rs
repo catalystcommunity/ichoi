@@ -16,7 +16,7 @@ use libichoi::csil::types::{
     NodeDirective, NodeReport, PlayerStatus, RegisterNodeRequest, StreamPref, TranscodeCodec,
 };
 use libichoi::csil_channel::{decode_media_event, decode_node_directive, encode_media_control};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -35,7 +35,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("satellite role requires ICHOI_NODE_TOKEN"))?;
 
     loop {
-        match run_once(&core, &node_token).await {
+        match run_once(&core, &config.core_keys, &node_token).await {
             Ok(()) => log::warn!("satellite connection closed; reconnecting"),
             Err(e) => log::warn!("satellite connection failed: {e}; reconnecting"),
         }
@@ -43,9 +43,13 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     }
 }
 
-async fn run_once(core_addr: &str, node_token: &str) -> anyhow::Result<()> {
-    let stream = TcpStream::connect(core_addr).await?;
-    let (mut read_half, mut write_half) = stream.into_split();
+async fn run_once(core_addr: &str, core_keys: &[String], node_token: &str) -> anyhow::Result<()> {
+    let tcp = TcpStream::connect(core_addr).await?;
+    let connector = tokio_rustls::TlsConnector::from(crate::tls::client_config(core_keys)?);
+    let stream = connector
+        .connect(crate::tls::logical_server_name(), tcp)
+        .await?;
+    let (mut read_half, mut write_half) = tokio::io::split(stream);
 
     write_frame(&mut write_half, &hello_frame(node_token)).await?;
     let first = read_frame(&mut read_half)
@@ -181,7 +185,10 @@ fn report_frame(player_id: &str, status: PlayerStatus, position_ms: Option<u64>)
     event_frame(Some("node"), "session", None, encode_node_report(&report))
 }
 
-async fn read_frame(read: &mut tokio::net::tcp::OwnedReadHalf) -> anyhow::Result<Option<Vec<u8>>> {
+async fn read_frame<R>(read: &mut R) -> anyhow::Result<Option<Vec<u8>>>
+where
+    R: AsyncRead + Unpin,
+{
     let mut len = [0u8; 4];
     match read.read_exact(&mut len).await {
         Ok(_) => {}
@@ -197,10 +204,10 @@ async fn read_frame(read: &mut tokio::net::tcp::OwnedReadHalf) -> anyhow::Result
     Ok(Some(buf))
 }
 
-async fn write_frame(
-    write: &mut tokio::net::tcp::OwnedWriteHalf,
-    frame: &[u8],
-) -> anyhow::Result<()> {
+async fn write_frame<W>(write: &mut W, frame: &[u8]) -> anyhow::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
     let len = u32::try_from(frame.len())?;
     write.write_all(&len.to_be_bytes()).await?;
     write.write_all(frame).await?;

@@ -1,6 +1,8 @@
 //! Command-line interface. `serve` is one subcommand among the operational tools.
 
-use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+
+use clap::{Args, Parser, Subcommand};
 
 use crate::app;
 use crate::config::Config;
@@ -37,20 +39,150 @@ enum Commands {
     },
     /// Print the resolved configuration and exit.
     Config,
+    /// Print the core's pinned CSIL/TLS fingerprint, generating its identity if needed.
+    CoreFingerprint,
+    /// Install this binary as a native satellite service.
+    Install(InstallArgs),
+    /// Remove a native satellite service installation.
+    Uninstall(UninstallArgs),
+    /// Ask the native service manager for satellite status.
+    Status(StatusArgs),
+    /// Run Ichoi using an explicit configuration path (used by user service managers).
+    #[command(hide = true)]
+    ServeWithConfig { config: PathBuf },
+    /// Enter the Windows Service Control Manager dispatcher.
+    #[command(hide = true)]
+    ServiceRun { config: PathBuf },
     /// Print version and exit.
     Version,
+}
+
+#[derive(Args)]
+struct InstallArgs {
+    /// Install an outbound satellite audio node.
+    #[arg(value_name = "MODE", default_value = "satellite", value_parser = ["satellite"])]
+    mode: String,
+    /// Core socket address, such as 192.168.1.20:4043.
+    #[arg(long)]
+    core: String,
+    /// Pinned sha256 core certificate fingerprint; repeat during key rotation.
+    #[arg(long = "core-key", required = true)]
+    core_keys: Vec<String>,
+    /// Read the node token from this file.
+    #[arg(long, conflicts_with = "node_token_stdin")]
+    node_token_file: Option<PathBuf>,
+    /// Read the node token from stdin.
+    #[arg(long, conflicts_with = "node_token_file")]
+    node_token_stdin: bool,
+    /// Install for the whole machine or the current user. Defaults to system on Linux and user elsewhere.
+    #[arg(long, value_enum)]
+    scope: Option<crate::install::Scope>,
+    /// Override the platform-native configuration path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Override the directory in which the executable is installed.
+    #[arg(long)]
+    install_dir: Option<PathBuf>,
+    /// Do not register the service for future logins/boots.
+    #[arg(long)]
+    no_enable: bool,
+    /// Install and enable without starting it now.
+    #[arg(long)]
+    no_start: bool,
+    /// Replace an existing binary, configuration, and service definition.
+    #[arg(long)]
+    replace: bool,
+    /// Print the complete installation plan without changing the machine.
+    #[arg(long)]
+    dry_run: bool,
+}
+
+#[derive(Args)]
+struct UninstallArgs {
+    /// Scope used when the satellite was installed.
+    #[arg(long, value_enum)]
+    scope: Option<crate::install::Scope>,
+    /// Keep the satellite configuration and node credential.
+    #[arg(long)]
+    keep_config: bool,
+    /// Keep the installed executable.
+    #[arg(long)]
+    keep_binary: bool,
+    /// Override the installed configuration path.
+    #[arg(long)]
+    config: Option<PathBuf>,
+    /// Override the installed executable directory.
+    #[arg(long)]
+    install_dir: Option<PathBuf>,
+    /// Print the removal plan without changing the machine.
+    #[arg(long)]
+    dry_run: bool,
+}
+
+#[derive(Args)]
+struct StatusArgs {
+    /// Scope used when the satellite was installed.
+    #[arg(long, value_enum)]
+    scope: Option<crate::install::Scope>,
 }
 
 /// Entry point invoked by `main`.
 pub fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    match cli.command {
+        Commands::Install(args) => {
+            debug_assert_eq!(args.mode, "satellite");
+            let node_token = crate::install::read_node_token(
+                args.node_token_file.as_deref(),
+                args.node_token_stdin,
+            )?;
+            let options = crate::install::InstallOptions {
+                core_addr: args.core,
+                core_keys: args.core_keys,
+                node_token,
+                scope: args.scope,
+                config_path: args.config,
+                install_dir: args.install_dir,
+                start: !args.no_start,
+                enable: !args.no_enable,
+                replace: args.replace,
+                dry_run: args.dry_run,
+            };
+            let plan = crate::install::plan(&options)?;
+            print!("{}", crate::install::describe(&plan));
+            if !options.dry_run {
+                crate::install::apply(&plan, options.replace)?;
+                println!("Ichoi satellite installed");
+            }
+            Ok(())
+        }
+        Commands::Uninstall(args) => crate::install::uninstall(
+            args.scope,
+            args.config,
+            args.install_dir,
+            args.keep_config,
+            args.keep_binary,
+            args.dry_run,
+        ),
+        Commands::Status(args) => crate::install::status(args.scope),
+        Commands::ServeWithConfig { config } => crate::install::serve_with_config(&config),
+        Commands::ServiceRun { config } => crate::install::run_windows_service(config),
+        Commands::Version => {
+            println!("ichoi {}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
+        command => run_configured(command),
+    }
+}
+
+fn run_configured(command: Commands) -> anyhow::Result<()> {
     let config = Config::load()?;
     // Quiet lofty's per-file VBR/tag warnings (noise on messy libraries) unless explicitly
     // asked for; keep the user's level for everything else.
     let filter = format!("{},lofty=error", config.log);
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(filter)).init();
 
-    match cli.command {
+    match command {
         Commands::Serve => {
             let runtime = tokio::runtime::Runtime::new()?;
             runtime.block_on(app::serve(config))
@@ -103,9 +235,16 @@ pub fn run() -> anyhow::Result<()> {
             println!("transcode:   {}", config.transcode_codec);
             Ok(())
         }
-        Commands::Version => {
-            println!("ichoi {}", env!("CARGO_PKG_VERSION"));
+        Commands::CoreFingerprint => {
+            let identity = crate::tls::core_identity(&config)?;
+            println!("{}", identity.fingerprint);
             Ok(())
         }
+        Commands::Install(_)
+        | Commands::Uninstall(_)
+        | Commands::Status(_)
+        | Commands::ServeWithConfig { .. }
+        | Commands::ServiceRun { .. }
+        | Commands::Version => unreachable!("handled before configuration loading"),
     }
 }

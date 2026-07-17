@@ -11,7 +11,7 @@ use libichoi::csil::types::{
 };
 use libichoi::csil_channel::encode_media_event;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
@@ -39,23 +39,39 @@ struct WirePush {
 }
 
 pub async fn serve_tcp(app: App, addr: String) -> anyhow::Result<()> {
+    let identity = crate::tls::core_identity(&app.config)?;
+    log::info!(
+        "CSIL/TLS core fingerprint {} (certificate {})",
+        identity.fingerprint,
+        identity.cert_path.display()
+    );
+    let acceptor = tokio_rustls::TlsAcceptor::from(identity.server_config);
     let listener = TcpListener::bind(&addr).await?;
-    log::info!("CSIL/TCP listening on {addr}");
+    log::info!("CSIL/TLS listening on {addr}");
     loop {
         let (stream, _peer) = listener.accept().await?;
         let app = app.clone();
+        let acceptor = acceptor.clone();
         tokio::spawn(async move {
-            if let Err(e) = handle_conn(stream, app).await {
-                log::debug!("tcp connection closed: {e}");
+            let result = async {
+                let stream = acceptor.accept(stream).await?;
+                handle_conn(stream, app).await
+            }
+            .await;
+            if let Err(e) = result {
+                log::debug!("TLS connection closed: {e}");
             }
         });
     }
 }
 
-async fn handle_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::Result<()> {
-    let mut first = [0u8; 1];
-    let n = stream.peek(&mut first).await?;
-    if n == 0 {
+async fn handle_conn<S>(stream: S, app: App) -> anyhow::Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let mut stream = BufReader::new(stream);
+    let first = stream.fill_buf().await?;
+    if first.is_empty() {
         return Ok(());
     }
     if first[0] == b'{' {
@@ -65,8 +81,11 @@ async fn handle_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::Result<
     }
 }
 
-async fn handle_binary_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::Result<()> {
-    let (mut read_half, mut write_half) = stream.into_split();
+async fn handle_binary_conn<S>(stream: S, app: App) -> anyhow::Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (mut read_half, mut write_half) = tokio::io::split(stream);
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let (node_tx, mut node_rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let (in_tx, mut in_rx) = mpsc::unbounded_channel::<anyhow::Result<Vec<u8>>>();
@@ -136,7 +155,10 @@ async fn handle_binary_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::
     Ok(())
 }
 
-async fn read_frame(read: &mut tokio::net::tcp::OwnedReadHalf) -> anyhow::Result<Option<Vec<u8>>> {
+async fn read_frame<R>(read: &mut R) -> anyhow::Result<Option<Vec<u8>>>
+where
+    R: AsyncRead + Unpin,
+{
     let mut len = [0u8; 4];
     match read.read_exact(&mut len).await {
         Ok(_) => {}
@@ -152,10 +174,10 @@ async fn read_frame(read: &mut tokio::net::tcp::OwnedReadHalf) -> anyhow::Result
     Ok(Some(buf))
 }
 
-async fn write_frame(
-    write: &mut tokio::net::tcp::OwnedWriteHalf,
-    frame: &[u8],
-) -> anyhow::Result<()> {
+async fn write_frame<W>(write: &mut W, frame: &[u8]) -> anyhow::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
     let len = u32::try_from(frame.len())?;
     write.write_all(&len.to_be_bytes()).await?;
     write.write_all(frame).await?;
@@ -280,8 +302,11 @@ fn media_frame(event: &MediaEvent) -> Vec<u8> {
     })
 }
 
-async fn handle_json_conn(stream: tokio::net::TcpStream, app: App) -> anyhow::Result<()> {
-    let (read_half, mut write_half) = stream.into_split();
+async fn handle_json_conn<S>(stream: S, app: App) -> anyhow::Result<()>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    let (read_half, mut write_half) = tokio::io::split(stream);
     let mut lines = BufReader::new(read_half).lines();
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let conn_id = TCP_CONN_ID.fetch_add(1, Ordering::Relaxed);
