@@ -501,6 +501,19 @@ fun sessionInfoFromCborValue(cbor: CborValue): SessionInfo {
 /** Decode CSIL CBOR bytes into a SessionInfo. */
 fun sessionInfoFromCbor(bytes: ByteArray): SessionInfo = sessionInfoFromCborValue(CsilCbor.decode(bytes))
 
+/** Encode a Library enum as its bare literal value. */
+fun Library.toCborValue(): CborValue = when (this) {
+    Library.Music -> CborValue.CText("music")
+    Library.Audiobook -> CborValue.CText("audiobook")
+}
+
+/** Decode a bare literal value into a Library enum. */
+fun libraryFromCborValue(cbor: CborValue): Library = when (CsilCbor.asText(cbor)) {
+    "music" -> Library.Music
+    "audiobook" -> Library.Audiobook
+    else -> throw CborError("unknown Library value")
+}
+
 /** The CBOR value tree for a Track (deep, canonical key order). */
 fun Track.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
@@ -508,6 +521,7 @@ fun Track.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("codec") to this.codec.toCborValue())
     csilEntries.add(CborValue.CText("title") to CborValue.CText(this.title))
     this.discNo?.let { csilV -> csilEntries.add(CborValue.CText("disc_no") to CborValue.CUint(csilV)) }
+    csilEntries.add(CborValue.CText("library") to this.library.toCborValue())
     this.albumId?.let { csilV -> csilEntries.add(CborValue.CText("album_id") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("channels") to CborValue.CUint(this.channels))
     this.trackNo?.let { csilV -> csilEntries.add(CborValue.CText("track_no") to CborValue.CUint(csilV)) }
@@ -527,6 +541,7 @@ fun Track.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a Track from a decoded CBOR value tree. */
 fun trackFromCborValue(cbor: CborValue): Track {
     val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val library = libraryFromCborValue(CsilCbor.require(cbor, "library"))
     val title = CsilCbor.asText(CsilCbor.require(cbor, "title"))
     val artistId = CsilCbor.mapGet(cbor, "artist_id")?.let { csilV -> CsilCbor.asText(csilV) }
     val albumId = CsilCbor.mapGet(cbor, "album_id")?.let { csilV -> CsilCbor.asText(csilV) }
@@ -540,7 +555,7 @@ fun trackFromCborValue(cbor: CborValue): Track {
     val bitDepth = CsilCbor.mapGet(cbor, "bit_depth")?.let { csilV -> CsilCbor.asULong(csilV) }
     val rootRelativePath = CsilCbor.asText(CsilCbor.require(cbor, "root_relative_path"))
     val contentHash = CsilCbor.mapGet(cbor, "content_hash")?.let { csilV -> CsilCbor.asText(csilV) }
-    return Track(id = id, title = title, artistId = artistId, albumId = albumId, trackNo = trackNo, discNo = discNo, durationMs = durationMs, codec = codec, bitrateKbps = bitrateKbps, sampleRate = sampleRate, channels = channels, bitDepth = bitDepth, rootRelativePath = rootRelativePath, contentHash = contentHash)
+    return Track(id = id, library = library, title = title, artistId = artistId, albumId = albumId, trackNo = trackNo, discNo = discNo, durationMs = durationMs, codec = codec, bitrateKbps = bitrateKbps, sampleRate = sampleRate, channels = channels, bitDepth = bitDepth, rootRelativePath = rootRelativePath, contentHash = contentHash)
 }
 
 /** Decode CSIL CBOR bytes into a Track. */
@@ -625,19 +640,6 @@ fun playlistFromCborValue(cbor: CborValue): Playlist {
 /** Decode CSIL CBOR bytes into a Playlist. */
 fun playlistFromCbor(bytes: ByteArray): Playlist = playlistFromCborValue(CsilCbor.decode(bytes))
 
-/** Encode a Library enum as its bare literal value. */
-fun Library.toCborValue(): CborValue = when (this) {
-    Library.Music -> CborValue.CText("music")
-    Library.Audiobook -> CborValue.CText("audiobook")
-}
-
-/** Decode a bare literal value into a Library enum. */
-fun libraryFromCborValue(cbor: CborValue): Library = when (CsilCbor.asText(cbor)) {
-    "music" -> Library.Music
-    "audiobook" -> Library.Audiobook
-    else -> throw CborError("unknown Library value")
-}
-
 /** The CBOR value tree for a BrowseRequest (deep, canonical key order). */
 fun BrowseRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
@@ -660,6 +662,44 @@ fun browseRequestFromCborValue(cbor: CborValue): BrowseRequest {
 
 /** Decode CSIL CBOR bytes into a BrowseRequest. */
 fun browseRequestFromCbor(bytes: ByteArray): BrowseRequest = browseRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a LibraryInfo (deep, canonical key order). */
+fun LibraryInfo.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("kind") to this.kind.toCborValue())
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a LibraryInfo to canonical CSIL CBOR bytes. */
+fun LibraryInfo.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a LibraryInfo from a decoded CBOR value tree. */
+fun libraryInfoFromCborValue(cbor: CborValue): LibraryInfo {
+    val kind = libraryFromCborValue(CsilCbor.require(cbor, "kind"))
+    return LibraryInfo(kind = kind)
+}
+
+/** Decode CSIL CBOR bytes into a LibraryInfo. */
+fun libraryInfoFromCbor(bytes: ByteArray): LibraryInfo = libraryInfoFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a LibrariesResponse (deep, canonical key order). */
+fun LibrariesResponse.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("libraries") to CborValue.CArray((this.libraries).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a LibrariesResponse to canonical CSIL CBOR bytes. */
+fun LibrariesResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a LibrariesResponse from a decoded CBOR value tree. */
+fun librariesResponseFromCborValue(cbor: CborValue): LibrariesResponse {
+    val libraries = CsilCbor.asArray(CsilCbor.require(cbor, "libraries")).map { csilE -> libraryInfoFromCborValue(csilE) }
+    return LibrariesResponse(libraries = libraries)
+}
+
+/** Decode CSIL CBOR bytes into a LibrariesResponse. */
+fun librariesResponseFromCbor(bytes: ByteArray): LibrariesResponse = librariesResponseFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a AlbumsResponse (deep, canonical key order). */
 fun AlbumsResponse.toCborValue(): CborValue {
@@ -788,6 +828,7 @@ fun SearchRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     this.limit?.let { csilV -> csilEntries.add(CborValue.CText("limit") to CborValue.CUint(csilV)) }
     csilEntries.add(CborValue.CText("query") to CborValue.CText(this.query))
+    this.library?.let { csilV -> csilEntries.add(CborValue.CText("library") to csilV.toCborValue()) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -797,8 +838,9 @@ fun SearchRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a SearchRequest from a decoded CBOR value tree. */
 fun searchRequestFromCborValue(cbor: CborValue): SearchRequest {
     val query = CsilCbor.asText(CsilCbor.require(cbor, "query"))
+    val library = CsilCbor.mapGet(cbor, "library")?.let { csilV -> libraryFromCborValue(csilV) }
     val limit = CsilCbor.mapGet(cbor, "limit")?.let { csilV -> CsilCbor.asULong(csilV) }
-    return SearchRequest(query = query, limit = limit)
+    return SearchRequest(query = query, library = library, limit = limit)
 }
 
 /** Decode CSIL CBOR bytes into a SearchRequest. */
@@ -826,6 +868,92 @@ fun searchResponseFromCborValue(cbor: CborValue): SearchResponse {
 
 /** Decode CSIL CBOR bytes into a SearchResponse. */
 fun searchResponseFromCbor(bytes: ByteArray): SearchResponse = searchResponseFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a AudiobookProgress (deep, canonical key order). */
+fun AudiobookProgress.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
+    csilEntries.add(CborValue.CText("completed") to CborValue.CBool(this.completed))
+    csilEntries.add(CborValue.CText("updated_at") to CborValue.CTag(0uL, CborValue.CText((this.updatedAt).toString())))
+    csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(this.positionMs))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a AudiobookProgress to canonical CSIL CBOR bytes. */
+fun AudiobookProgress.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a AudiobookProgress from a decoded CBOR value tree. */
+fun audiobookProgressFromCborValue(cbor: CborValue): AudiobookProgress {
+    val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
+    val positionMs = CsilCbor.asULong(CsilCbor.require(cbor, "position_ms"))
+    val completed = CsilCbor.asBoolean(CsilCbor.require(cbor, "completed"))
+    val updatedAt = java.time.Instant.parse(CsilCbor.asTaggedText(CsilCbor.require(cbor, "updated_at"), 0uL))
+    return AudiobookProgress(trackId = trackId, positionMs = positionMs, completed = completed, updatedAt = updatedAt)
+}
+
+/** Decode CSIL CBOR bytes into a AudiobookProgress. */
+fun audiobookProgressFromCbor(bytes: ByteArray): AudiobookProgress = audiobookProgressFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a AudiobookProgressRequest (deep, canonical key order). */
+fun AudiobookProgressRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("track_ids") to CborValue.CArray((this.trackIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a AudiobookProgressRequest to canonical CSIL CBOR bytes. */
+fun AudiobookProgressRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a AudiobookProgressRequest from a decoded CBOR value tree. */
+fun audiobookProgressRequestFromCborValue(cbor: CborValue): AudiobookProgressRequest {
+    val trackIds = CsilCbor.asArray(CsilCbor.require(cbor, "track_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return AudiobookProgressRequest(trackIds = trackIds)
+}
+
+/** Decode CSIL CBOR bytes into a AudiobookProgressRequest. */
+fun audiobookProgressRequestFromCbor(bytes: ByteArray): AudiobookProgressRequest = audiobookProgressRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a AudiobookProgressResponse (deep, canonical key order). */
+fun AudiobookProgressResponse.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("progress") to CborValue.CArray((this.progress).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a AudiobookProgressResponse to canonical CSIL CBOR bytes. */
+fun AudiobookProgressResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a AudiobookProgressResponse from a decoded CBOR value tree. */
+fun audiobookProgressResponseFromCborValue(cbor: CborValue): AudiobookProgressResponse {
+    val progress = CsilCbor.asArray(CsilCbor.require(cbor, "progress")).map { csilE -> audiobookProgressFromCborValue(csilE) }
+    return AudiobookProgressResponse(progress = progress)
+}
+
+/** Decode CSIL CBOR bytes into a AudiobookProgressResponse. */
+fun audiobookProgressResponseFromCbor(bytes: ByteArray): AudiobookProgressResponse = audiobookProgressResponseFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a UpdateAudiobookProgressRequest (deep, canonical key order). */
+fun UpdateAudiobookProgressRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
+    csilEntries.add(CborValue.CText("completed") to CborValue.CBool(this.completed))
+    csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(this.positionMs))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a UpdateAudiobookProgressRequest to canonical CSIL CBOR bytes. */
+fun UpdateAudiobookProgressRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a UpdateAudiobookProgressRequest from a decoded CBOR value tree. */
+fun updateAudiobookProgressRequestFromCborValue(cbor: CborValue): UpdateAudiobookProgressRequest {
+    val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
+    val positionMs = CsilCbor.asULong(CsilCbor.require(cbor, "position_ms"))
+    val completed = CsilCbor.asBoolean(CsilCbor.require(cbor, "completed"))
+    return UpdateAudiobookProgressRequest(trackId = trackId, positionMs = positionMs, completed = completed)
+}
+
+/** Decode CSIL CBOR bytes into a UpdateAudiobookProgressRequest. */
+fun updateAudiobookProgressRequestFromCbor(bytes: ByteArray): UpdateAudiobookProgressRequest = updateAudiobookProgressRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a PlaylistsResponse (deep, canonical key order). */
 fun PlaylistsResponse.toCborValue(): CborValue {
@@ -975,6 +1103,7 @@ fun QueueItem.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     this.title?.let { csilV -> csilEntries.add(CborValue.CText("title") to CborValue.CText(csilV)) }
     this.artist?.let { csilV -> csilEntries.add(CborValue.CText("artist") to CborValue.CText(csilV)) }
+    this.library?.let { csilV -> csilEntries.add(CborValue.CText("library") to csilV.toCborValue()) }
     csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
     this.durationMs?.let { csilV -> csilEntries.add(CborValue.CText("duration_ms") to CborValue.CUint(csilV)) }
     return CborValue.CMap(csilEntries)
@@ -986,10 +1115,11 @@ fun QueueItem.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a QueueItem from a decoded CBOR value tree. */
 fun queueItemFromCborValue(cbor: CborValue): QueueItem {
     val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
+    val library = CsilCbor.mapGet(cbor, "library")?.let { csilV -> libraryFromCborValue(csilV) }
     val title = CsilCbor.mapGet(cbor, "title")?.let { csilV -> CsilCbor.asText(csilV) }
     val artist = CsilCbor.mapGet(cbor, "artist")?.let { csilV -> CsilCbor.asText(csilV) }
     val durationMs = CsilCbor.mapGet(cbor, "duration_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
-    return QueueItem(trackId = trackId, title = title, artist = artist, durationMs = durationMs)
+    return QueueItem(trackId = trackId, library = library, title = title, artist = artist, durationMs = durationMs)
 }
 
 /** Decode CSIL CBOR bytes into a QueueItem. */
@@ -2288,6 +2418,8 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is Artist -> value.toCborValue()
     is Playlist -> value.toCborValue()
     is BrowseRequest -> value.toCborValue()
+    is LibraryInfo -> value.toCborValue()
+    is LibrariesResponse -> value.toCborValue()
     is AlbumsResponse -> value.toCborValue()
     is ArtistsResponse -> value.toCborValue()
     is AlbumRequest -> value.toCborValue()
@@ -2296,6 +2428,10 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is ArtistDetail -> value.toCborValue()
     is SearchRequest -> value.toCborValue()
     is SearchResponse -> value.toCborValue()
+    is AudiobookProgress -> value.toCborValue()
+    is AudiobookProgressRequest -> value.toCborValue()
+    is AudiobookProgressResponse -> value.toCborValue()
+    is UpdateAudiobookProgressRequest -> value.toCborValue()
     is PlaylistsResponse -> value.toCborValue()
     is PlaylistRequest -> value.toCborValue()
     is PlaylistDetail -> value.toCborValue()
@@ -2374,6 +2510,8 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     Artist::class -> artistFromCborValue(cbor)
     Playlist::class -> playlistFromCborValue(cbor)
     BrowseRequest::class -> browseRequestFromCborValue(cbor)
+    LibraryInfo::class -> libraryInfoFromCborValue(cbor)
+    LibrariesResponse::class -> librariesResponseFromCborValue(cbor)
     AlbumsResponse::class -> albumsResponseFromCborValue(cbor)
     ArtistsResponse::class -> artistsResponseFromCborValue(cbor)
     AlbumRequest::class -> albumRequestFromCborValue(cbor)
@@ -2382,6 +2520,10 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     ArtistDetail::class -> artistDetailFromCborValue(cbor)
     SearchRequest::class -> searchRequestFromCborValue(cbor)
     SearchResponse::class -> searchResponseFromCborValue(cbor)
+    AudiobookProgress::class -> audiobookProgressFromCborValue(cbor)
+    AudiobookProgressRequest::class -> audiobookProgressRequestFromCborValue(cbor)
+    AudiobookProgressResponse::class -> audiobookProgressResponseFromCborValue(cbor)
+    UpdateAudiobookProgressRequest::class -> updateAudiobookProgressRequestFromCborValue(cbor)
     PlaylistsResponse::class -> playlistsResponseFromCborValue(cbor)
     PlaylistRequest::class -> playlistRequestFromCborValue(cbor)
     PlaylistDetail::class -> playlistDetailFromCborValue(cbor)

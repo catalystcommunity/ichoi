@@ -41,6 +41,8 @@ public sealed class SessionClient(ICsilTransport transport)
 /// (de)serialization via the generated codec; the transport only moves bytes.</summary>
 public sealed class LibraryClient(ICsilTransport transport)
 {
+    public LibrariesResponse ListLibraries(Page page) =>
+        Codec.Decode<LibrariesResponse>(transport.Call("LibraryService", "list-libraries", Codec.Encode(page)));
     public AlbumsResponse ListAlbums(BrowseRequest browseRequest) =>
         Codec.Decode<AlbumsResponse>(transport.Call("LibraryService", "list-albums", Codec.Encode(browseRequest)));
     public ArtistsResponse ListArtists(BrowseRequest browseRequest) =>
@@ -57,6 +59,10 @@ public sealed class LibraryClient(ICsilTransport transport)
         Codec.Decode<PlaylistDetail>(transport.Call("LibraryService", "get-playlist", Codec.Encode(playlistRequest)));
     public CoverArt GetCoverArt(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
+    public AudiobookProgressResponse GetAudiobookProgress(AudiobookProgressRequest audiobookProgressRequest) =>
+        Codec.Decode<AudiobookProgressResponse>(transport.Call("LibraryService", "get-audiobook-progress", Codec.Encode(audiobookProgressRequest)));
+    public AudiobookProgress UpdateAudiobookProgress(UpdateAudiobookProgressRequest updateAudiobookProgressRequest) =>
+        Codec.Decode<AudiobookProgress>(transport.Call("LibraryService", "update-audiobook-progress", Codec.Encode(updateAudiobookProgressRequest)));
 }
 
 /// <summary>Typed RPC client for the PlayerService service. The client owns

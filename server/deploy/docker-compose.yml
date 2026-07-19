@@ -19,6 +19,13 @@ services:
       # Required for a core: where the library (and, by default, the SQLite DB)
       # lives inside the container.
       ICHOI_MUSIC_DIR: /music
+      # Optional. When this path is below /music, those files are indexed only as
+      # audiobooks and are excluded from music artists/albums.
+      # ICHOI_AUDIOBOOK_DIR: /music/audiobooks
+      # Disc-like subfolders (CD1, Disc Two, Bonus Disc) are combined into their
+      # parent album by default. Both settings are optional.
+      # ICHOI_ALBUM_SUBFOLDER_FLAT: "true"
+      # ICHOI_ALBUM_SUBFOLDER_WORDS: "cd,disc,disk,bonus disc"
       # Writable persistent state: SQLite, DNS-less RP keys, and CSIL/TLS identity.
       ICHOI_DB_DIR: /data
       # Fail startup if /music is missing or empty. This catches the common
@@ -37,6 +44,9 @@ services:
       # ICHOI_LINKKEYS_TRUSTED_IDENTITIES: "family.example,alice@friends.example"
     volumes:
       - ./music:/music:ro
+      # For an audiobook collection outside ./music, uncomment this mount and
+      # set ICHOI_AUDIOBOOK_DIR=/audiobooks above.
+      # - ./audiobooks:/audiobooks:ro
       - ./data:/data
     # :4043 must be reachable directly by native clients and satellites.
     ports:

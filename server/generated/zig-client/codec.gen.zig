@@ -655,8 +655,26 @@ fn dec_SessionInfo(alloc: std.mem.Allocator, m: Value, out: *types.SessionInfo) 
     }
 }
 
+fn enc_Library(out: *std.ArrayList(u8), v: *const types.Library) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_Library(alloc: std.mem.Allocator, src: Value, out: *types.Library) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "music")) {
+        out.* = .music;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "audiobook")) {
+        out.* = .audiobook;
+        return;
+    }
+    return error.WrongType;
+}
+
 fn enc_Track(out: *std.ArrayList(u8), v: *const types.Track) CodecError!void {
-    var csil_n: usize = 7;
+    var csil_n: usize = 8;
     if (v.disc_no != null) csil_n += 1;
     if (v.album_id != null) csil_n += 1;
     if (v.track_no != null) csil_n += 1;
@@ -675,6 +693,8 @@ fn enc_Track(out: *std.ArrayList(u8), v: *const types.Track) CodecError!void {
         try w_text(out, "disc_no");
         try w_uint(out, csil_x);
     }
+    try w_text(out, "library");
+    try enc_Library(out, &(v.library));
     if (v.album_id) |csil_x| {
         try w_text(out, "album_id");
         try w_text(out, csil_x);
@@ -729,6 +749,10 @@ fn dec_Track(alloc: std.mem.Allocator, m: Value, out: *types.Track) CodecError!v
         } else {
             out.disc_no = null;
         }
+    }
+    {
+        const csil_fv = try req(m, "library");
+        try dec_Library(alloc, csil_fv, &(out.library));
     }
     {
         if (mget(m, "album_id")) |csil_fv| {
@@ -921,24 +945,6 @@ fn dec_Playlist(alloc: std.mem.Allocator, m: Value, out: *types.Playlist) CodecE
     }
 }
 
-fn enc_Library(out: *std.ArrayList(u8), v: *const types.Library) CodecError!void {
-    try w_text(out, v.wire_name());
-}
-
-fn dec_Library(alloc: std.mem.Allocator, src: Value, out: *types.Library) CodecError!void {
-    _ = alloc;
-    const csil_s = try as_text(src);
-    if (std.mem.eql(u8, csil_s, "music")) {
-        out.* = .music;
-        return;
-    }
-    if (std.mem.eql(u8, csil_s, "audiobook")) {
-        out.* = .audiobook;
-        return;
-    }
-    return error.WrongType;
-}
-
 fn enc_BrowseRequest(out: *std.ArrayList(u8), v: *const types.BrowseRequest) CodecError!void {
     var csil_n: usize = 0;
     if (v.limit != null) csil_n += 1;
@@ -982,6 +988,41 @@ fn dec_BrowseRequest(alloc: std.mem.Allocator, m: Value, out: *types.BrowseReque
             out.library = csil_tmp;
         } else {
             out.library = null;
+        }
+    }
+}
+
+fn enc_LibraryInfo(out: *std.ArrayList(u8), v: *const types.LibraryInfo) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "kind");
+    try enc_Library(out, &(v.kind));
+}
+
+fn dec_LibraryInfo(alloc: std.mem.Allocator, m: Value, out: *types.LibraryInfo) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "kind");
+        try dec_Library(alloc, csil_fv, &(out.kind));
+    }
+}
+
+fn enc_LibrariesResponse(out: *std.ArrayList(u8), v: *const types.LibrariesResponse) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "libraries");
+    try w_array_head(out, v.libraries.len);
+    for (v.libraries) |csil_it| {
+        try enc_LibraryInfo(out, &(csil_it));
+    }
+}
+
+fn dec_LibrariesResponse(alloc: std.mem.Allocator, m: Value, out: *types.LibrariesResponse) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "libraries");
+        if (csil_fv != .array) return error.WrongType;
+        out.libraries = try alloc.alloc(types.LibraryInfo, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_LibraryInfo(alloc, csil_it, &(out.libraries[csil_i]));
         }
     }
 }
@@ -1127,6 +1168,7 @@ fn dec_ArtistDetail(alloc: std.mem.Allocator, m: Value, out: *types.ArtistDetail
 fn enc_SearchRequest(out: *std.ArrayList(u8), v: *const types.SearchRequest) CodecError!void {
     var csil_n: usize = 1;
     if (v.limit != null) csil_n += 1;
+    if (v.library != null) csil_n += 1;
     try w_map_head(out, csil_n);
     if (v.limit) |csil_x| {
         try w_text(out, "limit");
@@ -1134,10 +1176,13 @@ fn enc_SearchRequest(out: *std.ArrayList(u8), v: *const types.SearchRequest) Cod
     }
     try w_text(out, "query");
     try w_text(out, v.query);
+    if (v.library) |csil_x| {
+        try w_text(out, "library");
+        try enc_Library(out, &(csil_x));
+    }
 }
 
 fn dec_SearchRequest(alloc: std.mem.Allocator, m: Value, out: *types.SearchRequest) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
     {
         if (mget(m, "limit")) |csil_fv| {
@@ -1149,6 +1194,15 @@ fn dec_SearchRequest(alloc: std.mem.Allocator, m: Value, out: *types.SearchReque
     {
         const csil_fv = try req(m, "query");
         out.query = try as_text(csil_fv);
+    }
+    {
+        if (mget(m, "library")) |csil_fv| {
+            var csil_tmp: types.Library = undefined;
+            try dec_Library(alloc, csil_fv, &csil_tmp);
+            out.library = csil_tmp;
+        } else {
+            out.library = null;
+        }
     }
 }
 
@@ -1196,6 +1250,109 @@ fn dec_SearchResponse(alloc: std.mem.Allocator, m: Value, out: *types.SearchResp
         for (csil_fv.array, 0..) |csil_it, csil_i| {
             try dec_Artist(alloc, csil_it, &(out.artists[csil_i]));
         }
+    }
+}
+
+fn enc_AudiobookProgress(out: *std.ArrayList(u8), v: *const types.AudiobookProgress) CodecError!void {
+    try w_map_head(out, 4);
+    try w_text(out, "track_id");
+    try w_text(out, v.track_id);
+    try w_text(out, "completed");
+    try w_bool(out, v.completed);
+    try w_text(out, "updated_at");
+    try w_tag(out, 0);
+    try w_text(out, (v.updated_at).rfc3339);
+    try w_text(out, "position_ms");
+    try w_uint(out, v.position_ms);
+}
+
+fn dec_AudiobookProgress(alloc: std.mem.Allocator, m: Value, out: *types.AudiobookProgress) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "track_id");
+        out.track_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "completed");
+        out.completed = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "updated_at");
+        out.updated_at = .{ .rfc3339 = try as_tagged_text(csil_fv, 0), .epoch_seconds = 0 };
+    }
+    {
+        const csil_fv = try req(m, "position_ms");
+        out.position_ms = try as_u64(csil_fv);
+    }
+}
+
+fn enc_AudiobookProgressRequest(out: *std.ArrayList(u8), v: *const types.AudiobookProgressRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "track_ids");
+    try w_array_head(out, v.track_ids.len);
+    for (v.track_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_AudiobookProgressRequest(alloc: std.mem.Allocator, m: Value, out: *types.AudiobookProgressRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "track_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.track_ids = try alloc.alloc(types.TrackId, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.track_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+}
+
+fn enc_AudiobookProgressResponse(out: *std.ArrayList(u8), v: *const types.AudiobookProgressResponse) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "progress");
+    try w_array_head(out, v.progress.len);
+    for (v.progress) |csil_it| {
+        try enc_AudiobookProgress(out, &(csil_it));
+    }
+}
+
+fn dec_AudiobookProgressResponse(alloc: std.mem.Allocator, m: Value, out: *types.AudiobookProgressResponse) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "progress");
+        if (csil_fv != .array) return error.WrongType;
+        out.progress = try alloc.alloc(types.AudiobookProgress, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_AudiobookProgress(alloc, csil_it, &(out.progress[csil_i]));
+        }
+    }
+}
+
+fn enc_UpdateAudiobookProgressRequest(out: *std.ArrayList(u8), v: *const types.UpdateAudiobookProgressRequest) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "track_id");
+    try w_text(out, v.track_id);
+    try w_text(out, "completed");
+    try w_bool(out, v.completed);
+    try w_text(out, "position_ms");
+    try w_uint(out, v.position_ms);
+}
+
+fn dec_UpdateAudiobookProgressRequest(alloc: std.mem.Allocator, m: Value, out: *types.UpdateAudiobookProgressRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "track_id");
+        out.track_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "completed");
+        out.completed = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "position_ms");
+        out.position_ms = try as_u64(csil_fv);
     }
 }
 
@@ -1396,6 +1553,7 @@ fn enc_QueueItem(out: *std.ArrayList(u8), v: *const types.QueueItem) CodecError!
     var csil_n: usize = 1;
     if (v.title != null) csil_n += 1;
     if (v.artist != null) csil_n += 1;
+    if (v.library != null) csil_n += 1;
     if (v.duration_ms != null) csil_n += 1;
     try w_map_head(out, csil_n);
     if (v.title) |csil_x| {
@@ -1406,6 +1564,10 @@ fn enc_QueueItem(out: *std.ArrayList(u8), v: *const types.QueueItem) CodecError!
         try w_text(out, "artist");
         try w_text(out, csil_x);
     }
+    if (v.library) |csil_x| {
+        try w_text(out, "library");
+        try enc_Library(out, &(csil_x));
+    }
     try w_text(out, "track_id");
     try w_text(out, v.track_id);
     if (v.duration_ms) |csil_x| {
@@ -1415,7 +1577,6 @@ fn enc_QueueItem(out: *std.ArrayList(u8), v: *const types.QueueItem) CodecError!
 }
 
 fn dec_QueueItem(alloc: std.mem.Allocator, m: Value, out: *types.QueueItem) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
     {
         if (mget(m, "title")) |csil_fv| {
@@ -1429,6 +1590,15 @@ fn dec_QueueItem(alloc: std.mem.Allocator, m: Value, out: *types.QueueItem) Code
             out.artist = try as_text(csil_fv);
         } else {
             out.artist = null;
+        }
+    }
+    {
+        if (mget(m, "library")) |csil_fv| {
+            var csil_tmp: types.Library = undefined;
+            try dec_Library(alloc, csil_fv, &csil_tmp);
+            out.library = csil_tmp;
+        } else {
+            out.library = null;
         }
     }
     {
@@ -3452,6 +3622,22 @@ pub fn decode_SessionInfo(alloc: std.mem.Allocator, bytes: []const u8, out: *typ
     try dec_SessionInfo(alloc, root, out);
 }
 
+/// Encode a Library to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_Library(alloc: std.mem.Allocator, v: *const types.Library) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_Library(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a Library. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_Library(alloc: std.mem.Allocator, bytes: []const u8, out: *types.Library) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_Library(alloc, root, out);
+}
+
 /// Encode a Track to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_Track(alloc: std.mem.Allocator, v: *const types.Track) CodecError![]u8 {
@@ -3516,22 +3702,6 @@ pub fn decode_Playlist(alloc: std.mem.Allocator, bytes: []const u8, out: *types.
     try dec_Playlist(alloc, root, out);
 }
 
-/// Encode a Library to CBOR. The returned slice is owned by the caller
-/// (free it with alloc.free).
-pub fn encode_Library(alloc: std.mem.Allocator, v: *const types.Library) CodecError![]u8 {
-    var out = std.ArrayList(u8).init(alloc);
-    errdefer out.deinit();
-    try enc_Library(&out, v);
-    return out.toOwnedSlice();
-}
-
-/// Decode CBOR into a Library. Every string/slice/map inside `out` is
-/// allocated from `alloc`; pass an arena and free it all at once.
-pub fn decode_Library(alloc: std.mem.Allocator, bytes: []const u8, out: *types.Library) CodecError!void {
-    const root = try decode(alloc, bytes);
-    try dec_Library(alloc, root, out);
-}
-
 /// Encode a BrowseRequest to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_BrowseRequest(alloc: std.mem.Allocator, v: *const types.BrowseRequest) CodecError![]u8 {
@@ -3546,6 +3716,38 @@ pub fn encode_BrowseRequest(alloc: std.mem.Allocator, v: *const types.BrowseRequ
 pub fn decode_BrowseRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.BrowseRequest) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_BrowseRequest(alloc, root, out);
+}
+
+/// Encode a LibraryInfo to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_LibraryInfo(alloc: std.mem.Allocator, v: *const types.LibraryInfo) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_LibraryInfo(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a LibraryInfo. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_LibraryInfo(alloc: std.mem.Allocator, bytes: []const u8, out: *types.LibraryInfo) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_LibraryInfo(alloc, root, out);
+}
+
+/// Encode a LibrariesResponse to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_LibrariesResponse(alloc: std.mem.Allocator, v: *const types.LibrariesResponse) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_LibrariesResponse(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a LibrariesResponse. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_LibrariesResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.LibrariesResponse) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_LibrariesResponse(alloc, root, out);
 }
 
 /// Encode a AlbumsResponse to CBOR. The returned slice is owned by the caller
@@ -3674,6 +3876,70 @@ pub fn encode_SearchResponse(alloc: std.mem.Allocator, v: *const types.SearchRes
 pub fn decode_SearchResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SearchResponse) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_SearchResponse(alloc, root, out);
+}
+
+/// Encode a AudiobookProgress to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_AudiobookProgress(alloc: std.mem.Allocator, v: *const types.AudiobookProgress) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_AudiobookProgress(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a AudiobookProgress. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_AudiobookProgress(alloc: std.mem.Allocator, bytes: []const u8, out: *types.AudiobookProgress) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_AudiobookProgress(alloc, root, out);
+}
+
+/// Encode a AudiobookProgressRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_AudiobookProgressRequest(alloc: std.mem.Allocator, v: *const types.AudiobookProgressRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_AudiobookProgressRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a AudiobookProgressRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_AudiobookProgressRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.AudiobookProgressRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_AudiobookProgressRequest(alloc, root, out);
+}
+
+/// Encode a AudiobookProgressResponse to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_AudiobookProgressResponse(alloc: std.mem.Allocator, v: *const types.AudiobookProgressResponse) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_AudiobookProgressResponse(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a AudiobookProgressResponse. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_AudiobookProgressResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.AudiobookProgressResponse) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_AudiobookProgressResponse(alloc, root, out);
+}
+
+/// Encode a UpdateAudiobookProgressRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_UpdateAudiobookProgressRequest(alloc: std.mem.Allocator, v: *const types.UpdateAudiobookProgressRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_UpdateAudiobookProgressRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a UpdateAudiobookProgressRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_UpdateAudiobookProgressRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.UpdateAudiobookProgressRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_UpdateAudiobookProgressRequest(alloc, root, out);
 }
 
 /// Encode a PlaylistsResponse to CBOR. The returned slice is owned by the caller

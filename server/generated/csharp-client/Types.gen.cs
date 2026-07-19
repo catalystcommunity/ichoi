@@ -119,10 +119,20 @@ public sealed record SessionInfo
     public string? Token { get; init; }
 }
 
+public enum Library
+{
+    // wire value: music
+    Music,
+    // wire value: audiobook
+    Audiobook,
+}
+
 public sealed record Track
 {
     // CBOR key: id
     public required TrackId Id { get; init; }
+    // CBOR key: library
+    public required Library Library { get; init; }
     // CBOR key: title
     public required string Title { get; init; }
     // CBOR key: artist_id
@@ -191,14 +201,6 @@ public sealed record Playlist
     public required string RootRelativePath { get; init; }
 }
 
-public enum Library
-{
-    // wire value: music
-    Music,
-    // wire value: audiobook
-    Audiobook,
-}
-
 public sealed record BrowseRequest
 {
     // CBOR key: library
@@ -207,6 +209,18 @@ public sealed record BrowseRequest
     public ulong? Offset { get; init; }
     // CBOR key: limit
     public ulong? Limit { get; init; }
+}
+
+public sealed record LibraryInfo
+{
+    // CBOR key: kind
+    public required Library Kind { get; init; }
+}
+
+public sealed record LibrariesResponse
+{
+    // CBOR key: libraries
+    public required System.Collections.Generic.List<LibraryInfo> Libraries { get; init; }
 }
 
 public sealed record AlbumsResponse
@@ -257,6 +271,8 @@ public sealed record SearchRequest
 {
     // CBOR key: query
     public required string Query { get; init; }
+    // CBOR key: library
+    public Library? Library { get; init; }
     // CBOR key: limit
     public ulong? Limit { get; init; }
 
@@ -282,6 +298,40 @@ public sealed record SearchResponse
     public required System.Collections.Generic.List<Album> Albums { get; init; }
     // CBOR key: tracks
     public required System.Collections.Generic.List<Track> Tracks { get; init; }
+}
+
+public sealed record AudiobookProgress
+{
+    // CBOR key: track_id
+    public required TrackId TrackId { get; init; }
+    // CBOR key: position_ms
+    public required ulong PositionMs { get; init; }
+    // CBOR key: completed
+    public required bool Completed { get; init; }
+    // CBOR key: updated_at
+    public required System.DateTimeOffset UpdatedAt { get; init; }
+}
+
+public sealed record AudiobookProgressRequest
+{
+    // CBOR key: track_ids
+    public required System.Collections.Generic.List<TrackId> TrackIds { get; init; }
+}
+
+public sealed record AudiobookProgressResponse
+{
+    // CBOR key: progress
+    public required System.Collections.Generic.List<AudiobookProgress> Progress { get; init; }
+}
+
+public sealed record UpdateAudiobookProgressRequest
+{
+    // CBOR key: track_id
+    public required TrackId TrackId { get; init; }
+    // CBOR key: position_ms
+    public required ulong PositionMs { get; init; }
+    // CBOR key: completed
+    public required bool Completed { get; init; }
 }
 
 public sealed record PlaylistsResponse
@@ -348,6 +398,8 @@ public sealed record QueueItem
 {
     // CBOR key: track_id
     public required TrackId TrackId { get; init; }
+    // CBOR key: library
+    public Library? Library { get; init; }
     // CBOR key: title
     public string? Title { get; init; }
     // CBOR key: artist

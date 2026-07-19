@@ -1,7 +1,10 @@
 ;; Ichoi — library browse/search/read (member+). Satellites never see this service.
 
+Library = "music" / "audiobook"
+
 Track = {
     id: TrackId,
+    library: Library,
     title: text,
     ? artist_id: ArtistId,
     ? album_id: AlbumId,
@@ -36,9 +39,9 @@ Playlist = {
     root_relative_path: text         ;; the m3u path from the collection root
 }
 
-Library = "music" / "audiobook"
-
 BrowseRequest   = { ? library: Library .default "music", ? offset: uint .default 0, ? limit: uint .default 100 }
+LibraryInfo     = { kind: Library }
+LibrariesResponse = { libraries: [* LibraryInfo] }
 AlbumsResponse  = { albums: [* Album], total: uint }
 ArtistsResponse = { artists: [* Artist], total: uint }
 
@@ -47,8 +50,22 @@ AlbumDetail   = { album: Album, tracks: [* Track] }
 ArtistRequest = { artist_id: ArtistId }
 ArtistDetail  = { artist: Artist, albums: [* Album] }
 
-SearchRequest  = { query: text .size (1..256), ? limit: uint .default 50 }
+SearchRequest  = { query: text .size (1..256), ? library: Library .default "music", ? limit: uint .default 50 }
 SearchResponse = { artists: [* Artist], albums: [* Album], tracks: [* Track] }
+
+AudiobookProgress = {
+    track_id: TrackId,
+    position_ms: uint,
+    completed: bool .default false,
+    updated_at: timestamp
+}
+AudiobookProgressRequest = { track_ids: [* TrackId] }
+AudiobookProgressResponse = { progress: [* AudiobookProgress] }
+UpdateAudiobookProgressRequest = {
+    track_id: TrackId,
+    position_ms: uint,
+    completed: bool .default false
+}
 
 PlaylistsResponse = { playlists: [* Playlist] }
 PlaylistRequest   = { playlist_id: PlaylistId }
@@ -58,6 +75,7 @@ CoverArtRequest = { album_id: AlbumId, ? max_size: uint }
 CoverArt        = { content_type: text, data: bytes }
 
 service LibraryService {
+    list-libraries: Page -> LibrariesResponse / ServiceError,
     list-albums: BrowseRequest -> AlbumsResponse / ServiceError,
     list-artists: BrowseRequest -> ArtistsResponse / ServiceError,
     get-album: AlbumRequest -> AlbumDetail / ServiceError,
@@ -65,5 +83,7 @@ service LibraryService {
     search: SearchRequest -> SearchResponse / ServiceError,
     list-playlists: BrowseRequest -> PlaylistsResponse / ServiceError,
     get-playlist: PlaylistRequest -> PlaylistDetail / ServiceError,
-    get-cover-art: CoverArtRequest -> CoverArt / ServiceError
+    get-cover-art: CoverArtRequest -> CoverArt / ServiceError,
+    get-audiobook-progress: AudiobookProgressRequest -> AudiobookProgressResponse / ServiceError,
+    update-audiobook-progress: UpdateAudiobookProgressRequest -> AudiobookProgress / ServiceError
 }

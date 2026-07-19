@@ -60,6 +60,7 @@ function mapStatus(s: string): Status {
 function qiToTrack(qi: QueueItem): Track {
   return {
     id: qi.track_id,
+    library: qi.library ?? "music",
     title: qi.title ?? "",
     duration_ms: qi.duration_ms ?? 0,
     codec: "mp3",
@@ -76,7 +77,7 @@ interface PlaybackContextValue {
   current: Accessor<Track | undefined>;
   pref: Accessor<StreamPref>;
   setPref: (p: StreamPref) => void;
-  playNow: (tracks: Track[], startIndex?: number) => Promise<void>;
+  playNow: (tracks: Track[], startIndex?: number, startMs?: number) => Promise<void>;
   enqueue: (tracks: Track[]) => void;
   playIndex: (index: number) => Promise<void>;
   togglePlay: () => void;
@@ -118,6 +119,34 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   const [pref, setPrefSignal] = createSignal<StreamPref>(loadPref());
   const [owned, setOwned] = createSignal<string[]>(loadOwned());
   const [target, setTargetSignal] = createSignal<string>(LOCAL_TARGET);
+  let lastProgressTrack = "";
+  let lastProgressPosition = -1;
+
+  function reportAudiobookProgress(completed = false): void {
+    const track = current();
+    const session = servers.active()?.session;
+    const api = servers.api();
+    if (!track || track.library !== "audiobook" || !session || !api) {
+      return;
+    }
+    const position = completed ? track.duration_ms : Math.max(0, Math.round(snapshot().positionMs));
+    if (
+      !completed &&
+      track.id === lastProgressTrack &&
+      Math.abs(position - lastProgressPosition) < 10_000
+    ) {
+      return;
+    }
+    lastProgressTrack = track.id;
+    lastProgressPosition = position;
+    void api.library
+      .updateAudiobookProgress({
+        track_id: track.id,
+        position_ms: position,
+        completed,
+      })
+      .catch((e) => console.warn("[playback] audiobook progress failed", e));
+  }
 
   const isOwned = (id: string) => owned().includes(id);
 
@@ -172,9 +201,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   if (audio) {
-    audio.addEventListener("timeupdate", () =>
-      setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: audio.currentTime * 1000 })),
-    );
+    audio.addEventListener("timeupdate", () => {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: audio.currentTime * 1000 }));
+      reportAudiobookProgress();
+    });
     audio.addEventListener("loadedmetadata", () =>
       setSnapshot((s): PlaybackSnapshot => ({
         ...s,
@@ -182,10 +212,14 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       })),
     );
     audio.addEventListener("play", () => setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "playing" })));
-    audio.addEventListener("pause", () =>
-      setSnapshot((s): PlaybackSnapshot => (s.status === "ended" ? s : { ...s, status: "paused" })),
-    );
-    audio.addEventListener("ended", () => setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "ended" })));
+    audio.addEventListener("pause", () => {
+      setSnapshot((s): PlaybackSnapshot => (s.status === "ended" ? s : { ...s, status: "paused" }));
+      reportAudiobookProgress();
+    });
+    audio.addEventListener("ended", () => {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "ended" }));
+      reportAudiobookProgress(true);
+    });
     audio.addEventListener("error", () =>
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: "playback error" })),
     );
@@ -408,6 +442,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     return i >= 0 && i < queue.length ? queue[i] : undefined;
   };
 
+  // Shared targets report position through PlayerState instead of native audio events.
+  createEffect(() => {
+    snapshot().positionMs;
+    current()?.id;
+    reportAudiobookProgress(snapshot().status === "ended");
+  });
+
   const setPref = (p: StreamPref) => {
     setPrefSignal(p);
     try {
@@ -418,13 +459,22 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   };
 
   // --- Local playback -------------------------------------------------------
-  async function openIndex(index: number): Promise<void> {
+  async function openIndex(index: number, startMs = 0): Promise<void> {
     const track = queue[index];
     if (!track || !audio) return;
+    reportAudiobookProgress();
+    setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: startMs }));
     setCurrentIndex(index);
     const url = mediaUrl(track.id);
     if (!url) return;
     audio.src = url;
+    if (startMs > 0) {
+      const seek = () => {
+        audio.currentTime = startMs / 1000;
+        audio.removeEventListener("loadedmetadata", seek);
+      };
+      audio.addEventListener("loadedmetadata", seek);
+    }
     try {
       await audio.play();
     } catch (e) {
@@ -434,14 +484,15 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   const isLocal = () => target() === LOCAL_TARGET;
 
-  async function playNow(tracks: Track[], startIndex = 0): Promise<void> {
+  async function playNow(tracks: Track[], startIndex = 0, startMs = 0): Promise<void> {
     if (isLocal()) {
       setQueue(tracks.slice());
-      if (tracks.length) await openIndex(startIndex);
+      if (tracks.length) await openIndex(startIndex, startMs);
     } else {
       control({ op: "clear" });
       control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
       control({ op: "play", index: startIndex });
+      if (startMs > 0) control({ op: "seek", position_ms: startMs });
     }
   }
 
@@ -573,6 +624,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   onCleanup(() => {
+    reportAudiobookProgress();
     audio?.pause();
   });
 

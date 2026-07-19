@@ -7,6 +7,7 @@
 //! Album grouping uses the album-artist and folder name so compilations and untagged files
 //! don't fragment. Gapless trim extraction and content hashing are TODO.
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -49,16 +50,40 @@ struct FileMeta {
     album_tagged: bool,
 }
 
+#[derive(Clone, Copy)]
+struct AlbumSubfolderOptions<'a> {
+    flat: bool,
+    words: &'a [String],
+}
+
 /// Scan every audio file under `root`, indexing into `library_id`.
 pub fn scan_library(
     conn: &mut SqliteConnection,
     library_id: &str,
     root: &Path,
+    excluded_root: Option<&Path>,
     split_dumps: bool,
+    album_subfolder_flat: bool,
+    album_subfolder_words: &[String],
 ) -> anyhow::Result<ScanStats> {
     let ffprobe = resolve_ffprobe();
+    let subfolders = AlbumSubfolderOptions {
+        flat: album_subfolder_flat,
+        words: album_subfolder_words,
+    };
     let mut stats = ScanStats::default();
-    for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
+    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let excluded_root = excluded_root
+        .and_then(|path| path.canonicalize().ok())
+        .filter(|path| path.starts_with(&root));
+    let mut seen = HashSet::new();
+    let entries = WalkDir::new(&root).into_iter().filter_entry(|entry| {
+        excluded_root
+            .as_ref()
+            .map(|excluded| !entry.path().starts_with(excluded))
+            .unwrap_or(true)
+    });
+    for entry in entries.filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() {
             continue;
         }
@@ -71,7 +96,17 @@ pub fn scan_library(
         if !AUDIO_EXTS.contains(&ext.as_str()) {
             continue;
         }
-        match index_file(conn, library_id, root, path, &ext, ffprobe.as_deref()) {
+        let rel = relative_path(&root, path);
+        seen.insert(rel);
+        match index_file(
+            conn,
+            library_id,
+            &root,
+            path,
+            &ext,
+            ffprobe.as_deref(),
+            subfolders,
+        ) {
             Ok(()) => stats.tracks += 1,
             Err(e) => {
                 log::warn!("scan: {}: {e}", path.display());
@@ -79,10 +114,29 @@ pub fn scan_library(
             }
         }
     }
+    // Reconcile removals and newly excluded subtrees. In particular, when an audiobook
+    // directory is introduced below the music root, its old music rows disappear here. Keep
+    // rows whose files still exist but were hidden by a transient traversal/permission error.
+    for track in store::tracks_for_library(conn, library_id)? {
+        let path = root.join(&track.root_relative_path);
+        let now_excluded = excluded_root
+            .as_ref()
+            .is_some_and(|excluded| path.starts_with(excluded));
+        if !seen.contains(&track.root_relative_path) && (now_excluded || !path.exists()) {
+            store::delete_track(conn, &track.id)?;
+        }
+    }
+    store::delete_empty_albums(conn)?;
+
     // An "album" with too few tracks is usually mis-tagged loose files; regroup those by
-    // their containing folder instead (§ album detection).
-    if let Err(e) = consolidate_small_albums(conn, MIN_ALBUM_TRACKS, split_dumps) {
-        log::warn!("scan: album consolidation: {e}");
+    // their containing folder instead (§ album detection). Audiobooks deliberately retain
+    // one-file and short-volume books as their own albums.
+    if library_id == "lib:music" {
+        if let Err(e) =
+            consolidate_small_albums(conn, library_id, MIN_ALBUM_TRACKS, split_dumps, subfolders)
+        {
+            log::warn!("scan: album consolidation: {e}");
+        }
     }
     if let Err(e) = set_folder_album_artists(conn) {
         log::warn!("scan: folder-album artists: {e}");
@@ -133,22 +187,33 @@ struct FolderGroup {
 /// per-artist "Singles" album.
 fn consolidate_small_albums(
     conn: &mut SqliteConnection,
+    library_id: &str,
     min_tracks: i64,
     split_dumps: bool,
+    subfolders: AlbumSubfolderOptions<'_>,
 ) -> anyhow::Result<()> {
-    let small: Vec<String> = store::album_track_counts(conn)?
+    let small: Vec<String> = store::album_track_counts(conn, library_id)?
         .into_iter()
         .filter(|(_, n)| *n < min_tracks)
         .map(|(id, _)| id)
         .collect();
 
     // Group every small-album track by its containing folder.
-    let mut folders: std::collections::HashMap<String, FolderGroup> = std::collections::HashMap::new();
+    let mut folders: std::collections::HashMap<String, FolderGroup> =
+        std::collections::HashMap::new();
     for album_id in small {
         let Some(album) = store::get_album(conn, &album_id)? else {
             continue;
         };
-        for track in store::tracks_for_album(conn, &album_id)? {
+        let tracks = store::tracks_for_album(conn, &album_id)?;
+        if subfolders.flat
+            && tracks.iter().any(|track| {
+                flattened_subfolder_album(&track.root_relative_path, subfolders.words).is_some()
+            })
+        {
+            continue;
+        }
+        for track in tracks {
             let (folder_rel, folder_title) = folder_of(&track.root_relative_path);
             let group = folders.entry(folder_rel).or_insert_with(|| FolderGroup {
                 title: folder_title,
@@ -183,7 +248,7 @@ fn consolidate_small_albums(
             // Per-artist "Singles" album.
             for e in &group.entries {
                 let key = e.album_artist.clone().unwrap_or_default();
-                let singles_id = id_of(&["singles", &key]);
+                let singles_id = id_of(&["singles", library_id, &key]);
                 store::upsert_album(
                     conn,
                     &models::Album {
@@ -242,6 +307,123 @@ fn folder_of(rel: &str) -> (String, String) {
     (parent, title)
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct FlattenedSubfolderAlbum {
+    album_rel: String,
+    album_title: String,
+    disc_label: String,
+    disc_no: Option<i32>,
+}
+
+fn flattened_subfolder_album(
+    rel: &str,
+    configured_words: &[String],
+) -> Option<FlattenedSubfolderAlbum> {
+    let disc_dir = Path::new(rel).parent()?;
+    let disc_label = disc_dir.file_name()?.to_str()?.trim();
+    if disc_label.is_empty() || !is_disc_subfolder(disc_label, configured_words) {
+        return None;
+    }
+    let album_dir = disc_dir.parent()?;
+    if album_dir.as_os_str().is_empty() {
+        return None;
+    }
+    let album_title = album_dir.file_name()?.to_str()?.trim();
+    if album_title.is_empty() {
+        return None;
+    }
+    Some(FlattenedSubfolderAlbum {
+        album_rel: album_dir.to_string_lossy().replace('\\', "/"),
+        album_title: album_title.to_string(),
+        disc_label: disc_label.to_string(),
+        // Unnumbered recognized folders (most notably Bonus Disc) sort after numbered discs.
+        disc_no: Some(infer_disc_number(disc_label).unwrap_or(10_000)),
+    })
+}
+
+fn is_disc_subfolder(label: &str, configured_words: &[String]) -> bool {
+    let normalized = normalized_match_text(label);
+    let without_digits = collapse_ws(
+        &normalized
+            .chars()
+            .map(|c| if c.is_ascii_digit() { ' ' } else { c })
+            .collect::<String>(),
+    );
+    let tokens: Vec<&str> = without_digits.split_whitespace().collect();
+
+    configured_words.iter().any(|configured| {
+        let needle = normalized_match_text(configured);
+        if needle.is_empty() {
+            return false;
+        }
+        fuzzy_match(&without_digits, &needle)
+            || tokens.iter().any(|token| fuzzy_match(token, &needle))
+            || without_digits
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .windows(needle.split_whitespace().count())
+                .any(|window| fuzzy_match(&window.join(" "), &needle))
+    })
+}
+
+fn normalized_match_text(value: &str) -> String {
+    collapse_ws(&alnum_spaces(&value.to_lowercase()))
+}
+
+fn fuzzy_match(value: &str, expected: &str) -> bool {
+    if value == expected {
+        return true;
+    }
+    let max_len = value.chars().count().max(expected.chars().count());
+    if max_len <= 3 {
+        return false;
+    }
+    levenshtein(value, expected) <= (max_len / 5).max(1)
+}
+
+fn levenshtein(left: &str, right: &str) -> usize {
+    let right: Vec<char> = right.chars().collect();
+    let mut previous: Vec<usize> = (0..=right.len()).collect();
+    for (left_index, left_char) in left.chars().enumerate() {
+        let mut current = Vec::with_capacity(right.len() + 1);
+        current.push(left_index + 1);
+        for (right_index, right_char) in right.iter().enumerate() {
+            current.push(
+                (current[right_index] + 1)
+                    .min(previous[right_index + 1] + 1)
+                    .min(previous[right_index] + usize::from(left_char != *right_char)),
+            );
+        }
+        previous = current;
+    }
+    previous[right.len()]
+}
+
+fn infer_disc_number(label: &str) -> Option<i32> {
+    let digits: String = label.chars().filter(char::is_ascii_digit).collect();
+    if let Ok(number) = digits.parse() {
+        return Some(number);
+    }
+    let normalized = normalized_match_text(label);
+    for (word, number) in [
+        ("one", 1),
+        ("two", 2),
+        ("three", 3),
+        ("four", 4),
+        ("five", 5),
+        ("six", 6),
+        ("seven", 7),
+        ("eight", 8),
+        ("nine", 9),
+        ("ten", 10),
+    ] {
+        if normalized.split_whitespace().any(|token| token == word) {
+            return Some(number);
+        }
+    }
+    None
+}
+
 fn index_file(
     conn: &mut SqliteConnection,
     library_id: &str,
@@ -249,12 +431,9 @@ fn index_file(
     path: &Path,
     ext: &str,
     ffprobe: Option<&Path>,
+    subfolders: AlbumSubfolderOptions<'_>,
 ) -> anyhow::Result<()> {
-    let rel = path
-        .strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/");
+    let rel = relative_path(root, path);
 
     // lofty first; on failure (unsupported format like WMA, or a malformed file) fall back.
     let m = match lofty::read_from_path(path) {
@@ -282,41 +461,63 @@ fn index_file(
         },
     )?;
 
-    // Album identity. A real album tag groups by (album-artist, canonical title) — where
+    let flattened = subfolders
+        .flat
+        .then(|| flattened_subfolder_album(&rel, subfolders.words))
+        .flatten();
+    let mut track_title = m.title.clone();
+    let mut disc_no = m.disc_no;
+
+    // Album identity. A recognized disc subfolder takes precedence over tags so sibling
+    // `CD1`, `CD2`, and `Bonus Disc` folders become one parent-folder album. Otherwise a real
+    // album tag groups by (album-artist, canonical title) — where
     // canonicalization collapses "Album", "Album (2001)", "Album [Remastered]" but keeps
     // "Vol. 1" vs "Vol. 2" distinct. A *blank* tag falls back to the folder, keyed by the
     // folder path so every file in that folder joins ONE album regardless of per-track
     // artist (no duplicate same-name albums); its artist is inferred post-scan.
-    let (album_id, album_title, album_artist): (String, String, Option<String>) = if m.album_tagged
-    {
-        let aa_key = canonical_artist(&m.album_artist);
-        let a_key = {
-            let k = canonical_album(&m.album);
-            if k.is_empty() {
-                m.album.to_lowercase()
-            } else {
-                k
+    let (album_id, album_title, album_artist): (String, String, Option<String>) =
+        if let Some(flat) = flattened {
+            track_title = format!("{} - {}", flat.disc_label, track_title);
+            disc_no = flat.disc_no.or(disc_no);
+            (
+                id_of(&["folderalbum", library_id, &flat.album_rel]),
+                flat.album_title,
+                None,
+            )
+        } else if m.album_tagged {
+            let aa_key = canonical_artist(&m.album_artist);
+            let a_key = {
+                let k = canonical_album(&m.album);
+                if k.is_empty() {
+                    m.album.to_lowercase()
+                } else {
+                    k
+                }
+            };
+            let aa_id = id_of(&["artist", &aa_key]);
+            if aa_id != artist_id {
+                store::upsert_artist(
+                    conn,
+                    &models::Artist {
+                        id: aa_id.clone(),
+                        name: m.album_artist.clone(),
+                    },
+                )?;
             }
+            let album_id = if library_id == "lib:music" {
+                id_of(&["album", &aa_key, &a_key])
+            } else {
+                id_of(&["album", library_id, &aa_key, &a_key])
+            };
+            (album_id, m.album.clone(), Some(aa_id))
+        } else {
+            let (folder_rel, folder_title) = folder_of(&rel);
+            (
+                id_of(&["folderalbum", library_id, &folder_rel]),
+                folder_title,
+                None,
+            )
         };
-        let aa_id = id_of(&["artist", &aa_key]);
-        if aa_id != artist_id {
-            store::upsert_artist(
-                conn,
-                &models::Artist {
-                    id: aa_id.clone(),
-                    name: m.album_artist.clone(),
-                },
-            )?;
-        }
-        (id_of(&["album", &aa_key, &a_key]), m.album.clone(), Some(aa_id))
-    } else {
-        let (folder_rel, folder_title) = folder_of(&rel);
-        (
-            id_of(&["folderalbum", library_id, &folder_rel]),
-            folder_title,
-            None,
-        )
-    };
 
     store::upsert_album(
         conn,
@@ -336,11 +537,11 @@ fn index_file(
             id: track_id,
             library_id: library_id.to_string(),
             root_relative_path: rel,
-            title: m.title,
+            title: track_title,
             artist_id: Some(artist_id),
             album_id: Some(album_id),
             track_no: m.track_no,
-            disc_no: m.disc_no,
+            disc_no,
             duration_ms: m.duration_ms,
             codec: m.codec,
             bitrate_kbps: m.bitrate_kbps,
@@ -355,6 +556,13 @@ fn index_file(
         },
     )?;
     Ok(())
+}
+
+fn relative_path(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
 }
 
 fn clean(s: &str) -> Option<String> {
@@ -455,7 +663,14 @@ fn meta_fallback(path: &Path, ext: &str, ffprobe: Option<&Path>) -> FileMeta {
 
 fn ffprobe_json(ffprobe: &Path, path: &Path) -> Option<serde_json::Value> {
     let out = Command::new(ffprobe)
-        .args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams"])
+        .args([
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_format",
+            "-show_streams",
+        ])
         .arg(path)
         .output()
         .ok()?;
@@ -497,7 +712,10 @@ fn apply_ffprobe(m: &mut FileMeta, json: &serde_json::Value) {
         if let Some(tn) = get("track").and_then(|s| leading_int(&s)) {
             m.track_no = Some(tn);
         }
-        if let Some(y) = get("date").or_else(|| get("year")).and_then(|s| leading_int(&s)) {
+        if let Some(y) = get("date")
+            .or_else(|| get("year"))
+            .and_then(|s| leading_int(&s))
+        {
             m.year = Some(y);
         }
     }
@@ -507,7 +725,10 @@ fn apply_ffprobe(m: &mut FileMeta, json: &serde_json::Value) {
             .iter()
             .find(|s| s["codec_type"].as_str() == Some("audio"))
         {
-            if let Some(sr) = audio["sample_rate"].as_str().and_then(|s| s.parse::<i32>().ok()) {
+            if let Some(sr) = audio["sample_rate"]
+                .as_str()
+                .and_then(|s| s.parse::<i32>().ok())
+            {
                 m.sample_rate = sr;
             }
             if let Some(ch) = audio["channels"].as_i64() {
@@ -518,7 +739,11 @@ fn apply_ffprobe(m: &mut FileMeta, json: &serde_json::Value) {
 }
 
 fn leading_int(s: &str) -> Option<i32> {
-    let digits: String = s.trim().chars().take_while(|c| c.is_ascii_digit()).collect();
+    let digits: String = s
+        .trim()
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
     digits.parse().ok()
 }
 
@@ -550,13 +775,21 @@ fn codec_from_ext(ext: &str) -> String {
 fn resolve_ffprobe() -> Option<PathBuf> {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            let bundled = dir.join(if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" });
+            let bundled = dir.join(if cfg!(windows) {
+                "ffprobe.exe"
+            } else {
+                "ffprobe"
+            });
             if bundled.is_file() {
                 return Some(bundled);
             }
         }
     }
-    let name = if cfg!(windows) { "ffprobe.exe" } else { "ffprobe" };
+    let name = if cfg!(windows) {
+        "ffprobe.exe"
+    } else {
+        "ffprobe"
+    };
     std::env::var_os("PATH").and_then(|paths| {
         std::env::split_paths(&paths)
             .map(|p| p.join(name))
@@ -669,4 +902,42 @@ pub fn extract_embedded_cover(path: &Path) -> Option<(String, Vec<u8>)> {
         .map(|m| m.as_str().to_string())
         .unwrap_or_else(|| "image/jpeg".to_string());
     Some((mime, pic.data().to_vec()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{flattened_subfolder_album, is_disc_subfolder};
+
+    fn words() -> Vec<String> {
+        ["cd", "disc", "disk", "bonus disc"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    }
+
+    #[test]
+    fn recognizes_numbered_bonus_fuzzy_and_custom_disc_folders() {
+        let defaults = words();
+        for folder in ["CD1", "cd 2", "Disc One", "Disk-03", "Bonus Dsic"] {
+            assert!(is_disc_subfolder(folder, &defaults), "missed {folder:?}");
+        }
+        assert!(!is_disc_subfolder("Recordings", &defaults));
+        assert!(is_disc_subfolder("Part Two", &["part".to_string()]));
+    }
+
+    #[test]
+    fn flattened_album_uses_parent_and_retains_disc_label() {
+        let flat = flattened_subfolder_album("The Book/CD2/03 Chapter.mp3", &words()).unwrap();
+        assert_eq!(flat.album_rel, "The Book");
+        assert_eq!(flat.album_title, "The Book");
+        assert_eq!(flat.disc_label, "CD2");
+        assert_eq!(flat.disc_no, Some(2));
+        assert_eq!(
+            flattened_subfolder_album("The Book/Bonus Disc/bonus.mp3", &words())
+                .unwrap()
+                .disc_no,
+            Some(10_000)
+        );
+        assert!(flattened_subfolder_album("CD1/track.mp3", &words()).is_none());
+    }
 }

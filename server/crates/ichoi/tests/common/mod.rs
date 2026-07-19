@@ -34,6 +34,13 @@ pub fn test_config() -> Config {
         log: "warn".to_string(),
         fetch_art: false,
         split_dump_folders: false,
+        album_subfolder_flat: true,
+        album_subfolder_words: vec![
+            "cd".into(),
+            "disc".into(),
+            "disk".into(),
+            "bonus disc".into(),
+        ],
         require_music: false,
         linkkeys_local_rp: false,
         linkkeys_local_rp_name: None,
@@ -99,11 +106,16 @@ pub fn create_album(conn: &mut diesel::SqliteConnection, o: &DataMap) -> models:
 }
 
 pub fn ensure_library(conn: &mut diesel::SqliteConnection, id: &str) {
+    let kind = if id == "lib:audiobook" {
+        "audiobook"
+    } else {
+        "music"
+    };
     store::upsert_library(
         conn,
         &models::Library {
             id: id.to_string(),
-            kind: "music".to_string(),
+            kind: kind.to_string(),
             path: ".".to_string(),
         },
     )

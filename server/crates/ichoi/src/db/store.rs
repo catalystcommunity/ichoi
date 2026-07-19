@@ -340,10 +340,17 @@ pub fn upsert_album(conn: &mut SqliteConnection, row: &Album) -> QueryResult<()>
 
 pub fn list_albums(
     conn: &mut SqliteConnection,
+    library_id: &str,
     offset: i64,
     limit: i64,
 ) -> QueryResult<Vec<Album>> {
+    let album_ids = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct();
     albums::table
+        .filter(albums::id.eq_any(album_ids))
         .order(albums::title.asc())
         .offset(offset)
         .limit(limit)
@@ -351,8 +358,14 @@ pub fn list_albums(
         .load(conn)
 }
 
-pub fn count_albums(conn: &mut SqliteConnection) -> QueryResult<i64> {
-    albums::table.count().get_result(conn)
+pub fn count_albums(conn: &mut SqliteConnection, library_id: &str) -> QueryResult<i64> {
+    let ids: Vec<String> = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct()
+        .load(conn)?;
+    Ok(ids.len() as i64)
 }
 
 pub fn albums_without_cover(conn: &mut SqliteConnection, limit: i64) -> QueryResult<Vec<Album>> {
@@ -392,8 +405,12 @@ pub fn reset_art_checked(conn: &mut SqliteConnection) -> QueryResult<usize> {
 }
 
 /// `(album_id, track_count)` for every album — used to find under-populated albums.
-pub fn album_track_counts(conn: &mut SqliteConnection) -> QueryResult<Vec<(String, i64)>> {
+pub fn album_track_counts(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+) -> QueryResult<Vec<(String, i64)>> {
     tracks::table
+        .filter(tracks::library_id.eq(library_id))
         .filter(tracks::album_id.is_not_null())
         .group_by(tracks::album_id)
         .select((
@@ -424,6 +441,10 @@ pub fn delete_empty_albums(conn: &mut SqliteConnection) -> QueryResult<usize> {
         .execute(conn)
 }
 
+pub fn count_all_albums(conn: &mut SqliteConnection) -> QueryResult<i64> {
+    albums::table.count().get_result(conn)
+}
+
 pub fn albums_missing_artist(conn: &mut SqliteConnection) -> QueryResult<Vec<Album>> {
     albums::table
         .filter(albums::artist_id.is_null())
@@ -448,10 +469,17 @@ pub fn get_album(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<Al
 
 pub fn list_artists(
     conn: &mut SqliteConnection,
+    library_id: &str,
     offset: i64,
     limit: i64,
 ) -> QueryResult<Vec<Artist>> {
+    let artist_ids = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::artist_id.is_not_null())
+        .select(tracks::artist_id.assume_not_null())
+        .distinct();
     artists::table
+        .filter(artists::id.eq_any(artist_ids))
         .order(artists::name.asc())
         .offset(offset)
         .limit(limit)
@@ -459,8 +487,14 @@ pub fn list_artists(
         .load(conn)
 }
 
-pub fn count_artists(conn: &mut SqliteConnection) -> QueryResult<i64> {
-    artists::table.count().get_result(conn)
+pub fn count_artists(conn: &mut SqliteConnection, library_id: &str) -> QueryResult<i64> {
+    let ids: Vec<String> = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::artist_id.is_not_null())
+        .select(tracks::artist_id.assume_not_null())
+        .distinct()
+        .load(conn)?;
+    Ok(ids.len() as i64)
 }
 
 pub fn get_artist(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<Artist>> {
@@ -471,19 +505,37 @@ pub fn get_artist(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<A
         .optional()
 }
 
-pub fn albums_for_artist(conn: &mut SqliteConnection, artist_id: &str) -> QueryResult<Vec<Album>> {
+pub fn albums_for_artist(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+    artist_id: &str,
+) -> QueryResult<Vec<Album>> {
+    let album_ids = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::artist_id.eq(artist_id))
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct();
     albums::table
-        .filter(albums::artist_id.eq(artist_id))
+        .filter(albums::id.eq_any(album_ids))
         .order(albums::year.asc())
         .select(Album::as_select())
         .load(conn)
 }
 
-pub fn count_albums_for_artist(conn: &mut SqliteConnection, artist_id: &str) -> QueryResult<i64> {
-    albums::table
-        .filter(albums::artist_id.eq(artist_id))
-        .count()
-        .get_result(conn)
+pub fn count_albums_for_artist(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+    artist_id: &str,
+) -> QueryResult<i64> {
+    let ids: Vec<String> = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::artist_id.eq(artist_id))
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct()
+        .load(conn)?;
+    Ok(ids.len() as i64)
 }
 
 // ------------------------------------------------------------------------------ tracks
@@ -514,6 +566,33 @@ pub fn track_by_root_path(conn: &mut SqliteConnection, path: &str) -> QueryResul
         .optional()
 }
 
+pub fn track_by_library_root_path(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+    path: &str,
+) -> QueryResult<Option<Track>> {
+    tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::root_relative_path.eq(path))
+        .select(Track::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn tracks_for_library(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+) -> QueryResult<Vec<Track>> {
+    tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .select(Track::as_select())
+        .load(conn)
+}
+
+pub fn delete_track(conn: &mut SqliteConnection, track_id: &str) -> QueryResult<usize> {
+    diesel::delete(tracks::table.find(track_id)).execute(conn)
+}
+
 pub fn tracks_for_album(conn: &mut SqliteConnection, album_id: &str) -> QueryResult<Vec<Track>> {
     tracks::table
         .filter(tracks::album_id.eq(album_id))
@@ -535,11 +614,13 @@ pub fn count_tracks(conn: &mut SqliteConnection) -> QueryResult<i64> {
 
 pub fn search_tracks(
     conn: &mut SqliteConnection,
+    library_id: &str,
     query: &str,
     limit: i64,
 ) -> QueryResult<Vec<Track>> {
     let pattern = format!("%{query}%");
     tracks::table
+        .filter(tracks::library_id.eq(library_id))
         .filter(tracks::title.like(pattern))
         .order(tracks::title.asc())
         .limit(limit)
@@ -549,11 +630,18 @@ pub fn search_tracks(
 
 pub fn search_albums(
     conn: &mut SqliteConnection,
+    library_id: &str,
     query: &str,
     limit: i64,
 ) -> QueryResult<Vec<Album>> {
     let pattern = format!("%{query}%");
+    let album_ids = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct();
     albums::table
+        .filter(albums::id.eq_any(album_ids))
         .filter(albums::title.like(pattern))
         .order(albums::title.asc())
         .limit(limit)
@@ -563,16 +651,55 @@ pub fn search_albums(
 
 pub fn search_artists(
     conn: &mut SqliteConnection,
+    library_id: &str,
     query: &str,
     limit: i64,
 ) -> QueryResult<Vec<Artist>> {
     let pattern = format!("%{query}%");
+    let artist_ids = tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::artist_id.is_not_null())
+        .select(tracks::artist_id.assume_not_null())
+        .distinct();
     artists::table
+        .filter(artists::id.eq_any(artist_ids))
         .filter(artists::name.like(pattern))
         .order(artists::name.asc())
         .limit(limit)
         .select(Artist::as_select())
         .load(conn)
+}
+
+// ------------------------------------------------------------- audiobook progress
+
+pub fn audiobook_progress_for_tracks(
+    conn: &mut SqliteConnection,
+    account_id: &str,
+    track_ids: &[String],
+) -> QueryResult<Vec<AudiobookProgress>> {
+    audiobook_progress::table
+        .filter(audiobook_progress::account_id.eq(account_id))
+        .filter(audiobook_progress::track_id.eq_any(track_ids))
+        .order(audiobook_progress::updated_at.desc())
+        .select(AudiobookProgress::as_select())
+        .load(conn)
+}
+
+pub fn upsert_audiobook_progress(
+    conn: &mut SqliteConnection,
+    row: &AudiobookProgress,
+) -> QueryResult<()> {
+    diesel::insert_into(audiobook_progress::table)
+        .values(row)
+        .on_conflict((audiobook_progress::account_id, audiobook_progress::track_id))
+        .do_update()
+        .set((
+            audiobook_progress::position_ms.eq(row.position_ms),
+            audiobook_progress::completed.eq(row.completed),
+            audiobook_progress::updated_at.eq(&row.updated_at),
+        ))
+        .execute(conn)?;
+    Ok(())
 }
 
 // --------------------------------------------------------------------------- playlists

@@ -54,6 +54,15 @@ final class LibraryClient {
   final CsilTransport transport;
   const LibraryClient(this.transport);
 
+  LibrariesResponse listLibraries(Page request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'list-libraries',
+      request.toCbor(),
+    );
+    return LibrariesResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   AlbumsResponse listAlbums(BrowseRequest request) {
     final csilResp = transport.call(
       'LibraryService',
@@ -124,6 +133,28 @@ final class LibraryClient {
       request.toCbor(),
     );
     return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  AudiobookProgressResponse getAudiobookProgress(
+    AudiobookProgressRequest request,
+  ) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'get-audiobook-progress',
+      request.toCbor(),
+    );
+    return AudiobookProgressResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  AudiobookProgress updateAudiobookProgress(
+    UpdateAudiobookProgressRequest request,
+  ) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'update-audiobook-progress',
+      request.toCbor(),
+    );
+    return AudiobookProgress.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 

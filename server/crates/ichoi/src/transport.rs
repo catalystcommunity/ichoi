@@ -122,6 +122,9 @@ pub fn dispatch(
         ("session", "logout") => rr!(decode_page, logout, encode_ok),
 
         // LibraryService
+        ("library", "list-libraries") => {
+            rr!(decode_page, list_libraries, encode_libraries_response)
+        }
         ("library", "list-albums") => {
             rr!(decode_browse_request, list_albums, encode_albums_response)
         }
@@ -148,6 +151,16 @@ pub fn dispatch(
         ("library", "get-cover-art") => {
             rr!(decode_cover_art_request, get_cover_art, encode_cover_art)
         }
+        ("library", "get-audiobook-progress") => rr!(
+            decode_audiobook_progress_request,
+            get_audiobook_progress,
+            encode_audiobook_progress_response
+        ),
+        ("library", "update-audiobook-progress") => rr!(
+            decode_update_audiobook_progress_request,
+            update_audiobook_progress,
+            encode_audiobook_progress
+        ),
 
         // PlayerService (request/response subset; subscribe is a channel op)
         ("player", "list-players") => {

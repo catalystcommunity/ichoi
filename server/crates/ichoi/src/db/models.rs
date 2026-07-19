@@ -217,3 +217,14 @@ pub struct LinkkeysLoginExchange {
     pub created_at: String,
     pub expires_at: String,
 }
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, AsChangeset)]
+#[diesel(table_name = audiobook_progress)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct AudiobookProgress {
+    pub account_id: String,
+    pub track_id: String,
+    pub position_ms: i64,
+    pub completed: i32,
+    pub updated_at: String,
+}

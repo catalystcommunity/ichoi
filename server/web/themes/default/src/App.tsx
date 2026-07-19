@@ -12,6 +12,12 @@ import { LibraryPage } from "./routes/LibraryPage.tsx";
 
 // Route-level code splitting keeps the initial bundle lean.
 const AlbumPage = lazy(() => import("./routes/AlbumPage.tsx").then((m) => ({ default: m.AlbumPage })));
+const AudiobooksPage = lazy(() =>
+  import("./routes/AudiobooksPage.tsx").then((m) => ({ default: m.AudiobooksPage })),
+);
+const AudiobookPage = lazy(() =>
+  import("./routes/AudiobookPage.tsx").then((m) => ({ default: m.AudiobookPage })),
+);
 const ArtistPage = lazy(() => import("./routes/ArtistPage.tsx").then((m) => ({ default: m.ArtistPage })));
 const SearchPage = lazy(() => import("./routes/SearchPage.tsx").then((m) => ({ default: m.SearchPage })));
 const PlaylistsPage = lazy(() =>
@@ -33,6 +39,8 @@ export function App(): JSX.Element {
               <Router root={Layout}>
                 <Route path="/" component={LibraryPage} />
                 <Route path="/album/:id" component={AlbumPage} />
+                <Route path="/audiobooks" component={AudiobooksPage} />
+                <Route path="/audiobook/:id" component={AudiobookPage} />
                 <Route path="/artist/:id" component={ArtistPage} />
                 <Route path="/search" component={SearchPage} />
                 <Route path="/playlists" component={PlaylistsPage} />

@@ -430,8 +430,11 @@ final class SessionInfo {
       SessionInfo.fromCborValue(CsilCbor.decode(bytes));
 }
 
+typedef Library = String;
+
 final class Track {
   final TrackId id;
+  final Library library_;
   final String title;
   final ArtistId? artistId;
   final AlbumId? albumId;
@@ -448,6 +451,7 @@ final class Track {
 
   const Track({
     required this.id,
+    required this.library_,
     required this.title,
     this.artistId,
     this.albumId,
@@ -466,6 +470,7 @@ final class Track {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['id'] = id;
+    map['library'] = library_;
     map['title'] = title;
     if (artistId != null) map['artist_id'] = artistId;
     if (albumId != null) map['album_id'] = albumId;
@@ -485,6 +490,7 @@ final class Track {
   factory Track.fromMap(Map<String, Object?> map) {
     return Track(
       id: map['id'] as TrackId,
+      library_: map['library'] as Library,
       title: map['title'] as String,
       artistId: map['artist_id'] as ArtistId?,
       albumId: map['album_id'] as AlbumId?,
@@ -505,6 +511,7 @@ final class Track {
   bool operator ==(Object other) {
     if (other is! Track) return false;
     return id == other.id &&
+        library_ == other.library_ &&
         title == other.title &&
         artistId == other.artistId &&
         albumId == other.albumId &&
@@ -523,6 +530,7 @@ final class Track {
   @override
   int get hashCode => Object.hashAll([
     id,
+    library_,
     title,
     artistId,
     albumId,
@@ -542,6 +550,7 @@ final class Track {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['id'] = id;
+    map['library'] = library_;
     map['title'] = title;
     if (artistId != null) map['artist_id'] = artistId!;
     if (albumId != null) map['album_id'] = albumId!;
@@ -563,6 +572,10 @@ final class Track {
     final map = cbor as Map;
     return Track(
       id: map['id'] as String,
+      library_: CsilCbor.expectOneOf<String>(map['library'], const [
+        'music',
+        'audiobook',
+      ]),
       title: map['title'] as String,
       artistId: map['artist_id'] == null ? null : map['artist_id'] as String,
       albumId: map['album_id'] == null ? null : map['album_id'] as String,
@@ -832,8 +845,6 @@ final class Playlist {
       Playlist.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef Library = String;
-
 final class BrowseRequest {
   final Library? library_;
   final int? offset;
@@ -898,6 +909,106 @@ final class BrowseRequest {
   /// Decode a CSIL CBOR byte payload into this record.
   factory BrowseRequest.fromCbor(List<int> bytes) =>
       BrowseRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class LibraryInfo {
+  final Library kind;
+
+  const LibraryInfo({required this.kind});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    return map;
+  }
+
+  factory LibraryInfo.fromMap(Map<String, Object?> map) {
+    return LibraryInfo(kind: map['kind'] as Library);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! LibraryInfo) return false;
+    return kind == other.kind;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([kind]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory LibraryInfo.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return LibraryInfo(
+      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
+        'music',
+        'audiobook',
+      ]),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory LibraryInfo.fromCbor(List<int> bytes) =>
+      LibraryInfo.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class LibrariesResponse {
+  final List<LibraryInfo> libraries;
+
+  const LibrariesResponse({required this.libraries});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['libraries'] = libraries;
+    return map;
+  }
+
+  factory LibrariesResponse.fromMap(Map<String, Object?> map) {
+    return LibrariesResponse(libraries: map['libraries'] as List<LibraryInfo>);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! LibrariesResponse) return false;
+    return libraries == other.libraries;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([libraries]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['libraries'] = libraries.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory LibrariesResponse.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return LibrariesResponse(
+      libraries: (map['libraries'] as List)
+          .map((csilE) => LibraryInfo.fromCborValue(csilE))
+          .cast<LibraryInfo>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory LibrariesResponse.fromCbor(List<int> bytes) =>
+      LibrariesResponse.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class AlbumsResponse {
@@ -1220,13 +1331,15 @@ final class ArtistDetail {
 
 final class SearchRequest {
   final String query;
+  final Library? library_;
   final int? limit;
 
-  const SearchRequest({required this.query, this.limit});
+  const SearchRequest({required this.query, this.library_, this.limit});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['query'] = query;
+    if (library_ != null) map['library'] = library_;
     if (limit != null) map['limit'] = limit;
     return map;
   }
@@ -1234,6 +1347,7 @@ final class SearchRequest {
   factory SearchRequest.fromMap(Map<String, Object?> map) {
     return SearchRequest(
       query: map['query'] as String,
+      library_: map['library'] as Library?,
       limit: map['limit'] as int?,
     );
   }
@@ -1251,16 +1365,19 @@ final class SearchRequest {
   @override
   bool operator ==(Object other) {
     if (other is! SearchRequest) return false;
-    return query == other.query && limit == other.limit;
+    return query == other.query &&
+        library_ == other.library_ &&
+        limit == other.limit;
   }
 
   @override
-  int get hashCode => Object.hashAll([query, limit]);
+  int get hashCode => Object.hashAll([query, library_, limit]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['query'] = query;
+    if (library_ != null) map['library'] = library_!;
     if (limit != null) map['limit'] = limit!;
     return map;
   }
@@ -1270,6 +1387,12 @@ final class SearchRequest {
     final map = cbor as Map;
     return SearchRequest(
       query: map['query'] as String,
+      library_: map['library'] == null
+          ? null
+          : CsilCbor.expectOneOf<String>(map['library'], const [
+              'music',
+              'audiobook',
+            ]),
       limit: map['limit'] == null ? null : map['limit'] as int,
     );
   }
@@ -1354,6 +1477,248 @@ final class SearchResponse {
   /// Decode a CSIL CBOR byte payload into this record.
   factory SearchResponse.fromCbor(List<int> bytes) =>
       SearchResponse.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class AudiobookProgress {
+  final TrackId trackId;
+  final int positionMs;
+  final bool completed;
+  final DateTime updatedAt;
+
+  const AudiobookProgress({
+    required this.trackId,
+    required this.positionMs,
+    required this.completed,
+    required this.updatedAt,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    map['position_ms'] = positionMs;
+    map['completed'] = completed;
+    map['updated_at'] = updatedAt;
+    return map;
+  }
+
+  factory AudiobookProgress.fromMap(Map<String, Object?> map) {
+    return AudiobookProgress(
+      trackId: map['track_id'] as TrackId,
+      positionMs: map['position_ms'] as int,
+      completed: map['completed'] as bool,
+      updatedAt: map['updated_at'] as DateTime,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! AudiobookProgress) return false;
+    return trackId == other.trackId &&
+        positionMs == other.positionMs &&
+        completed == other.completed &&
+        updatedAt == other.updatedAt;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([trackId, positionMs, completed, updatedAt]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    map['position_ms'] = positionMs;
+    map['completed'] = completed;
+    map['updated_at'] = updatedAt;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory AudiobookProgress.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return AudiobookProgress(
+      trackId: map['track_id'] as String,
+      positionMs: map['position_ms'] as int,
+      completed: map['completed'] as bool,
+      updatedAt: map['updated_at'] as DateTime,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory AudiobookProgress.fromCbor(List<int> bytes) =>
+      AudiobookProgress.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class AudiobookProgressRequest {
+  final List<TrackId> trackIds;
+
+  const AudiobookProgressRequest({required this.trackIds});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['track_ids'] = trackIds;
+    return map;
+  }
+
+  factory AudiobookProgressRequest.fromMap(Map<String, Object?> map) {
+    return AudiobookProgressRequest(
+      trackIds: map['track_ids'] as List<TrackId>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! AudiobookProgressRequest) return false;
+    return trackIds == other.trackIds;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([trackIds]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['track_ids'] = trackIds;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory AudiobookProgressRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return AudiobookProgressRequest(
+      trackIds: (map['track_ids'] as List)
+          .map((csilE) => csilE as String)
+          .cast<TrackId>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory AudiobookProgressRequest.fromCbor(List<int> bytes) =>
+      AudiobookProgressRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class AudiobookProgressResponse {
+  final List<AudiobookProgress> progress;
+
+  const AudiobookProgressResponse({required this.progress});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['progress'] = progress;
+    return map;
+  }
+
+  factory AudiobookProgressResponse.fromMap(Map<String, Object?> map) {
+    return AudiobookProgressResponse(
+      progress: map['progress'] as List<AudiobookProgress>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! AudiobookProgressResponse) return false;
+    return progress == other.progress;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([progress]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['progress'] = progress.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory AudiobookProgressResponse.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return AudiobookProgressResponse(
+      progress: (map['progress'] as List)
+          .map((csilE) => AudiobookProgress.fromCborValue(csilE))
+          .cast<AudiobookProgress>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory AudiobookProgressResponse.fromCbor(List<int> bytes) =>
+      AudiobookProgressResponse.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class UpdateAudiobookProgressRequest {
+  final TrackId trackId;
+  final int positionMs;
+  final bool completed;
+
+  const UpdateAudiobookProgressRequest({
+    required this.trackId,
+    required this.positionMs,
+    required this.completed,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    map['position_ms'] = positionMs;
+    map['completed'] = completed;
+    return map;
+  }
+
+  factory UpdateAudiobookProgressRequest.fromMap(Map<String, Object?> map) {
+    return UpdateAudiobookProgressRequest(
+      trackId: map['track_id'] as TrackId,
+      positionMs: map['position_ms'] as int,
+      completed: map['completed'] as bool,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! UpdateAudiobookProgressRequest) return false;
+    return trackId == other.trackId &&
+        positionMs == other.positionMs &&
+        completed == other.completed;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([trackId, positionMs, completed]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    map['position_ms'] = positionMs;
+    map['completed'] = completed;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory UpdateAudiobookProgressRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return UpdateAudiobookProgressRequest(
+      trackId: map['track_id'] as String,
+      positionMs: map['position_ms'] as int,
+      completed: map['completed'] as bool,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory UpdateAudiobookProgressRequest.fromCbor(List<int> bytes) =>
+      UpdateAudiobookProgressRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class PlaylistsResponse {
@@ -1718,12 +2083,14 @@ final class Player {
 
 final class QueueItem {
   final TrackId trackId;
+  final Library? library_;
   final String? title;
   final String? artist;
   final int? durationMs;
 
   const QueueItem({
     required this.trackId,
+    this.library_,
     this.title,
     this.artist,
     this.durationMs,
@@ -1732,6 +2099,7 @@ final class QueueItem {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['track_id'] = trackId;
+    if (library_ != null) map['library'] = library_;
     if (title != null) map['title'] = title;
     if (artist != null) map['artist'] = artist;
     if (durationMs != null) map['duration_ms'] = durationMs;
@@ -1741,6 +2109,7 @@ final class QueueItem {
   factory QueueItem.fromMap(Map<String, Object?> map) {
     return QueueItem(
       trackId: map['track_id'] as TrackId,
+      library_: map['library'] as Library?,
       title: map['title'] as String?,
       artist: map['artist'] as String?,
       durationMs: map['duration_ms'] as int?,
@@ -1751,18 +2120,21 @@ final class QueueItem {
   bool operator ==(Object other) {
     if (other is! QueueItem) return false;
     return trackId == other.trackId &&
+        library_ == other.library_ &&
         title == other.title &&
         artist == other.artist &&
         durationMs == other.durationMs;
   }
 
   @override
-  int get hashCode => Object.hashAll([trackId, title, artist, durationMs]);
+  int get hashCode =>
+      Object.hashAll([trackId, library_, title, artist, durationMs]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['track_id'] = trackId;
+    if (library_ != null) map['library'] = library_!;
     if (title != null) map['title'] = title!;
     if (artist != null) map['artist'] = artist!;
     if (durationMs != null) map['duration_ms'] = durationMs!;
@@ -1774,6 +2146,12 @@ final class QueueItem {
     final map = cbor as Map;
     return QueueItem(
       trackId: map['track_id'] as String,
+      library_: map['library'] == null
+          ? null
+          : CsilCbor.expectOneOf<String>(map['library'], const [
+              'music',
+              'audiobook',
+            ]),
       title: map['title'] == null ? null : map['title'] as String,
       artist: map['artist'] == null ? null : map['artist'] as String,
       durationMs: map['duration_ms'] == null ? null : map['duration_ms'] as int,

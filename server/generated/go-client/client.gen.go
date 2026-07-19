@@ -80,6 +80,15 @@ func NewLibraryClient(transport Transport) *LibraryClient {
 	return &LibraryClient{transport: transport}
 }
 
+func (c *LibraryClient) ListLibraries(ctx context.Context, req Page) (LibrariesResponse, error) {
+	var csilZero LibrariesResponse
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "list-libraries", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeLibrariesResponse(csilResp)
+}
+
 func (c *LibraryClient) ListAlbums(ctx context.Context, req BrowseRequest) (AlbumsResponse, error) {
 	var csilZero AlbumsResponse
 	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "list-albums", EncodeBrowseRequest(req))
@@ -150,6 +159,24 @@ func (c *LibraryClient) GetCoverArt(ctx context.Context, req CoverArtRequest) (C
 		return csilZero, csilErr
 	}
 	return DecodeCoverArt(csilResp)
+}
+
+func (c *LibraryClient) GetAudiobookProgress(ctx context.Context, req AudiobookProgressRequest) (AudiobookProgressResponse, error) {
+	var csilZero AudiobookProgressResponse
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "get-audiobook-progress", EncodeAudiobookProgressRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeAudiobookProgressResponse(csilResp)
+}
+
+func (c *LibraryClient) UpdateAudiobookProgress(ctx context.Context, req UpdateAudiobookProgressRequest) (AudiobookProgress, error) {
+	var csilZero AudiobookProgress
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "update-audiobook-progress", EncodeUpdateAudiobookProgressRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeAudiobookProgress(csilResp)
 }
 
 // PlayerClient is a typed client for the PlayerService service. The client owns

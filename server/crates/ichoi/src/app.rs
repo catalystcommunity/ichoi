@@ -29,14 +29,18 @@ pub fn prepare_db(config: &Config) -> anyhow::Result<db::SqlitePool> {
     Ok(pool)
 }
 
-fn ensure_music_library(pool: &db::SqlitePool, path: &std::path::Path) -> anyhow::Result<String> {
-    let id = "lib:music".to_string();
+fn ensure_library(
+    pool: &db::SqlitePool,
+    kind: &str,
+    path: &std::path::Path,
+) -> anyhow::Result<String> {
+    let id = format!("lib:{kind}");
     let mut conn = pool.get()?;
     store::upsert_library(
         &mut conn,
         &models::Library {
             id: id.clone(),
-            kind: "music".to_string(),
+            kind: kind.to_string(),
             path: path.to_string_lossy().into_owned(),
         },
     )?;
@@ -54,50 +58,80 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
 
     let app = App::new(pool.clone(), config.clone());
 
-    // Kick off a background scan of the music library if configured.
-    if let Some(music) = config.music_dir.clone() {
-        if music.is_dir() {
-            let library_id = ensure_music_library(&pool, &music)?;
-            let pool2 = pool.clone();
-            let fetch_art = config.fetch_art;
-            let split_dumps = config.split_dump_folders;
-            tokio::task::spawn_blocking(move || {
-                let mut conn = match pool2.get() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        log::error!("scan: no db connection: {e}");
-                        return;
-                    }
-                };
-                match scan::scan_library(&mut conn, &library_id, &music, split_dumps) {
+    // Register and scan only configured libraries. Catalog rows for a disabled library remain
+    // dormant so that re-enabling it does not discard per-user audiobook progress.
+    let mut configured = Vec::new();
+    for (kind, path) in [
+        ("music", config.music_dir.clone()),
+        ("audiobook", config.audiobook_dir.clone()),
+    ] {
+        if let Some(path) = path {
+            if path.is_dir() {
+                let id = ensure_library(&pool, kind, &path)?;
+                configured.push((id, kind.to_string(), path));
+            } else {
+                log::warn!(
+                    "{kind} dir {} does not exist; skipping scan",
+                    path.display()
+                );
+            }
+        }
+    }
+
+    if !configured.is_empty() {
+        let pool2 = pool.clone();
+        let fetch_art = config.fetch_art;
+        let split_dumps = config.split_dump_folders;
+        let album_subfolder_flat = config.album_subfolder_flat;
+        let album_subfolder_words = config.album_subfolder_words.clone();
+        let audiobook_root = configured
+            .iter()
+            .find(|(_, kind, _)| kind == "audiobook")
+            .map(|(_, _, path)| path.clone());
+        tokio::task::spawn_blocking(move || {
+            let mut conn = match pool2.get() {
+                Ok(c) => c,
+                Err(e) => {
+                    log::error!("scan: no db connection: {e}");
+                    return;
+                }
+            };
+            for (library_id, kind, root) in configured {
+                let excluded = (kind == "music")
+                    .then_some(audiobook_root.as_deref())
+                    .flatten();
+                match scan::scan_library(
+                    &mut conn,
+                    &library_id,
+                    &root,
+                    excluded,
+                    split_dumps,
+                    album_subfolder_flat,
+                    &album_subfolder_words,
+                ) {
                     Ok(stats) => log::info!(
-                        "scan complete: {} tracks, {} errors",
+                        "{kind} scan complete: {} tracks, {} errors",
                         stats.tracks,
                         stats.errors
                     ),
-                    Err(e) => log::error!("scan failed: {e}"),
+                    Err(e) => log::error!("{kind} scan failed: {e}"),
                 }
-                // Cover-art fill-in trickles in afterward (rate-limited network); it only
-                // touches albums not yet checked, so it is cheap on later startups.
-                if fetch_art {
-                    log::info!("cover art: fetching missing art in background");
-                    match crate::art::fetch_missing(&mut conn, 1_000_000) {
-                        Ok(s) => log::info!(
-                            "cover art: {} fetched, {} skipped, {} not found",
-                            s.fetched,
-                            s.skipped,
-                            s.failed
-                        ),
-                        Err(e) => log::warn!("cover art: {e}"),
-                    }
+            }
+            // Cover-art fill-in trickles in afterward (rate-limited network); it only
+            // touches albums not yet checked, so it is cheap on later startups.
+            if fetch_art {
+                log::info!("cover art: fetching missing art in background");
+                match crate::art::fetch_missing(&mut conn, 1_000_000) {
+                    Ok(s) => log::info!(
+                        "cover art: {} fetched, {} skipped, {} not found",
+                        s.fetched,
+                        s.skipped,
+                        s.failed
+                    ),
+                    Err(e) => log::warn!("cover art: {e}"),
                 }
-            });
-        } else {
-            log::warn!(
-                "music dir {} does not exist; skipping scan",
-                music.display()
-            );
-        }
+            }
+        });
     }
 
     let http_router = server::http::router(app.clone(), config.web_dir.clone());

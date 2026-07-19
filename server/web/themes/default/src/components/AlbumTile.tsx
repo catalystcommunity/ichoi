@@ -5,14 +5,14 @@ import { useI18n } from "../lib/i18n.tsx";
 import { CoverArt } from "./CoverArt.tsx";
 
 /** An album in a grid. The whole tile is a button that opens the album detail. */
-export function AlbumTile(props: { album: Album; artistName?: string }): JSX.Element {
+export function AlbumTile(props: { album: Album; artistName?: string; href?: string }): JSX.Element {
   const navigate = useNavigate();
   const { t } = useI18n();
   return (
     <button
       type="button"
       class="tile"
-      onClick={() => navigate(`/album/${encodeURIComponent(props.album.id)}`)}
+      onClick={() => navigate(props.href ?? `/album/${encodeURIComponent(props.album.id)}`)}
       aria-label={`${props.album.title}${props.artistName ? `, ${props.artistName}` : ""}`}
     >
       <CoverArt album={props.album} />

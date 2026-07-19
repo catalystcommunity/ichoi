@@ -74,6 +74,24 @@ static inline int csil_session_logout(const CsilgenTransport *t, const Page *req
     return csil_drc;
 }
 
+/* Invoke LibraryService/list-libraries with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_library_list_libraries(const CsilgenTransport *t, const Page *req,
+                        LibrariesResponse *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_Page(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "LibraryService", "list-libraries", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_LibrariesResponse(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
 /* Invoke LibraryService/list-albums with a typed request and decode the typed
  * response. *resp_owner holds the response's backing storage; free it once
  * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
@@ -214,6 +232,42 @@ static inline int csil_library_get_cover_art(const CsilgenTransport *t, const Co
     free(csil_reqb);
     if (csil_rc != 0) { free(csil_respb); return csil_rc; }
     int csil_drc = csil_decode_CoverArt(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke LibraryService/get-audiobook-progress with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_library_get_audiobook_progress(const CsilgenTransport *t, const AudiobookProgressRequest *req,
+                        AudiobookProgressResponse *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_AudiobookProgressRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "LibraryService", "get-audiobook-progress", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_AudiobookProgressResponse(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke LibraryService/update-audiobook-progress with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_library_update_audiobook_progress(const CsilgenTransport *t, const UpdateAudiobookProgressRequest *req,
+                        AudiobookProgress *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_UpdateAudiobookProgressRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "LibraryService", "update-audiobook-progress", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_AudiobookProgress(csil_respb, csil_respn, resp, resp_owner);
     free(csil_respb);
     return csil_drc;
 }

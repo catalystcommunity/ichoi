@@ -459,6 +459,7 @@ Illustrative, not final.
 - `player_queue_items` — `player_id`, `track_id`, `position`
 - `player_state` — `player_id`, `status`, `current_track_id`, `position_ms`, `volume`
 - `libraries` — `id`, `kind` (`music`|`audiobook`), `path`
+- `audiobook_progress` — per-account (or global guest profile), per-track position/completion and update timestamp
 - `tracks` — `id`, `library_id`, `root_relative_path` (playlist portability, §7), `codec`,
   `container`, `sample_rate`, `channels`, `bit_depth`, `duration_ms`, `bitrate`,
   `size_bytes`, `mtime`, `content_hash` (cross-server dedupe), `trim_start_samples`,

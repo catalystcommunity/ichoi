@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record Track(
     TrackId id /* wire: "id" */,
+    Library library /* wire: "library" */,
     String title /* wire: "title" */,
     ArtistId artistId /* wire: "artist_id" */,
     AlbumId albumId /* wire: "album_id" */,

@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateNodeTokenRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, Handle, ImportResult, ImportTrackRequest, Library, ListAccountsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, Role, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustedDomains } from "./types.gen.ts";
+import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateNodeTokenRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, Handle, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, ListAccountsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, Role, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -476,6 +476,7 @@ export function toTrackCborValue(v: Track): CborValue {
   csilMap.set("codec", v.codec);
   csilMap.set("title", v.title);
   if (v.discNo !== undefined) csilMap.set("disc_no", v.discNo);
+  csilMap.set("library", v.library);
   if (v.albumId !== undefined) csilMap.set("album_id", v.albumId);
   csilMap.set("channels", v.channels);
   if (v.trackNo !== undefined) csilMap.set("track_no", v.trackNo);
@@ -492,6 +493,7 @@ export function toTrackCborValue(v: Track): CborValue {
 export function fromTrackCborValue(value: CborValue): Track {
   return {
     id: asString(requireKey(value, "id")),
+    library: (asEnumMember(asString(requireKey(value, "library")), ["music", "audiobook"]) as "music" | "audiobook"),
     title: asString(requireKey(value, "title")),
     artistId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "artist_id")),
     albumId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "album_id")),
@@ -620,6 +622,46 @@ export function toBrowseRequestCbor(v: BrowseRequest): Uint8Array {
 
 export function fromBrowseRequestCbor(bytes: Uint8Array): BrowseRequest {
   return fromBrowseRequestCborValue(decode(bytes));
+}
+
+export function toLibraryInfoCborValue(v: LibraryInfo): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("kind", v.kind);
+  return csilMap;
+}
+
+export function fromLibraryInfoCborValue(value: CborValue): LibraryInfo {
+  return {
+    kind: (asEnumMember(asString(requireKey(value, "kind")), ["music", "audiobook"]) as "music" | "audiobook"),
+  };
+}
+
+export function toLibraryInfoCbor(v: LibraryInfo): Uint8Array {
+  return encodeValue(toLibraryInfoCborValue(v));
+}
+
+export function fromLibraryInfoCbor(bytes: Uint8Array): LibraryInfo {
+  return fromLibraryInfoCborValue(decode(bytes));
+}
+
+export function toLibrariesResponseCborValue(v: LibrariesResponse): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("libraries", v.libraries.map((csilE): CborValue => toLibraryInfoCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromLibrariesResponseCborValue(value: CborValue): LibrariesResponse {
+  return {
+    libraries: asArray(requireKey(value, "libraries")).map((csilE) => fromLibraryInfoCborValue(csilE)),
+  };
+}
+
+export function toLibrariesResponseCbor(v: LibrariesResponse): Uint8Array {
+  return encodeValue(toLibrariesResponseCborValue(v));
+}
+
+export function fromLibrariesResponseCbor(bytes: Uint8Array): LibrariesResponse {
+  return fromLibrariesResponseCborValue(decode(bytes));
 }
 
 export function toAlbumsResponseCborValue(v: AlbumsResponse): CborValue {
@@ -754,12 +796,14 @@ export function toSearchRequestCborValue(v: SearchRequest): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
   if (v.limit !== undefined) csilMap.set("limit", v.limit);
   csilMap.set("query", v.query);
+  if (v.library !== undefined) csilMap.set("library", v.library);
   return csilMap;
 }
 
 export function fromSearchRequestCborValue(value: CborValue): SearchRequest {
   return {
     query: asString(requireKey(value, "query")),
+    library: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : (asEnumMember(asString(csilV), ["music", "audiobook"]) as "music" | "audiobook"))(mapGet(value, "library")),
     limit: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "limit")),
   };
 }
@@ -794,6 +838,96 @@ export function toSearchResponseCbor(v: SearchResponse): Uint8Array {
 
 export function fromSearchResponseCbor(bytes: Uint8Array): SearchResponse {
   return fromSearchResponseCborValue(decode(bytes));
+}
+
+export function toAudiobookProgressCborValue(v: AudiobookProgress): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("track_id", v.trackId);
+  csilMap.set("completed", v.completed);
+  csilMap.set("updated_at", { tag: 0, value: csilTsToText(v.updatedAt) });
+  csilMap.set("position_ms", v.positionMs);
+  return csilMap;
+}
+
+export function fromAudiobookProgressCborValue(value: CborValue): AudiobookProgress {
+  return {
+    trackId: asString(requireKey(value, "track_id")),
+    positionMs: asNumber(requireKey(value, "position_ms")),
+    completed: asBool(requireKey(value, "completed")),
+    updatedAt: asTimestamp(requireKey(value, "updated_at")),
+  };
+}
+
+export function toAudiobookProgressCbor(v: AudiobookProgress): Uint8Array {
+  return encodeValue(toAudiobookProgressCborValue(v));
+}
+
+export function fromAudiobookProgressCbor(bytes: Uint8Array): AudiobookProgress {
+  return fromAudiobookProgressCborValue(decode(bytes));
+}
+
+export function toAudiobookProgressRequestCborValue(v: AudiobookProgressRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("track_ids", v.trackIds);
+  return csilMap;
+}
+
+export function fromAudiobookProgressRequestCborValue(value: CborValue): AudiobookProgressRequest {
+  return {
+    trackIds: asArray(requireKey(value, "track_ids")).map((csilE) => asString(csilE)),
+  };
+}
+
+export function toAudiobookProgressRequestCbor(v: AudiobookProgressRequest): Uint8Array {
+  return encodeValue(toAudiobookProgressRequestCborValue(v));
+}
+
+export function fromAudiobookProgressRequestCbor(bytes: Uint8Array): AudiobookProgressRequest {
+  return fromAudiobookProgressRequestCborValue(decode(bytes));
+}
+
+export function toAudiobookProgressResponseCborValue(v: AudiobookProgressResponse): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("progress", v.progress.map((csilE): CborValue => toAudiobookProgressCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromAudiobookProgressResponseCborValue(value: CborValue): AudiobookProgressResponse {
+  return {
+    progress: asArray(requireKey(value, "progress")).map((csilE) => fromAudiobookProgressCborValue(csilE)),
+  };
+}
+
+export function toAudiobookProgressResponseCbor(v: AudiobookProgressResponse): Uint8Array {
+  return encodeValue(toAudiobookProgressResponseCborValue(v));
+}
+
+export function fromAudiobookProgressResponseCbor(bytes: Uint8Array): AudiobookProgressResponse {
+  return fromAudiobookProgressResponseCborValue(decode(bytes));
+}
+
+export function toUpdateAudiobookProgressRequestCborValue(v: UpdateAudiobookProgressRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("track_id", v.trackId);
+  csilMap.set("completed", v.completed);
+  csilMap.set("position_ms", v.positionMs);
+  return csilMap;
+}
+
+export function fromUpdateAudiobookProgressRequestCborValue(value: CborValue): UpdateAudiobookProgressRequest {
+  return {
+    trackId: asString(requireKey(value, "track_id")),
+    positionMs: asNumber(requireKey(value, "position_ms")),
+    completed: asBool(requireKey(value, "completed")),
+  };
+}
+
+export function toUpdateAudiobookProgressRequestCbor(v: UpdateAudiobookProgressRequest): Uint8Array {
+  return encodeValue(toUpdateAudiobookProgressRequestCborValue(v));
+}
+
+export function fromUpdateAudiobookProgressRequestCbor(bytes: Uint8Array): UpdateAudiobookProgressRequest {
+  return fromUpdateAudiobookProgressRequestCborValue(decode(bytes));
 }
 
 export function toPlaylistsResponseCborValue(v: PlaylistsResponse): CborValue {
@@ -936,6 +1070,7 @@ export function toQueueItemCborValue(v: QueueItem): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
   if (v.title !== undefined) csilMap.set("title", v.title);
   if (v.artist !== undefined) csilMap.set("artist", v.artist);
+  if (v.library !== undefined) csilMap.set("library", v.library);
   csilMap.set("track_id", v.trackId);
   if (v.durationMs !== undefined) csilMap.set("duration_ms", v.durationMs);
   return csilMap;
@@ -944,6 +1079,7 @@ export function toQueueItemCborValue(v: QueueItem): CborValue {
 export function fromQueueItemCborValue(value: CborValue): QueueItem {
   return {
     trackId: asString(requireKey(value, "track_id")),
+    library: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : (asEnumMember(asString(csilV), ["music", "audiobook"]) as "music" | "audiobook"))(mapGet(value, "library")),
     title: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "title")),
     artist: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "artist")),
     durationMs: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "duration_ms")),

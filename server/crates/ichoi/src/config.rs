@@ -40,6 +40,8 @@ struct FileConfig {
     web_dir: Option<PathBuf>,
     log: Option<String>,
     require_music: Option<bool>,
+    album_subfolder_flat: Option<bool>,
+    album_subfolder_words: Option<Vec<String>>,
     linkkeys_local_rp: Option<bool>,
     linkkeys_local_rp_name: Option<String>,
     linkkeys_trusted_identities: Option<Vec<String>>,
@@ -71,6 +73,11 @@ pub struct Config {
     /// Split "dump" folders (many artists / many loose files) into per-artist "Singles"
     /// albums instead of one folder-album (default off; `ICHOI_SPLIT_DUMP_FOLDERS=1`).
     pub split_dump_folders: bool,
+    /// Collapse disc-like album subfolders (for example `CD1` and `Bonus Disc`) into their
+    /// parent folder. Enabled by default.
+    pub album_subfolder_flat: bool,
+    /// Case-insensitive, fuzzy-matched words and phrases identifying disc subfolders.
+    pub album_subfolder_words: Vec<String>,
     /// Fail startup when the configured music directory is absent or empty. Intended for
     /// Docker Compose/local deployments where an empty bind mount usually means a bad mount.
     pub require_music: bool,
@@ -89,6 +96,35 @@ fn env(key: &str) -> Option<String> {
 
 fn exactly_true(value: Option<&str>) -> bool {
     value == Some("true")
+}
+
+const DEFAULT_ALBUM_SUBFOLDER_WORDS: &[&str] = &["cd", "disc", "disk", "bonus disc"];
+
+fn configurable_bool(value: Option<&str>, file_value: Option<bool>, default: bool) -> bool {
+    match value.map(str::trim).map(str::to_ascii_lowercase).as_deref() {
+        Some("1" | "true" | "yes" | "on") => true,
+        Some("0" | "false" | "no" | "off") => false,
+        Some(_) => default,
+        None => file_value.unwrap_or(default),
+    }
+}
+
+fn album_subfolder_words(value: Option<String>) -> Vec<String> {
+    value
+        .map(|words| {
+            words
+                .split(',')
+                .map(str::trim)
+                .filter(|word| !word.is_empty())
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_else(|| {
+            DEFAULT_ALBUM_SUBFOLDER_WORDS
+                .iter()
+                .map(|word| (*word).to_string())
+                .collect()
+        })
 }
 
 impl Config {
@@ -117,6 +153,15 @@ impl Config {
         let audiobook_dir = pick_opt("ICHOI_AUDIOBOOK_DIR", file.audiobook_dir.map(pb_to_string))
             .map(PathBuf::from);
         let db_dir = pick_opt("ICHOI_DB_DIR", file.db_dir.map(pb_to_string)).map(PathBuf::from);
+        let album_subfolder_flat = configurable_bool(
+            env("ICHOI_ALBUM_SUBFOLDER_FLAT").as_deref(),
+            file.album_subfolder_flat,
+            true,
+        );
+        let album_subfolder_words = album_subfolder_words(pick_opt(
+            "ICHOI_ALBUM_SUBFOLDER_WORDS",
+            file.album_subfolder_words.map(|words| words.join(",")),
+        ));
 
         Ok(Config {
             role,
@@ -155,6 +200,8 @@ impl Config {
                 env("ICHOI_SPLIT_DUMP_FOLDERS").as_deref(),
                 Some("1") | Some("true") | Some("yes")
             ),
+            album_subfolder_flat,
+            album_subfolder_words,
             require_music: matches!(
                 env("ICHOI_REQUIRE_MUSIC")
                     .or_else(|| file
@@ -210,7 +257,7 @@ fn pb_to_string(p: PathBuf) -> String {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{exactly_true, FileConfig};
+    use super::{album_subfolder_words, configurable_bool, exactly_true, FileConfig};
 
     #[test]
     fn local_rp_environment_enablement_is_exact() {
@@ -234,5 +281,46 @@ tls_key = "/state/key.der"
         assert_eq!(parsed.core_keys.unwrap().len(), 1);
         assert_eq!(parsed.tls_cert.unwrap(), PathBuf::from("/state/cert.der"));
         assert_eq!(parsed.tls_key.unwrap(), PathBuf::from("/state/key.der"));
+    }
+
+    #[test]
+    fn audiobook_directory_parses_from_toml() {
+        let parsed: FileConfig = toml::from_str(
+            r#"
+audiobook_dir = "/media/audiobooks"
+"#,
+        )
+        .unwrap();
+        assert_eq!(
+            parsed.audiobook_dir.unwrap(),
+            PathBuf::from("/media/audiobooks")
+        );
+    }
+
+    #[test]
+    fn album_subfolder_configuration_parses_and_defaults_enabled() {
+        let parsed: FileConfig = toml::from_str(
+            r#"
+album_subfolder_flat = false
+album_subfolder_words = ["part", "supplement"]
+"#,
+        )
+        .unwrap();
+        assert!(!parsed.album_subfolder_flat.unwrap());
+        assert_eq!(
+            parsed.album_subfolder_words.unwrap(),
+            vec!["part", "supplement"]
+        );
+        assert!(configurable_bool(None, None, true));
+        assert!(!configurable_bool(Some("false"), Some(true), true));
+        assert!(configurable_bool(Some("true"), Some(false), true));
+        assert_eq!(
+            album_subfolder_words(None),
+            vec!["cd", "disc", "disk", "bonus disc"]
+        );
+        assert_eq!(
+            album_subfolder_words(Some("part, supplement ".to_string())),
+            vec!["part", "supplement"]
+        );
     }
 }

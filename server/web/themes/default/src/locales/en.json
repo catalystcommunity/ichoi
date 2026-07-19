@@ -5,6 +5,7 @@
   },
   "nav": {
     "library": "Library",
+    "audiobooks": "Audiobooks",
     "search": "Search",
     "playlists": "Playlists",
     "jukebox": "Jukebox",
@@ -63,6 +64,20 @@
     "track": "Track",
     "title": "Title",
     "duration": "Duration"
+  },
+  "audiobooks": {
+    "title": "Audiobooks",
+    "subtitle": "Books from the configured audiobook library.",
+    "loading": "Loading audiobooks…",
+    "empty": "No audiobooks are indexed yet.",
+    "back": "All audiobooks",
+    "chapters": "{{count}} chapters",
+    "play": "Play book",
+    "resume": "Resume book",
+    "queue": "Add book to queue",
+    "completed": "Completed",
+    "signInProgress": "Sign in to save listening progress across devices.",
+    "guestProgress": "Listening progress is shared by everyone using this guest server."
   },
   "search": {
     "title": "Search",

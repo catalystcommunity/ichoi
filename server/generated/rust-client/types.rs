@@ -120,9 +120,17 @@ pub struct SessionInfo {
     pub token: Option<String>,
 }
 
+/// Library variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum Library {
+    Music,
+    Audiobook,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Track {
     pub id: TrackId,
+    pub library: Library,
     pub title: String,
     pub artist_id: Option<ArtistId>,
     pub album_id: Option<AlbumId>,
@@ -165,13 +173,6 @@ pub struct Playlist {
     pub root_relative_path: String,
 }
 
-/// Library variants
-#[derive(Debug, Clone, PartialEq)]
-pub enum Library {
-    Music,
-    Audiobook,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrowseRequest {
     /// default: "music"
@@ -180,6 +181,16 @@ pub struct BrowseRequest {
     pub offset: Option<u64>,
     /// default: 100
     pub limit: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LibraryInfo {
+    pub kind: Library,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LibrariesResponse {
+    pub libraries: Vec<LibraryInfo>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -220,6 +231,8 @@ pub struct ArtistDetail {
 pub struct SearchRequest {
     /// constraint: size in 1..=256
     pub query: String,
+    /// default: "music"
+    pub library: Option<Library>,
     /// default: 50
     pub limit: Option<u64>,
 }
@@ -245,6 +258,33 @@ pub struct SearchResponse {
     pub artists: Vec<Artist>,
     pub albums: Vec<Album>,
     pub tracks: Vec<Track>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudiobookProgress {
+    pub track_id: TrackId,
+    pub position_ms: u64,
+    /// default: false
+    pub completed: bool,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudiobookProgressRequest {
+    pub track_ids: Vec<TrackId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AudiobookProgressResponse {
+    pub progress: Vec<AudiobookProgress>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UpdateAudiobookProgressRequest {
+    pub track_id: TrackId,
+    pub position_ms: u64,
+    /// default: false
+    pub completed: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -295,6 +335,7 @@ pub struct Player {
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueItem {
     pub track_id: TrackId,
+    pub library: Option<Library>,
     pub title: Option<String>,
     pub artist: Option<String>,
     pub duration_ms: Option<u64>,

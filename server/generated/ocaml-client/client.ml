@@ -30,6 +30,11 @@ module Session_service = struct
 end
 
 module Library_service = struct
+  let list_libraries (c : client) (req : page) : (libraries_response, string) result =
+    match c.call ~service:"LibraryService" ~op:"list-libraries" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_libraries_response_bytes payload)
+    | Error _ as e -> e
+
   let list_albums (c : client) (req : browse_request) : (albums_response, string) result =
     match c.call ~service:"LibraryService" ~op:"list-albums" ~payload:(Codec.encode_browse_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_albums_response_bytes payload)
@@ -68,6 +73,16 @@ module Library_service = struct
   let get_cover_art (c : client) (req : cover_art_request) : (cover_art, string) result =
     match c.call ~service:"LibraryService" ~op:"get-cover-art" ~payload:(Codec.encode_cover_art_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
+    | Error _ as e -> e
+
+  let get_audiobook_progress (c : client) (req : audiobook_progress_request) : (audiobook_progress_response, string) result =
+    match c.call ~service:"LibraryService" ~op:"get-audiobook-progress" ~payload:(Codec.encode_audiobook_progress_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_audiobook_progress_response_bytes payload)
+    | Error _ as e -> e
+
+  let update_audiobook_progress (c : client) (req : update_audiobook_progress_request) : (audiobook_progress, string) result =
+    match c.call ~service:"LibraryService" ~op:"update-audiobook-progress" ~payload:(Codec.encode_update_audiobook_progress_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_audiobook_progress_bytes payload)
     | Error _ as e -> e
 end
 

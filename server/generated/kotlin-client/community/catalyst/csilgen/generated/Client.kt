@@ -40,6 +40,9 @@ class SessionClient(private val transport: Transport) {
 /** Typed client for the LibraryService service. The client owns (de)serialization;
  * the carrier only moves bytes. */
 class LibraryClient(private val transport: Transport) {
+    fun listLibraries(request: Page): LibrariesResponse {
+        return decode<LibrariesResponse>(transport.call("LibraryService", "list-libraries", encode(request)))
+    }
     fun listAlbums(request: BrowseRequest): AlbumsResponse {
         return decode<AlbumsResponse>(transport.call("LibraryService", "list-albums", encode(request)))
     }
@@ -63,6 +66,12 @@ class LibraryClient(private val transport: Transport) {
     }
     fun getCoverArt(request: CoverArtRequest): CoverArt {
         return decode<CoverArt>(transport.call("LibraryService", "get-cover-art", encode(request)))
+    }
+    fun getAudiobookProgress(request: AudiobookProgressRequest): AudiobookProgressResponse {
+        return decode<AudiobookProgressResponse>(transport.call("LibraryService", "get-audiobook-progress", encode(request)))
+    }
+    fun updateAudiobookProgress(request: UpdateAudiobookProgressRequest): AudiobookProgress {
+        return decode<AudiobookProgress>(transport.call("LibraryService", "update-audiobook-progress", encode(request)))
     }
 }
 

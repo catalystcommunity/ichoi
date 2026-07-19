@@ -3,14 +3,19 @@
 
 mod common;
 
+use std::sync::Arc;
+
 use ciborium::value::Value;
 use ichoi::handlers::Identity;
 use ichoi::transport::{
     decode_event_envelope, encode_event_envelope, handle_events_frame, player_state_frame,
     EventEnvelope,
 };
-use libichoi::csil::codec::{decode_albums_response, decode_player_state, encode_browse_request};
-use libichoi::csil::types::{BrowseRequest, PlayerState, PlayerStatus, QueueItem};
+use libichoi::csil::codec::{
+    decode_albums_response, decode_libraries_response, decode_player_state, encode_browse_request,
+    encode_page,
+};
+use libichoi::csil::types::{BrowseRequest, Library, Page, PlayerState, PlayerStatus, QueueItem};
 
 use common::DataMap;
 
@@ -81,6 +86,36 @@ fn request_reply_round_trips_over_the_wire() {
     let resp = decode_albums_response(&env.payload).expect("decode AlbumsResponse from payload");
     assert_eq!(resp.total, 1);
     assert_eq!(resp.albums[0].title, "Test Album");
+}
+
+#[test]
+fn configured_libraries_round_trip_over_the_wire() {
+    let (mut app, pool) = common::test_app();
+    let audiobook_dir = tempfile::tempdir().unwrap();
+    let mut config = common::test_config();
+    config.audiobook_dir = Some(audiobook_dir.path().to_path_buf());
+    app.config = Arc::new(config);
+    {
+        let mut conn = pool.get().unwrap();
+        common::ensure_library(&mut conn, "lib:music");
+        common::ensure_library(&mut conn, "lib:audiobook");
+    }
+    let frame = encode_event_envelope(&EventEnvelope {
+        service: Some("library".to_string()),
+        event: "list-libraries".to_string(),
+        id: Some(8),
+        payload: encode_page(&Page {
+            offset: None,
+            limit: None,
+        }),
+    });
+    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, &frame);
+    let env = decode_event_envelope(&reply.expect("reply frame")).unwrap();
+    let response = decode_libraries_response(&env.payload).unwrap();
+    assert!(response
+        .libraries
+        .iter()
+        .any(|library| library.kind == Library::Audiobook));
 }
 
 #[test]
@@ -166,12 +201,14 @@ fn player_state_push_frame_matches_the_subscribe_channel() {
         queue: vec![
             QueueItem {
                 track_id: "t1".into(),
+                library: None,
                 title: Some("One".into()),
                 artist: None,
                 duration_ms: Some(1000),
             },
             QueueItem {
                 track_id: "t2".into(),
+                library: None,
                 title: Some("Two".into()),
                 artist: None,
                 duration_ms: Some(2000),

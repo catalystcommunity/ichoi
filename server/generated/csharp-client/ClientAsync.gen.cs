@@ -30,6 +30,8 @@ public sealed class SessionAsyncClient(ICsilAsyncTransport transport)
 /// (de)serialization via the generated codec; the transport only moves bytes.</summary>
 public sealed class LibraryAsyncClient(ICsilAsyncTransport transport)
 {
+    public async System.Threading.Tasks.Task<LibrariesResponse> ListLibrariesAsync(Page page) =>
+        Codec.Decode<LibrariesResponse>(await transport.Call("LibraryService", "list-libraries", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<AlbumsResponse> ListAlbumsAsync(BrowseRequest browseRequest) =>
         Codec.Decode<AlbumsResponse>(await transport.Call("LibraryService", "list-albums", Codec.Encode(browseRequest)));
     public async System.Threading.Tasks.Task<ArtistsResponse> ListArtistsAsync(BrowseRequest browseRequest) =>
@@ -46,6 +48,10 @@ public sealed class LibraryAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<PlaylistDetail>(await transport.Call("LibraryService", "get-playlist", Codec.Encode(playlistRequest)));
     public async System.Threading.Tasks.Task<CoverArt> GetCoverArtAsync(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(await transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
+    public async System.Threading.Tasks.Task<AudiobookProgressResponse> GetAudiobookProgressAsync(AudiobookProgressRequest audiobookProgressRequest) =>
+        Codec.Decode<AudiobookProgressResponse>(await transport.Call("LibraryService", "get-audiobook-progress", Codec.Encode(audiobookProgressRequest)));
+    public async System.Threading.Tasks.Task<AudiobookProgress> UpdateAudiobookProgressAsync(UpdateAudiobookProgressRequest updateAudiobookProgressRequest) =>
+        Codec.Decode<AudiobookProgress>(await transport.Call("LibraryService", "update-audiobook-progress", Codec.Encode(updateAudiobookProgressRequest)));
 }
 
 /// <summary>Typed RPC client for the PlayerService service. The client owns

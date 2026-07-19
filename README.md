@@ -65,6 +65,8 @@ settings:
 | Role | `ICHOI_ROLE` | `core` |
 | Music directory | `ICHOI_MUSIC_DIR` | *(required for a core)* |
 | Audiobook directory | `ICHOI_AUDIOBOOK_DIR` | unset |
+| Flatten disc subfolders into parent albums | `ICHOI_ALBUM_SUBFOLDER_FLAT` | `true` |
+| Disc-subfolder matching words | `ICHOI_ALBUM_SUBFOLDER_WORDS` | `cd,disc,disk,bonus disc` |
 | Database directory | `ICHOI_DB_DIR` | music dir |
 | HTTP listen | `ICHOI_HTTP_ADDR` | `:4042` |
 | CSIL listen | `ICHOI_CSIL_ADDR` | `:4043` |
@@ -80,6 +82,18 @@ settings:
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → `PATH` |
 | Default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
 | Log level | `ICHOI_LOG` | `warn` |
+
+Setting `ICHOI_AUDIOBOOK_DIR` enables the Audiobooks view. The directory may be separate
+from the music collection or nested below it; a nested audiobook tree is excluded from the
+music catalog automatically. Signed-in users get independent per-chapter listening progress
+and resume positions. While the server has no accounts, guest playback uses one global progress
+profile shared by everyone browsing that server.
+
+By default, disc-like subfolders such as `CD1`, `CD2`, `Disc One`, and `Bonus Disc` are
+fuzzy-matched and flattened into one album named after their parent folder. Track titles retain
+their source folder as a prefix, for example `CD1 - Chapter 01`. Set
+`ICHOI_ALBUM_SUBFOLDER_FLAT=false` to retain separate subfolder albums, or provide a comma-separated
+`ICHOI_ALBUM_SUBFOLDER_WORDS` list to replace the default matching vocabulary.
 
 The database is a single SQLite file (WAL) in the database directory. ffmpeg is resolved
 bundled-next-to-the-binary first, then `PATH`; if neither is found, transcoding is

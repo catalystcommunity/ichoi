@@ -106,9 +106,13 @@ data class SessionInfo(
     val token: String? = null
 )
 
+/** Library enum (bare-literal wire). */
+enum class Library { Music, Audiobook }
+
 /** Track record. */
 data class Track(
     val id: TrackId,
+    val library: Library,
     val title: String,
     // wire key: artist_id
     val artistId: ArtistId? = null,
@@ -166,14 +170,21 @@ data class Playlist(
     val rootRelativePath: String
 )
 
-/** Library enum (bare-literal wire). */
-enum class Library { Music, Audiobook }
-
 /** BrowseRequest record. */
 data class BrowseRequest(
     val library: Library? = Library.Music,
     val offset: ULong? = 0uL,
     val limit: ULong? = 100uL
+)
+
+/** LibraryInfo record. */
+data class LibraryInfo(
+    val kind: Library
+)
+
+/** LibrariesResponse record. */
+data class LibrariesResponse(
+    val libraries: List<LibraryInfo>
 )
 
 /** AlbumsResponse record. */
@@ -215,6 +226,7 @@ data class ArtistDetail(
 /** SearchRequest record. */
 data class SearchRequest(
     val query: String,
+    val library: Library? = Library.Music,
     val limit: ULong? = 50uL
 )
 
@@ -223,6 +235,37 @@ data class SearchResponse(
     val artists: List<Artist>,
     val albums: List<Album>,
     val tracks: List<Track>
+)
+
+/** AudiobookProgress record. */
+data class AudiobookProgress(
+    // wire key: track_id
+    val trackId: TrackId,
+    // wire key: position_ms
+    val positionMs: ULong,
+    val completed: Boolean = false,
+    // wire key: updated_at
+    val updatedAt: java.time.Instant
+)
+
+/** AudiobookProgressRequest record. */
+data class AudiobookProgressRequest(
+    // wire key: track_ids
+    val trackIds: List<TrackId>
+)
+
+/** AudiobookProgressResponse record. */
+data class AudiobookProgressResponse(
+    val progress: List<AudiobookProgress>
+)
+
+/** UpdateAudiobookProgressRequest record. */
+data class UpdateAudiobookProgressRequest(
+    // wire key: track_id
+    val trackId: TrackId,
+    // wire key: position_ms
+    val positionMs: ULong,
+    val completed: Boolean = false
 )
 
 /** PlaylistsResponse record. */
@@ -290,6 +333,7 @@ data class Player(
 data class QueueItem(
     // wire key: track_id
     val trackId: TrackId,
+    val library: Library? = null,
     val title: String? = null,
     val artist: String? = null,
     // wire key: duration_ms

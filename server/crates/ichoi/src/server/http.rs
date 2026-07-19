@@ -69,7 +69,7 @@ async fn status(State(s): State<AppState>) -> impl IntoResponse {
             "status": "ok",
             "role": if matches!(s.app.config.role, crate::config::Role::Core) { "core" } else { "satellite" },
             "tracks": crate::db::store::count_tracks(&mut conn).unwrap_or(0),
-            "albums": crate::db::store::count_albums(&mut conn).unwrap_or(0),
+            "albums": crate::db::store::count_all_albums(&mut conn).unwrap_or(0),
             "audio_outputs": crate::audio::state_label(),
         })
     })

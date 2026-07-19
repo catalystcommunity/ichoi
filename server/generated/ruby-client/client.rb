@@ -37,6 +37,11 @@ class LibraryClient
     @transport = transport
   end
 
+  # list-libraries: -> LibrariesResponse
+  def list_libraries(req)
+    LibrariesResponse.from_cbor(@transport.call("LibraryService", "list-libraries", req.to_cbor))
+  end
+
   # list-albums: -> AlbumsResponse
   def list_albums(req)
     AlbumsResponse.from_cbor(@transport.call("LibraryService", "list-albums", req.to_cbor))
@@ -75,6 +80,16 @@ class LibraryClient
   # get-cover-art: -> CoverArt
   def get_cover_art(req)
     CoverArt.from_cbor(@transport.call("LibraryService", "get-cover-art", req.to_cbor))
+  end
+
+  # get-audiobook-progress: -> AudiobookProgressResponse
+  def get_audiobook_progress(req)
+    AudiobookProgressResponse.from_cbor(@transport.call("LibraryService", "get-audiobook-progress", req.to_cbor))
+  end
+
+  # update-audiobook-progress: -> AudiobookProgress
+  def update_audiobook_progress(req)
+    AudiobookProgress.from_cbor(@transport.call("LibraryService", "update-audiobook-progress", req.to_cbor))
   end
 end
 

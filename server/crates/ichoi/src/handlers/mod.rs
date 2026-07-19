@@ -277,6 +277,11 @@ fn map_account(a: models::Account) -> Account {
 fn map_track(t: &models::Track) -> Track {
     Track {
         id: t.id.clone(),
+        library: if t.library_id == "lib:audiobook" {
+            Library::Audiobook
+        } else {
+            Library::Music
+        },
         title: t.title.clone(),
         artist_id: t.artist_id.clone(),
         album_id: t.album_id.clone(),
@@ -295,9 +300,13 @@ fn map_track(t: &models::Track) -> Track {
 
 fn map_album(
     conn: &mut diesel::SqliteConnection,
+    library_id: &str,
     a: &models::Album,
 ) -> Result<Album, ServiceError> {
-    let track_count = db(store::count_tracks_for_album(conn, &a.id))?;
+    let track_count = db(store::tracks_for_album(conn, &a.id))?
+        .into_iter()
+        .filter(|track| track.library_id == library_id)
+        .count() as i64;
     Ok(Album {
         id: a.id.clone(),
         title: a.title.clone(),
@@ -310,9 +319,10 @@ fn map_album(
 
 fn map_artist(
     conn: &mut diesel::SqliteConnection,
+    library_id: &str,
     a: &models::Artist,
 ) -> Result<Artist, ServiceError> {
-    let album_count = db(store::count_albums_for_artist(conn, &a.id))?;
+    let album_count = db(store::count_albums_for_artist(conn, library_id, &a.id))?;
     Ok(Artist {
         id: a.id.clone(),
         name: a.name.clone(),
@@ -320,11 +330,34 @@ fn map_artist(
     })
 }
 
+fn library_id(library: Option<Library>) -> &'static str {
+    match library.unwrap_or(Library::Music) {
+        Library::Music => "lib:music",
+        Library::Audiobook => "lib:audiobook",
+    }
+}
+
 fn page(offset: Option<u64>, limit: Option<u64>) -> (i64, i64) {
     (
         offset.unwrap_or(0) as i64,
         limit.unwrap_or(100).min(1000) as i64,
     )
+}
+
+const GUEST_PROGRESS_ACCOUNT_ID: &str = "__guest__";
+
+fn progress_account_id(
+    conn: &mut diesel::SqliteConnection,
+    identity: &Identity,
+) -> Result<String, ServiceError> {
+    match identity {
+        Identity::User { account_id, .. } => Ok(account_id.clone()),
+        Identity::Anonymous if db(store::count_accounts(conn))? == 0 => {
+            Ok(GUEST_PROGRESS_ACCOUNT_ID.to_string())
+        }
+        Identity::Anonymous => Err(err(401, "sign in to save audiobook progress")),
+        Identity::Node { .. } => Err(err(403, "nodes cannot save audiobook progress")),
+    }
 }
 
 // ================================================================== SessionService
@@ -405,6 +438,20 @@ impl SessionService for App {
                     token: None,
                 })
             }
+            Identity::Anonymous => {
+                let mut conn = self.conn()?;
+                if db(store::count_accounts(&mut conn))? == 0 {
+                    Ok(SessionInfo {
+                        account_id: GUEST_PROGRESS_ACCOUNT_ID.to_string(),
+                        handle: "guest".to_string(),
+                        display_name: None,
+                        role: Role::Guest,
+                        token: None,
+                    })
+                } else {
+                    Err(err(401, "not authenticated"))
+                }
+            }
             _ => Err(err(401, "not authenticated")),
         }
     }
@@ -444,6 +491,31 @@ impl App {
 impl LibraryService for App {
     type Context = Ctx;
 
+    fn list_libraries(&self, _ctx: &Ctx, _input: Page) -> Result<LibrariesResponse, ServiceError> {
+        let mut libraries = Vec::new();
+        if self
+            .config
+            .music_dir
+            .as_ref()
+            .is_some_and(|path| path.is_dir())
+        {
+            libraries.push(LibraryInfo {
+                kind: Library::Music,
+            });
+        }
+        if self
+            .config
+            .audiobook_dir
+            .as_ref()
+            .is_some_and(|path| path.is_dir())
+        {
+            libraries.push(LibraryInfo {
+                kind: Library::Audiobook,
+            });
+        }
+        Ok(LibrariesResponse { libraries })
+    }
+
     fn list_albums(
         &self,
         _ctx: &Ctx,
@@ -451,11 +523,12 @@ impl LibraryService for App {
     ) -> Result<AlbumsResponse, ServiceError> {
         let mut conn = self.conn()?;
         let (off, lim) = page(input.offset, input.limit);
-        let rows = db(store::list_albums(&mut conn, off, lim))?;
-        let total = db(store::count_albums(&mut conn))?.max(0) as u64;
+        let library_id = library_id(input.library);
+        let rows = db(store::list_albums(&mut conn, library_id, off, lim))?;
+        let total = db(store::count_albums(&mut conn, library_id))?.max(0) as u64;
         let albums = rows
             .iter()
-            .map(|a| map_album(&mut conn, a))
+            .map(|a| map_album(&mut conn, library_id, a))
             .collect::<Result<Vec<_>, _>>()?;
         std::result::Result::Ok(AlbumsResponse { albums, total })
     }
@@ -467,11 +540,12 @@ impl LibraryService for App {
     ) -> Result<ArtistsResponse, ServiceError> {
         let mut conn = self.conn()?;
         let (off, lim) = page(input.offset, input.limit);
-        let rows = db(store::list_artists(&mut conn, off, lim))?;
-        let total = db(store::count_artists(&mut conn))?.max(0) as u64;
+        let library_id = library_id(input.library);
+        let rows = db(store::list_artists(&mut conn, library_id, off, lim))?;
+        let total = db(store::count_artists(&mut conn, library_id))?.max(0) as u64;
         let artists = rows
             .iter()
-            .map(|a| map_artist(&mut conn, a))
+            .map(|a| map_artist(&mut conn, library_id, a))
             .collect::<Result<Vec<_>, _>>()?;
         std::result::Result::Ok(ArtistsResponse { artists, total })
     }
@@ -480,11 +554,13 @@ impl LibraryService for App {
         let mut conn = self.conn()?;
         let a = db(store::get_album(&mut conn, &input.album_id))?
             .ok_or_else(|| err(404, "album not found"))?;
-        let album = map_album(&mut conn, &a)?;
-        let tracks = db(store::tracks_for_album(&mut conn, &input.album_id))?
-            .iter()
-            .map(map_track)
-            .collect();
+        let track_rows = db(store::tracks_for_album(&mut conn, &input.album_id))?;
+        let library_id = track_rows
+            .first()
+            .map(|track| track.library_id.as_str())
+            .unwrap_or("lib:music");
+        let album = map_album(&mut conn, library_id, &a)?;
+        let tracks = track_rows.iter().map(map_track).collect();
         std::result::Result::Ok(AlbumDetail { album, tracks })
     }
 
@@ -492,11 +568,16 @@ impl LibraryService for App {
         let mut conn = self.conn()?;
         let a = db(store::get_artist(&mut conn, &input.artist_id))?
             .ok_or_else(|| err(404, "artist not found"))?;
-        let artist = map_artist(&mut conn, &a)?;
-        let album_rows = db(store::albums_for_artist(&mut conn, &input.artist_id))?;
+        let library_id = "lib:music";
+        let artist = map_artist(&mut conn, library_id, &a)?;
+        let album_rows = db(store::albums_for_artist(
+            &mut conn,
+            library_id,
+            &input.artist_id,
+        ))?;
         let albums = album_rows
             .iter()
-            .map(|al| map_album(&mut conn, al))
+            .map(|al| map_album(&mut conn, library_id, al))
             .collect::<Result<Vec<_>, _>>()?;
         std::result::Result::Ok(ArtistDetail { artist, albums })
     }
@@ -504,19 +585,35 @@ impl LibraryService for App {
     fn search(&self, _ctx: &Ctx, input: SearchRequest) -> Result<SearchResponse, ServiceError> {
         let mut conn = self.conn()?;
         let lim = input.limit.unwrap_or(50).min(500) as i64;
-        let artist_rows = db(store::search_artists(&mut conn, &input.query, lim))?;
-        let album_rows = db(store::search_albums(&mut conn, &input.query, lim))?;
-        let tracks = db(store::search_tracks(&mut conn, &input.query, lim))?
-            .iter()
-            .map(map_track)
-            .collect();
+        let library_id = library_id(input.library);
+        let artist_rows = db(store::search_artists(
+            &mut conn,
+            library_id,
+            &input.query,
+            lim,
+        ))?;
+        let album_rows = db(store::search_albums(
+            &mut conn,
+            library_id,
+            &input.query,
+            lim,
+        ))?;
+        let tracks = db(store::search_tracks(
+            &mut conn,
+            library_id,
+            &input.query,
+            lim,
+        ))?
+        .iter()
+        .map(map_track)
+        .collect();
         let artists = artist_rows
             .iter()
-            .map(|a| map_artist(&mut conn, a))
+            .map(|a| map_artist(&mut conn, library_id, a))
             .collect::<Result<Vec<_>, _>>()?;
         let albums = album_rows
             .iter()
-            .map(|a| map_album(&mut conn, a))
+            .map(|a| map_album(&mut conn, library_id, a))
             .collect::<Result<Vec<_>, _>>()?;
         std::result::Result::Ok(SearchResponse {
             artists,
@@ -561,9 +658,13 @@ impl LibraryService for App {
                 libichoi::m3u::parse(&text)
                     .into_iter()
                     .filter_map(|path| {
-                        db(store::track_by_root_path(&mut conn, &path))
-                            .ok()
-                            .flatten()
+                        db(store::track_by_library_root_path(
+                            &mut conn,
+                            "lib:music",
+                            &path,
+                        ))
+                        .ok()
+                        .flatten()
                     })
                     .map(|t| map_track(&t))
                     .collect()
@@ -615,6 +716,65 @@ impl LibraryService for App {
         }
         Err(err(404, "no cover art"))
     }
+
+    fn get_audiobook_progress(
+        &self,
+        ctx: &Ctx,
+        input: AudiobookProgressRequest,
+    ) -> Result<AudiobookProgressResponse, ServiceError> {
+        let mut conn = self.conn()?;
+        let account_id = progress_account_id(&mut conn, &ctx.identity)?;
+        let rows = db(store::audiobook_progress_for_tracks(
+            &mut conn,
+            &account_id,
+            &input.track_ids,
+        ))?;
+        Ok(AudiobookProgressResponse {
+            progress: rows
+                .into_iter()
+                .map(|row| AudiobookProgress {
+                    track_id: row.track_id,
+                    position_ms: row.position_ms.max(0) as u64,
+                    completed: row.completed != 0,
+                    updated_at: parse_dt(&row.updated_at),
+                })
+                .collect(),
+        })
+    }
+
+    fn update_audiobook_progress(
+        &self,
+        ctx: &Ctx,
+        input: UpdateAudiobookProgressRequest,
+    ) -> Result<AudiobookProgress, ServiceError> {
+        let mut conn = self.conn()?;
+        let account_id = progress_account_id(&mut conn, &ctx.identity)?;
+        let track = db(store::get_track(&mut conn, &input.track_id))?
+            .ok_or_else(|| err(404, "track not found"))?;
+        if track.library_id != "lib:audiobook" {
+            return Err(err(400, "progress can only be saved for audiobook tracks"));
+        }
+        let now = Utc::now();
+        let position_ms = if input.completed {
+            track.duration_ms.max(0) as u64
+        } else {
+            input.position_ms.min(track.duration_ms.max(0) as u64)
+        };
+        let row = models::AudiobookProgress {
+            account_id,
+            track_id: input.track_id.clone(),
+            position_ms: position_ms as i64,
+            completed: i32::from(input.completed),
+            updated_at: now.to_rfc3339(),
+        };
+        db(store::upsert_audiobook_progress(&mut conn, &row))?;
+        Ok(AudiobookProgress {
+            track_id: input.track_id,
+            position_ms,
+            completed: input.completed,
+            updated_at: now,
+        })
+    }
 }
 
 // ================================================================== PlayerService
@@ -633,6 +793,13 @@ impl App {
                 let t = store::get_track(conn, &it.track_id).ok().flatten();
                 QueueItem {
                     track_id: it.track_id.clone(),
+                    library: t.as_ref().map(|track| {
+                        if track.library_id == "lib:audiobook" {
+                            Library::Audiobook
+                        } else {
+                            Library::Music
+                        }
+                    }),
                     title: t.as_ref().map(|t| t.title.clone()),
                     artist: None,
                     duration_ms: t.as_ref().map(|t| t.duration_ms.max(0) as u64),

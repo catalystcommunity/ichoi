@@ -179,9 +179,16 @@ public struct SessionInfo: Equatable, Sendable {
     ]
 }
 
+/// Library is a generated CSIL string enum (a closed set of wire values).
+public enum Library: String, Equatable, Sendable, CaseIterable {
+    case music = "music"
+    case audiobook = "audiobook"
+}
+
 /// Track is a generated CSIL record type.
 public struct Track: Equatable, Sendable {
     public let id: TrackId
+    public let library: Library
     public let title: String
     /// wire key: artist_id
     public let artistId: ArtistId?
@@ -206,8 +213,9 @@ public struct Track: Equatable, Sendable {
     /// wire key: content_hash
     public let contentHash: String?
 
-    public init(id: TrackId, title: String, artistId: ArtistId? = nil, albumId: AlbumId? = nil, trackNo: UInt64? = nil, discNo: UInt64? = nil, durationMs: UInt64, codec: Codec, bitrateKbps: UInt64? = nil, sampleRate: UInt64, channels: UInt64, bitDepth: UInt64? = nil, rootRelativePath: String, contentHash: String? = nil) {
+    public init(id: TrackId, library: Library, title: String, artistId: ArtistId? = nil, albumId: AlbumId? = nil, trackNo: UInt64? = nil, discNo: UInt64? = nil, durationMs: UInt64, codec: Codec, bitrateKbps: UInt64? = nil, sampleRate: UInt64, channels: UInt64, bitDepth: UInt64? = nil, rootRelativePath: String, contentHash: String? = nil) {
         self.id = id
+        self.library = library
         self.title = title
         self.artistId = artistId
         self.albumId = albumId
@@ -226,6 +234,7 @@ public struct Track: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "id": "id",
+        "library": "library",
         "title": "title",
         "artistId": "artist_id",
         "albumId": "album_id",
@@ -323,12 +332,6 @@ public struct Playlist: Equatable, Sendable {
     ]
 }
 
-/// Library is a generated CSIL string enum (a closed set of wire values).
-public enum Library: String, Equatable, Sendable, CaseIterable {
-    case music = "music"
-    case audiobook = "audiobook"
-}
-
 /// BrowseRequest is a generated CSIL record type.
 public struct BrowseRequest: Equatable, Sendable {
     public let library: Library?
@@ -346,6 +349,34 @@ public struct BrowseRequest: Equatable, Sendable {
         "library": "library",
         "offset": "offset",
         "limit": "limit"
+    ]
+}
+
+/// LibraryInfo is a generated CSIL record type.
+public struct LibraryInfo: Equatable, Sendable {
+    public let kind: Library
+
+    public init(kind: Library) {
+        self.kind = kind
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "kind": "kind"
+    ]
+}
+
+/// LibrariesResponse is a generated CSIL record type.
+public struct LibrariesResponse: Equatable, Sendable {
+    public let libraries: [LibraryInfo]
+
+    public init(libraries: [LibraryInfo]) {
+        self.libraries = libraries
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "libraries": "libraries"
     ]
 }
 
@@ -450,10 +481,12 @@ public struct ArtistDetail: Equatable, Sendable {
 /// SearchRequest is a generated CSIL record type.
 public struct SearchRequest: Equatable, Sendable {
     public let query: String
+    public let library: Library?
     public let limit: UInt64?
 
-    public init(query: String, limit: UInt64? = 50) {
+    public init(query: String, library: Library? = "music", limit: UInt64? = 50) {
         self.query = query
+        self.library = library
         self.limit = limit
     }
 
@@ -470,6 +503,7 @@ public struct SearchRequest: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "query": "query",
+        "library": "library",
         "limit": "limit"
     ]
 }
@@ -491,6 +525,83 @@ public struct SearchResponse: Equatable, Sendable {
         "artists": "artists",
         "albums": "albums",
         "tracks": "tracks"
+    ]
+}
+
+/// AudiobookProgress is a generated CSIL record type.
+public struct AudiobookProgress: Equatable, Sendable {
+    /// wire key: track_id
+    public let trackId: TrackId
+    /// wire key: position_ms
+    public let positionMs: UInt64
+    public let completed: Bool
+    /// wire key: updated_at
+    public let updatedAt: String
+
+    public init(trackId: TrackId, positionMs: UInt64, completed: Bool = false, updatedAt: String) {
+        self.trackId = trackId
+        self.positionMs = positionMs
+        self.completed = completed
+        self.updatedAt = updatedAt
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "trackId": "track_id",
+        "positionMs": "position_ms",
+        "completed": "completed",
+        "updatedAt": "updated_at"
+    ]
+}
+
+/// AudiobookProgressRequest is a generated CSIL record type.
+public struct AudiobookProgressRequest: Equatable, Sendable {
+    /// wire key: track_ids
+    public let trackIds: [TrackId]
+
+    public init(trackIds: [TrackId]) {
+        self.trackIds = trackIds
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "trackIds": "track_ids"
+    ]
+}
+
+/// AudiobookProgressResponse is a generated CSIL record type.
+public struct AudiobookProgressResponse: Equatable, Sendable {
+    public let progress: [AudiobookProgress]
+
+    public init(progress: [AudiobookProgress]) {
+        self.progress = progress
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "progress": "progress"
+    ]
+}
+
+/// UpdateAudiobookProgressRequest is a generated CSIL record type.
+public struct UpdateAudiobookProgressRequest: Equatable, Sendable {
+    /// wire key: track_id
+    public let trackId: TrackId
+    /// wire key: position_ms
+    public let positionMs: UInt64
+    public let completed: Bool
+
+    public init(trackId: TrackId, positionMs: UInt64, completed: Bool = false) {
+        self.trackId = trackId
+        self.positionMs = positionMs
+        self.completed = completed
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "trackId": "track_id",
+        "positionMs": "position_ms",
+        "completed": "completed"
     ]
 }
 
@@ -618,13 +729,15 @@ public struct Player: Equatable, Sendable {
 public struct QueueItem: Equatable, Sendable {
     /// wire key: track_id
     public let trackId: TrackId
+    public let library: Library?
     public let title: String?
     public let artist: String?
     /// wire key: duration_ms
     public let durationMs: UInt64?
 
-    public init(trackId: TrackId, title: String? = nil, artist: String? = nil, durationMs: UInt64? = nil) {
+    public init(trackId: TrackId, library: Library? = nil, title: String? = nil, artist: String? = nil, durationMs: UInt64? = nil) {
         self.trackId = trackId
+        self.library = library
         self.title = title
         self.artist = artist
         self.durationMs = durationMs
@@ -633,6 +746,7 @@ public struct QueueItem: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "trackId": "track_id",
+        "library": "library",
         "title": "title",
         "artist": "artist",
         "durationMs": "duration_ms"

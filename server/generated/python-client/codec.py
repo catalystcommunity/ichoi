@@ -524,6 +524,7 @@ def _encode_track_value(v: "Track") -> Dict[Any, Any]:
     csil_x = v.disc_no
     if csil_x is not None:
         csil_m["disc_no"] = csil_x
+    csil_m["library"] = v.library
     csil_x = v.album_id
     if csil_x is not None:
         csil_m["album_id"] = csil_x
@@ -552,6 +553,7 @@ def _decode_track_value(tree: Any) -> "Track":
     tree = _csil_expect_map(tree)
     return Track(
         id=_csil_expect_text(tree["id"]),
+        library=_decode_library_value(tree["library"]),
         title=_csil_expect_text(tree["title"]),
         artist_id=(None if tree.get("artist_id") is None else _csil_expect_text(tree["artist_id"])),
         album_id=(None if tree.get("album_id") is None else _csil_expect_text(tree["album_id"])),
@@ -709,6 +711,52 @@ def _browse_request_from_cbor(data: bytes) -> "BrowseRequest":
 BrowseRequest.to_cbor = _browse_request_to_cbor
 BrowseRequest.from_cbor = staticmethod(_browse_request_from_cbor)
 
+def _encode_library_info_value(v: "LibraryInfo") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["kind"] = v.kind
+    return csil_m
+
+def _decode_library_info_value(tree: Any) -> "LibraryInfo":
+    tree = _csil_expect_map(tree)
+    return LibraryInfo(
+        kind=_decode_library_value(tree["kind"]),
+    )
+
+
+def _library_info_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_library_info_value(self))
+
+
+def _library_info_from_cbor(data: bytes) -> "LibraryInfo":
+    return _decode_library_info_value(cbor_decode(data))
+
+
+LibraryInfo.to_cbor = _library_info_to_cbor
+LibraryInfo.from_cbor = staticmethod(_library_info_from_cbor)
+
+def _encode_libraries_response_value(v: "LibrariesResponse") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["libraries"] = [_encode_library_info_value(csil_e) for csil_e in v.libraries]
+    return csil_m
+
+def _decode_libraries_response_value(tree: Any) -> "LibrariesResponse":
+    tree = _csil_expect_map(tree)
+    return LibrariesResponse(
+        libraries=[_decode_library_info_value(csil_e) for csil_e in _csil_expect_array(tree["libraries"])],
+    )
+
+
+def _libraries_response_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_libraries_response_value(self))
+
+
+def _libraries_response_from_cbor(data: bytes) -> "LibrariesResponse":
+    return _decode_libraries_response_value(cbor_decode(data))
+
+
+LibrariesResponse.to_cbor = _libraries_response_to_cbor
+LibrariesResponse.from_cbor = staticmethod(_libraries_response_from_cbor)
+
 def _encode_albums_response_value(v: "AlbumsResponse") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["total"] = v.total
@@ -861,12 +909,16 @@ def _encode_search_request_value(v: "SearchRequest") -> Dict[Any, Any]:
     if csil_x is not None:
         csil_m["limit"] = csil_x
     csil_m["query"] = v.query
+    csil_x = v.library
+    if csil_x is not None:
+        csil_m["library"] = csil_x
     return csil_m
 
 def _decode_search_request_value(tree: Any) -> "SearchRequest":
     tree = _csil_expect_map(tree)
     return SearchRequest(
         query=_csil_expect_text(tree["query"]),
+        library=(None if tree.get("library") is None else _decode_library_value(tree["library"])),
         limit=(None if tree.get("limit") is None else _csil_expect_uint(tree["limit"])),
     )
 
@@ -908,6 +960,108 @@ def _search_response_from_cbor(data: bytes) -> "SearchResponse":
 
 SearchResponse.to_cbor = _search_response_to_cbor
 SearchResponse.from_cbor = staticmethod(_search_response_from_cbor)
+
+def _encode_audiobook_progress_value(v: "AudiobookProgress") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["track_id"] = v.track_id
+    csil_m["completed"] = v.completed
+    csil_m["updated_at"] = CborTag(0, _csil_ts_to_text(v.updated_at))
+    csil_m["position_ms"] = v.position_ms
+    return csil_m
+
+def _decode_audiobook_progress_value(tree: Any) -> "AudiobookProgress":
+    tree = _csil_expect_map(tree)
+    return AudiobookProgress(
+        track_id=_csil_expect_text(tree["track_id"]),
+        position_ms=_csil_expect_uint(tree["position_ms"]),
+        completed=_csil_expect_bool(tree["completed"]),
+        updated_at=_csil_ts_from_tree(tree["updated_at"]),
+    )
+
+
+def _audiobook_progress_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_audiobook_progress_value(self))
+
+
+def _audiobook_progress_from_cbor(data: bytes) -> "AudiobookProgress":
+    return _decode_audiobook_progress_value(cbor_decode(data))
+
+
+AudiobookProgress.to_cbor = _audiobook_progress_to_cbor
+AudiobookProgress.from_cbor = staticmethod(_audiobook_progress_from_cbor)
+
+def _encode_audiobook_progress_request_value(v: "AudiobookProgressRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["track_ids"] = v.track_ids
+    return csil_m
+
+def _decode_audiobook_progress_request_value(tree: Any) -> "AudiobookProgressRequest":
+    tree = _csil_expect_map(tree)
+    return AudiobookProgressRequest(
+        track_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["track_ids"])],
+    )
+
+
+def _audiobook_progress_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_audiobook_progress_request_value(self))
+
+
+def _audiobook_progress_request_from_cbor(data: bytes) -> "AudiobookProgressRequest":
+    return _decode_audiobook_progress_request_value(cbor_decode(data))
+
+
+AudiobookProgressRequest.to_cbor = _audiobook_progress_request_to_cbor
+AudiobookProgressRequest.from_cbor = staticmethod(_audiobook_progress_request_from_cbor)
+
+def _encode_audiobook_progress_response_value(v: "AudiobookProgressResponse") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["progress"] = [_encode_audiobook_progress_value(csil_e) for csil_e in v.progress]
+    return csil_m
+
+def _decode_audiobook_progress_response_value(tree: Any) -> "AudiobookProgressResponse":
+    tree = _csil_expect_map(tree)
+    return AudiobookProgressResponse(
+        progress=[_decode_audiobook_progress_value(csil_e) for csil_e in _csil_expect_array(tree["progress"])],
+    )
+
+
+def _audiobook_progress_response_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_audiobook_progress_response_value(self))
+
+
+def _audiobook_progress_response_from_cbor(data: bytes) -> "AudiobookProgressResponse":
+    return _decode_audiobook_progress_response_value(cbor_decode(data))
+
+
+AudiobookProgressResponse.to_cbor = _audiobook_progress_response_to_cbor
+AudiobookProgressResponse.from_cbor = staticmethod(_audiobook_progress_response_from_cbor)
+
+def _encode_update_audiobook_progress_request_value(v: "UpdateAudiobookProgressRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["track_id"] = v.track_id
+    csil_m["completed"] = v.completed
+    csil_m["position_ms"] = v.position_ms
+    return csil_m
+
+def _decode_update_audiobook_progress_request_value(tree: Any) -> "UpdateAudiobookProgressRequest":
+    tree = _csil_expect_map(tree)
+    return UpdateAudiobookProgressRequest(
+        track_id=_csil_expect_text(tree["track_id"]),
+        position_ms=_csil_expect_uint(tree["position_ms"]),
+        completed=_csil_expect_bool(tree["completed"]),
+    )
+
+
+def _update_audiobook_progress_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_update_audiobook_progress_request_value(self))
+
+
+def _update_audiobook_progress_request_from_cbor(data: bytes) -> "UpdateAudiobookProgressRequest":
+    return _decode_update_audiobook_progress_request_value(cbor_decode(data))
+
+
+UpdateAudiobookProgressRequest.to_cbor = _update_audiobook_progress_request_to_cbor
+UpdateAudiobookProgressRequest.from_cbor = staticmethod(_update_audiobook_progress_request_from_cbor)
 
 def _encode_playlists_response_value(v: "PlaylistsResponse") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -1079,6 +1233,9 @@ def _encode_queue_item_value(v: "QueueItem") -> Dict[Any, Any]:
     csil_x = v.artist
     if csil_x is not None:
         csil_m["artist"] = csil_x
+    csil_x = v.library
+    if csil_x is not None:
+        csil_m["library"] = csil_x
     csil_m["track_id"] = v.track_id
     csil_x = v.duration_ms
     if csil_x is not None:
@@ -1089,6 +1246,7 @@ def _decode_queue_item_value(tree: Any) -> "QueueItem":
     tree = _csil_expect_map(tree)
     return QueueItem(
         track_id=_csil_expect_text(tree["track_id"]),
+        library=(None if tree.get("library") is None else _decode_library_value(tree["library"])),
         title=(None if tree.get("title") is None else _csil_expect_text(tree["title"])),
         artist=(None if tree.get("artist") is None else _csil_expect_text(tree["artist"])),
         duration_ms=(None if tree.get("duration_ms") is None else _csil_expect_uint(tree["duration_ms"])),

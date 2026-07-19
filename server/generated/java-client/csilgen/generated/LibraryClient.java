@@ -13,6 +13,10 @@ public final class LibraryClient {
         this.transport = transport;
     }
 
+    public LibrariesResponse listLibraries(Page req) throws ClientException {
+        return CsilCbor.decodeLibrariesResponse(transport.call("LibraryService", "list-libraries", CsilCbor.encodePage(req)));
+    }
+
     public AlbumsResponse listAlbums(BrowseRequest req) throws ClientException {
         return CsilCbor.decodeAlbumsResponse(transport.call("LibraryService", "list-albums", CsilCbor.encodeBrowseRequest(req)));
     }
@@ -43,5 +47,13 @@ public final class LibraryClient {
 
     public CoverArt getCoverArt(CoverArtRequest req) throws ClientException {
         return CsilCbor.decodeCoverArt(transport.call("LibraryService", "get-cover-art", CsilCbor.encodeCoverArtRequest(req)));
+    }
+
+    public AudiobookProgressResponse getAudiobookProgress(AudiobookProgressRequest req) throws ClientException {
+        return CsilCbor.decodeAudiobookProgressResponse(transport.call("LibraryService", "get-audiobook-progress", CsilCbor.encodeAudiobookProgressRequest(req)));
+    }
+
+    public AudiobookProgress updateAudiobookProgress(UpdateAudiobookProgressRequest req) throws ClientException {
+        return CsilCbor.decodeAudiobookProgress(transport.call("LibraryService", "update-audiobook-progress", CsilCbor.encodeUpdateAudiobookProgressRequest(req)));
     }
 }

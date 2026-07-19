@@ -524,6 +524,7 @@ class Track
     csil_map["codec"] = (codec)
     csil_map["title"] = title
     csil_map["disc_no"] = disc_no unless disc_no.nil?
+    csil_map["library"] = (library)
     csil_map["album_id"] = album_id unless album_id.nil?
     csil_map["channels"] = channels
     csil_map["track_no"] = track_no unless track_no.nil?
@@ -544,6 +545,12 @@ class Track
   def self.csil_from_tree(node)
     new(
       id: node["id"],
+      library: (case (node["library"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
+end),
       title: node["title"],
       artist_id: (node.key?("artist_id") ? node["artist_id"] : nil),
       album_id: (node.key?("album_id") ? node["album_id"] : nil),
@@ -695,6 +702,59 @@ else
 end) : nil),
       offset: (node.key?("offset") ? node["offset"] : nil),
       limit: (node.key?("limit") ? node["limit"] : nil)
+    )
+  end
+end
+
+# CBOR codec for LibraryInfo: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class LibraryInfo
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["kind"] = (kind)
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      kind: (case (node["kind"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
+end)
+    )
+  end
+end
+
+# CBOR codec for LibrariesResponse: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class LibrariesResponse
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["libraries"] = (libraries).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      libraries: (node["libraries"]).map { |csil_e| LibraryInfo.csil_from_tree(csil_e) }
     )
   end
 end
@@ -862,6 +922,7 @@ class SearchRequest
     csil_map = {}
     csil_map["limit"] = limit unless limit.nil?
     csil_map["query"] = query
+    csil_map["library"] = (library) unless library.nil?
     csil_map
   end
 
@@ -872,6 +933,12 @@ class SearchRequest
   def self.csil_from_tree(node)
     new(
       query: node["query"],
+      library: (node.key?("library") ? (case (node["library"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
+end) : nil),
       limit: (node.key?("limit") ? node["limit"] : nil)
     )
   end
@@ -901,6 +968,112 @@ class SearchResponse
       artists: (node["artists"]).map { |csil_e| Artist.csil_from_tree(csil_e) },
       albums: (node["albums"]).map { |csil_e| Album.csil_from_tree(csil_e) },
       tracks: (node["tracks"]).map { |csil_e| Track.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for AudiobookProgress: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class AudiobookProgress
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["track_id"] = track_id
+    csil_map["completed"] = completed
+    csil_map["updated_at"] = CsilCbor::Tag.new(0, (updated_at).getutc.iso8601)
+    csil_map["position_ms"] = position_ms
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      track_id: node["track_id"],
+      position_ms: node["position_ms"],
+      completed: node["completed"],
+      updated_at: Time.iso8601((node["updated_at"]).value)
+    )
+  end
+end
+
+# CBOR codec for AudiobookProgressRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class AudiobookProgressRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["track_ids"] = (track_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      track_ids: (node["track_ids"]).map { |csil_e| csil_e }
+    )
+  end
+end
+
+# CBOR codec for AudiobookProgressResponse: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class AudiobookProgressResponse
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["progress"] = (progress).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      progress: (node["progress"]).map { |csil_e| AudiobookProgress.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for UpdateAudiobookProgressRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class UpdateAudiobookProgressRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["track_id"] = track_id
+    csil_map["completed"] = completed
+    csil_map["position_ms"] = position_ms
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      track_id: node["track_id"],
+      position_ms: node["position_ms"],
+      completed: node["completed"]
     )
   end
 end
@@ -1081,6 +1254,7 @@ class QueueItem
     csil_map = {}
     csil_map["title"] = title unless title.nil?
     csil_map["artist"] = artist unless artist.nil?
+    csil_map["library"] = (library) unless library.nil?
     csil_map["track_id"] = track_id
     csil_map["duration_ms"] = duration_ms unless duration_ms.nil?
     csil_map
@@ -1093,6 +1267,12 @@ class QueueItem
   def self.csil_from_tree(node)
     new(
       track_id: node["track_id"],
+      library: (node.key?("library") ? (case (node["library"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
+end) : nil),
       title: (node.key?("title") ? node["title"] : nil),
       artist: (node.key?("artist") ? node["artist"] : nil),
       duration_ms: (node.key?("duration_ms") ? node["duration_ms"] : nil)
