@@ -49,6 +49,10 @@ class LibraryClient:
     def __init__(self, transport: Transport):
         self._transport = transport
 
+    def list_libraries(self, req: Page) -> LibrariesResponse:
+        """list-libraries"""
+        return LibrariesResponse.from_cbor(self._transport.call("LibraryService", "list-libraries", req.to_cbor()))
+
     def list_albums(self, req: BrowseRequest) -> AlbumsResponse:
         """list-albums"""
         return AlbumsResponse.from_cbor(self._transport.call("LibraryService", "list-albums", req.to_cbor()))
@@ -80,6 +84,14 @@ class LibraryClient:
     def get_cover_art(self, req: CoverArtRequest) -> CoverArt:
         """get-cover-art"""
         return CoverArt.from_cbor(self._transport.call("LibraryService", "get-cover-art", req.to_cbor()))
+
+    def get_audiobook_progress(self, req: AudiobookProgressRequest) -> AudiobookProgressResponse:
+        """get-audiobook-progress"""
+        return AudiobookProgressResponse.from_cbor(self._transport.call("LibraryService", "get-audiobook-progress", req.to_cbor()))
+
+    def update_audiobook_progress(self, req: UpdateAudiobookProgressRequest) -> AudiobookProgress:
+        """update-audiobook-progress"""
+        return AudiobookProgress.from_cbor(self._transport.call("LibraryService", "update-audiobook-progress", req.to_cbor()))
 
 class PlayerClient:
     """Typed client for the PlayerService service."""

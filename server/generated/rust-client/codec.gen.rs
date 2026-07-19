@@ -707,13 +707,14 @@ pub fn decode_session_info(csil_data: &[u8]) -> Result<SessionInfo, CsilCborErro
 
 /// Build the canonical CBOR value tree for a Track.
 fn csil_enc_track(csil_v: &Track) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(14);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(15);
     csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
     csil_entries.push((cbor_text("codec"), csil_enc_codec(&csil_v.codec)));
     csil_entries.push((cbor_text("title"), cbor_text(&csil_v.title)));
     if let Some(csil_inner) = &csil_v.disc_no {
         csil_entries.push((cbor_text("disc_no"), cbor_uint(*csil_inner)));
     }
+    csil_entries.push((cbor_text("library"), csil_enc_library(&csil_v.library)));
     if let Some(csil_inner) = &csil_v.album_id {
         csil_entries.push((cbor_text("album_id"), cbor_text(csil_inner)));
     }
@@ -747,6 +748,11 @@ fn csil_dec_track(csil_root: &CsilCborValue) -> Result<Track, CsilCborError> {
     let id = {
         let csil_field = cbor_require(csil_root, "id")?;
         let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let library = {
+        let csil_field = cbor_require(csil_root, "library")?;
+        let csil_decode = csil_dec_library;
         csil_decode(csil_field)?
     };
     let title = {
@@ -830,6 +836,7 @@ fn csil_dec_track(csil_root: &CsilCborValue) -> Result<Track, CsilCborError> {
     };
     Ok(Track {
         id,
+        library,
         title,
         artist_id,
         album_id,
@@ -1095,6 +1102,67 @@ pub fn decode_browse_request(csil_data: &[u8]) -> Result<BrowseRequest, CsilCbor
     csil_dec_browse_request(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a LibraryInfo.
+fn csil_enc_library_info(csil_v: &LibraryInfo) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("kind"), csil_enc_library(&csil_v.kind)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a LibraryInfo from a decoded CBOR value tree.
+fn csil_dec_library_info(csil_root: &CsilCborValue) -> Result<LibraryInfo, CsilCborError> {
+    let kind = {
+        let csil_field = cbor_require(csil_root, "kind")?;
+        let csil_decode = csil_dec_library;
+        csil_decode(csil_field)?
+    };
+    Ok(LibraryInfo { kind })
+}
+
+/// Encode a LibraryInfo to canonical CSIL CBOR bytes.
+pub fn encode_library_info(csil_v: &LibraryInfo) -> Vec<u8> {
+    cbor_encode(&csil_enc_library_info(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a LibraryInfo.
+pub fn decode_library_info(csil_data: &[u8]) -> Result<LibraryInfo, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_library_info(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a LibrariesResponse.
+fn csil_enc_libraries_response(csil_v: &LibrariesResponse) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((
+        cbor_text("libraries"),
+        cbor_enc_array(&csil_v.libraries, csil_enc_library_info),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a LibrariesResponse from a decoded CBOR value tree.
+fn csil_dec_libraries_response(
+    csil_root: &CsilCborValue,
+) -> Result<LibrariesResponse, CsilCborError> {
+    let libraries = {
+        let csil_field = cbor_require(csil_root, "libraries")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_library_info);
+        csil_decode(csil_field)?
+    };
+    Ok(LibrariesResponse { libraries })
+}
+
+/// Encode a LibrariesResponse to canonical CSIL CBOR bytes.
+pub fn encode_libraries_response(csil_v: &LibrariesResponse) -> Vec<u8> {
+    cbor_encode(&csil_enc_libraries_response(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a LibrariesResponse.
+pub fn decode_libraries_response(csil_data: &[u8]) -> Result<LibrariesResponse, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_libraries_response(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a AlbumsResponse.
 fn csil_enc_albums_response(csil_v: &AlbumsResponse) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
@@ -1301,11 +1369,14 @@ pub fn decode_artist_detail(csil_data: &[u8]) -> Result<ArtistDetail, CsilCborEr
 
 /// Build the canonical CBOR value tree for a SearchRequest.
 fn csil_enc_search_request(csil_v: &SearchRequest) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
     if let Some(csil_inner) = &csil_v.limit {
         csil_entries.push((cbor_text("limit"), cbor_uint(*csil_inner)));
     }
     csil_entries.push((cbor_text("query"), cbor_text(&csil_v.query)));
+    if let Some(csil_inner) = &csil_v.library {
+        csil_entries.push((cbor_text("library"), csil_enc_library(csil_inner)));
+    }
     CsilCborValue::Map(csil_entries)
 }
 
@@ -1316,6 +1387,13 @@ fn csil_dec_search_request(csil_root: &CsilCborValue) -> Result<SearchRequest, C
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
+    let library = match cbor_map_get(csil_root, "library") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_library;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let limit = match cbor_map_get(csil_root, "limit") {
         Some(csil_field) => {
             let csil_decode = cbor_as_u64;
@@ -1323,7 +1401,11 @@ fn csil_dec_search_request(csil_root: &CsilCborValue) -> Result<SearchRequest, C
         }
         None => None,
     };
-    Ok(SearchRequest { query, limit })
+    Ok(SearchRequest {
+        query,
+        library,
+        limit,
+    })
 }
 
 /// Encode a SearchRequest to canonical CSIL CBOR bytes.
@@ -1388,6 +1470,184 @@ pub fn encode_search_response(csil_v: &SearchResponse) -> Vec<u8> {
 pub fn decode_search_response(csil_data: &[u8]) -> Result<SearchResponse, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_search_response(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a AudiobookProgress.
+fn csil_enc_audiobook_progress(csil_v: &AudiobookProgress) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
+    csil_entries.push((cbor_text("completed"), cbor_bool(csil_v.completed)));
+    csil_entries.push((
+        cbor_text("updated_at"),
+        csil_enc_timestamp(&csil_v.updated_at),
+    ));
+    csil_entries.push((cbor_text("position_ms"), cbor_uint(csil_v.position_ms)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a AudiobookProgress from a decoded CBOR value tree.
+fn csil_dec_audiobook_progress(
+    csil_root: &CsilCborValue,
+) -> Result<AudiobookProgress, CsilCborError> {
+    let track_id = {
+        let csil_field = cbor_require(csil_root, "track_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let position_ms = {
+        let csil_field = cbor_require(csil_root, "position_ms")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let completed = {
+        let csil_field = cbor_require(csil_root, "completed")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    let updated_at = {
+        let csil_field = cbor_require(csil_root, "updated_at")?;
+        let csil_decode = csil_as_timestamp;
+        csil_decode(csil_field)?
+    };
+    Ok(AudiobookProgress {
+        track_id,
+        position_ms,
+        completed,
+        updated_at,
+    })
+}
+
+/// Encode a AudiobookProgress to canonical CSIL CBOR bytes.
+pub fn encode_audiobook_progress(csil_v: &AudiobookProgress) -> Vec<u8> {
+    cbor_encode(&csil_enc_audiobook_progress(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a AudiobookProgress.
+pub fn decode_audiobook_progress(csil_data: &[u8]) -> Result<AudiobookProgress, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_audiobook_progress(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a AudiobookProgressRequest.
+fn csil_enc_audiobook_progress_request(csil_v: &AudiobookProgressRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((
+        cbor_text("track_ids"),
+        cbor_enc_array(&csil_v.track_ids, |csil_elem| cbor_text(csil_elem)),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a AudiobookProgressRequest from a decoded CBOR value tree.
+fn csil_dec_audiobook_progress_request(
+    csil_root: &CsilCborValue,
+) -> Result<AudiobookProgressRequest, CsilCborError> {
+    let track_ids = {
+        let csil_field = cbor_require(csil_root, "track_ids")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, cbor_as_text);
+        csil_decode(csil_field)?
+    };
+    Ok(AudiobookProgressRequest { track_ids })
+}
+
+/// Encode a AudiobookProgressRequest to canonical CSIL CBOR bytes.
+pub fn encode_audiobook_progress_request(csil_v: &AudiobookProgressRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_audiobook_progress_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a AudiobookProgressRequest.
+pub fn decode_audiobook_progress_request(
+    csil_data: &[u8],
+) -> Result<AudiobookProgressRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_audiobook_progress_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a AudiobookProgressResponse.
+fn csil_enc_audiobook_progress_response(csil_v: &AudiobookProgressResponse) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((
+        cbor_text("progress"),
+        cbor_enc_array(&csil_v.progress, csil_enc_audiobook_progress),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a AudiobookProgressResponse from a decoded CBOR value tree.
+fn csil_dec_audiobook_progress_response(
+    csil_root: &CsilCborValue,
+) -> Result<AudiobookProgressResponse, CsilCborError> {
+    let progress = {
+        let csil_field = cbor_require(csil_root, "progress")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_audiobook_progress);
+        csil_decode(csil_field)?
+    };
+    Ok(AudiobookProgressResponse { progress })
+}
+
+/// Encode a AudiobookProgressResponse to canonical CSIL CBOR bytes.
+pub fn encode_audiobook_progress_response(csil_v: &AudiobookProgressResponse) -> Vec<u8> {
+    cbor_encode(&csil_enc_audiobook_progress_response(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a AudiobookProgressResponse.
+pub fn decode_audiobook_progress_response(
+    csil_data: &[u8],
+) -> Result<AudiobookProgressResponse, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_audiobook_progress_response(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a UpdateAudiobookProgressRequest.
+fn csil_enc_update_audiobook_progress_request(
+    csil_v: &UpdateAudiobookProgressRequest,
+) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
+    csil_entries.push((cbor_text("completed"), cbor_bool(csil_v.completed)));
+    csil_entries.push((cbor_text("position_ms"), cbor_uint(csil_v.position_ms)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a UpdateAudiobookProgressRequest from a decoded CBOR value tree.
+fn csil_dec_update_audiobook_progress_request(
+    csil_root: &CsilCborValue,
+) -> Result<UpdateAudiobookProgressRequest, CsilCborError> {
+    let track_id = {
+        let csil_field = cbor_require(csil_root, "track_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let position_ms = {
+        let csil_field = cbor_require(csil_root, "position_ms")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let completed = {
+        let csil_field = cbor_require(csil_root, "completed")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    Ok(UpdateAudiobookProgressRequest {
+        track_id,
+        position_ms,
+        completed,
+    })
+}
+
+/// Encode a UpdateAudiobookProgressRequest to canonical CSIL CBOR bytes.
+pub fn encode_update_audiobook_progress_request(
+    csil_v: &UpdateAudiobookProgressRequest,
+) -> Vec<u8> {
+    cbor_encode(&csil_enc_update_audiobook_progress_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a UpdateAudiobookProgressRequest.
+pub fn decode_update_audiobook_progress_request(
+    csil_data: &[u8],
+) -> Result<UpdateAudiobookProgressRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_update_audiobook_progress_request(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a PlaylistsResponse.
@@ -1639,12 +1899,15 @@ pub fn decode_player(csil_data: &[u8]) -> Result<Player, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a QueueItem.
 fn csil_enc_queue_item(csil_v: &QueueItem) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
     if let Some(csil_inner) = &csil_v.title {
         csil_entries.push((cbor_text("title"), cbor_text(csil_inner)));
     }
     if let Some(csil_inner) = &csil_v.artist {
         csil_entries.push((cbor_text("artist"), cbor_text(csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.library {
+        csil_entries.push((cbor_text("library"), csil_enc_library(csil_inner)));
     }
     csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
     if let Some(csil_inner) = &csil_v.duration_ms {
@@ -1659,6 +1922,13 @@ fn csil_dec_queue_item(csil_root: &CsilCborValue) -> Result<QueueItem, CsilCborE
         let csil_field = cbor_require(csil_root, "track_id")?;
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
+    };
+    let library = match cbor_map_get(csil_root, "library") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_library;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
     };
     let title = match cbor_map_get(csil_root, "title") {
         Some(csil_field) => {
@@ -1683,6 +1953,7 @@ fn csil_dec_queue_item(csil_root: &CsilCborValue) -> Result<QueueItem, CsilCborE
     };
     Ok(QueueItem {
         track_id,
+        library,
         title,
         artist,
         duration_ms,

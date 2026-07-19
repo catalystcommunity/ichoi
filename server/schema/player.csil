@@ -11,7 +11,13 @@ Player = {
     ? owner: AccountId
 }
 
-QueueItem = { track_id: TrackId, ? title: text, ? artist: text, ? duration_ms: uint }
+QueueItem = {
+    track_id: TrackId,
+    ? library: Library,
+    ? title: text,
+    ? artist: text,
+    ? duration_ms: uint
+}
 
 PlayerState = {
     player_id: PlayerId,

@@ -214,9 +214,12 @@ class SessionInfo:
         return cls.from_dict(json.loads(json_str))
 
 
+Library = Union[str, str]
+
 @dataclass
 class Track:
     id: TrackId
+    library: Library
     title: str
     duration_ms: int
     codec: Codec
@@ -235,6 +238,8 @@ class Track:
         result = {}
         if hasattr(self, 'id') and self.id is not None:
             result['id'] = self.id
+        if hasattr(self, 'library') and self.library is not None:
+            result['library'] = self.library
         if hasattr(self, 'title') and self.title is not None:
             result['title'] = self.title
         if hasattr(self, 'artist_id') and self.artist_id is not None:
@@ -266,7 +271,7 @@ class Track:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Track':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), title=data.get('title'), artist_id=data.get('artist_id'), album_id=data.get('album_id'), track_no=data.get('track_no'), disc_no=data.get('disc_no'), duration_ms=data.get('duration_ms'), codec=data.get('codec'), bitrate_kbps=data.get('bitrate_kbps'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), bit_depth=data.get('bit_depth'), root_relative_path=data.get('root_relative_path'), content_hash=data.get('content_hash'))
+        return cls(id=data.get('id'), library=data.get('library'), title=data.get('title'), artist_id=data.get('artist_id'), album_id=data.get('album_id'), track_no=data.get('track_no'), disc_no=data.get('disc_no'), duration_ms=data.get('duration_ms'), codec=data.get('codec'), bitrate_kbps=data.get('bitrate_kbps'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), bit_depth=data.get('bit_depth'), root_relative_path=data.get('root_relative_path'), content_hash=data.get('content_hash'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -386,8 +391,6 @@ class Playlist:
         return cls.from_dict(json.loads(json_str))
 
 
-Library = Union[str, str]
-
 @dataclass
 class BrowseRequest:
     library: Optional[Library] = "music"
@@ -415,6 +418,56 @@ class BrowseRequest:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'BrowseRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class LibraryInfo:
+    kind: Library
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'kind') and self.kind is not None:
+            result['kind'] = self.kind
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'LibraryInfo':
+        """Create instance from dictionary."""
+        return cls(kind=data.get('kind'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'LibraryInfo':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class LibrariesResponse:
+    libraries: List[LibraryInfo]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'libraries') and self.libraries is not None:
+            result['libraries'] = self.libraries
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'LibrariesResponse':
+        """Create instance from dictionary."""
+        return cls(libraries=data.get('libraries'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'LibrariesResponse':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -584,12 +637,15 @@ class ArtistDetail:
 @dataclass
 class SearchRequest:
     query: str
+    library: Optional[Library] = "music"
     limit: Optional[int] = 50
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'query') and self.query is not None:
             result['query'] = self.query
+        if hasattr(self, 'library') and self.library is not None:
+            result['library'] = self.library
         if hasattr(self, 'limit') and self.limit is not None:
             result['limit'] = self.limit
         return result
@@ -597,7 +653,7 @@ class SearchRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SearchRequest':
         """Create instance from dictionary."""
-        return cls(query=data.get('query'), limit=data.get('limit'))
+        return cls(query=data.get('query'), library=data.get('library'), limit=data.get('limit'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -648,6 +704,121 @@ class SearchResponse:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'SearchResponse':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class AudiobookProgress:
+    track_id: TrackId
+    position_ms: int
+    updated_at: datetime
+    completed: bool = False
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'track_id') and self.track_id is not None:
+            result['track_id'] = self.track_id
+        if hasattr(self, 'position_ms') and self.position_ms is not None:
+            result['position_ms'] = self.position_ms
+        if hasattr(self, 'completed') and self.completed is not None:
+            result['completed'] = self.completed
+        if hasattr(self, 'updated_at') and self.updated_at is not None:
+            result['updated_at'] = self.updated_at
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AudiobookProgress':
+        """Create instance from dictionary."""
+        return cls(track_id=data.get('track_id'), position_ms=data.get('position_ms'), completed=data.get('completed'), updated_at=data.get('updated_at'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'AudiobookProgress':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class AudiobookProgressRequest:
+    track_ids: List[TrackId]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'track_ids') and self.track_ids is not None:
+            result['track_ids'] = self.track_ids
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AudiobookProgressRequest':
+        """Create instance from dictionary."""
+        return cls(track_ids=data.get('track_ids'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'AudiobookProgressRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class AudiobookProgressResponse:
+    progress: List[AudiobookProgress]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'progress') and self.progress is not None:
+            result['progress'] = self.progress
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AudiobookProgressResponse':
+        """Create instance from dictionary."""
+        return cls(progress=data.get('progress'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'AudiobookProgressResponse':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class UpdateAudiobookProgressRequest:
+    track_id: TrackId
+    position_ms: int
+    completed: bool = False
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'track_id') and self.track_id is not None:
+            result['track_id'] = self.track_id
+        if hasattr(self, 'position_ms') and self.position_ms is not None:
+            result['position_ms'] = self.position_ms
+        if hasattr(self, 'completed') and self.completed is not None:
+            result['completed'] = self.completed
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'UpdateAudiobookProgressRequest':
+        """Create instance from dictionary."""
+        return cls(track_id=data.get('track_id'), position_ms=data.get('position_ms'), completed=data.get('completed'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'UpdateAudiobookProgressRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -831,6 +1002,7 @@ class Player:
 @dataclass
 class QueueItem:
     track_id: TrackId
+    library: Optional[Library] = None
     title: Optional[str] = None
     artist: Optional[str] = None
     duration_ms: Optional[int] = None
@@ -839,6 +1011,8 @@ class QueueItem:
         result = {}
         if hasattr(self, 'track_id') and self.track_id is not None:
             result['track_id'] = self.track_id
+        if hasattr(self, 'library') and self.library is not None:
+            result['library'] = self.library
         if hasattr(self, 'title') and self.title is not None:
             result['title'] = self.title
         if hasattr(self, 'artist') and self.artist is not None:
@@ -850,7 +1024,7 @@ class QueueItem:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'QueueItem':
         """Create instance from dictionary."""
-        return cls(track_id=data.get('track_id'), title=data.get('title'), artist=data.get('artist'), duration_ms=data.get('duration_ms'))
+        return cls(track_id=data.get('track_id'), library=data.get('library'), title=data.get('title'), artist=data.get('artist'), duration_ms=data.get('duration_ms'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""

@@ -194,22 +194,45 @@ fn run_configured(command: Commands) -> anyhow::Result<()> {
         }
         Commands::Scan => {
             let pool = app::prepare_db(&config)?;
-            let music = config
-                .music_dir
-                .clone()
-                .ok_or_else(|| anyhow::anyhow!("ICHOI_MUSIC_DIR not set"))?;
             let mut conn = pool.get()?;
-            store::upsert_library(
-                &mut conn,
-                &crate::db::models::Library {
-                    id: "lib:music".to_string(),
-                    kind: "music".to_string(),
-                    path: music.to_string_lossy().into_owned(),
-                },
-            )?;
-            let stats =
-                scan::scan_library(&mut conn, "lib:music", &music, config.split_dump_folders)?;
-            println!("scanned {} tracks ({} errors)", stats.tracks, stats.errors);
+            let mut configured = 0;
+            for (kind, root) in [
+                ("music", config.music_dir.as_ref()),
+                ("audiobook", config.audiobook_dir.as_ref()),
+            ] {
+                let Some(root) = root else { continue };
+                configured += 1;
+                let library_id = format!("lib:{kind}");
+                store::upsert_library(
+                    &mut conn,
+                    &crate::db::models::Library {
+                        id: library_id.clone(),
+                        kind: kind.to_string(),
+                        path: root.to_string_lossy().into_owned(),
+                    },
+                )?;
+                let excluded = if kind == "music" {
+                    config.audiobook_dir.as_deref()
+                } else {
+                    None
+                };
+                let stats = scan::scan_library(
+                    &mut conn,
+                    &library_id,
+                    root,
+                    excluded,
+                    config.split_dump_folders,
+                    config.album_subfolder_flat,
+                    &config.album_subfolder_words,
+                )?;
+                println!(
+                    "scanned {kind}: {} tracks ({} errors)",
+                    stats.tracks, stats.errors
+                );
+            }
+            if configured == 0 {
+                anyhow::bail!("ICHOI_MUSIC_DIR and ICHOI_AUDIOBOOK_DIR are not set");
+            }
             Ok(())
         }
         Commands::FetchArt { limit, retry } => {
@@ -228,6 +251,9 @@ fn run_configured(command: Commands) -> anyhow::Result<()> {
         Commands::Config => {
             println!("role:        {:?}", config.role);
             println!("music_dir:   {:?}", config.music_dir);
+            println!("audiobooks:  {:?}", config.audiobook_dir);
+            println!("album_flat:  {}", config.album_subfolder_flat);
+            println!("album_words: {:?}", config.album_subfolder_words);
             println!("db:          {}", config.database_url());
             println!("http_addr:   {}", config.http_addr);
             println!("csil_addr:   {}", config.csil_addr);

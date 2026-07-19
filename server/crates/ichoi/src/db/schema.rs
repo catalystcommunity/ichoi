@@ -203,6 +203,16 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    audiobook_progress (account_id, track_id) {
+        account_id -> Text,
+        track_id -> Text,
+        position_ms -> BigInt,
+        completed -> Integer,
+        updated_at -> Text,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
     sessions,
@@ -224,4 +234,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     player_state,
     listens,
     stars,
+    audiobook_progress,
 );

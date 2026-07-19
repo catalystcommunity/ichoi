@@ -33,6 +33,14 @@ export const IconLibrary = (p: IconProps) =>
     </>
   ));
 
+export const IconBook = (p: IconProps) =>
+  base(p, (
+    <>
+      <path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v18H7.5A3.5 3.5 0 0 0 4 23V5.5Z" />
+      <path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H12v18h4.5A3.5 3.5 0 0 1 20 23V5.5Z" />
+    </>
+  ));
+
 export const IconSearch = (p: IconProps) =>
   base(p, (
     <>

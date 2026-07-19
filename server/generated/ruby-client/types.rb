@@ -74,7 +74,10 @@ SessionInfo = Data.define(:account_id, :handle, :display_name, :role, :token) do
   end
 end
 
+# Library is an alias for String.
+
 # id [TrackId]
+# library [Library]
 # title [String]
 # artist_id [ArtistId]
 # album_id [AlbumId]
@@ -88,8 +91,8 @@ end
 # bit_depth [Integer]
 # root_relative_path [String]
 # content_hash [String]
-Track = Data.define(:id, :title, :artist_id, :album_id, :track_no, :disc_no, :duration_ms, :codec, :bitrate_kbps, :sample_rate, :channels, :bit_depth, :root_relative_path, :content_hash) do
-  def initialize(id:, title:, duration_ms:, codec:, sample_rate:, channels:, root_relative_path:, artist_id: nil, album_id: nil, track_no: nil, disc_no: nil, bitrate_kbps: nil, bit_depth: nil, content_hash: nil)
+Track = Data.define(:id, :library, :title, :artist_id, :album_id, :track_no, :disc_no, :duration_ms, :codec, :bitrate_kbps, :sample_rate, :channels, :bit_depth, :root_relative_path, :content_hash) do
+  def initialize(id:, library:, title:, duration_ms:, codec:, sample_rate:, channels:, root_relative_path:, artist_id: nil, album_id: nil, track_no: nil, disc_no: nil, bitrate_kbps: nil, bit_depth: nil, content_hash: nil)
     super
   end
 end
@@ -122,8 +125,6 @@ Playlist = Data.define(:id, :name, :owner, :entry_count, :root_relative_path) do
   end
 end
 
-# Library is an alias for String.
-
 # library [Library]
 # offset [Integer]
 # limit [Integer]
@@ -132,6 +133,12 @@ BrowseRequest = Data.define(:library, :offset, :limit) do
     super
   end
 end
+
+# kind [Library]
+LibraryInfo = Data.define(:kind)
+
+# libraries [Array<LibraryInfo>]
+LibrariesResponse = Data.define(:libraries)
 
 # albums [Array<Album>]
 # total [Integer]
@@ -156,9 +163,10 @@ ArtistRequest = Data.define(:artist_id)
 ArtistDetail = Data.define(:artist, :albums)
 
 # query [String]
+# library [Library]
 # limit [Integer]
-SearchRequest = Data.define(:query, :limit) do
-  def initialize(query:, limit: 50)
+SearchRequest = Data.define(:query, :library, :limit) do
+  def initialize(query:, library: "music", limit: 50)
     super
   end
 
@@ -174,6 +182,31 @@ end
 # albums [Array<Album>]
 # tracks [Array<Track>]
 SearchResponse = Data.define(:artists, :albums, :tracks)
+
+# track_id [TrackId]
+# position_ms [Integer]
+# completed [Boolean]
+# updated_at [Time]
+AudiobookProgress = Data.define(:track_id, :position_ms, :completed, :updated_at) do
+  def initialize(track_id:, position_ms:, updated_at:, completed: false)
+    super
+  end
+end
+
+# track_ids [Array<TrackId>]
+AudiobookProgressRequest = Data.define(:track_ids)
+
+# progress [Array<AudiobookProgress>]
+AudiobookProgressResponse = Data.define(:progress)
+
+# track_id [TrackId]
+# position_ms [Integer]
+# completed [Boolean]
+UpdateAudiobookProgressRequest = Data.define(:track_id, :position_ms, :completed) do
+  def initialize(track_id:, position_ms:, completed: false)
+    super
+  end
+end
 
 # playlists [Array<Playlist>]
 PlaylistsResponse = Data.define(:playlists)
@@ -212,11 +245,12 @@ Player = Data.define(:id, :kind, :name, :node_id, :device_id, :owner) do
 end
 
 # track_id [TrackId]
+# library [Library]
 # title [String]
 # artist [String]
 # duration_ms [Integer]
-QueueItem = Data.define(:track_id, :title, :artist, :duration_ms) do
-  def initialize(track_id:, title: nil, artist: nil, duration_ms: nil)
+QueueItem = Data.define(:track_id, :library, :title, :artist, :duration_ms) do
+  def initialize(track_id:, library: nil, title: nil, artist: nil, duration_ms: nil)
     super
   end
 end

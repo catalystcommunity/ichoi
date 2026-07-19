@@ -481,6 +481,25 @@ public extension SessionInfo {
     static func fromCbor(_ bytes: [UInt8]) throws -> SessionInfo { try SessionInfo(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension Library {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = Library(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> Library { try Library(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension Track {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
@@ -489,6 +508,7 @@ public extension Track {
         csilEntries.append(("codec", self.codec.toCborValue()))
         csilEntries.append(("title", .text(self.title)))
         if let csilV = self.discNo { csilEntries.append(("disc_no", .uint(csilV))) }
+        csilEntries.append(("library", self.library.toCborValue()))
         if let csilV = self.albumId { csilEntries.append(("album_id", .text(csilV))) }
         csilEntries.append(("channels", .uint(self.channels)))
         if let csilV = self.trackNo { csilEntries.append(("track_no", .uint(csilV))) }
@@ -505,6 +525,7 @@ public extension Track {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let library = try Library(cborValue: (try CsilCbor.require(cborValue, "library")))
         let title = try CsilCbor.asText((try CsilCbor.require(cborValue, "title")))
         let artistId: ArtistId? = if let csilV = CsilCbor.mapGet(cborValue, "artist_id") { try CsilCbor.asText(csilV) } else { nil }
         let albumId: AlbumId? = if let csilV = CsilCbor.mapGet(cborValue, "album_id") { try CsilCbor.asText(csilV) } else { nil }
@@ -518,7 +539,7 @@ public extension Track {
         let bitDepth: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "bit_depth") { try CsilCbor.asU64(csilV) } else { nil }
         let rootRelativePath = try CsilCbor.asText((try CsilCbor.require(cborValue, "root_relative_path")))
         let contentHash: String? = if let csilV = CsilCbor.mapGet(cborValue, "content_hash") { try CsilCbor.asText(csilV) } else { nil }
-        self.init(id: id, title: title, artistId: artistId, albumId: albumId, trackNo: trackNo, discNo: discNo, durationMs: durationMs, codec: codec, bitrateKbps: bitrateKbps, sampleRate: sampleRate, channels: channels, bitDepth: bitDepth, rootRelativePath: rootRelativePath, contentHash: contentHash)
+        self.init(id: id, library: library, title: title, artistId: artistId, albumId: albumId, trackNo: trackNo, discNo: discNo, durationMs: durationMs, codec: codec, bitrateKbps: bitrateKbps, sampleRate: sampleRate, channels: channels, bitDepth: bitDepth, rootRelativePath: rootRelativePath, contentHash: contentHash)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -613,25 +634,6 @@ public extension Playlist {
     static func fromCbor(_ bytes: [UInt8]) throws -> Playlist { try Playlist(cborValue: CsilCbor.decode(bytes)) }
 }
 
-public extension Library {
-    /// The CBOR value tree for this enum: its wire string verbatim.
-    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
-
-    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
-    /// string outside the declared closed set.
-    init(cborValue: CsilCborValue) throws {
-        let csilS = try CsilCbor.asText(cborValue)
-        guard let csilV = Library(rawValue: csilS) else { throw CsilCborError.typeMismatch }
-        self = csilV
-    }
-
-    /// Encode this enum to canonical CSIL CBOR bytes.
-    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
-
-    /// Decode a CSIL CBOR byte payload into this enum.
-    static func fromCbor(_ bytes: [UInt8]) throws -> Library { try Library(cborValue: CsilCbor.decode(bytes)) }
-}
-
 public extension BrowseRequest {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
@@ -655,6 +657,48 @@ public extension BrowseRequest {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> BrowseRequest { try BrowseRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension LibraryInfo {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("kind", self.kind.toCborValue()))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let kind = try Library(cborValue: (try CsilCbor.require(cborValue, "kind")))
+        self.init(kind: kind)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> LibraryInfo { try LibraryInfo(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension LibrariesResponse {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("libraries", CsilCborValue.array(self.libraries.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let libraries = try CsilCbor.asArray((try CsilCbor.require(cborValue, "libraries"))).map { try LibraryInfo(cborValue: $0) }
+        self.init(libraries: libraries)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> LibrariesResponse { try LibrariesResponse(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension AlbumsResponse {
@@ -797,14 +841,16 @@ public extension SearchRequest {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         if let csilV = self.limit { csilEntries.append(("limit", .uint(csilV))) }
         csilEntries.append(("query", .text(self.query)))
+        if let csilV = self.library { csilEntries.append(("library", csilV.toCborValue())) }
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let query = try CsilCbor.asText((try CsilCbor.require(cborValue, "query")))
+        let library: Library? = if let csilV = CsilCbor.mapGet(cborValue, "library") { try Library(cborValue: csilV) } else { nil }
         let limit: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "limit") { try CsilCbor.asU64(csilV) } else { nil }
-        self.init(query: query, limit: limit)
+        self.init(query: query, library: library, limit: limit)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -837,6 +883,100 @@ public extension SearchResponse {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> SearchResponse { try SearchResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension AudiobookProgress {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("track_id", .text(self.trackId)))
+        csilEntries.append(("completed", .bool(self.completed)))
+        csilEntries.append(("updated_at", .tag(0, .text(self.updatedAt))))
+        csilEntries.append(("position_ms", .uint(self.positionMs)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
+        let positionMs = try CsilCbor.asU64((try CsilCbor.require(cborValue, "position_ms")))
+        let completed = try CsilCbor.asBool((try CsilCbor.require(cborValue, "completed")))
+        let updatedAt = try CsilCbor.asTaggedText((try CsilCbor.require(cborValue, "updated_at")), 0)
+        self.init(trackId: trackId, positionMs: positionMs, completed: completed, updatedAt: updatedAt)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> AudiobookProgress { try AudiobookProgress(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension AudiobookProgressRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("track_ids", CsilCborValue.array(self.trackIds.map { .text($0) })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let trackIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "track_ids"))).map { try CsilCbor.asText($0) }
+        self.init(trackIds: trackIds)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> AudiobookProgressRequest { try AudiobookProgressRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension AudiobookProgressResponse {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("progress", CsilCborValue.array(self.progress.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let progress = try CsilCbor.asArray((try CsilCbor.require(cborValue, "progress"))).map { try AudiobookProgress(cborValue: $0) }
+        self.init(progress: progress)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> AudiobookProgressResponse { try AudiobookProgressResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension UpdateAudiobookProgressRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("track_id", .text(self.trackId)))
+        csilEntries.append(("completed", .bool(self.completed)))
+        csilEntries.append(("position_ms", .uint(self.positionMs)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
+        let positionMs = try CsilCbor.asU64((try CsilCbor.require(cborValue, "position_ms")))
+        let completed = try CsilCbor.asBool((try CsilCbor.require(cborValue, "completed")))
+        self.init(trackId: trackId, positionMs: positionMs, completed: completed)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> UpdateAudiobookProgressRequest { try UpdateAudiobookProgressRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension PlaylistsResponse {
@@ -1006,6 +1146,7 @@ public extension QueueItem {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         if let csilV = self.title { csilEntries.append(("title", .text(csilV))) }
         if let csilV = self.artist { csilEntries.append(("artist", .text(csilV))) }
+        if let csilV = self.library { csilEntries.append(("library", csilV.toCborValue())) }
         csilEntries.append(("track_id", .text(self.trackId)))
         if let csilV = self.durationMs { csilEntries.append(("duration_ms", .uint(csilV))) }
         return .map(csilEntries)
@@ -1014,10 +1155,11 @@ public extension QueueItem {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
+        let library: Library? = if let csilV = CsilCbor.mapGet(cborValue, "library") { try Library(cborValue: csilV) } else { nil }
         let title: String? = if let csilV = CsilCbor.mapGet(cborValue, "title") { try CsilCbor.asText(csilV) } else { nil }
         let artist: String? = if let csilV = CsilCbor.mapGet(cborValue, "artist") { try CsilCbor.asText(csilV) } else { nil }
         let durationMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "duration_ms") { try CsilCbor.asU64(csilV) } else { nil }
-        self.init(trackId: trackId, title: title, artist: artist, durationMs: durationMs)
+        self.init(trackId: trackId, library: library, title: title, artist: artist, durationMs: durationMs)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.

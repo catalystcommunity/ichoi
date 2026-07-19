@@ -40,8 +40,11 @@ and session_info = {
   token : string option;
 }
 
+and library = Music | Audiobook
+
 and track = {
   id : track_id;
+  library : library;
   title : string;
   artist_id : artist_id option;
   album_id : album_id option;
@@ -76,26 +79,48 @@ and playlist = {
   root_relative_path : string;
 }
 
-and library = Music | Audiobook
-
 and browse_request = {
   library : library option;
   offset : int64 option;
   limit : int64 option;
 }
 
+and library_info = { kind : library }
+and libraries_response = { libraries : library_info list }
 and albums_response = { albums : album list; total : int64 }
 and artists_response = { artists : artist list; total : int64 }
 and album_request = { album_id : album_id }
 and album_detail = { album : album; tracks : track list }
 and artist_request = { artist_id : artist_id }
 and artist_detail = { artist : artist; albums : album list }
-and search_request = { query : string; limit : int64 option }
+
+and search_request = {
+  query : string;
+  library : library option;
+  limit : int64 option;
+}
 
 and search_response = {
   artists : artist list;
   albums : album list;
   tracks : track list;
+}
+
+and audiobook_progress = {
+  track_id : track_id;
+  position_ms : int64;
+  completed : bool;
+  (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
+  updated_at : string;
+}
+
+and audiobook_progress_request = { track_ids : track_id list }
+and audiobook_progress_response = { progress : audiobook_progress list }
+
+and update_audiobook_progress_request = {
+  track_id : track_id;
+  position_ms : int64;
+  completed : bool;
 }
 
 and playlists_response = { playlists : playlist list }
@@ -116,6 +141,7 @@ and player = {
 
 and queue_item = {
   track_id : track_id;
+  library : library option;
   title : string option;
   artist : string option;
   duration_ms : int64 option;

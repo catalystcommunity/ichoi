@@ -77,6 +77,9 @@ and encode_session_info (v : session_info) : Cbor.t =
          (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
        ])
 
+and encode_library (v : library) : Cbor.t =
+  match v with Music -> Cbor.Text "music" | Audiobook -> Cbor.Text "audiobook"
+
 and encode_track (v : track) : Cbor.t =
   Cbor.Map
     (List.filter_map
@@ -86,6 +89,7 @@ and encode_track (v : track) : Cbor.t =
          Some (Cbor.Text "codec", (encode_codec v.codec));
          Some (Cbor.Text "title", (Cbor.Text v.title));
          (match v.disc_no with Some csil_x -> Some (Cbor.Text "disc_no", (Cbor.int64 csil_x)) | None -> None);
+         Some (Cbor.Text "library", (encode_library v.library));
          (match v.album_id with Some csil_x -> Some (Cbor.Text "album_id", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "channels", (Cbor.int64 v.channels));
          (match v.track_no with Some csil_x -> Some (Cbor.Text "track_no", (Cbor.int64 csil_x)) | None -> None);
@@ -133,9 +137,6 @@ and encode_playlist (v : playlist) : Cbor.t =
          Some (Cbor.Text "root_relative_path", (Cbor.Text v.root_relative_path));
        ])
 
-and encode_library (v : library) : Cbor.t =
-  match v with Music -> Cbor.Text "music" | Audiobook -> Cbor.Text "audiobook"
-
 and encode_browse_request (v : browse_request) : Cbor.t =
   Cbor.Map
     (List.filter_map
@@ -144,6 +145,22 @@ and encode_browse_request (v : browse_request) : Cbor.t =
          (match v.limit with Some csil_x -> Some (Cbor.Text "limit", (Cbor.int64 csil_x)) | None -> None);
          (match v.offset with Some csil_x -> Some (Cbor.Text "offset", (Cbor.int64 csil_x)) | None -> None);
          (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
+       ])
+
+and encode_library_info (v : library_info) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "kind", (encode_library v.kind));
+       ])
+
+and encode_libraries_response (v : libraries_response) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "libraries", (Cbor.Array (List.map (fun csil_e -> (encode_library_info csil_e)) v.libraries)));
        ])
 
 and encode_albums_response (v : albums_response) : Cbor.t =
@@ -205,6 +222,7 @@ and encode_search_request (v : search_request) : Cbor.t =
        [
          (match v.limit with Some csil_x -> Some (Cbor.Text "limit", (Cbor.int64 csil_x)) | None -> None);
          Some (Cbor.Text "query", (Cbor.Text v.query));
+         (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
        ])
 
 and encode_search_response (v : search_response) : Cbor.t =
@@ -215,6 +233,43 @@ and encode_search_response (v : search_response) : Cbor.t =
          Some (Cbor.Text "albums", (Cbor.Array (List.map (fun csil_e -> (encode_album csil_e)) v.albums)));
          Some (Cbor.Text "tracks", (Cbor.Array (List.map (fun csil_e -> (encode_track csil_e)) v.tracks)));
          Some (Cbor.Text "artists", (Cbor.Array (List.map (fun csil_e -> (encode_artist csil_e)) v.artists)));
+       ])
+
+and encode_audiobook_progress (v : audiobook_progress) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
+         Some (Cbor.Text "completed", (Cbor.Bool v.completed));
+         Some (Cbor.Text "updated_at", (Cbor.Tag (0, Cbor.Text v.updated_at)));
+         Some (Cbor.Text "position_ms", (Cbor.int64 v.position_ms));
+       ])
+
+and encode_audiobook_progress_request (v : audiobook_progress_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "track_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.track_ids)));
+       ])
+
+and encode_audiobook_progress_response (v : audiobook_progress_response) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "progress", (Cbor.Array (List.map (fun csil_e -> (encode_audiobook_progress csil_e)) v.progress)));
+       ])
+
+and encode_update_audiobook_progress_request (v : update_audiobook_progress_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
+         Some (Cbor.Text "completed", (Cbor.Bool v.completed));
+         Some (Cbor.Text "position_ms", (Cbor.int64 v.position_ms));
        ])
 
 and encode_playlists_response (v : playlists_response) : Cbor.t =
@@ -283,6 +338,7 @@ and encode_queue_item (v : queue_item) : Cbor.t =
        [
          (match v.title with Some csil_x -> Some (Cbor.Text "title", (Cbor.Text csil_x)) | None -> None);
          (match v.artist with Some csil_x -> Some (Cbor.Text "artist", (Cbor.Text csil_x)) | None -> None);
+         (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
          Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
          (match v.duration_ms with Some csil_x -> Some (Cbor.Text "duration_ms", (Cbor.int64 csil_x)) | None -> None);
        ])
@@ -898,6 +954,9 @@ and decode_session_info (csil_c : Cbor.t) : session_info =
       }
   | _ -> failwith "csilgen: expected map for session_info"
 
+and decode_library (csil_c : Cbor.t) : library =
+  match Cbor.to_text csil_c with "music" -> Music | "audiobook" -> Audiobook | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
 and decode_track (csil_c : Cbor.t) : track =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -911,6 +970,7 @@ and decode_track (csil_c : Cbor.t) : track =
         codec = (decode_codec (csil_req "codec"));
         title = (Cbor.to_text (csil_req "title"));
         disc_no = (match csil_field "disc_no" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        library = (decode_library (csil_req "library"));
         album_id = (match csil_field "album_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         channels = (Cbor.to_i64 (csil_req "channels"));
         track_no = (match csil_field "track_no" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
@@ -974,9 +1034,6 @@ and decode_playlist (csil_c : Cbor.t) : playlist =
       }
   | _ -> failwith "csilgen: expected map for playlist"
 
-and decode_library (csil_c : Cbor.t) : library =
-  match Cbor.to_text csil_c with "music" -> Music | "audiobook" -> Audiobook | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
-
 and decode_browse_request (csil_c : Cbor.t) : browse_request =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -991,6 +1048,32 @@ and decode_browse_request (csil_c : Cbor.t) : browse_request =
         library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for browse_request"
+
+and decode_library_info (csil_c : Cbor.t) : library_info =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        kind = (decode_library (csil_req "kind"));
+      }
+  | _ -> failwith "csilgen: expected map for library_info"
+
+and decode_libraries_response (csil_c : Cbor.t) : libraries_response =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        libraries = (match (csil_req "libraries") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_library_info csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for libraries_response"
 
 and decode_albums_response (csil_c : Cbor.t) : albums_response =
   match csil_c with
@@ -1085,6 +1168,7 @@ and decode_search_request (csil_c : Cbor.t) : search_request =
       {
         limit = (match csil_field "limit" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
         query = (Cbor.to_text (csil_req "query"));
+        library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for search_request"
 
@@ -1102,6 +1186,63 @@ and decode_search_response (csil_c : Cbor.t) : search_response =
         artists = (match (csil_req "artists") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_artist csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
       }
   | _ -> failwith "csilgen: expected map for search_response"
+
+and decode_audiobook_progress (csil_c : Cbor.t) : audiobook_progress =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        track_id = (Cbor.to_text (csil_req "track_id"));
+        completed = (Cbor.to_bool (csil_req "completed"));
+        updated_at = (match (csil_req "updated_at") with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp");
+        position_ms = (Cbor.to_i64 (csil_req "position_ms"));
+      }
+  | _ -> failwith "csilgen: expected map for audiobook_progress"
+
+and decode_audiobook_progress_request (csil_c : Cbor.t) : audiobook_progress_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        track_ids = (match (csil_req "track_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for audiobook_progress_request"
+
+and decode_audiobook_progress_response (csil_c : Cbor.t) : audiobook_progress_response =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        progress = (match (csil_req "progress") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_audiobook_progress csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for audiobook_progress_response"
+
+and decode_update_audiobook_progress_request (csil_c : Cbor.t) : update_audiobook_progress_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        track_id = (Cbor.to_text (csil_req "track_id"));
+        completed = (Cbor.to_bool (csil_req "completed"));
+        position_ms = (Cbor.to_i64 (csil_req "position_ms"));
+      }
+  | _ -> failwith "csilgen: expected map for update_audiobook_progress_request"
 
 and decode_playlists_response (csil_c : Cbor.t) : playlists_response =
   match csil_c with
@@ -1203,6 +1344,7 @@ and decode_queue_item (csil_c : Cbor.t) : queue_item =
       {
         title = (match csil_field "title" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         artist = (match csil_field "artist" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
         track_id = (Cbor.to_text (csil_req "track_id"));
         duration_ms = (match csil_field "duration_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
       }
@@ -2027,6 +2169,10 @@ let encode_session_info_bytes (v : session_info) : bytes = Cbor.encode (encode_s
 let decode_session_info_bytes (b : bytes) : session_info =
   match Cbor.decode b with Ok c -> decode_session_info c | Error e -> failwith e
 
+let encode_library_bytes (v : library) : bytes = Cbor.encode (encode_library v)
+let decode_library_bytes (b : bytes) : library =
+  match Cbor.decode b with Ok c -> decode_library c | Error e -> failwith e
+
 let encode_track_bytes (v : track) : bytes = Cbor.encode (encode_track v)
 let decode_track_bytes (b : bytes) : track =
   match Cbor.decode b with Ok c -> decode_track c | Error e -> failwith e
@@ -2043,13 +2189,17 @@ let encode_playlist_bytes (v : playlist) : bytes = Cbor.encode (encode_playlist 
 let decode_playlist_bytes (b : bytes) : playlist =
   match Cbor.decode b with Ok c -> decode_playlist c | Error e -> failwith e
 
-let encode_library_bytes (v : library) : bytes = Cbor.encode (encode_library v)
-let decode_library_bytes (b : bytes) : library =
-  match Cbor.decode b with Ok c -> decode_library c | Error e -> failwith e
-
 let encode_browse_request_bytes (v : browse_request) : bytes = Cbor.encode (encode_browse_request v)
 let decode_browse_request_bytes (b : bytes) : browse_request =
   match Cbor.decode b with Ok c -> decode_browse_request c | Error e -> failwith e
+
+let encode_library_info_bytes (v : library_info) : bytes = Cbor.encode (encode_library_info v)
+let decode_library_info_bytes (b : bytes) : library_info =
+  match Cbor.decode b with Ok c -> decode_library_info c | Error e -> failwith e
+
+let encode_libraries_response_bytes (v : libraries_response) : bytes = Cbor.encode (encode_libraries_response v)
+let decode_libraries_response_bytes (b : bytes) : libraries_response =
+  match Cbor.decode b with Ok c -> decode_libraries_response c | Error e -> failwith e
 
 let encode_albums_response_bytes (v : albums_response) : bytes = Cbor.encode (encode_albums_response v)
 let decode_albums_response_bytes (b : bytes) : albums_response =
@@ -2082,6 +2232,22 @@ let decode_search_request_bytes (b : bytes) : search_request =
 let encode_search_response_bytes (v : search_response) : bytes = Cbor.encode (encode_search_response v)
 let decode_search_response_bytes (b : bytes) : search_response =
   match Cbor.decode b with Ok c -> decode_search_response c | Error e -> failwith e
+
+let encode_audiobook_progress_bytes (v : audiobook_progress) : bytes = Cbor.encode (encode_audiobook_progress v)
+let decode_audiobook_progress_bytes (b : bytes) : audiobook_progress =
+  match Cbor.decode b with Ok c -> decode_audiobook_progress c | Error e -> failwith e
+
+let encode_audiobook_progress_request_bytes (v : audiobook_progress_request) : bytes = Cbor.encode (encode_audiobook_progress_request v)
+let decode_audiobook_progress_request_bytes (b : bytes) : audiobook_progress_request =
+  match Cbor.decode b with Ok c -> decode_audiobook_progress_request c | Error e -> failwith e
+
+let encode_audiobook_progress_response_bytes (v : audiobook_progress_response) : bytes = Cbor.encode (encode_audiobook_progress_response v)
+let decode_audiobook_progress_response_bytes (b : bytes) : audiobook_progress_response =
+  match Cbor.decode b with Ok c -> decode_audiobook_progress_response c | Error e -> failwith e
+
+let encode_update_audiobook_progress_request_bytes (v : update_audiobook_progress_request) : bytes = Cbor.encode (encode_update_audiobook_progress_request v)
+let decode_update_audiobook_progress_request_bytes (b : bytes) : update_audiobook_progress_request =
+  match Cbor.decode b with Ok c -> decode_update_audiobook_progress_request c | Error e -> failwith e
 
 let encode_playlists_response_bytes (v : playlists_response) : bytes = Cbor.encode (encode_playlists_response v)
 let decode_playlists_response_bytes (b : bytes) : playlists_response =

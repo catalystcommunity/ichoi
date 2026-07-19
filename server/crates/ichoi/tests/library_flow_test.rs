@@ -58,6 +58,7 @@ fn search_finds_track_by_title() {
             &common::ctx_anon(),
             SearchRequest {
                 query: "Rare".to_string(),
+                library: None,
                 limit: None,
             },
         )

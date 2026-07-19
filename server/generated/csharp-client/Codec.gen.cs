@@ -349,12 +349,14 @@ public static class Codec
         ServiceError csilTyped => ServiceErrorToCborValue(csilTyped),
         AuthRequest csilTyped => AuthRequestToCborValue(csilTyped),
         SessionInfo csilTyped => SessionInfoToCborValue(csilTyped),
+        Library csilTyped => LibraryToCborValue(csilTyped),
         Track csilTyped => TrackToCborValue(csilTyped),
         Album csilTyped => AlbumToCborValue(csilTyped),
         Artist csilTyped => ArtistToCborValue(csilTyped),
         Playlist csilTyped => PlaylistToCborValue(csilTyped),
-        Library csilTyped => LibraryToCborValue(csilTyped),
         BrowseRequest csilTyped => BrowseRequestToCborValue(csilTyped),
+        LibraryInfo csilTyped => LibraryInfoToCborValue(csilTyped),
+        LibrariesResponse csilTyped => LibrariesResponseToCborValue(csilTyped),
         AlbumsResponse csilTyped => AlbumsResponseToCborValue(csilTyped),
         ArtistsResponse csilTyped => ArtistsResponseToCborValue(csilTyped),
         AlbumRequest csilTyped => AlbumRequestToCborValue(csilTyped),
@@ -363,6 +365,10 @@ public static class Codec
         ArtistDetail csilTyped => ArtistDetailToCborValue(csilTyped),
         SearchRequest csilTyped => SearchRequestToCborValue(csilTyped),
         SearchResponse csilTyped => SearchResponseToCborValue(csilTyped),
+        AudiobookProgress csilTyped => AudiobookProgressToCborValue(csilTyped),
+        AudiobookProgressRequest csilTyped => AudiobookProgressRequestToCborValue(csilTyped),
+        AudiobookProgressResponse csilTyped => AudiobookProgressResponseToCborValue(csilTyped),
+        UpdateAudiobookProgressRequest csilTyped => UpdateAudiobookProgressRequestToCborValue(csilTyped),
         PlaylistsResponse csilTyped => PlaylistsResponseToCborValue(csilTyped),
         PlaylistRequest csilTyped => PlaylistRequestToCborValue(csilTyped),
         PlaylistDetail csilTyped => PlaylistDetailToCborValue(csilTyped),
@@ -445,12 +451,14 @@ public static class Codec
         if (csilType == typeof(ServiceError)) return ServiceErrorFromCborValue(value);
         if (csilType == typeof(AuthRequest)) return AuthRequestFromCborValue(value);
         if (csilType == typeof(SessionInfo)) return SessionInfoFromCborValue(value);
+        if (csilType == typeof(Library)) return LibraryFromCborValue(value);
         if (csilType == typeof(Track)) return TrackFromCborValue(value);
         if (csilType == typeof(Album)) return AlbumFromCborValue(value);
         if (csilType == typeof(Artist)) return ArtistFromCborValue(value);
         if (csilType == typeof(Playlist)) return PlaylistFromCborValue(value);
-        if (csilType == typeof(Library)) return LibraryFromCborValue(value);
         if (csilType == typeof(BrowseRequest)) return BrowseRequestFromCborValue(value);
+        if (csilType == typeof(LibraryInfo)) return LibraryInfoFromCborValue(value);
+        if (csilType == typeof(LibrariesResponse)) return LibrariesResponseFromCborValue(value);
         if (csilType == typeof(AlbumsResponse)) return AlbumsResponseFromCborValue(value);
         if (csilType == typeof(ArtistsResponse)) return ArtistsResponseFromCborValue(value);
         if (csilType == typeof(AlbumRequest)) return AlbumRequestFromCborValue(value);
@@ -459,6 +467,10 @@ public static class Codec
         if (csilType == typeof(ArtistDetail)) return ArtistDetailFromCborValue(value);
         if (csilType == typeof(SearchRequest)) return SearchRequestFromCborValue(value);
         if (csilType == typeof(SearchResponse)) return SearchResponseFromCborValue(value);
+        if (csilType == typeof(AudiobookProgress)) return AudiobookProgressFromCborValue(value);
+        if (csilType == typeof(AudiobookProgressRequest)) return AudiobookProgressRequestFromCborValue(value);
+        if (csilType == typeof(AudiobookProgressResponse)) return AudiobookProgressResponseFromCborValue(value);
+        if (csilType == typeof(UpdateAudiobookProgressRequest)) return UpdateAudiobookProgressRequestFromCborValue(value);
         if (csilType == typeof(PlaylistsResponse)) return PlaylistsResponseFromCborValue(value);
         if (csilType == typeof(PlaylistRequest)) return PlaylistRequestFromCborValue(value);
         if (csilType == typeof(PlaylistDetail)) return PlaylistDetailFromCborValue(value);
@@ -777,6 +789,22 @@ public static class Codec
         };
     }
 
+    /// <summary>The bare-literal CBOR value for a Library.</summary>
+    public static CborValue LibraryToCborValue(Library value) => value switch
+    {
+        Library.Music => new CborValue.Text("music"),
+        Library.Audiobook => new CborValue.Text("audiobook"),
+        _ => throw new CborException("invalid Library"),
+    };
+
+    /// <summary>Reconstruct a Library from its bare-literal CBOR value.</summary>
+    public static Library LibraryFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "music" => Library.Music,
+        "audiobook" => Library.Audiobook,
+        _ => throw new CborException("invalid Library value"),
+    };
+
     /// <summary>The canonical CBOR value tree for a Track.</summary>
     public static CborValue TrackToCborValue(Track value)
     {
@@ -788,32 +816,33 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("disc_no"), new CborValue.Uint(csilV3)));
         }
-        if (value.AlbumId is { } csilV4)
+        csilEntries.Add((new CborValue.Text("library"), LibraryToCborValue(value.Library)));
+        if (value.AlbumId is { } csilV5)
         {
-            csilEntries.Add((new CborValue.Text("album_id"), new CborValue.Text(csilV4)));
+            csilEntries.Add((new CborValue.Text("album_id"), new CborValue.Text(csilV5)));
         }
         csilEntries.Add((new CborValue.Text("channels"), new CborValue.Uint(value.Channels)));
-        if (value.TrackNo is { } csilV6)
+        if (value.TrackNo is { } csilV7)
         {
-            csilEntries.Add((new CborValue.Text("track_no"), new CborValue.Uint(csilV6)));
+            csilEntries.Add((new CborValue.Text("track_no"), new CborValue.Uint(csilV7)));
         }
-        if (value.ArtistId is { } csilV7)
+        if (value.ArtistId is { } csilV8)
         {
-            csilEntries.Add((new CborValue.Text("artist_id"), new CborValue.Text(csilV7)));
+            csilEntries.Add((new CborValue.Text("artist_id"), new CborValue.Text(csilV8)));
         }
-        if (value.BitDepth is { } csilV8)
+        if (value.BitDepth is { } csilV9)
         {
-            csilEntries.Add((new CborValue.Text("bit_depth"), new CborValue.Uint(csilV8)));
+            csilEntries.Add((new CborValue.Text("bit_depth"), new CborValue.Uint(csilV9)));
         }
         csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(value.DurationMs)));
         csilEntries.Add((new CborValue.Text("sample_rate"), new CborValue.Uint(value.SampleRate)));
-        if (value.BitrateKbps is { } csilV11)
+        if (value.BitrateKbps is { } csilV12)
         {
-            csilEntries.Add((new CborValue.Text("bitrate_kbps"), new CborValue.Uint(csilV11)));
+            csilEntries.Add((new CborValue.Text("bitrate_kbps"), new CborValue.Uint(csilV12)));
         }
-        if (value.ContentHash is { } csilV12)
+        if (value.ContentHash is { } csilV13)
         {
-            csilEntries.Add((new CborValue.Text("content_hash"), new CborValue.Text(csilV12)));
+            csilEntries.Add((new CborValue.Text("content_hash"), new CborValue.Text(csilV13)));
         }
         csilEntries.Add((new CborValue.Text("root_relative_path"), new CborValue.Text(value.RootRelativePath)));
         return new CborValue.Map(csilEntries);
@@ -823,35 +852,37 @@ public static class Codec
     public static Track TrackFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "id"));
-        var csilField1 = Cbor.AsText(Cbor.Require(value, "title"));
-        ArtistId? csilField2 = Cbor.MapGet(value, "artist_id") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
-        AlbumId? csilField3 = Cbor.MapGet(value, "album_id") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
-        ulong? csilField4 = Cbor.MapGet(value, "track_no") is { } csilRaw4 ? Cbor.AsU64(csilRaw4) : null;
-        ulong? csilField5 = Cbor.MapGet(value, "disc_no") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
-        var csilField6 = Cbor.AsU64(Cbor.Require(value, "duration_ms"));
-        var csilField7 = CodecFromCborValue(Cbor.Require(value, "codec"));
-        ulong? csilField8 = Cbor.MapGet(value, "bitrate_kbps") is { } csilRaw8 ? Cbor.AsU64(csilRaw8) : null;
-        var csilField9 = Cbor.AsU64(Cbor.Require(value, "sample_rate"));
-        var csilField10 = Cbor.AsU64(Cbor.Require(value, "channels"));
-        ulong? csilField11 = Cbor.MapGet(value, "bit_depth") is { } csilRaw11 ? Cbor.AsU64(csilRaw11) : null;
-        var csilField12 = Cbor.AsText(Cbor.Require(value, "root_relative_path"));
-        string? csilField13 = Cbor.MapGet(value, "content_hash") is { } csilRaw13 ? Cbor.AsText(csilRaw13) : null;
+        var csilField1 = LibraryFromCborValue(Cbor.Require(value, "library"));
+        var csilField2 = Cbor.AsText(Cbor.Require(value, "title"));
+        ArtistId? csilField3 = Cbor.MapGet(value, "artist_id") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
+        AlbumId? csilField4 = Cbor.MapGet(value, "album_id") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
+        ulong? csilField5 = Cbor.MapGet(value, "track_no") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
+        ulong? csilField6 = Cbor.MapGet(value, "disc_no") is { } csilRaw6 ? Cbor.AsU64(csilRaw6) : null;
+        var csilField7 = Cbor.AsU64(Cbor.Require(value, "duration_ms"));
+        var csilField8 = CodecFromCborValue(Cbor.Require(value, "codec"));
+        ulong? csilField9 = Cbor.MapGet(value, "bitrate_kbps") is { } csilRaw9 ? Cbor.AsU64(csilRaw9) : null;
+        var csilField10 = Cbor.AsU64(Cbor.Require(value, "sample_rate"));
+        var csilField11 = Cbor.AsU64(Cbor.Require(value, "channels"));
+        ulong? csilField12 = Cbor.MapGet(value, "bit_depth") is { } csilRaw12 ? Cbor.AsU64(csilRaw12) : null;
+        var csilField13 = Cbor.AsText(Cbor.Require(value, "root_relative_path"));
+        string? csilField14 = Cbor.MapGet(value, "content_hash") is { } csilRaw14 ? Cbor.AsText(csilRaw14) : null;
         return new Track
         {
             Id = csilField0,
-            Title = csilField1,
-            ArtistId = csilField2,
-            AlbumId = csilField3,
-            TrackNo = csilField4,
-            DiscNo = csilField5,
-            DurationMs = csilField6,
-            Codec = csilField7,
-            BitrateKbps = csilField8,
-            SampleRate = csilField9,
-            Channels = csilField10,
-            BitDepth = csilField11,
-            RootRelativePath = csilField12,
-            ContentHash = csilField13,
+            Library = csilField1,
+            Title = csilField2,
+            ArtistId = csilField3,
+            AlbumId = csilField4,
+            TrackNo = csilField5,
+            DiscNo = csilField6,
+            DurationMs = csilField7,
+            Codec = csilField8,
+            BitrateKbps = csilField9,
+            SampleRate = csilField10,
+            Channels = csilField11,
+            BitDepth = csilField12,
+            RootRelativePath = csilField13,
+            ContentHash = csilField14,
         };
     }
 
@@ -951,22 +982,6 @@ public static class Codec
         };
     }
 
-    /// <summary>The bare-literal CBOR value for a Library.</summary>
-    public static CborValue LibraryToCborValue(Library value) => value switch
-    {
-        Library.Music => new CborValue.Text("music"),
-        Library.Audiobook => new CborValue.Text("audiobook"),
-        _ => throw new CborException("invalid Library"),
-    };
-
-    /// <summary>Reconstruct a Library from its bare-literal CBOR value.</summary>
-    public static Library LibraryFromCborValue(CborValue value) => Cbor.AsText(value) switch
-    {
-        "music" => Library.Music,
-        "audiobook" => Library.Audiobook,
-        _ => throw new CborException("invalid Library value"),
-    };
-
     /// <summary>The canonical CBOR value tree for a BrowseRequest.</summary>
     public static CborValue BrowseRequestToCborValue(BrowseRequest value)
     {
@@ -997,6 +1012,42 @@ public static class Codec
             Library = csilField0,
             Offset = csilField1,
             Limit = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a LibraryInfo.</summary>
+    public static CborValue LibraryInfoToCborValue(LibraryInfo value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("kind"), LibraryToCborValue(value.Kind)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a LibraryInfo from a decoded CBOR value tree.</summary>
+    public static LibraryInfo LibraryInfoFromCborValue(CborValue value)
+    {
+        var csilField0 = LibraryFromCborValue(Cbor.Require(value, "kind"));
+        return new LibraryInfo
+        {
+            Kind = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a LibrariesResponse.</summary>
+    public static CborValue LibrariesResponseToCborValue(LibrariesResponse value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("libraries"), new CborValue.Array(value.Libraries.Select(csilElem => (CborValue)LibraryInfoToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a LibrariesResponse from a decoded CBOR value tree.</summary>
+    public static LibrariesResponse LibrariesResponseFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "libraries")).Select(csilElem => LibraryInfoFromCborValue(csilElem)).ToList();
+        return new LibrariesResponse
+        {
+            Libraries = csilField0,
         };
     }
 
@@ -1129,6 +1180,10 @@ public static class Codec
             csilEntries.Add((new CborValue.Text("limit"), new CborValue.Uint(csilV0)));
         }
         csilEntries.Add((new CborValue.Text("query"), new CborValue.Text(value.Query)));
+        if (value.Library is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("library"), LibraryToCborValue(csilV2)));
+        }
         return new CborValue.Map(csilEntries);
     }
 
@@ -1136,11 +1191,13 @@ public static class Codec
     public static SearchRequest SearchRequestFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "query"));
-        ulong? csilField1 = Cbor.MapGet(value, "limit") is { } csilRaw1 ? Cbor.AsU64(csilRaw1) : null;
+        Library? csilField1 = Cbor.MapGet(value, "library") is { } csilRaw1 ? LibraryFromCborValue(csilRaw1) : null;
+        ulong? csilField2 = Cbor.MapGet(value, "limit") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
         return new SearchRequest
         {
             Query = csilField0,
-            Limit = csilField1,
+            Library = csilField1,
+            Limit = csilField2,
         };
     }
 
@@ -1165,6 +1222,93 @@ public static class Codec
             Artists = csilField0,
             Albums = csilField1,
             Tracks = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a AudiobookProgress.</summary>
+    public static CborValue AudiobookProgressToCborValue(AudiobookProgress value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("track_id"), new CborValue.Text(value.TrackId)));
+        csilEntries.Add((new CborValue.Text("completed"), new CborValue.Bool(value.Completed)));
+        csilEntries.Add((new CborValue.Text("updated_at"), Cbor.EncTimestamp(value.UpdatedAt)));
+        csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(value.PositionMs)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a AudiobookProgress from a decoded CBOR value tree.</summary>
+    public static AudiobookProgress AudiobookProgressFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "track_id"));
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "position_ms"));
+        var csilField2 = Cbor.AsBool(Cbor.Require(value, "completed"));
+        var csilField3 = Cbor.AsTimestamp(Cbor.Require(value, "updated_at"));
+        return new AudiobookProgress
+        {
+            TrackId = csilField0,
+            PositionMs = csilField1,
+            Completed = csilField2,
+            UpdatedAt = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a AudiobookProgressRequest.</summary>
+    public static CborValue AudiobookProgressRequestToCborValue(AudiobookProgressRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("track_ids"), new CborValue.Array(value.TrackIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a AudiobookProgressRequest from a decoded CBOR value tree.</summary>
+    public static AudiobookProgressRequest AudiobookProgressRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "track_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        return new AudiobookProgressRequest
+        {
+            TrackIds = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a AudiobookProgressResponse.</summary>
+    public static CborValue AudiobookProgressResponseToCborValue(AudiobookProgressResponse value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("progress"), new CborValue.Array(value.Progress.Select(csilElem => (CborValue)AudiobookProgressToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a AudiobookProgressResponse from a decoded CBOR value tree.</summary>
+    public static AudiobookProgressResponse AudiobookProgressResponseFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "progress")).Select(csilElem => AudiobookProgressFromCborValue(csilElem)).ToList();
+        return new AudiobookProgressResponse
+        {
+            Progress = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a UpdateAudiobookProgressRequest.</summary>
+    public static CborValue UpdateAudiobookProgressRequestToCborValue(UpdateAudiobookProgressRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("track_id"), new CborValue.Text(value.TrackId)));
+        csilEntries.Add((new CborValue.Text("completed"), new CborValue.Bool(value.Completed)));
+        csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(value.PositionMs)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a UpdateAudiobookProgressRequest from a decoded CBOR value tree.</summary>
+    public static UpdateAudiobookProgressRequest UpdateAudiobookProgressRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "track_id"));
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "position_ms"));
+        var csilField2 = Cbor.AsBool(Cbor.Require(value, "completed"));
+        return new UpdateAudiobookProgressRequest
+        {
+            TrackId = csilField0,
+            PositionMs = csilField1,
+            Completed = csilField2,
         };
     }
 
@@ -1340,10 +1484,14 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("artist"), new CborValue.Text(csilV1)));
         }
-        csilEntries.Add((new CborValue.Text("track_id"), new CborValue.Text(value.TrackId)));
-        if (value.DurationMs is { } csilV3)
+        if (value.Library is { } csilV2)
         {
-            csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(csilV3)));
+            csilEntries.Add((new CborValue.Text("library"), LibraryToCborValue(csilV2)));
+        }
+        csilEntries.Add((new CborValue.Text("track_id"), new CborValue.Text(value.TrackId)));
+        if (value.DurationMs is { } csilV4)
+        {
+            csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(csilV4)));
         }
         return new CborValue.Map(csilEntries);
     }
@@ -1352,15 +1500,17 @@ public static class Codec
     public static QueueItem QueueItemFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "track_id"));
-        string? csilField1 = Cbor.MapGet(value, "title") is { } csilRaw1 ? Cbor.AsText(csilRaw1) : null;
-        string? csilField2 = Cbor.MapGet(value, "artist") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
-        ulong? csilField3 = Cbor.MapGet(value, "duration_ms") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        Library? csilField1 = Cbor.MapGet(value, "library") is { } csilRaw1 ? LibraryFromCborValue(csilRaw1) : null;
+        string? csilField2 = Cbor.MapGet(value, "title") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
+        string? csilField3 = Cbor.MapGet(value, "artist") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
+        ulong? csilField4 = Cbor.MapGet(value, "duration_ms") is { } csilRaw4 ? Cbor.AsU64(csilRaw4) : null;
         return new QueueItem
         {
             TrackId = csilField0,
-            Title = csilField1,
-            Artist = csilField2,
-            DurationMs = csilField3,
+            Library = csilField1,
+            Title = csilField2,
+            Artist = csilField3,
+            DurationMs = csilField4,
         };
     }
 

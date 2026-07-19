@@ -56,6 +56,7 @@ export type Library = "music" | "audiobook";
 
 export interface Track {
   id: string;
+  library: Library;
   title: string;
   artist_id?: string;
   album_id?: string;
@@ -100,6 +101,14 @@ export interface BrowseRequest {
   limit?: number;
 }
 
+export interface LibraryInfo {
+  kind: Library;
+}
+
+export interface LibrariesResponse {
+  libraries: LibraryInfo[];
+}
+
 export interface AlbumsResponse {
   albums: Album[];
   total: number;
@@ -124,12 +133,34 @@ export interface ArtistDetail {
 }
 export interface SearchRequest {
   query: string;
+  library?: Library;
   limit?: number;
 }
 export interface SearchResponse {
   artists: Artist[];
   albums: Album[];
   tracks: Track[];
+}
+
+export interface AudiobookProgress {
+  track_id: string;
+  position_ms: number;
+  completed: boolean;
+  updated_at: Date;
+}
+
+export interface AudiobookProgressRequest {
+  track_ids: string[];
+}
+
+export interface AudiobookProgressResponse {
+  progress: AudiobookProgress[];
+}
+
+export interface UpdateAudiobookProgressRequest {
+  track_id: string;
+  position_ms: number;
+  completed: boolean;
 }
 export interface PlaylistsResponse {
   playlists: Playlist[];
@@ -165,6 +196,7 @@ export interface Player {
 
 export interface QueueItem {
   track_id: string;
+  library?: Library;
   title?: string;
   artist?: string;
   duration_ms?: number;

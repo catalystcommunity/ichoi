@@ -866,13 +866,14 @@ func DecodeSessionInfo(csilData []byte) (SessionInfo, error) {
 
 // csilEncTrack builds the canonical CBOR value tree for a Track.
 func csilEncTrack(csilV Track) cborValue {
-	csilEntries := make(cborMap, 0, 14)
+	csilEntries := make(cborMap, 0, 15)
 	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
 	csilEntries = append(csilEntries, cborEntry{cborText("codec"), cborText(csilV.Codec)})
 	csilEntries = append(csilEntries, cborEntry{cborText("title"), cborText(csilV.Title)})
 	if csilV.DiscNo != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("disc_no"), cborUint((*csilV.DiscNo))})
 	}
+	csilEntries = append(csilEntries, cborEntry{cborText("library"), cborText(csilV.Library)})
 	if csilV.AlbumId != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("album_id"), cborText((*csilV.AlbumId))})
 	}
@@ -914,6 +915,31 @@ func csilDecTrack(csilRoot cborValue) (Track, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Id = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "library")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Library = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "title")
@@ -1397,6 +1423,98 @@ func DecodeBrowseRequest(csilData []byte) (BrowseRequest, error) {
 	return csilDecBrowseRequest(csilRoot)
 }
 
+// csilEncLibraryInfo builds the canonical CBOR value tree for a LibraryInfo.
+func csilEncLibraryInfo(csilV LibraryInfo) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText(csilV.Kind)})
+	return csilEntries
+}
+
+// csilDecLibraryInfo reconstructs a LibraryInfo from a decoded CBOR value tree.
+func csilDecLibraryInfo(csilRoot cborValue) (LibraryInfo, error) {
+	var csilOut LibraryInfo
+	{
+		csilField, csilErr := cborRequire(csilRoot, "kind")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Kind = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeLibraryInfo encodes a LibraryInfo to canonical CSIL CBOR bytes.
+func EncodeLibraryInfo(csilV LibraryInfo) []byte {
+	return cborEncode(csilEncLibraryInfo(csilV))
+}
+
+// DecodeLibraryInfo decodes canonical CSIL CBOR bytes into a LibraryInfo.
+func DecodeLibraryInfo(csilData []byte) (LibraryInfo, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero LibraryInfo
+		return csilZero, csilErr
+	}
+	return csilDecLibraryInfo(csilRoot)
+}
+
+// csilEncLibrariesResponse builds the canonical CBOR value tree for a LibrariesResponse.
+func csilEncLibrariesResponse(csilV LibrariesResponse) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("libraries"), cborEncArray(csilV.Libraries, func(csilElem LibraryInfo) cborValue { return csilEncLibraryInfo(csilElem) })})
+	return csilEntries
+}
+
+// csilDecLibrariesResponse reconstructs a LibrariesResponse from a decoded CBOR value tree.
+func csilDecLibrariesResponse(csilRoot cborValue) (LibrariesResponse, error) {
+	var csilOut LibrariesResponse
+	{
+		csilField, csilErr := cborRequire(csilRoot, "libraries")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]LibraryInfo, error) { return cborDecArray(csilV, csilDecLibraryInfo) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Libraries = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeLibrariesResponse encodes a LibrariesResponse to canonical CSIL CBOR bytes.
+func EncodeLibrariesResponse(csilV LibrariesResponse) []byte {
+	return cborEncode(csilEncLibrariesResponse(csilV))
+}
+
+// DecodeLibrariesResponse decodes canonical CSIL CBOR bytes into a LibrariesResponse.
+func DecodeLibrariesResponse(csilData []byte) (LibrariesResponse, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero LibrariesResponse
+		return csilZero, csilErr
+	}
+	return csilDecLibrariesResponse(csilRoot)
+}
+
 // csilEncAlbumsResponse builds the canonical CBOR value tree for a AlbumsResponse.
 func csilEncAlbumsResponse(csilV AlbumsResponse) cborValue {
 	csilEntries := make(cborMap, 0, 2)
@@ -1687,11 +1805,14 @@ func DecodeArtistDetail(csilData []byte) (ArtistDetail, error) {
 
 // csilEncSearchRequest builds the canonical CBOR value tree for a SearchRequest.
 func csilEncSearchRequest(csilV SearchRequest) cborValue {
-	csilEntries := make(cborMap, 0, 2)
+	csilEntries := make(cborMap, 0, 3)
 	if csilV.Limit != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("limit"), cborUint((*csilV.Limit))})
 	}
 	csilEntries = append(csilEntries, cborEntry{cborText("query"), cborText(csilV.Query)})
+	if csilV.Library != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("library"), cborText((*csilV.Library))})
+	}
 	return csilEntries
 }
 
@@ -1708,6 +1829,27 @@ func csilDecSearchRequest(csilRoot cborValue) (SearchRequest, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Query = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "library"); csilOk {
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Library = &csilVal
 	}
 	if csilField, csilOk := cborMapGet(csilRoot, "limit"); csilOk {
 		csilVal, csilErr := (cborAsU64)(csilField)
@@ -1795,6 +1937,235 @@ func DecodeSearchResponse(csilData []byte) (SearchResponse, error) {
 		return csilZero, csilErr
 	}
 	return csilDecSearchResponse(csilRoot)
+}
+
+// csilEncAudiobookProgress builds the canonical CBOR value tree for a AudiobookProgress.
+func csilEncAudiobookProgress(csilV AudiobookProgress) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("completed"), cborBool(csilV.Completed)})
+	csilEntries = append(csilEntries, cborEntry{cborText("updated_at"), csilEncTimestamp(csilV.UpdatedAt)})
+	csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint(csilV.PositionMs)})
+	return csilEntries
+}
+
+// csilDecAudiobookProgress reconstructs a AudiobookProgress from a decoded CBOR value tree.
+func csilDecAudiobookProgress(csilRoot cborValue) (AudiobookProgress, error) {
+	var csilOut AudiobookProgress
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (TrackId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return TrackId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "position_ms")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PositionMs = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "completed")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Completed = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "updated_at")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (csilAsTimestamp)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.UpdatedAt = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeAudiobookProgress encodes a AudiobookProgress to canonical CSIL CBOR bytes.
+func EncodeAudiobookProgress(csilV AudiobookProgress) []byte {
+	return cborEncode(csilEncAudiobookProgress(csilV))
+}
+
+// DecodeAudiobookProgress decodes canonical CSIL CBOR bytes into a AudiobookProgress.
+func DecodeAudiobookProgress(csilData []byte) (AudiobookProgress, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero AudiobookProgress
+		return csilZero, csilErr
+	}
+	return csilDecAudiobookProgress(csilRoot)
+}
+
+// csilEncAudiobookProgressRequest builds the canonical CBOR value tree for a AudiobookProgressRequest.
+func csilEncAudiobookProgressRequest(csilV AudiobookProgressRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("track_ids"), cborEncArray(csilV.TrackIds, func(csilElem TrackId) cborValue { return cborText(csilElem) })})
+	return csilEntries
+}
+
+// csilDecAudiobookProgressRequest reconstructs a AudiobookProgressRequest from a decoded CBOR value tree.
+func csilDecAudiobookProgressRequest(csilRoot cborValue) (AudiobookProgressRequest, error) {
+	var csilOut AudiobookProgressRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_ids")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TrackId, error) {
+			return cborDecArray(csilV, func(csilV cborValue) (TrackId, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				return TrackId(csilInner), csilErr
+			})
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackIds = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeAudiobookProgressRequest encodes a AudiobookProgressRequest to canonical CSIL CBOR bytes.
+func EncodeAudiobookProgressRequest(csilV AudiobookProgressRequest) []byte {
+	return cborEncode(csilEncAudiobookProgressRequest(csilV))
+}
+
+// DecodeAudiobookProgressRequest decodes canonical CSIL CBOR bytes into a AudiobookProgressRequest.
+func DecodeAudiobookProgressRequest(csilData []byte) (AudiobookProgressRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero AudiobookProgressRequest
+		return csilZero, csilErr
+	}
+	return csilDecAudiobookProgressRequest(csilRoot)
+}
+
+// csilEncAudiobookProgressResponse builds the canonical CBOR value tree for a AudiobookProgressResponse.
+func csilEncAudiobookProgressResponse(csilV AudiobookProgressResponse) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("progress"), cborEncArray(csilV.Progress, func(csilElem AudiobookProgress) cborValue { return csilEncAudiobookProgress(csilElem) })})
+	return csilEntries
+}
+
+// csilDecAudiobookProgressResponse reconstructs a AudiobookProgressResponse from a decoded CBOR value tree.
+func csilDecAudiobookProgressResponse(csilRoot cborValue) (AudiobookProgressResponse, error) {
+	var csilOut AudiobookProgressResponse
+	{
+		csilField, csilErr := cborRequire(csilRoot, "progress")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]AudiobookProgress, error) {
+			return cborDecArray(csilV, csilDecAudiobookProgress)
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Progress = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeAudiobookProgressResponse encodes a AudiobookProgressResponse to canonical CSIL CBOR bytes.
+func EncodeAudiobookProgressResponse(csilV AudiobookProgressResponse) []byte {
+	return cborEncode(csilEncAudiobookProgressResponse(csilV))
+}
+
+// DecodeAudiobookProgressResponse decodes canonical CSIL CBOR bytes into a AudiobookProgressResponse.
+func DecodeAudiobookProgressResponse(csilData []byte) (AudiobookProgressResponse, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero AudiobookProgressResponse
+		return csilZero, csilErr
+	}
+	return csilDecAudiobookProgressResponse(csilRoot)
+}
+
+// csilEncUpdateAudiobookProgressRequest builds the canonical CBOR value tree for a UpdateAudiobookProgressRequest.
+func csilEncUpdateAudiobookProgressRequest(csilV UpdateAudiobookProgressRequest) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("completed"), cborBool(csilV.Completed)})
+	csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint(csilV.PositionMs)})
+	return csilEntries
+}
+
+// csilDecUpdateAudiobookProgressRequest reconstructs a UpdateAudiobookProgressRequest from a decoded CBOR value tree.
+func csilDecUpdateAudiobookProgressRequest(csilRoot cborValue) (UpdateAudiobookProgressRequest, error) {
+	var csilOut UpdateAudiobookProgressRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (TrackId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return TrackId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "position_ms")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PositionMs = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "completed")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Completed = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeUpdateAudiobookProgressRequest encodes a UpdateAudiobookProgressRequest to canonical CSIL CBOR bytes.
+func EncodeUpdateAudiobookProgressRequest(csilV UpdateAudiobookProgressRequest) []byte {
+	return cborEncode(csilEncUpdateAudiobookProgressRequest(csilV))
+}
+
+// DecodeUpdateAudiobookProgressRequest decodes canonical CSIL CBOR bytes into a UpdateAudiobookProgressRequest.
+func DecodeUpdateAudiobookProgressRequest(csilData []byte) (UpdateAudiobookProgressRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero UpdateAudiobookProgressRequest
+		return csilZero, csilErr
+	}
+	return csilDecUpdateAudiobookProgressRequest(csilRoot)
 }
 
 // csilEncPlaylistsResponse builds the canonical CBOR value tree for a PlaylistsResponse.
@@ -2153,12 +2524,15 @@ func DecodePlayer(csilData []byte) (Player, error) {
 
 // csilEncQueueItem builds the canonical CBOR value tree for a QueueItem.
 func csilEncQueueItem(csilV QueueItem) cborValue {
-	csilEntries := make(cborMap, 0, 4)
+	csilEntries := make(cborMap, 0, 5)
 	if csilV.Title != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("title"), cborText((*csilV.Title))})
 	}
 	if csilV.Artist != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("artist"), cborText((*csilV.Artist))})
+	}
+	if csilV.Library != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("library"), cborText((*csilV.Library))})
 	}
 	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
 	if csilV.DurationMs != nil {
@@ -2183,6 +2557,27 @@ func csilDecQueueItem(csilRoot cborValue) (QueueItem, error) {
 			return csilOut, csilErr
 		}
 		csilOut.TrackId = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "library"); csilOk {
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Library = &csilVal
 	}
 	if csilField, csilOk := cborMapGet(csilRoot, "title"); csilOk {
 		csilVal, csilErr := (cborAsText)(csilField)

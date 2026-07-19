@@ -2,8 +2,8 @@
 // Source: <csil spec>
 // Target: typescript-client
 
-import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AuthRequest, BrowseRequest, CommandRequest, CoverArt, CoverArtRequest, CreateNodeTokenRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ImportResult, ImportTrackRequest, ListAccountsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustedDomains } from "./types.gen.ts";
-import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromImportResultCbor, fromListAccountsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, toAlbumRequestCbor, toArtistRequestCbor, toAuthRequestCbor, toBrowseRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateNodeTokenRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toSearchRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toTrustDomainRequestCbor } from "./codec.gen.ts";
+import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CommandRequest, CoverArt, CoverArtRequest, CreateNodeTokenRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ImportResult, ImportTrackRequest, LibrariesResponse, ListAccountsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromListAccountsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBrowseRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateNodeTokenRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toSearchRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toTrustDomainRequestCbor, toUpdateAudiobookProgressRequestCbor } from "./codec.gen.ts";
 
 export interface AsyncServiceTransport {
   call(service: string, op: string, req: Uint8Array): Promise<Uint8Array>;
@@ -124,6 +124,15 @@ export class LibraryAsyncClient {
    * @throws {ServiceError} when the API returns an error response
    * @throws transport errors (network, timeout) raised by the transport
    */
+  async listLibraries(req: Page): Promise<LibrariesResponse> {
+    const csilResp = await this.t.call("LibraryService", "list-libraries", toPageCbor(req));
+    return fromLibrariesResponseCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
   async listAlbums(req: BrowseRequest): Promise<AlbumsResponse> {
     const csilResp = await this.t.call("LibraryService", "list-albums", toBrowseRequestCbor(req));
     return fromAlbumsResponseCbor(csilResp);
@@ -190,6 +199,24 @@ export class LibraryAsyncClient {
   async getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
     const csilResp = await this.t.call("LibraryService", "get-cover-art", toCoverArtRequestCbor(req));
     return fromCoverArtCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async getAudiobookProgress(req: AudiobookProgressRequest): Promise<AudiobookProgressResponse> {
+    const csilResp = await this.t.call("LibraryService", "get-audiobook-progress", toAudiobookProgressRequestCbor(req));
+    return fromAudiobookProgressResponseCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async updateAudiobookProgress(req: UpdateAudiobookProgressRequest): Promise<AudiobookProgress> {
+    const csilResp = await this.t.call("LibraryService", "update-audiobook-progress", toUpdateAudiobookProgressRequestCbor(req));
+    return fromAudiobookProgressCbor(csilResp);
   }
 }
 

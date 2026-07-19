@@ -88,6 +88,8 @@ typedef struct Album Album;
 typedef struct Artist Artist;
 typedef struct Playlist Playlist;
 typedef struct BrowseRequest BrowseRequest;
+typedef struct LibraryInfo LibraryInfo;
+typedef struct LibrariesResponse LibrariesResponse;
 typedef struct AlbumsResponse AlbumsResponse;
 typedef struct ArtistsResponse ArtistsResponse;
 typedef struct AlbumRequest AlbumRequest;
@@ -96,6 +98,10 @@ typedef struct ArtistRequest ArtistRequest;
 typedef struct ArtistDetail ArtistDetail;
 typedef struct SearchRequest SearchRequest;
 typedef struct SearchResponse SearchResponse;
+typedef struct AudiobookProgress AudiobookProgress;
+typedef struct AudiobookProgressRequest AudiobookProgressRequest;
+typedef struct AudiobookProgressResponse AudiobookProgressResponse;
+typedef struct UpdateAudiobookProgressRequest UpdateAudiobookProgressRequest;
 typedef struct PlaylistsResponse PlaylistsResponse;
 typedef struct PlaylistRequest PlaylistRequest;
 typedef struct PlaylistDetail PlaylistDetail;
@@ -230,6 +236,7 @@ typedef struct SessionInfo {
 /* Track is a structured data type. */
 typedef struct Track {
     TrackId id;
+    Library library;
     char *title;
     ArtistId *artist_id;
     AlbumId *album_id;
@@ -278,6 +285,17 @@ typedef struct BrowseRequest {
     uint64_t *limit;
 } BrowseRequest;
 
+/* LibraryInfo is a structured data type. */
+typedef struct LibraryInfo {
+    Library kind;
+} LibraryInfo;
+
+/* LibrariesResponse is a structured data type. */
+typedef struct LibrariesResponse {
+    LibraryInfo *libraries;
+    size_t libraries_count;
+} LibrariesResponse;
+
 /* AlbumsResponse is a structured data type. */
 typedef struct AlbumsResponse {
     Album *albums;
@@ -319,6 +337,7 @@ typedef struct ArtistDetail {
 /* SearchRequest is a structured data type. */
 typedef struct SearchRequest {
     char *query;
+    Library *library;
     uint64_t *limit;
 } SearchRequest;
 
@@ -331,6 +350,33 @@ typedef struct SearchResponse {
     Track *tracks;
     size_t tracks_count;
 } SearchResponse;
+
+/* AudiobookProgress is a structured data type. */
+typedef struct AudiobookProgress {
+    TrackId track_id;
+    uint64_t position_ms;
+    bool completed;
+    CsilTimestamp updated_at;
+} AudiobookProgress;
+
+/* AudiobookProgressRequest is a structured data type. */
+typedef struct AudiobookProgressRequest {
+    TrackId *track_ids;
+    size_t track_ids_count;
+} AudiobookProgressRequest;
+
+/* AudiobookProgressResponse is a structured data type. */
+typedef struct AudiobookProgressResponse {
+    AudiobookProgress *progress;
+    size_t progress_count;
+} AudiobookProgressResponse;
+
+/* UpdateAudiobookProgressRequest is a structured data type. */
+typedef struct UpdateAudiobookProgressRequest {
+    TrackId track_id;
+    uint64_t position_ms;
+    bool completed;
+} UpdateAudiobookProgressRequest;
 
 /* PlaylistsResponse is a structured data type. */
 typedef struct PlaylistsResponse {
@@ -375,6 +421,7 @@ typedef struct Player {
 /* QueueItem is a structured data type. */
 typedef struct QueueItem {
     TrackId track_id;
+    Library *library;
     char *title;
     char *artist;
     uint64_t *duration_ms;

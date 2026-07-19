@@ -40,7 +40,10 @@ pub async fn stream_media(
     // Resolve the track's absolute path and plan (blocking DB work off the async thread).
     let planned = tokio::task::spawn_blocking(move || resolve(&app, &track_id, &q))
         .await
-        .unwrap_or(Err((StatusCode::INTERNAL_SERVER_ERROR, "task join".to_string())));
+        .unwrap_or(Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "task join".to_string(),
+        )));
 
     let plan = match planned {
         Ok(p) => p,
@@ -49,11 +52,7 @@ pub async fn stream_media(
 
     match plan {
         Resolved::Direct { path, codec } => serve_direct(path, &codec, &headers).await,
-        Resolved::Transcode {
-            path,
-            spec,
-            ffmpeg,
-        } => serve_transcode(ffmpeg, path, spec).await,
+        Resolved::Transcode { path, spec, ffmpeg } => serve_transcode(ffmpeg, path, spec).await,
     }
 }
 
@@ -146,10 +145,7 @@ async fn serve_direct(path: PathBuf, codec: &str, headers: &HeaderMap) -> Respon
                 .status(StatusCode::PARTIAL_CONTENT)
                 .header(header::CONTENT_TYPE, ct)
                 .header(header::ACCEPT_RANGES, "bytes")
-                .header(
-                    header::CONTENT_RANGE,
-                    format!("bytes {start}-{end}/{len}"),
-                )
+                .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/{len}"))
                 .header(header::CONTENT_LENGTH, (end - start + 1).to_string())
                 .body(Body::from(slice))
                 .unwrap();
@@ -181,11 +177,7 @@ fn parse_range(range: &str, len: u64) -> Option<(u64, u64)> {
 }
 
 /// Pipe an ffmpeg transcode straight to the response body (chunked, no Content-Length).
-async fn serve_transcode(
-    ffmpeg: PathBuf,
-    path: PathBuf,
-    spec: media::TranscodeSpec,
-) -> Response {
+async fn serve_transcode(ffmpeg: PathBuf, path: PathBuf, spec: media::TranscodeSpec) -> Response {
     let ct = if spec.codec == "mp3" {
         "audio/mpeg"
     } else {

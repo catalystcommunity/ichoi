@@ -49,6 +49,10 @@ class LibraryAsyncClient:
     def __init__(self, transport: AsyncTransport):
         self._transport = transport
 
+    async def list_libraries(self, req: Page) -> LibrariesResponse:
+        """list-libraries"""
+        return LibrariesResponse.from_cbor(await self._transport.call("LibraryService", "list-libraries", req.to_cbor()))
+
     async def list_albums(self, req: BrowseRequest) -> AlbumsResponse:
         """list-albums"""
         return AlbumsResponse.from_cbor(await self._transport.call("LibraryService", "list-albums", req.to_cbor()))
@@ -80,6 +84,14 @@ class LibraryAsyncClient:
     async def get_cover_art(self, req: CoverArtRequest) -> CoverArt:
         """get-cover-art"""
         return CoverArt.from_cbor(await self._transport.call("LibraryService", "get-cover-art", req.to_cbor()))
+
+    async def get_audiobook_progress(self, req: AudiobookProgressRequest) -> AudiobookProgressResponse:
+        """get-audiobook-progress"""
+        return AudiobookProgressResponse.from_cbor(await self._transport.call("LibraryService", "get-audiobook-progress", req.to_cbor()))
+
+    async def update_audiobook_progress(self, req: UpdateAudiobookProgressRequest) -> AudiobookProgress:
+        """update-audiobook-progress"""
+        return AudiobookProgress.from_cbor(await self._transport.call("LibraryService", "update-audiobook-progress", req.to_cbor()))
 
 class PlayerAsyncClient:
     """Typed client for the PlayerService service."""

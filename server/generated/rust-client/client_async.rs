@@ -64,6 +64,15 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
         Self { transport }
     }
 
+    /// list-libraries (request/response).
+    pub async fn list_libraries(&self, req: Page) -> Result<LibrariesResponse, ClientError> {
+        let csil_resp = self
+            .transport
+            .call("LibraryService", "list-libraries", &encode_page(&req))
+            .await?;
+        decode_libraries_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// list-albums (request/response).
     pub async fn list_albums(&self, req: BrowseRequest) -> Result<AlbumsResponse, ClientError> {
         let csil_resp = self
@@ -157,6 +166,39 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             )
             .await?;
         decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// get-audiobook-progress (request/response).
+    pub async fn get_audiobook_progress(
+        &self,
+        req: AudiobookProgressRequest,
+    ) -> Result<AudiobookProgressResponse, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "LibraryService",
+                "get-audiobook-progress",
+                &encode_audiobook_progress_request(&req),
+            )
+            .await?;
+        decode_audiobook_progress_response(&csil_resp)
+            .map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// update-audiobook-progress (request/response).
+    pub async fn update_audiobook_progress(
+        &self,
+        req: UpdateAudiobookProgressRequest,
+    ) -> Result<AudiobookProgress, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "LibraryService",
+                "update-audiobook-progress",
+                &encode_update_audiobook_progress_request(&req),
+            )
+            .await?;
+        decode_audiobook_progress(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 }
 

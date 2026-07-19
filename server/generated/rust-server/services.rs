@@ -21,6 +21,12 @@ pub trait SessionService {
 /// LibraryService service trait
 pub trait LibraryService {
     type Context;
+    /// list-libraries (request/response).
+    fn list_libraries(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<LibrariesResponse, ServiceError>;
     /// list-albums (request/response).
     fn list_albums(
         &self,
@@ -69,6 +75,18 @@ pub trait LibraryService {
         ctx: &Self::Context,
         input: CoverArtRequest,
     ) -> Result<CoverArt, ServiceError>;
+    /// get-audiobook-progress (request/response).
+    fn get_audiobook_progress(
+        &self,
+        ctx: &Self::Context,
+        input: AudiobookProgressRequest,
+    ) -> Result<AudiobookProgressResponse, ServiceError>;
+    /// update-audiobook-progress (request/response).
+    fn update_audiobook_progress(
+        &self,
+        ctx: &Self::Context,
+        input: UpdateAudiobookProgressRequest,
+    ) -> Result<AudiobookProgress, ServiceError>;
 }
 
 /// PlayerService service trait

@@ -11,6 +11,9 @@ import type { CborValue } from "./cbor.ts";
 import type { CsilConnection } from "./csil.ts";
 import type {
   Account,
+  AudiobookProgress,
+  AudiobookProgressRequest,
+  AudiobookProgressResponse,
   AlbumDetail,
   AlbumRequest,
   AlbumsResponse,
@@ -29,6 +32,7 @@ import type {
   ImportResult,
   ImportTrackRequest,
   ListAccountsResponse,
+  LibrariesResponse,
   ListNodesResponse,
   ListPlayersRequest,
   ListPlayersResponse,
@@ -52,6 +56,7 @@ import type {
   SubscribeRequest,
   TrustDomainRequest,
   TrustedDomains,
+  UpdateAudiobookProgressRequest,
 } from "./schema.ts";
 
 const SESSION = "SessionService";
@@ -110,6 +115,14 @@ export class SessionService {
 export class LibraryService {
   constructor(private readonly conn: CsilConnection) {}
 
+  listLibraries(page: Page = {}): Promise<LibrariesResponse> {
+    return this.conn.call(
+      LIBRARY,
+      "list-libraries",
+      encodeRecord(page),
+      decodeRecord<LibrariesResponse>,
+    );
+  }
   listAlbums(req: BrowseRequest = {}): Promise<AlbumsResponse> {
     return this.conn.call(LIBRARY, "list-albums", encodeRecord(req), decodeRecord<AlbumsResponse>);
   }
@@ -138,6 +151,22 @@ export class LibraryService {
   }
   getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
     return this.conn.call(LIBRARY, "get-cover-art", encodeRecord(req), decodeRecord<CoverArt>);
+  }
+  getAudiobookProgress(req: AudiobookProgressRequest): Promise<AudiobookProgressResponse> {
+    return this.conn.call(
+      LIBRARY,
+      "get-audiobook-progress",
+      encodeRecord(req),
+      decodeRecord<AudiobookProgressResponse>,
+    );
+  }
+  updateAudiobookProgress(req: UpdateAudiobookProgressRequest): Promise<AudiobookProgress> {
+    return this.conn.call(
+      LIBRARY,
+      "update-audiobook-progress",
+      encodeRecord(req),
+      decodeRecord<AudiobookProgress>,
+    );
   }
 }
 

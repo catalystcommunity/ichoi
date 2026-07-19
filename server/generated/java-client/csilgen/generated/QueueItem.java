@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record QueueItem(
     TrackId trackId /* wire: "track_id" */,
+    Library library /* wire: "library" */,
     String title /* wire: "title" */,
     String artist /* wire: "artist" */,
     Long durationMs /* wire: "duration_ms" */

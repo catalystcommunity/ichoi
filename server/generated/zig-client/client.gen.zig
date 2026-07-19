@@ -64,6 +64,17 @@ pub const LibraryClient = struct {
         return .{ .transport = transport };
     }
 
+    /// Invoke LibraryService/list-libraries with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_libraries(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.LibrariesResponse) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "list-libraries", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_LibrariesResponse(alloc, csil_respb, out);
+    }
+
     /// Invoke LibraryService/list-albums with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.
@@ -150,6 +161,28 @@ pub const LibraryClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "get-cover-art", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_CoverArt(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/get-audiobook-progress with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn get_audiobook_progress(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.AudiobookProgressRequest, out: *types.AudiobookProgressResponse) anyerror!void {
+        const csil_reqb = try codec.encode_AudiobookProgressRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "get-audiobook-progress", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_AudiobookProgressResponse(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/update-audiobook-progress with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn update_audiobook_progress(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.UpdateAudiobookProgressRequest, out: *types.AudiobookProgress) anyerror!void {
+        const csil_reqb = try codec.encode_UpdateAudiobookProgressRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "update-audiobook-progress", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_AudiobookProgress(alloc, csil_respb, out);
     }
 };
 

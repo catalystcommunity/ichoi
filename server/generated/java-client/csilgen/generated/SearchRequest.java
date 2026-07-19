@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record SearchRequest(
     String query /* wire: "query" */,
+    Library library /* wire: "library" */,
     Long limit /* wire: "limit" */
 ) {
     public SearchRequest {

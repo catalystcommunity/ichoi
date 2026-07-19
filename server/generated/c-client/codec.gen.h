@@ -594,6 +594,8 @@ static inline int csilc_enc_AuthRequest(csilc_buf *b, const AuthRequest *v);
 static inline int csilc_dec_AuthRequest(const csilc_value *m, CsilCodecArena *a, AuthRequest *out);
 static inline int csilc_enc_SessionInfo(csilc_buf *b, const SessionInfo *v);
 static inline int csilc_dec_SessionInfo(const csilc_value *m, CsilCodecArena *a, SessionInfo *out);
+static inline int csilc_enc_Library(csilc_buf *b, const Library *v);
+static inline int csilc_dec_Library(const csilc_value *src, CsilCodecArena *a, Library *out);
 static inline int csilc_enc_Track(csilc_buf *b, const Track *v);
 static inline int csilc_dec_Track(const csilc_value *m, CsilCodecArena *a, Track *out);
 static inline int csilc_enc_Album(csilc_buf *b, const Album *v);
@@ -602,10 +604,12 @@ static inline int csilc_enc_Artist(csilc_buf *b, const Artist *v);
 static inline int csilc_dec_Artist(const csilc_value *m, CsilCodecArena *a, Artist *out);
 static inline int csilc_enc_Playlist(csilc_buf *b, const Playlist *v);
 static inline int csilc_dec_Playlist(const csilc_value *m, CsilCodecArena *a, Playlist *out);
-static inline int csilc_enc_Library(csilc_buf *b, const Library *v);
-static inline int csilc_dec_Library(const csilc_value *src, CsilCodecArena *a, Library *out);
 static inline int csilc_enc_BrowseRequest(csilc_buf *b, const BrowseRequest *v);
 static inline int csilc_dec_BrowseRequest(const csilc_value *m, CsilCodecArena *a, BrowseRequest *out);
+static inline int csilc_enc_LibraryInfo(csilc_buf *b, const LibraryInfo *v);
+static inline int csilc_dec_LibraryInfo(const csilc_value *m, CsilCodecArena *a, LibraryInfo *out);
+static inline int csilc_enc_LibrariesResponse(csilc_buf *b, const LibrariesResponse *v);
+static inline int csilc_dec_LibrariesResponse(const csilc_value *m, CsilCodecArena *a, LibrariesResponse *out);
 static inline int csilc_enc_AlbumsResponse(csilc_buf *b, const AlbumsResponse *v);
 static inline int csilc_dec_AlbumsResponse(const csilc_value *m, CsilCodecArena *a, AlbumsResponse *out);
 static inline int csilc_enc_ArtistsResponse(csilc_buf *b, const ArtistsResponse *v);
@@ -622,6 +626,14 @@ static inline int csilc_enc_SearchRequest(csilc_buf *b, const SearchRequest *v);
 static inline int csilc_dec_SearchRequest(const csilc_value *m, CsilCodecArena *a, SearchRequest *out);
 static inline int csilc_enc_SearchResponse(csilc_buf *b, const SearchResponse *v);
 static inline int csilc_dec_SearchResponse(const csilc_value *m, CsilCodecArena *a, SearchResponse *out);
+static inline int csilc_enc_AudiobookProgress(csilc_buf *b, const AudiobookProgress *v);
+static inline int csilc_dec_AudiobookProgress(const csilc_value *m, CsilCodecArena *a, AudiobookProgress *out);
+static inline int csilc_enc_AudiobookProgressRequest(csilc_buf *b, const AudiobookProgressRequest *v);
+static inline int csilc_dec_AudiobookProgressRequest(const csilc_value *m, CsilCodecArena *a, AudiobookProgressRequest *out);
+static inline int csilc_enc_AudiobookProgressResponse(csilc_buf *b, const AudiobookProgressResponse *v);
+static inline int csilc_dec_AudiobookProgressResponse(const csilc_value *m, CsilCodecArena *a, AudiobookProgressResponse *out);
+static inline int csilc_enc_UpdateAudiobookProgressRequest(csilc_buf *b, const UpdateAudiobookProgressRequest *v);
+static inline int csilc_dec_UpdateAudiobookProgressRequest(const csilc_value *m, CsilCodecArena *a, UpdateAudiobookProgressRequest *out);
 static inline int csilc_enc_PlaylistsResponse(csilc_buf *b, const PlaylistsResponse *v);
 static inline int csilc_dec_PlaylistsResponse(const csilc_value *m, CsilCodecArena *a, PlaylistsResponse *out);
 static inline int csilc_enc_PlaylistRequest(csilc_buf *b, const PlaylistRequest *v);
@@ -1081,9 +1093,33 @@ static inline int csilc_dec_SessionInfo(const csilc_value *m, CsilCodecArena *a,
     return 0;
 }
 
+static CSILC_UNUSED const char *const csilc_Library_names[] = {
+    "music",
+    "audiobook",
+};
+/* csilc_enc_Library writes the Library variant's wire text. */
+static inline int csilc_enc_Library(csilc_buf *b, const Library *v) {
+    const char *csilc_s = csilc_Library_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_Library matches the wire text back to a Library variant. */
+static inline int csilc_dec_Library(const csilc_value *src, CsilCodecArena *a, Library *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_Library_names) / sizeof(csilc_Library_names[0]); csilc_i++) {
+        if (strlen(csilc_Library_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_Library_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (Library)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 /* csilc_enc_Track writes Track as a canonical CBOR map. */
 static inline int csilc_enc_Track(csilc_buf *b, const Track *v) {
-    size_t csilc_n = 7;
+    size_t csilc_n = 8;
     if (v->disc_no) csilc_n++;
     if (v->album_id) csilc_n++;
     if (v->track_no) csilc_n++;
@@ -1102,6 +1138,8 @@ static inline int csilc_enc_Track(csilc_buf *b, const Track *v) {
         if (csilc_w_text(b, "disc_no", 7)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->disc_no)))) return -1;
     }
+    if (csilc_w_text(b, "library", 7)) return -1;
+    if (csilc_enc_Library(b, &(v->library))) return -1;
     if (v->album_id) {
         if (csilc_w_text(b, "album_id", 8)) return -1;
         if (csilc_w_text(b, ((*v->album_id)), ((*v->album_id)) ? strlen((*v->album_id)) : 0)) return -1;
@@ -1156,6 +1194,8 @@ static inline int csilc_dec_Track(const csilc_value *m, CsilCodecArena *a, Track
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->disc_no = csilc_p;
     }
+    csilc_f = csilc_map_get(m, "library");
+    if (csilc_dec_Library(csilc_f, a, &(out->library))) return -1;
     csilc_f = csilc_map_get(m, "album_id");
     out->album_id = NULL;
     if (csilc_f) {
@@ -1337,30 +1377,6 @@ static inline int csilc_dec_Playlist(const csilc_value *m, CsilCodecArena *a, Pl
     return 0;
 }
 
-static CSILC_UNUSED const char *const csilc_Library_names[] = {
-    "music",
-    "audiobook",
-};
-/* csilc_enc_Library writes the Library variant's wire text. */
-static inline int csilc_enc_Library(csilc_buf *b, const Library *v) {
-    const char *csilc_s = csilc_Library_names[(size_t)(*v)];
-    return csilc_w_text(b, csilc_s, strlen(csilc_s));
-}
-
-/* csilc_dec_Library matches the wire text back to a Library variant. */
-static inline int csilc_dec_Library(const csilc_value *src, CsilCodecArena *a, Library *out) {
-    (void)a;
-    if (!src || src->kind != CSILC_TEXT) return -1;
-    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_Library_names) / sizeof(csilc_Library_names[0]); csilc_i++) {
-        if (strlen(csilc_Library_names[csilc_i]) == src->as.bytes.len &&
-            memcmp(csilc_Library_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
-            *out = (Library)csilc_i;
-            return 0;
-        }
-    }
-    return -1;
-}
-
 /* csilc_enc_BrowseRequest writes BrowseRequest as a canonical CBOR map. */
 static inline int csilc_enc_BrowseRequest(csilc_buf *b, const BrowseRequest *v) {
     size_t csilc_n = 0;
@@ -1411,6 +1427,56 @@ static inline int csilc_dec_BrowseRequest(const csilc_value *m, CsilCodecArena *
         if (!csilc_p) return -1;
         if (csilc_dec_Library(csilc_f, a, &((*csilc_p)))) return -1;
         out->library = csilc_p;
+    }
+    return 0;
+}
+
+/* csilc_enc_LibraryInfo writes LibraryInfo as a canonical CBOR map. */
+static inline int csilc_enc_LibraryInfo(csilc_buf *b, const LibraryInfo *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "kind", 4)) return -1;
+    if (csilc_enc_Library(b, &(v->kind))) return -1;
+    return 0;
+}
+
+/* csilc_dec_LibraryInfo reads LibraryInfo from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_LibraryInfo(const csilc_value *m, CsilCodecArena *a, LibraryInfo *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "kind");
+    if (csilc_dec_Library(csilc_f, a, &(out->kind))) return -1;
+    return 0;
+}
+
+/* csilc_enc_LibrariesResponse writes LibrariesResponse as a canonical CBOR map. */
+static inline int csilc_enc_LibrariesResponse(csilc_buf *b, const LibrariesResponse *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "libraries", 9)) return -1;
+    if (csilc_w_array_head(b, v->libraries_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->libraries_count; csilc_i++) {
+        if (csilc_enc_LibraryInfo(b, &(v->libraries[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_LibrariesResponse reads LibrariesResponse from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_LibrariesResponse(const csilc_value *m, CsilCodecArena *a, LibrariesResponse *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "libraries");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->libraries_count = csilc_f->as.array.count;
+    out->libraries = NULL;
+    if (out->libraries_count) {
+        out->libraries = (LibraryInfo *)csilc_arena_alloc(a, out->libraries_count * sizeof(LibraryInfo));
+        if (!out->libraries) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->libraries_count; csilc_i++) {
+            if (csilc_dec_LibraryInfo(&csilc_f->as.array.items[csilc_i], a, &(out->libraries[csilc_i]))) return -1;
+        }
     }
     return 0;
 }
@@ -1597,6 +1663,7 @@ static inline int csilc_dec_ArtistDetail(const csilc_value *m, CsilCodecArena *a
 static inline int csilc_enc_SearchRequest(csilc_buf *b, const SearchRequest *v) {
     size_t csilc_n = 1;
     if (v->limit) csilc_n++;
+    if (v->library) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (v->limit) {
         if (csilc_w_text(b, "limit", 5)) return -1;
@@ -1604,6 +1671,10 @@ static inline int csilc_enc_SearchRequest(csilc_buf *b, const SearchRequest *v) 
     }
     if (csilc_w_text(b, "query", 5)) return -1;
     if (csilc_w_text(b, (v->query), (v->query) ? strlen(v->query) : 0)) return -1;
+    if (v->library) {
+        if (csilc_w_text(b, "library", 7)) return -1;
+        if (csilc_enc_Library(b, &((*v->library)))) return -1;
+    }
     return 0;
 }
 
@@ -1622,6 +1693,14 @@ static inline int csilc_dec_SearchRequest(const csilc_value *m, CsilCodecArena *
     }
     csilc_f = csilc_map_get(m, "query");
     if (!csilc_get_text(csilc_f, &(out->query))) return -1;
+    csilc_f = csilc_map_get(m, "library");
+    out->library = NULL;
+    if (csilc_f) {
+        Library *csilc_p = (Library *)csilc_arena_alloc(a, sizeof(Library));
+        if (!csilc_p) return -1;
+        if (csilc_dec_Library(csilc_f, a, &((*csilc_p)))) return -1;
+        out->library = csilc_p;
+    }
     return 0;
 }
 
@@ -1685,6 +1764,128 @@ static inline int csilc_dec_SearchResponse(const csilc_value *m, CsilCodecArena 
             if (csilc_dec_Artist(&csilc_f->as.array.items[csilc_i], a, &(out->artists[csilc_i]))) return -1;
         }
     }
+    return 0;
+}
+
+/* csilc_enc_AudiobookProgress writes AudiobookProgress as a canonical CBOR map. */
+static inline int csilc_enc_AudiobookProgress(csilc_buf *b, const AudiobookProgress *v) {
+    size_t csilc_n = 4;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "track_id", 8)) return -1;
+    if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
+    if (csilc_w_text(b, "completed", 9)) return -1;
+    if (csilc_w_bool(b, (v->completed))) return -1;
+    if (csilc_w_text(b, "updated_at", 10)) return -1;
+    if (csilc_w_tag(b, 0)) return -1;
+    if (csilc_w_text(b, (v->updated_at).rfc3339, (v->updated_at).rfc3339 ? strlen((v->updated_at).rfc3339) : 0)) return -1;
+    if (csilc_w_text(b, "position_ms", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->position_ms))) return -1;
+    return 0;
+}
+
+/* csilc_dec_AudiobookProgress reads AudiobookProgress from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_AudiobookProgress(const csilc_value *m, CsilCodecArena *a, AudiobookProgress *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "track_id");
+    if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
+    csilc_f = csilc_map_get(m, "completed");
+    if (!csilc_as_bool(csilc_f, &(out->completed))) return -1;
+    csilc_f = csilc_map_get(m, "updated_at");
+    if (!csilc_get_tagged_text(csilc_f, 0, &(out->updated_at).rfc3339)) return -1;
+    (out->updated_at).epoch_seconds = 0;
+    csilc_f = csilc_map_get(m, "position_ms");
+    if (!csilc_as_u64(csilc_f, &(out->position_ms))) return -1;
+    return 0;
+}
+
+/* csilc_enc_AudiobookProgressRequest writes AudiobookProgressRequest as a canonical CBOR map. */
+static inline int csilc_enc_AudiobookProgressRequest(csilc_buf *b, const AudiobookProgressRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "track_ids", 9)) return -1;
+    if (csilc_w_array_head(b, v->track_ids_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->track_ids_count; csilc_i++) {
+        if (csilc_w_text(b, (v->track_ids[csilc_i]), (v->track_ids[csilc_i]) ? strlen(v->track_ids[csilc_i]) : 0)) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_AudiobookProgressRequest reads AudiobookProgressRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_AudiobookProgressRequest(const csilc_value *m, CsilCodecArena *a, AudiobookProgressRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "track_ids");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->track_ids_count = csilc_f->as.array.count;
+    out->track_ids = NULL;
+    if (out->track_ids_count) {
+        out->track_ids = (TrackId *)csilc_arena_alloc(a, out->track_ids_count * sizeof(TrackId));
+        if (!out->track_ids) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->track_ids_count; csilc_i++) {
+            if (!csilc_get_text(&csilc_f->as.array.items[csilc_i], &(out->track_ids[csilc_i]))) return -1;
+        }
+    }
+    return 0;
+}
+
+/* csilc_enc_AudiobookProgressResponse writes AudiobookProgressResponse as a canonical CBOR map. */
+static inline int csilc_enc_AudiobookProgressResponse(csilc_buf *b, const AudiobookProgressResponse *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "progress", 8)) return -1;
+    if (csilc_w_array_head(b, v->progress_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->progress_count; csilc_i++) {
+        if (csilc_enc_AudiobookProgress(b, &(v->progress[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_AudiobookProgressResponse reads AudiobookProgressResponse from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_AudiobookProgressResponse(const csilc_value *m, CsilCodecArena *a, AudiobookProgressResponse *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "progress");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->progress_count = csilc_f->as.array.count;
+    out->progress = NULL;
+    if (out->progress_count) {
+        out->progress = (AudiobookProgress *)csilc_arena_alloc(a, out->progress_count * sizeof(AudiobookProgress));
+        if (!out->progress) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->progress_count; csilc_i++) {
+            if (csilc_dec_AudiobookProgress(&csilc_f->as.array.items[csilc_i], a, &(out->progress[csilc_i]))) return -1;
+        }
+    }
+    return 0;
+}
+
+/* csilc_enc_UpdateAudiobookProgressRequest writes UpdateAudiobookProgressRequest as a canonical CBOR map. */
+static inline int csilc_enc_UpdateAudiobookProgressRequest(csilc_buf *b, const UpdateAudiobookProgressRequest *v) {
+    size_t csilc_n = 3;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "track_id", 8)) return -1;
+    if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
+    if (csilc_w_text(b, "completed", 9)) return -1;
+    if (csilc_w_bool(b, (v->completed))) return -1;
+    if (csilc_w_text(b, "position_ms", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->position_ms))) return -1;
+    return 0;
+}
+
+/* csilc_dec_UpdateAudiobookProgressRequest reads UpdateAudiobookProgressRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_UpdateAudiobookProgressRequest(const csilc_value *m, CsilCodecArena *a, UpdateAudiobookProgressRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "track_id");
+    if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
+    csilc_f = csilc_map_get(m, "completed");
+    if (!csilc_as_bool(csilc_f, &(out->completed))) return -1;
+    csilc_f = csilc_map_get(m, "position_ms");
+    if (!csilc_as_u64(csilc_f, &(out->position_ms))) return -1;
     return 0;
 }
 
@@ -1923,6 +2124,7 @@ static inline int csilc_enc_QueueItem(csilc_buf *b, const QueueItem *v) {
     size_t csilc_n = 1;
     if (v->title) csilc_n++;
     if (v->artist) csilc_n++;
+    if (v->library) csilc_n++;
     if (v->duration_ms) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (v->title) {
@@ -1932,6 +2134,10 @@ static inline int csilc_enc_QueueItem(csilc_buf *b, const QueueItem *v) {
     if (v->artist) {
         if (csilc_w_text(b, "artist", 6)) return -1;
         if (csilc_w_text(b, (v->artist), (v->artist) ? strlen(v->artist) : 0)) return -1;
+    }
+    if (v->library) {
+        if (csilc_w_text(b, "library", 7)) return -1;
+        if (csilc_enc_Library(b, &((*v->library)))) return -1;
     }
     if (csilc_w_text(b, "track_id", 8)) return -1;
     if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
@@ -1951,6 +2157,14 @@ static inline int csilc_dec_QueueItem(const csilc_value *m, CsilCodecArena *a, Q
     out->title = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
     csilc_f = csilc_map_get(m, "artist");
     out->artist = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "library");
+    out->library = NULL;
+    if (csilc_f) {
+        Library *csilc_p = (Library *)csilc_arena_alloc(a, sizeof(Library));
+        if (!csilc_p) return -1;
+        if (csilc_dec_Library(csilc_f, a, &((*csilc_p)))) return -1;
+        out->library = csilc_p;
+    }
     csilc_f = csilc_map_get(m, "track_id");
     if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
     csilc_f = csilc_map_get(m, "duration_ms");
@@ -4107,6 +4321,29 @@ static inline int csil_decode_SessionInfo(const uint8_t *in, size_t len, Session
     return 0;
 }
 
+/* Encode a Library to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_Library(const Library *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_Library(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a Library. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_Library(const uint8_t *in, size_t len, Library *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_Library(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a Track to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_Track(const Track *v, uint8_t **out, size_t *out_len) {
@@ -4199,29 +4436,6 @@ static inline int csil_decode_Playlist(const uint8_t *in, size_t len, Playlist *
     return 0;
 }
 
-/* Encode a Library to CBOR. On success *out is a malloc'd buffer of
- * *out_len bytes the caller frees with free(); returns non-zero on failure. */
-static inline int csil_encode_Library(const Library *v, uint8_t **out, size_t *out_len) {
-    csilc_buf b;
-    csilc_buf_init(&b);
-    if (csilc_enc_Library(&b, v)) { csilc_buf_dispose(&b); return -1; }
-    *out = b.data;
-    *out_len = b.len;
-    return 0;
-}
-
-/* Decode CBOR into a Library. On success *owner holds the backing
- * storage (every string/bytes/array inside *out borrows from it); free it
- * once with csil_codec_arena_free when done. Returns non-zero on failure. */
-static inline int csil_decode_Library(const uint8_t *in, size_t len, Library *out, CsilCodecArena **owner) {
-    CsilCodecArena *a;
-    const csilc_value *root;
-    if (csilc_decode(in, len, &a, &root)) return -1;
-    if (csilc_dec_Library(root, a, out)) { csil_codec_arena_free(a); return -1; }
-    *owner = a;
-    return 0;
-}
-
 /* Encode a BrowseRequest to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_BrowseRequest(const BrowseRequest *v, uint8_t **out, size_t *out_len) {
@@ -4241,6 +4455,52 @@ static inline int csil_decode_BrowseRequest(const uint8_t *in, size_t len, Brows
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_BrowseRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a LibraryInfo to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_LibraryInfo(const LibraryInfo *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_LibraryInfo(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a LibraryInfo. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_LibraryInfo(const uint8_t *in, size_t len, LibraryInfo *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_LibraryInfo(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a LibrariesResponse to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_LibrariesResponse(const LibrariesResponse *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_LibrariesResponse(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a LibrariesResponse. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_LibrariesResponse(const uint8_t *in, size_t len, LibrariesResponse *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_LibrariesResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }
@@ -4425,6 +4685,98 @@ static inline int csil_decode_SearchResponse(const uint8_t *in, size_t len, Sear
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_SearchResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a AudiobookProgress to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_AudiobookProgress(const AudiobookProgress *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_AudiobookProgress(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a AudiobookProgress. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_AudiobookProgress(const uint8_t *in, size_t len, AudiobookProgress *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_AudiobookProgress(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a AudiobookProgressRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_AudiobookProgressRequest(const AudiobookProgressRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_AudiobookProgressRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a AudiobookProgressRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_AudiobookProgressRequest(const uint8_t *in, size_t len, AudiobookProgressRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_AudiobookProgressRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a AudiobookProgressResponse to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_AudiobookProgressResponse(const AudiobookProgressResponse *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_AudiobookProgressResponse(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a AudiobookProgressResponse. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_AudiobookProgressResponse(const uint8_t *in, size_t len, AudiobookProgressResponse *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_AudiobookProgressResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a UpdateAudiobookProgressRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_UpdateAudiobookProgressRequest(const UpdateAudiobookProgressRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_UpdateAudiobookProgressRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a UpdateAudiobookProgressRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_UpdateAudiobookProgressRequest(const uint8_t *in, size_t len, UpdateAudiobookProgressRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_UpdateAudiobookProgressRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

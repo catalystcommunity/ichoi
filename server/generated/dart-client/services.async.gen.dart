@@ -55,6 +55,15 @@ final class LibraryAsyncClient {
   final AsyncCsilTransport transport;
   const LibraryAsyncClient(this.transport);
 
+  Future<LibrariesResponse> listLibraries(Page request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'list-libraries',
+      request.toCbor(),
+    );
+    return LibrariesResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<AlbumsResponse> listAlbums(BrowseRequest request) async {
     final csilResp = await transport.call(
       'LibraryService',
@@ -125,6 +134,28 @@ final class LibraryAsyncClient {
       request.toCbor(),
     );
     return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<AudiobookProgressResponse> getAudiobookProgress(
+    AudiobookProgressRequest request,
+  ) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'get-audiobook-progress',
+      request.toCbor(),
+    );
+    return AudiobookProgressResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<AudiobookProgress> updateAudiobookProgress(
+    UpdateAudiobookProgressRequest request,
+  ) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'update-audiobook-progress',
+      request.toCbor(),
+    );
+    return AudiobookProgress.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 

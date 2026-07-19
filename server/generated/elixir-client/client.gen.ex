@@ -80,6 +80,19 @@ defmodule Csilgen.Generated.LibraryClient do
   @spec new(Csilgen.Generated.Transport.t()) :: t()
   def new(transport), do: %__MODULE__{transport: transport}
 
+  @spec list_libraries(t(), Csilgen.Generated.Page.t()) :: Csilgen.Generated.LibrariesResponse.t()
+  def list_libraries(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "list-libraries",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.LibrariesResponse.from_cbor(resp)
+  end
+
   @spec list_albums(t(), Csilgen.Generated.BrowseRequest.t()) ::
           Csilgen.Generated.AlbumsResponse.t()
   def list_albums(%__MODULE__{transport: transport}, req) do
@@ -187,6 +200,34 @@ defmodule Csilgen.Generated.LibraryClient do
       )
 
     Csilgen.Generated.CoverArt.from_cbor(resp)
+  end
+
+  @spec get_audiobook_progress(t(), Csilgen.Generated.AudiobookProgressRequest.t()) ::
+          Csilgen.Generated.AudiobookProgressResponse.t()
+  def get_audiobook_progress(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "get-audiobook-progress",
+        Csilgen.Generated.AudiobookProgressRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.AudiobookProgressResponse.from_cbor(resp)
+  end
+
+  @spec update_audiobook_progress(t(), Csilgen.Generated.UpdateAudiobookProgressRequest.t()) ::
+          Csilgen.Generated.AudiobookProgress.t()
+  def update_audiobook_progress(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "update-audiobook-progress",
+        Csilgen.Generated.UpdateAudiobookProgressRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.AudiobookProgress.from_cbor(resp)
   end
 end
 

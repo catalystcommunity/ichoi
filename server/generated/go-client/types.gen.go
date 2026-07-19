@@ -86,9 +86,13 @@ type SessionInfo struct {
 	Token       *string   `json:"token,omitempty" yaml:"token,omitempty"`
 }
 
+// Library is a type alias
+type Library string
+
 // Track represents a structured data type
 type Track struct {
 	Id               TrackId   `json:"id" yaml:"id"`
+	Library          Library   `json:"library" yaml:"library"`
 	Title            string    `json:"title" yaml:"title"`
 	ArtistId         *ArtistId `json:"artist_id,omitempty" yaml:"artist_id,omitempty"`
 	AlbumId          *AlbumId  `json:"album_id,omitempty" yaml:"album_id,omitempty"`
@@ -130,14 +134,21 @@ type Playlist struct {
 	RootRelativePath string     `json:"root_relative_path" yaml:"root_relative_path"`
 }
 
-// Library is a type alias
-type Library string
-
 // BrowseRequest represents a structured data type
 type BrowseRequest struct {
 	Library *Library `json:"library,omitempty" yaml:"library,omitempty"`
 	Offset  *uint64  `json:"offset,omitempty" yaml:"offset,omitempty"`
 	Limit   *uint64  `json:"limit,omitempty" yaml:"limit,omitempty"`
+}
+
+// LibraryInfo represents a structured data type
+type LibraryInfo struct {
+	Kind Library `json:"kind" yaml:"kind"`
+}
+
+// LibrariesResponse represents a structured data type
+type LibrariesResponse struct {
+	Libraries []LibraryInfo `json:"libraries" yaml:"libraries"`
 }
 
 // AlbumsResponse represents a structured data type
@@ -176,8 +187,9 @@ type ArtistDetail struct {
 
 // SearchRequest represents a structured data type
 type SearchRequest struct {
-	Query string  `json:"query" yaml:"query"`
-	Limit *uint64 `json:"limit,omitempty" yaml:"limit,omitempty"`
+	Query   string   `json:"query" yaml:"query"`
+	Library *Library `json:"library,omitempty" yaml:"library,omitempty"`
+	Limit   *uint64  `json:"limit,omitempty" yaml:"limit,omitempty"`
 }
 
 // SearchResponse represents a structured data type
@@ -185,6 +197,31 @@ type SearchResponse struct {
 	Artists []Artist `json:"artists" yaml:"artists"`
 	Albums  []Album  `json:"albums" yaml:"albums"`
 	Tracks  []Track  `json:"tracks" yaml:"tracks"`
+}
+
+// AudiobookProgress represents a structured data type
+type AudiobookProgress struct {
+	TrackId    TrackId   `json:"track_id" yaml:"track_id"`
+	PositionMs uint64    `json:"position_ms" yaml:"position_ms"`
+	Completed  bool      `json:"completed" yaml:"completed"`
+	UpdatedAt  time.Time `json:"updated_at" yaml:"updated_at"`
+}
+
+// AudiobookProgressRequest represents a structured data type
+type AudiobookProgressRequest struct {
+	TrackIds []TrackId `json:"track_ids" yaml:"track_ids"`
+}
+
+// AudiobookProgressResponse represents a structured data type
+type AudiobookProgressResponse struct {
+	Progress []AudiobookProgress `json:"progress" yaml:"progress"`
+}
+
+// UpdateAudiobookProgressRequest represents a structured data type
+type UpdateAudiobookProgressRequest struct {
+	TrackId    TrackId `json:"track_id" yaml:"track_id"`
+	PositionMs uint64  `json:"position_ms" yaml:"position_ms"`
+	Completed  bool    `json:"completed" yaml:"completed"`
 }
 
 // PlaylistsResponse represents a structured data type
@@ -230,10 +267,11 @@ type Player struct {
 
 // QueueItem represents a structured data type
 type QueueItem struct {
-	TrackId    TrackId `json:"track_id" yaml:"track_id"`
-	Title      *string `json:"title,omitempty" yaml:"title,omitempty"`
-	Artist     *string `json:"artist,omitempty" yaml:"artist,omitempty"`
-	DurationMs *uint64 `json:"duration_ms,omitempty" yaml:"duration_ms,omitempty"`
+	TrackId    TrackId  `json:"track_id" yaml:"track_id"`
+	Library    *Library `json:"library,omitempty" yaml:"library,omitempty"`
+	Title      *string  `json:"title,omitempty" yaml:"title,omitempty"`
+	Artist     *string  `json:"artist,omitempty" yaml:"artist,omitempty"`
+	DurationMs *uint64  `json:"duration_ms,omitempty" yaml:"duration_ms,omitempty"`
 }
 
 // PlayerState represents a structured data type

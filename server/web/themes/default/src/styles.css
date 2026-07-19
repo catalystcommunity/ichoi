@@ -1088,6 +1088,35 @@ h3 {
 
 /* --- Play-progress indicators --------------------------------------------- */
 .transport { position: relative; }
+
+.audiobook-hero {
+  gap: 26px;
+  align-items: flex-end;
+  margin: 22px 0 26px;
+}
+.audiobook-hero-copy { flex: 1; min-width: 0; }
+.audiobook-hero-copy .page-title { margin: 6px 0; }
+.audiobook-actions { margin-top: 16px; }
+.audiobook-track-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+.audiobook-progress-bar {
+  display: inline-block;
+  width: 72px;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--border);
+}
+.audiobook-progress-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--amber);
+}
 .transport-progress {
   position: absolute;
   top: 0;

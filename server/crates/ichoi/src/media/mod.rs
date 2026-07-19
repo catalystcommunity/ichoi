@@ -171,6 +171,13 @@ mod tests {
             log: "warn".into(),
             fetch_art: false,
             split_dump_folders: false,
+            album_subfolder_flat: true,
+            album_subfolder_words: vec![
+                "cd".into(),
+                "disc".into(),
+                "disk".into(),
+                "bonus disc".into(),
+            ],
             require_music: false,
             linkkeys_local_rp: false,
             linkkeys_local_rp_name: None,

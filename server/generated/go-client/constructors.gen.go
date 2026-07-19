@@ -44,10 +44,28 @@ func NewBrowseRequest() *BrowseRequest {
 }
 
 // NewSearchRequest creates a SearchRequest with default values:
+//   - library: "music"
 //   - limit: 50
 func NewSearchRequest() *SearchRequest {
 	return &SearchRequest{
-		Limit: func() *uint64 { v := uint64(50); return &v }(),
+		Library: func() *Library { v := Library("music"); return &v }(),
+		Limit:   func() *uint64 { v := uint64(50); return &v }(),
+	}
+}
+
+// NewAudiobookProgress creates a AudiobookProgress with default values:
+//   - completed: false
+func NewAudiobookProgress() *AudiobookProgress {
+	return &AudiobookProgress{
+		Completed: false,
+	}
+}
+
+// NewUpdateAudiobookProgressRequest creates a UpdateAudiobookProgressRequest with default values:
+//   - completed: false
+func NewUpdateAudiobookProgressRequest() *UpdateAudiobookProgressRequest {
+	return &UpdateAudiobookProgressRequest{
+		Completed: false,
 	}
 }
 

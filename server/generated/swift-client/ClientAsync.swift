@@ -42,6 +42,11 @@ public struct LibraryAsyncClient {
         self.transport = transport
     }
 
+    public func listLibraries(_ request: Page) async throws -> LibrariesResponse {
+        let csilResp = try await transport.call(service: "LibraryService", op: "list-libraries", request: request.toCbor())
+        return try LibrariesResponse.fromCbor(csilResp)
+    }
+
     public func listAlbums(_ request: BrowseRequest) async throws -> AlbumsResponse {
         let csilResp = try await transport.call(service: "LibraryService", op: "list-albums", request: request.toCbor())
         return try AlbumsResponse.fromCbor(csilResp)
@@ -80,6 +85,16 @@ public struct LibraryAsyncClient {
     public func getCoverArt(_ request: CoverArtRequest) async throws -> CoverArt {
         let csilResp = try await transport.call(service: "LibraryService", op: "get-cover-art", request: request.toCbor())
         return try CoverArt.fromCbor(csilResp)
+    }
+
+    public func getAudiobookProgress(_ request: AudiobookProgressRequest) async throws -> AudiobookProgressResponse {
+        let csilResp = try await transport.call(service: "LibraryService", op: "get-audiobook-progress", request: request.toCbor())
+        return try AudiobookProgressResponse.fromCbor(csilResp)
+    }
+
+    public func updateAudiobookProgress(_ request: UpdateAudiobookProgressRequest) async throws -> AudiobookProgress {
+        let csilResp = try await transport.call(service: "LibraryService", op: "update-audiobook-progress", request: request.toCbor())
+        return try AudiobookProgress.fromCbor(csilResp)
     }
 
 }

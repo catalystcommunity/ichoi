@@ -205,6 +205,11 @@ pub const BrowseRequest = struct {
     limit: ?u64 = null,
 };
 
+/// LibrariesResponse is a structured data type.
+pub const LibrariesResponse = struct {
+    libraries: []LibraryInfo,
+};
+
 /// AlbumsResponse is a structured data type.
 pub const AlbumsResponse = struct {
     albums: []Album,
@@ -220,6 +225,7 @@ pub const ArtistsResponse = struct {
 /// SearchRequest is a structured data type.
 pub const SearchRequest = struct {
     query: []const u8,
+    library: ?Library = null,
     limit: ?u64 = null,
 };
 
@@ -228,6 +234,16 @@ pub const SearchResponse = struct {
     artists: []Artist,
     albums: []Album,
     tracks: []Track,
+};
+
+/// AudiobookProgressRequest is a structured data type.
+pub const AudiobookProgressRequest = struct {
+    track_ids: []TrackId,
+};
+
+/// AudiobookProgressResponse is a structured data type.
+pub const AudiobookProgressResponse = struct {
+    progress: []AudiobookProgress,
 };
 
 /// PlaylistsResponse is a structured data type.
@@ -461,6 +477,7 @@ pub const SessionInfo = struct {
 /// Track is a structured data type.
 pub const Track = struct {
     id: TrackId,
+    library: Library,
     title: []const u8,
     artist_id: ?ArtistId = null,
     album_id: ?AlbumId = null,
@@ -502,6 +519,11 @@ pub const Playlist = struct {
     root_relative_path: []const u8,
 };
 
+/// LibraryInfo is a structured data type.
+pub const LibraryInfo = struct {
+    kind: Library,
+};
+
 /// AlbumRequest is a structured data type.
 pub const AlbumRequest = struct {
     album_id: AlbumId,
@@ -522,6 +544,21 @@ pub const ArtistRequest = struct {
 pub const ArtistDetail = struct {
     artist: Artist,
     albums: []Album,
+};
+
+/// AudiobookProgress is a structured data type.
+pub const AudiobookProgress = struct {
+    track_id: TrackId,
+    position_ms: u64,
+    completed: bool,
+    updated_at: CsilTimestamp,
+};
+
+/// UpdateAudiobookProgressRequest is a structured data type.
+pub const UpdateAudiobookProgressRequest = struct {
+    track_id: TrackId,
+    position_ms: u64,
+    completed: bool,
 };
 
 /// PlaylistRequest is a structured data type.
@@ -554,6 +591,7 @@ pub const Player = struct {
 /// QueueItem is a structured data type.
 pub const QueueItem = struct {
     track_id: TrackId,
+    library: ?Library = null,
     title: ?[]const u8 = null,
     artist: ?[]const u8 = null,
     duration_ms: ?u64 = null,

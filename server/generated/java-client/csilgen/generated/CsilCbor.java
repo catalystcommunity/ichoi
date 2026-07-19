@@ -608,13 +608,14 @@ public final class CsilCbor {
     }
 
     static CborValue encTrack(Track v) {
-        List<CborEntry> csilEntries = new ArrayList<>(14);
+        List<CborEntry> csilEntries = new ArrayList<>(15);
         csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));
         csilEntries.add(new CborEntry(new CborText("codec"), encCodec(v.codec())));
         csilEntries.add(new CborEntry(new CborText("title"), new CborText(v.title())));
         if (v.discNo() != null) {
             csilEntries.add(new CborEntry(new CborText("disc_no"), new CborUint(v.discNo())));
         }
+        csilEntries.add(new CborEntry(new CborText("library"), encLibrary(v.library())));
         if (v.albumId() != null) {
             csilEntries.add(new CborEntry(new CborText("album_id"), new CborText((v.albumId()).value())));
         }
@@ -642,6 +643,7 @@ public final class CsilCbor {
 
     static Track decTrack(CborValue csilRoot) {
         TrackId id = new TrackId(asText(require(csilRoot, "id")));
+        Library library = decLibrary(require(csilRoot, "library"));
         String title = asText(require(csilRoot, "title"));
         ArtistId artistId;
         {
@@ -683,7 +685,7 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "content_hash");
             contentHash = csilField != null ? asText(csilField) : null;
         }
-        return new Track(id, title, artistId, albumId, trackNo, discNo, durationMs, codec, bitrateKbps, sampleRate, channels, bitDepth, rootRelativePath, contentHash);
+        return new Track(id, library, title, artistId, albumId, trackNo, discNo, durationMs, codec, bitrateKbps, sampleRate, channels, bitDepth, rootRelativePath, contentHash);
     }
 
     public static byte[] encodeTrack(Track v) {
@@ -832,6 +834,44 @@ public final class CsilCbor {
         return decBrowseRequest(decode(data));
     }
 
+    static CborValue encLibraryInfo(LibraryInfo v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("kind"), encLibrary(v.kind())));
+        return new CborMap(csilEntries);
+    }
+
+    static LibraryInfo decLibraryInfo(CborValue csilRoot) {
+        Library kind = decLibrary(require(csilRoot, "kind"));
+        return new LibraryInfo(kind);
+    }
+
+    public static byte[] encodeLibraryInfo(LibraryInfo v) {
+        return encode(encLibraryInfo(v));
+    }
+
+    public static LibraryInfo decodeLibraryInfo(byte[] data) {
+        return decLibraryInfo(decode(data));
+    }
+
+    static CborValue encLibrariesResponse(LibrariesResponse v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("libraries"), encArray(v.libraries(), csilElem0 -> encLibraryInfo(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static LibrariesResponse decLibrariesResponse(CborValue csilRoot) {
+        List<LibraryInfo> libraries = decArray(require(csilRoot, "libraries"), csilE0 -> decLibraryInfo(csilE0));
+        return new LibrariesResponse(libraries);
+    }
+
+    public static byte[] encodeLibrariesResponse(LibrariesResponse v) {
+        return encode(encLibrariesResponse(v));
+    }
+
+    public static LibrariesResponse decodeLibrariesResponse(byte[] data) {
+        return decLibrariesResponse(decode(data));
+    }
+
     static CborValue encAlbumsResponse(AlbumsResponse v) {
         List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("total"), new CborUint(v.total())));
@@ -955,22 +995,30 @@ public final class CsilCbor {
     }
 
     static CborValue encSearchRequest(SearchRequest v) {
-        List<CborEntry> csilEntries = new ArrayList<>(2);
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         if (v.limit() != null) {
             csilEntries.add(new CborEntry(new CborText("limit"), new CborUint(v.limit())));
         }
         csilEntries.add(new CborEntry(new CborText("query"), new CborText(v.query())));
+        if (v.library() != null) {
+            csilEntries.add(new CborEntry(new CborText("library"), encLibrary(v.library())));
+        }
         return new CborMap(csilEntries);
     }
 
     static SearchRequest decSearchRequest(CborValue csilRoot) {
         String query = asText(require(csilRoot, "query"));
+        Library library;
+        {
+            CborValue csilField = mapGet(csilRoot, "library");
+            library = csilField != null ? decLibrary(csilField) : null;
+        }
         Long limit;
         {
             CborValue csilField = mapGet(csilRoot, "limit");
             limit = csilField != null ? asU64(csilField) : null;
         }
-        return new SearchRequest(query, limit);
+        return new SearchRequest(query, library, limit);
     }
 
     public static byte[] encodeSearchRequest(SearchRequest v) {
@@ -1002,6 +1050,92 @@ public final class CsilCbor {
 
     public static SearchResponse decodeSearchResponse(byte[] data) {
         return decSearchResponse(decode(data));
+    }
+
+    static CborValue encAudiobookProgress(AudiobookProgress v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
+        csilEntries.add(new CborEntry(new CborText("completed"), new CborBool(v.completed())));
+        csilEntries.add(new CborEntry(new CborText("updated_at"), encTimestamp(v.updatedAt())));
+        csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
+        return new CborMap(csilEntries);
+    }
+
+    static AudiobookProgress decAudiobookProgress(CborValue csilRoot) {
+        TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
+        long positionMs = asU64(require(csilRoot, "position_ms"));
+        boolean completed = asBool(require(csilRoot, "completed"));
+        Instant updatedAt = asTimestamp(require(csilRoot, "updated_at"));
+        return new AudiobookProgress(trackId, positionMs, completed, updatedAt);
+    }
+
+    public static byte[] encodeAudiobookProgress(AudiobookProgress v) {
+        return encode(encAudiobookProgress(v));
+    }
+
+    public static AudiobookProgress decodeAudiobookProgress(byte[] data) {
+        return decAudiobookProgress(decode(data));
+    }
+
+    static CborValue encAudiobookProgressRequest(AudiobookProgressRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("track_ids"), encArray(v.trackIds(), csilElem0 -> new CborText((csilElem0).value()))));
+        return new CborMap(csilEntries);
+    }
+
+    static AudiobookProgressRequest decAudiobookProgressRequest(CborValue csilRoot) {
+        List<TrackId> trackIds = decArray(require(csilRoot, "track_ids"), csilE0 -> new TrackId(asText(csilE0)));
+        return new AudiobookProgressRequest(trackIds);
+    }
+
+    public static byte[] encodeAudiobookProgressRequest(AudiobookProgressRequest v) {
+        return encode(encAudiobookProgressRequest(v));
+    }
+
+    public static AudiobookProgressRequest decodeAudiobookProgressRequest(byte[] data) {
+        return decAudiobookProgressRequest(decode(data));
+    }
+
+    static CborValue encAudiobookProgressResponse(AudiobookProgressResponse v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("progress"), encArray(v.progress(), csilElem0 -> encAudiobookProgress(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static AudiobookProgressResponse decAudiobookProgressResponse(CborValue csilRoot) {
+        List<AudiobookProgress> progress = decArray(require(csilRoot, "progress"), csilE0 -> decAudiobookProgress(csilE0));
+        return new AudiobookProgressResponse(progress);
+    }
+
+    public static byte[] encodeAudiobookProgressResponse(AudiobookProgressResponse v) {
+        return encode(encAudiobookProgressResponse(v));
+    }
+
+    public static AudiobookProgressResponse decodeAudiobookProgressResponse(byte[] data) {
+        return decAudiobookProgressResponse(decode(data));
+    }
+
+    static CborValue encUpdateAudiobookProgressRequest(UpdateAudiobookProgressRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
+        csilEntries.add(new CborEntry(new CborText("completed"), new CborBool(v.completed())));
+        csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
+        return new CborMap(csilEntries);
+    }
+
+    static UpdateAudiobookProgressRequest decUpdateAudiobookProgressRequest(CborValue csilRoot) {
+        TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
+        long positionMs = asU64(require(csilRoot, "position_ms"));
+        boolean completed = asBool(require(csilRoot, "completed"));
+        return new UpdateAudiobookProgressRequest(trackId, positionMs, completed);
+    }
+
+    public static byte[] encodeUpdateAudiobookProgressRequest(UpdateAudiobookProgressRequest v) {
+        return encode(encUpdateAudiobookProgressRequest(v));
+    }
+
+    public static UpdateAudiobookProgressRequest decodeUpdateAudiobookProgressRequest(byte[] data) {
+        return decUpdateAudiobookProgressRequest(decode(data));
     }
 
     static CborValue encPlaylistsResponse(PlaylistsResponse v) {
@@ -1159,12 +1293,15 @@ public final class CsilCbor {
     }
 
     static CborValue encQueueItem(QueueItem v) {
-        List<CborEntry> csilEntries = new ArrayList<>(4);
+        List<CborEntry> csilEntries = new ArrayList<>(5);
         if (v.title() != null) {
             csilEntries.add(new CborEntry(new CborText("title"), new CborText(v.title())));
         }
         if (v.artist() != null) {
             csilEntries.add(new CborEntry(new CborText("artist"), new CborText(v.artist())));
+        }
+        if (v.library() != null) {
+            csilEntries.add(new CborEntry(new CborText("library"), encLibrary(v.library())));
         }
         csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
         if (v.durationMs() != null) {
@@ -1175,6 +1312,11 @@ public final class CsilCbor {
 
     static QueueItem decQueueItem(CborValue csilRoot) {
         TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
+        Library library;
+        {
+            CborValue csilField = mapGet(csilRoot, "library");
+            library = csilField != null ? decLibrary(csilField) : null;
+        }
         String title;
         {
             CborValue csilField = mapGet(csilRoot, "title");
@@ -1190,7 +1332,7 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "duration_ms");
             durationMs = csilField != null ? asU64(csilField) : null;
         }
-        return new QueueItem(trackId, title, artist, durationMs);
+        return new QueueItem(trackId, library, title, artist, durationMs);
     }
 
     public static byte[] encodeQueueItem(QueueItem v) {
