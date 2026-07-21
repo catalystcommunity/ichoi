@@ -53,6 +53,7 @@ interface ServersContextValue {
   apiFor: (id: string) => ServerApi | undefined;
   reconnect: (id: string) => Promise<void>;
   completeLinkkeysExchange: (code: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const ServersContext = createContext<ServersContextValue>();
@@ -208,6 +209,19 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     await reconnect(id);
   }
 
+  async function signOut(): Promise<void> {
+    const id = activeId();
+    if (!id) return;
+    try {
+      await live.get(id)?.api.session.logout();
+    } catch {
+      /* clearing the local credential still completes the explicit sign-out */
+    }
+    patch(id, { token: undefined, session: undefined });
+    savePersisted(servers);
+    await reconnect(id);
+  }
+
   // Restore persisted servers on boot and auto-connect them.
   const persisted = loadPersisted();
   const seed: ServerRecord[] =
@@ -253,6 +267,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     apiFor,
     reconnect,
     completeLinkkeysExchange,
+    signOut,
   };
 
   return <ServersContext.Provider value={value}>{props.children}</ServersContext.Provider>;

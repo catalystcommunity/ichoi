@@ -2,7 +2,7 @@ import { createResource, createSignal, For, Match, Show, Switch, type JSX } from
 import { useNavigate } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
-import { AlbumTile } from "../components/AlbumTile.tsx";
+import { VirtualAlbumGrid } from "../components/VirtualAlbumGrid.tsx";
 import { EmptyState, Spinner } from "../components/common.tsx";
 
 type Tab = "albums" | "artists";
@@ -13,10 +13,6 @@ export function LibraryPage(): JSX.Element {
   const navigate = useNavigate();
   const [tab, setTab] = createSignal<Tab>("albums");
 
-  const [albums] = createResource(
-    () => (tab() === "albums" ? servers.api() : undefined),
-    (api) => api!.library.listAlbums({ limit: 200 }),
-  );
   const [artists] = createResource(
     () => (tab() === "artists" ? servers.api() : undefined),
     (api) => api!.library.listArtists({ limit: 200 }),
@@ -42,16 +38,7 @@ export function LibraryPage(): JSX.Element {
       <Show when={servers.api()} fallback={<EmptyState title={t("errors.connectFirst")} />}>
         <Switch>
           <Match when={tab() === "albums"}>
-            <Show when={!albums.loading} fallback={<Spinner label={t("library.loading")} />}>
-              <Show
-                when={(albums()?.albums.length ?? 0) > 0}
-                fallback={<EmptyState title={t("library.noAlbums")} />}
-              >
-                <div class="grid">
-                  <For each={albums()!.albums}>{(album) => <AlbumTile album={album} />}</For>
-                </div>
-              </Show>
-            </Show>
+            <Show when={servers.api()}>{(api) => <VirtualAlbumGrid api={api()} />}</Show>
           </Match>
 
           <Match when={tab() === "artists"}>

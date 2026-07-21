@@ -10,7 +10,14 @@ TrustedDomains     = { domains: [* text] }
 
 NodeKind          = "core" / "satellite" / "client"
 AudioOutputsState = "none" / "some"      ;; "none" = scratch container, no audio (§6.1)
-DeviceInfo = { id: DeviceId, os_device_id: text, friendly_name: text, is_default: bool .default false }
+DeviceInfo = {
+    id: DeviceId,
+    os_device_id: text,
+    friendly_name: text,
+    is_default: bool .default false,
+    enabled: bool .default true,
+    group_ids: [* text]
+}
 NodeInfo = {
     id: NodeId,
     kind: NodeKind,
@@ -26,9 +33,33 @@ ListNodesResponse = { nodes: [* NodeInfo] }
 
 RenameNodeRequest   = { node_id: NodeId, friendly_name: text .size (1..64) }
 RenameDeviceRequest = { device_id: DeviceId, friendly_name: text .size (1..64) }
+SetDeviceAccessRequest = { device_id: DeviceId, enabled: bool, group_ids: [* text] }
 
-CreateNodeTokenRequest = { ? label: text }
-NodeTokenResult        = { token: text, fingerprints: [+ text] }   ;; token + core key fingerprints, shown once (§4.2)
+GroupInfo = { id: text, name: text, member_account_ids: [* AccountId] }
+ListGroupsResponse = { groups: [* GroupInfo] }
+CreateGroupRequest = { name: text .size (1..64) }
+SetGroupMembersRequest = { group_id: text, member_account_ids: [* AccountId] }
+DeleteGroupRequest = { group_id: text }
+
+SatelliteTokenInfo = {
+    id: text,
+    name: text,
+    default_enabled: bool .default true,
+    default_group_ids: [* text],
+    created_at: timestamp
+}
+ListSatelliteTokensResponse = { satellites: [* SatelliteTokenInfo] }
+CreateNodeTokenRequest = {
+    ? label: text,
+    default_enabled: bool .default true,
+    default_group_ids: [* text]
+}
+NodeTokenResult = {
+    token: text,
+    fingerprints: [* text],
+    satellite: SatelliteTokenInfo
+}   ;; token shown once; the named destination persists
+RevokeSatelliteTokenRequest = { satellite_id: text }
 
 ;; Cross-server copy destination (§7): client-mediated import of one file + its metadata.
 ImportTrackRequest = {
@@ -41,6 +72,7 @@ ImportResult = { imported: bool, ? track_id: TrackId, skipped_existing: bool .de
 
 Settings          = { entries: {text => text} }
 SetSettingRequest = { key: text, value: text }
+LibraryResyncStatus = { running: bool, started: bool .default false }
 
 service AdminService {
     list-accounts: Page -> ListAccountsResponse / ServiceError,
@@ -50,8 +82,17 @@ service AdminService {
     list-nodes: Page -> ListNodesResponse / ServiceError,
     rename-node: RenameNodeRequest -> NodeInfo / ServiceError,
     rename-device: RenameDeviceRequest -> DeviceInfo / ServiceError,
+    set-device-access: SetDeviceAccessRequest -> DeviceInfo / ServiceError,
+    list-groups: Page -> ListGroupsResponse / ServiceError,
+    create-group: CreateGroupRequest -> GroupInfo / ServiceError,
+    set-group-members: SetGroupMembersRequest -> GroupInfo / ServiceError,
+    delete-group: DeleteGroupRequest -> Ok / ServiceError,
+    list-satellite-tokens: Page -> ListSatelliteTokensResponse / ServiceError,
     create-node-token: CreateNodeTokenRequest -> NodeTokenResult / ServiceError,
+    revoke-satellite-token: RevokeSatelliteTokenRequest -> Ok / ServiceError,
     import-track: ImportTrackRequest -> ImportResult / ServiceError,
     get-settings: Page -> Settings / ServiceError,
-    set-setting: SetSettingRequest -> Settings / ServiceError
+    set-setting: SetSettingRequest -> Settings / ServiceError,
+    resync-library: Page -> LibraryResyncStatus / ServiceError,
+    get-resync-status: Page -> LibraryResyncStatus / ServiceError
 }

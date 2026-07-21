@@ -153,6 +153,45 @@ diesel::table! {
         os_device_id -> Text,
         friendly_name -> Text,
         is_default -> Integer,
+        enabled -> Integer,
+    }
+}
+
+diesel::table! {
+    access_groups (id) {
+        id -> Text,
+        name -> Text,
+    }
+}
+
+diesel::table! {
+    account_access_groups (group_id, account_id) {
+        group_id -> Text,
+        account_id -> Text,
+    }
+}
+
+diesel::table! {
+    satellite_tokens (id) {
+        id -> Text,
+        name -> Text,
+        token_sha256 -> Text,
+        default_enabled -> Integer,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
+    satellite_token_groups (satellite_id, group_id) {
+        satellite_id -> Text,
+        group_id -> Text,
+    }
+}
+
+diesel::table! {
+    output_device_groups (device_id, group_id) {
+        device_id -> Text,
+        group_id -> Text,
     }
 }
 
@@ -229,6 +268,11 @@ diesel::allow_tables_to_appear_in_same_query!(
     playlists,
     nodes,
     output_devices,
+    access_groups,
+    account_access_groups,
+    satellite_tokens,
+    satellite_token_groups,
+    output_device_groups,
     players,
     player_queue_items,
     player_state,

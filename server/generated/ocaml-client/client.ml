@@ -158,9 +158,44 @@ module Admin_service = struct
     | Ok payload -> Ok (Codec.decode_device_info_bytes payload)
     | Error _ as e -> e
 
+  let set_device_access (c : client) (req : set_device_access_request) : (device_info, string) result =
+    match c.call ~service:"AdminService" ~op:"set-device-access" ~payload:(Codec.encode_set_device_access_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_device_info_bytes payload)
+    | Error _ as e -> e
+
+  let list_groups (c : client) (req : page) : (list_groups_response, string) result =
+    match c.call ~service:"AdminService" ~op:"list-groups" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_list_groups_response_bytes payload)
+    | Error _ as e -> e
+
+  let create_group (c : client) (req : create_group_request) : (group_info, string) result =
+    match c.call ~service:"AdminService" ~op:"create-group" ~payload:(Codec.encode_create_group_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_group_info_bytes payload)
+    | Error _ as e -> e
+
+  let set_group_members (c : client) (req : set_group_members_request) : (group_info, string) result =
+    match c.call ~service:"AdminService" ~op:"set-group-members" ~payload:(Codec.encode_set_group_members_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_group_info_bytes payload)
+    | Error _ as e -> e
+
+  let delete_group (c : client) (req : delete_group_request) : (ok, string) result =
+    match c.call ~service:"AdminService" ~op:"delete-group" ~payload:(Codec.encode_delete_group_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
+  let list_satellite_tokens (c : client) (req : page) : (list_satellite_tokens_response, string) result =
+    match c.call ~service:"AdminService" ~op:"list-satellite-tokens" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_list_satellite_tokens_response_bytes payload)
+    | Error _ as e -> e
+
   let create_node_token (c : client) (req : create_node_token_request) : (node_token_result, string) result =
     match c.call ~service:"AdminService" ~op:"create-node-token" ~payload:(Codec.encode_create_node_token_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_node_token_result_bytes payload)
+    | Error _ as e -> e
+
+  let revoke_satellite_token (c : client) (req : revoke_satellite_token_request) : (ok, string) result =
+    match c.call ~service:"AdminService" ~op:"revoke-satellite-token" ~payload:(Codec.encode_revoke_satellite_token_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
     | Error _ as e -> e
 
   let import_track (c : client) (req : import_track_request) : (import_result, string) result =
@@ -176,5 +211,15 @@ module Admin_service = struct
   let set_setting (c : client) (req : set_setting_request) : (settings, string) result =
     match c.call ~service:"AdminService" ~op:"set-setting" ~payload:(Codec.encode_set_setting_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_settings_bytes payload)
+    | Error _ as e -> e
+
+  let resync_library (c : client) (req : page) : (library_resync_status, string) result =
+    match c.call ~service:"AdminService" ~op:"resync-library" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_library_resync_status_bytes payload)
+    | Error _ as e -> e
+
+  let get_resync_status (c : client) (req : page) : (library_resync_status, string) result =
+    match c.call ~service:"AdminService" ~op:"get-resync-status" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_library_resync_status_bytes payload)
     | Error _ as e -> e
 end

@@ -59,6 +59,7 @@ export interface SessionInfo {
   handle: Handle;
   displayName?: string;
   role: Role;
+  canAdmin: boolean;
   token?: string;
 }
 
@@ -86,6 +87,7 @@ export interface Album {
   id: AlbumId;
   title: string;
   artistId?: ArtistId;
+  artistName?: string;
   year?: number;
   hasCoverArt: boolean;
   trackCount: number;
@@ -459,6 +461,8 @@ export interface DeviceInfo {
   osDeviceId: string;
   friendlyName: string;
   isDefault: boolean;
+  enabled: boolean;
+  groupIds: string[];
 }
 
 export interface NodeInfo {
@@ -487,13 +491,61 @@ export interface RenameDeviceRequest {
   friendlyName: string;
 }
 
+export interface SetDeviceAccessRequest {
+  deviceId: DeviceId;
+  enabled: boolean;
+  groupIds: string[];
+}
+
+export interface GroupInfo {
+  id: string;
+  name: string;
+  memberAccountIds: AccountId[];
+}
+
+export interface ListGroupsResponse {
+  groups: GroupInfo[];
+}
+
+export interface CreateGroupRequest {
+  name: string;
+}
+
+export interface SetGroupMembersRequest {
+  groupId: string;
+  memberAccountIds: AccountId[];
+}
+
+export interface DeleteGroupRequest {
+  groupId: string;
+}
+
+export interface SatelliteTokenInfo {
+  id: string;
+  name: string;
+  defaultEnabled: boolean;
+  defaultGroupIds: string[];
+  createdAt: Date;
+}
+
+export interface ListSatelliteTokensResponse {
+  satellites: SatelliteTokenInfo[];
+}
+
 export interface CreateNodeTokenRequest {
   label?: string;
+  defaultEnabled: boolean;
+  defaultGroupIds: string[];
 }
 
 export interface NodeTokenResult {
   token: string;
   fingerprints: string[];
+  satellite: SatelliteTokenInfo;
+}
+
+export interface RevokeSatelliteTokenRequest {
+  satelliteId: string;
 }
 
 export interface ImportTrackRequest {
@@ -516,6 +568,11 @@ export interface Settings {
 export interface SetSettingRequest {
   key: string;
   value: string;
+}
+
+export interface LibraryResyncStatus {
+  running: boolean;
+  started: boolean;
 }
 
 export function validateHandle(value: Handle): string[] {
@@ -565,6 +622,12 @@ export function validateRenameNodeRequest(value: RenameNodeRequest): string[] {
 export function validateRenameDeviceRequest(value: RenameDeviceRequest): string[] {
   const errors: string[] = [];
   if (value.friendlyName.length < 1 || value.friendlyName.length > 64) errors.push("friendlyName: length must be between 1 and 64");
+  return errors;
+}
+
+export function validateCreateGroupRequest(value: CreateGroupRequest): string[] {
+  const errors: string[] = [];
+  if (value.name.length < 1 || value.name.length > 64) errors.push("name: length must be between 1 and 64");
   return errors;
 }
 

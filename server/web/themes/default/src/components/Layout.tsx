@@ -1,7 +1,7 @@
 // The app shell: nav rail (brand + primary nav + server switcher) on the left,
 // routed content in the middle, the persistent transport pinned to the bottom.
-import { createResource, ErrorBoundary, For, Show, type JSX } from "solid-js";
-import { A } from "@solidjs/router";
+import { createEffect, createResource, ErrorBoundary, For, Show, type JSX } from "solid-js";
+import { A, useLocation, useNavigate } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { EmptyState } from "./common.tsx";
@@ -16,6 +16,7 @@ import {
   IconSearch,
   IconSettings,
 } from "./Icons.tsx";
+import { satelliteToken } from "../lib/satellite-mode.ts";
 
 const NAV = [
   { href: "/", key: "nav.library", icon: IconLibrary, end: true },
@@ -29,6 +30,13 @@ const NAV = [
 export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const { t } = useI18n();
   const servers = useServers();
+  const location = useLocation();
+  const navigate = useNavigate();
+  createEffect(() => {
+    if (satelliteToken() && location.pathname !== "/satellite") {
+      navigate("/satellite", { replace: true });
+    }
+  });
   const [libraries] = createResource(
     () => servers.api(),
     (api) => api!.library.listLibraries(),
@@ -36,6 +44,7 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const hasAudiobooks = () =>
     libraries()?.libraries.some((library) => library.kind === "audiobook") ?? false;
   return (
+    <Show when={location.pathname !== "/satellite"} fallback={props.children}>
     <div class="app-shell">
       <a class="skip-link" href="#main-content">
         {t("nav.skipToContent")}
@@ -109,5 +118,6 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
 
       <Transport />
     </div>
+    </Show>
   );
 }

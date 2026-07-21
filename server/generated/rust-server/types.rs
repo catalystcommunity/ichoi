@@ -117,6 +117,8 @@ pub struct SessionInfo {
     pub handle: Handle,
     pub display_name: Option<String>,
     pub role: Role,
+    /// default: false
+    pub can_admin: bool,
     pub token: Option<String>,
 }
 
@@ -151,6 +153,7 @@ pub struct Album {
     pub id: AlbumId,
     pub title: String,
     pub artist_id: Option<ArtistId>,
+    pub artist_name: Option<String>,
     pub year: Option<u64>,
     /// default: false
     pub has_cover_art: bool,
@@ -745,6 +748,9 @@ pub struct DeviceInfo {
     pub friendly_name: String,
     /// default: false
     pub is_default: bool,
+    /// default: true
+    pub enabled: bool,
+    pub group_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -812,14 +818,90 @@ impl RenameDeviceRequest {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct SetDeviceAccessRequest {
+    pub device_id: DeviceId,
+    pub enabled: bool,
+    pub group_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GroupInfo {
+    pub id: String,
+    pub name: String,
+    pub member_account_ids: Vec<AccountId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListGroupsResponse {
+    pub groups: Vec<GroupInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CreateGroupRequest {
+    /// constraint: size in 1..=64
+    pub name: String,
+}
+
+impl CreateGroupRequest {
+    /// Validate this value against the constraints declared in the CSIL spec.
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        {
+            let v = &self.name;
+            if v.is_empty() || v.len() > 64usize {
+                return Err(ValidationError {
+                    field: "name".to_string(),
+                    message: "length must be in 1..=64".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SetGroupMembersRequest {
+    pub group_id: String,
+    pub member_account_ids: Vec<AccountId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeleteGroupRequest {
+    pub group_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SatelliteTokenInfo {
+    pub id: String,
+    pub name: String,
+    /// default: true
+    pub default_enabled: bool,
+    pub default_group_ids: Vec<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListSatelliteTokensResponse {
+    pub satellites: Vec<SatelliteTokenInfo>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CreateNodeTokenRequest {
     pub label: Option<String>,
+    /// default: true
+    pub default_enabled: bool,
+    pub default_group_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct NodeTokenResult {
     pub token: String,
     pub fingerprints: Vec<String>,
+    pub satellite: SatelliteTokenInfo,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RevokeSatelliteTokenRequest {
+    pub satellite_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -847,4 +929,11 @@ pub struct Settings {
 pub struct SetSettingRequest {
     pub key: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LibraryResyncStatus {
+    pub running: bool,
+    /// default: false
+    pub started: bool,
 }

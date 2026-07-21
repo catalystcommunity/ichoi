@@ -23,6 +23,14 @@ func NewPage() *Page {
 	}
 }
 
+// NewSessionInfo creates a SessionInfo with default values:
+//   - can_admin: false
+func NewSessionInfo() *SessionInfo {
+	return &SessionInfo{
+		CanAdmin: false,
+	}
+}
+
 // NewAlbum creates a Album with default values:
 //   - has_cover_art: false
 func NewAlbum() *Album {
@@ -105,9 +113,27 @@ func NewAudioOutput() *AudioOutput {
 
 // NewDeviceInfo creates a DeviceInfo with default values:
 //   - is_default: false
+//   - enabled: true
 func NewDeviceInfo() *DeviceInfo {
 	return &DeviceInfo{
 		IsDefault: false,
+		Enabled:   true,
+	}
+}
+
+// NewSatelliteTokenInfo creates a SatelliteTokenInfo with default values:
+//   - default_enabled: true
+func NewSatelliteTokenInfo() *SatelliteTokenInfo {
+	return &SatelliteTokenInfo{
+		DefaultEnabled: true,
+	}
+}
+
+// NewCreateNodeTokenRequest creates a CreateNodeTokenRequest with default values:
+//   - default_enabled: true
+func NewCreateNodeTokenRequest() *CreateNodeTokenRequest {
+	return &CreateNodeTokenRequest{
+		DefaultEnabled: true,
 	}
 }
 
@@ -116,5 +142,13 @@ func NewDeviceInfo() *DeviceInfo {
 func NewImportResult() *ImportResult {
 	return &ImportResult{
 		SkippedExisting: false,
+	}
+}
+
+// NewLibraryResyncStatus creates a LibraryResyncStatus with default values:
+//   - started: false
+func NewLibraryResyncStatus() *LibraryResyncStatus {
+	return &LibraryResyncStatus{
+		Started: false,
 	}
 }

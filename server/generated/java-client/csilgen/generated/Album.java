@@ -6,6 +6,7 @@ public record Album(
     AlbumId id /* wire: "id" */,
     String title /* wire: "title" */,
     ArtistId artistId /* wire: "artist_id" */,
+    String artistName /* wire: "artist_name" */,
     Long year /* wire: "year" */,
     boolean hasCoverArt /* wire: "has_cover_art" */,
     long trackCount /* wire: "track_count" */

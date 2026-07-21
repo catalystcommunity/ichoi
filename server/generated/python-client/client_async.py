@@ -167,9 +167,37 @@ class AdminAsyncClient:
         """rename-device"""
         return DeviceInfo.from_cbor(await self._transport.call("AdminService", "rename-device", req.to_cbor()))
 
+    async def set_device_access(self, req: SetDeviceAccessRequest) -> DeviceInfo:
+        """set-device-access"""
+        return DeviceInfo.from_cbor(await self._transport.call("AdminService", "set-device-access", req.to_cbor()))
+
+    async def list_groups(self, req: Page) -> ListGroupsResponse:
+        """list-groups"""
+        return ListGroupsResponse.from_cbor(await self._transport.call("AdminService", "list-groups", req.to_cbor()))
+
+    async def create_group(self, req: CreateGroupRequest) -> GroupInfo:
+        """create-group"""
+        return GroupInfo.from_cbor(await self._transport.call("AdminService", "create-group", req.to_cbor()))
+
+    async def set_group_members(self, req: SetGroupMembersRequest) -> GroupInfo:
+        """set-group-members"""
+        return GroupInfo.from_cbor(await self._transport.call("AdminService", "set-group-members", req.to_cbor()))
+
+    async def delete_group(self, req: DeleteGroupRequest) -> Ok:
+        """delete-group"""
+        return Ok.from_cbor(await self._transport.call("AdminService", "delete-group", req.to_cbor()))
+
+    async def list_satellite_tokens(self, req: Page) -> ListSatelliteTokensResponse:
+        """list-satellite-tokens"""
+        return ListSatelliteTokensResponse.from_cbor(await self._transport.call("AdminService", "list-satellite-tokens", req.to_cbor()))
+
     async def create_node_token(self, req: CreateNodeTokenRequest) -> NodeTokenResult:
         """create-node-token"""
         return NodeTokenResult.from_cbor(await self._transport.call("AdminService", "create-node-token", req.to_cbor()))
+
+    async def revoke_satellite_token(self, req: RevokeSatelliteTokenRequest) -> Ok:
+        """revoke-satellite-token"""
+        return Ok.from_cbor(await self._transport.call("AdminService", "revoke-satellite-token", req.to_cbor()))
 
     async def import_track(self, req: ImportTrackRequest) -> ImportResult:
         """import-track"""
@@ -182,4 +210,12 @@ class AdminAsyncClient:
     async def set_setting(self, req: SetSettingRequest) -> Settings:
         """set-setting"""
         return Settings.from_cbor(await self._transport.call("AdminService", "set-setting", req.to_cbor()))
+
+    async def resync_library(self, req: Page) -> LibraryResyncStatus:
+        """resync-library"""
+        return LibraryResyncStatus.from_cbor(await self._transport.call("AdminService", "resync-library", req.to_cbor()))
+
+    async def get_resync_status(self, req: Page) -> LibraryResyncStatus:
+        """get-resync-status"""
+        return LibraryResyncStatus.from_cbor(await self._transport.call("AdminService", "get-resync-status", req.to_cbor()))
 

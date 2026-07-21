@@ -569,12 +569,13 @@ public final class CsilCbor {
     }
 
     static CborValue encSessionInfo(SessionInfo v) {
-        List<CborEntry> csilEntries = new ArrayList<>(5);
+        List<CborEntry> csilEntries = new ArrayList<>(6);
         csilEntries.add(new CborEntry(new CborText("role"), encRole(v.role())));
         if (v.token() != null) {
             csilEntries.add(new CborEntry(new CborText("token"), new CborText(v.token())));
         }
         csilEntries.add(new CborEntry(new CborText("handle"), new CborText((v.handle()).value())));
+        csilEntries.add(new CborEntry(new CborText("can_admin"), new CborBool(v.canAdmin())));
         csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
         if (v.displayName() != null) {
             csilEntries.add(new CborEntry(new CborText("display_name"), new CborText(v.displayName())));
@@ -591,12 +592,13 @@ public final class CsilCbor {
             displayName = csilField != null ? asText(csilField) : null;
         }
         Role role = decRole(require(csilRoot, "role"));
+        boolean canAdmin = asBool(require(csilRoot, "can_admin"));
         String token;
         {
             CborValue csilField = mapGet(csilRoot, "token");
             token = csilField != null ? asText(csilField) : null;
         }
-        return new SessionInfo(accountId, handle, displayName, role, token);
+        return new SessionInfo(accountId, handle, displayName, role, canAdmin, token);
     }
 
     public static byte[] encodeSessionInfo(SessionInfo v) {
@@ -697,7 +699,7 @@ public final class CsilCbor {
     }
 
     static CborValue encAlbum(Album v) {
-        List<CborEntry> csilEntries = new ArrayList<>(6);
+        List<CborEntry> csilEntries = new ArrayList<>(7);
         csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));
         if (v.year() != null) {
             csilEntries.add(new CborEntry(new CborText("year"), new CborUint(v.year())));
@@ -705,6 +707,9 @@ public final class CsilCbor {
         csilEntries.add(new CborEntry(new CborText("title"), new CborText(v.title())));
         if (v.artistId() != null) {
             csilEntries.add(new CborEntry(new CborText("artist_id"), new CborText((v.artistId()).value())));
+        }
+        if (v.artistName() != null) {
+            csilEntries.add(new CborEntry(new CborText("artist_name"), new CborText(v.artistName())));
         }
         csilEntries.add(new CborEntry(new CborText("track_count"), new CborUint(v.trackCount())));
         csilEntries.add(new CborEntry(new CborText("has_cover_art"), new CborBool(v.hasCoverArt())));
@@ -719,6 +724,11 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "artist_id");
             artistId = csilField != null ? new ArtistId(asText(csilField)) : null;
         }
+        String artistName;
+        {
+            CborValue csilField = mapGet(csilRoot, "artist_name");
+            artistName = csilField != null ? asText(csilField) : null;
+        }
         Long year;
         {
             CborValue csilField = mapGet(csilRoot, "year");
@@ -726,7 +736,7 @@ public final class CsilCbor {
         }
         boolean hasCoverArt = asBool(require(csilRoot, "has_cover_art"));
         long trackCount = asU64(require(csilRoot, "track_count"));
-        return new Album(id, title, artistId, year, hasCoverArt, trackCount);
+        return new Album(id, title, artistId, artistName, year, hasCoverArt, trackCount);
     }
 
     public static byte[] encodeAlbum(Album v) {
@@ -2315,8 +2325,10 @@ public final class CsilCbor {
     }
 
     static CborValue encDeviceInfo(DeviceInfo v) {
-        List<CborEntry> csilEntries = new ArrayList<>(4);
+        List<CborEntry> csilEntries = new ArrayList<>(6);
         csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));
+        csilEntries.add(new CborEntry(new CborText("enabled"), new CborBool(v.enabled())));
+        csilEntries.add(new CborEntry(new CborText("group_ids"), encArray(v.groupIds(), csilElem0 -> new CborText(csilElem0))));
         csilEntries.add(new CborEntry(new CborText("is_default"), new CborBool(v.isDefault())));
         csilEntries.add(new CborEntry(new CborText("os_device_id"), new CborText(v.osDeviceId())));
         csilEntries.add(new CborEntry(new CborText("friendly_name"), new CborText(v.friendlyName())));
@@ -2328,7 +2340,9 @@ public final class CsilCbor {
         String osDeviceId = asText(require(csilRoot, "os_device_id"));
         String friendlyName = asText(require(csilRoot, "friendly_name"));
         boolean isDefault = asBool(require(csilRoot, "is_default"));
-        return new DeviceInfo(id, osDeviceId, friendlyName, isDefault);
+        boolean enabled = asBool(require(csilRoot, "enabled"));
+        List<String> groupIds = decArray(require(csilRoot, "group_ids"), csilE0 -> asText(csilE0));
+        return new DeviceInfo(id, osDeviceId, friendlyName, isDefault, enabled, groupIds);
     }
 
     public static byte[] encodeDeviceInfo(DeviceInfo v) {
@@ -2441,11 +2455,183 @@ public final class CsilCbor {
         return decRenameDeviceRequest(decode(data));
     }
 
-    static CborValue encCreateNodeTokenRequest(CreateNodeTokenRequest v) {
+    static CborValue encSetDeviceAccessRequest(SetDeviceAccessRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("enabled"), new CborBool(v.enabled())));
+        csilEntries.add(new CborEntry(new CborText("device_id"), new CborText((v.deviceId()).value())));
+        csilEntries.add(new CborEntry(new CborText("group_ids"), encArray(v.groupIds(), csilElem0 -> new CborText(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static SetDeviceAccessRequest decSetDeviceAccessRequest(CborValue csilRoot) {
+        DeviceId deviceId = new DeviceId(asText(require(csilRoot, "device_id")));
+        boolean enabled = asBool(require(csilRoot, "enabled"));
+        List<String> groupIds = decArray(require(csilRoot, "group_ids"), csilE0 -> asText(csilE0));
+        return new SetDeviceAccessRequest(deviceId, enabled, groupIds);
+    }
+
+    public static byte[] encodeSetDeviceAccessRequest(SetDeviceAccessRequest v) {
+        return encode(encSetDeviceAccessRequest(v));
+    }
+
+    public static SetDeviceAccessRequest decodeSetDeviceAccessRequest(byte[] data) {
+        return decSetDeviceAccessRequest(decode(data));
+    }
+
+    static CborValue encGroupInfo(GroupInfo v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        csilEntries.add(new CborEntry(new CborText("name"), new CborText(v.name())));
+        csilEntries.add(new CborEntry(new CborText("member_account_ids"), encArray(v.memberAccountIds(), csilElem0 -> new CborText((csilElem0).value()))));
+        return new CborMap(csilEntries);
+    }
+
+    static GroupInfo decGroupInfo(CborValue csilRoot) {
+        String id = asText(require(csilRoot, "id"));
+        String name = asText(require(csilRoot, "name"));
+        List<AccountId> memberAccountIds = decArray(require(csilRoot, "member_account_ids"), csilE0 -> new AccountId(asText(csilE0)));
+        return new GroupInfo(id, name, memberAccountIds);
+    }
+
+    public static byte[] encodeGroupInfo(GroupInfo v) {
+        return encode(encGroupInfo(v));
+    }
+
+    public static GroupInfo decodeGroupInfo(byte[] data) {
+        return decGroupInfo(decode(data));
+    }
+
+    static CborValue encListGroupsResponse(ListGroupsResponse v) {
         List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("groups"), encArray(v.groups(), csilElem0 -> encGroupInfo(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static ListGroupsResponse decListGroupsResponse(CborValue csilRoot) {
+        List<GroupInfo> groups = decArray(require(csilRoot, "groups"), csilE0 -> decGroupInfo(csilE0));
+        return new ListGroupsResponse(groups);
+    }
+
+    public static byte[] encodeListGroupsResponse(ListGroupsResponse v) {
+        return encode(encListGroupsResponse(v));
+    }
+
+    public static ListGroupsResponse decodeListGroupsResponse(byte[] data) {
+        return decListGroupsResponse(decode(data));
+    }
+
+    static CborValue encCreateGroupRequest(CreateGroupRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("name"), new CborText(v.name())));
+        return new CborMap(csilEntries);
+    }
+
+    static CreateGroupRequest decCreateGroupRequest(CborValue csilRoot) {
+        String name = asText(require(csilRoot, "name"));
+        return new CreateGroupRequest(name);
+    }
+
+    public static byte[] encodeCreateGroupRequest(CreateGroupRequest v) {
+        return encode(encCreateGroupRequest(v));
+    }
+
+    public static CreateGroupRequest decodeCreateGroupRequest(byte[] data) {
+        return decCreateGroupRequest(decode(data));
+    }
+
+    static CborValue encSetGroupMembersRequest(SetGroupMembersRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("group_id"), new CborText(v.groupId())));
+        csilEntries.add(new CborEntry(new CborText("member_account_ids"), encArray(v.memberAccountIds(), csilElem0 -> new CborText((csilElem0).value()))));
+        return new CborMap(csilEntries);
+    }
+
+    static SetGroupMembersRequest decSetGroupMembersRequest(CborValue csilRoot) {
+        String groupId = asText(require(csilRoot, "group_id"));
+        List<AccountId> memberAccountIds = decArray(require(csilRoot, "member_account_ids"), csilE0 -> new AccountId(asText(csilE0)));
+        return new SetGroupMembersRequest(groupId, memberAccountIds);
+    }
+
+    public static byte[] encodeSetGroupMembersRequest(SetGroupMembersRequest v) {
+        return encode(encSetGroupMembersRequest(v));
+    }
+
+    public static SetGroupMembersRequest decodeSetGroupMembersRequest(byte[] data) {
+        return decSetGroupMembersRequest(decode(data));
+    }
+
+    static CborValue encDeleteGroupRequest(DeleteGroupRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("group_id"), new CborText(v.groupId())));
+        return new CborMap(csilEntries);
+    }
+
+    static DeleteGroupRequest decDeleteGroupRequest(CborValue csilRoot) {
+        String groupId = asText(require(csilRoot, "group_id"));
+        return new DeleteGroupRequest(groupId);
+    }
+
+    public static byte[] encodeDeleteGroupRequest(DeleteGroupRequest v) {
+        return encode(encDeleteGroupRequest(v));
+    }
+
+    public static DeleteGroupRequest decodeDeleteGroupRequest(byte[] data) {
+        return decDeleteGroupRequest(decode(data));
+    }
+
+    static CborValue encSatelliteTokenInfo(SatelliteTokenInfo v) {
+        List<CborEntry> csilEntries = new ArrayList<>(5);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        csilEntries.add(new CborEntry(new CborText("name"), new CborText(v.name())));
+        csilEntries.add(new CborEntry(new CborText("created_at"), encTimestamp(v.createdAt())));
+        csilEntries.add(new CborEntry(new CborText("default_enabled"), new CborBool(v.defaultEnabled())));
+        csilEntries.add(new CborEntry(new CborText("default_group_ids"), encArray(v.defaultGroupIds(), csilElem0 -> new CborText(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static SatelliteTokenInfo decSatelliteTokenInfo(CborValue csilRoot) {
+        String id = asText(require(csilRoot, "id"));
+        String name = asText(require(csilRoot, "name"));
+        boolean defaultEnabled = asBool(require(csilRoot, "default_enabled"));
+        List<String> defaultGroupIds = decArray(require(csilRoot, "default_group_ids"), csilE0 -> asText(csilE0));
+        Instant createdAt = asTimestamp(require(csilRoot, "created_at"));
+        return new SatelliteTokenInfo(id, name, defaultEnabled, defaultGroupIds, createdAt);
+    }
+
+    public static byte[] encodeSatelliteTokenInfo(SatelliteTokenInfo v) {
+        return encode(encSatelliteTokenInfo(v));
+    }
+
+    public static SatelliteTokenInfo decodeSatelliteTokenInfo(byte[] data) {
+        return decSatelliteTokenInfo(decode(data));
+    }
+
+    static CborValue encListSatelliteTokensResponse(ListSatelliteTokensResponse v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("satellites"), encArray(v.satellites(), csilElem0 -> encSatelliteTokenInfo(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static ListSatelliteTokensResponse decListSatelliteTokensResponse(CborValue csilRoot) {
+        List<SatelliteTokenInfo> satellites = decArray(require(csilRoot, "satellites"), csilE0 -> decSatelliteTokenInfo(csilE0));
+        return new ListSatelliteTokensResponse(satellites);
+    }
+
+    public static byte[] encodeListSatelliteTokensResponse(ListSatelliteTokensResponse v) {
+        return encode(encListSatelliteTokensResponse(v));
+    }
+
+    public static ListSatelliteTokensResponse decodeListSatelliteTokensResponse(byte[] data) {
+        return decListSatelliteTokensResponse(decode(data));
+    }
+
+    static CborValue encCreateNodeTokenRequest(CreateNodeTokenRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         if (v.label() != null) {
             csilEntries.add(new CborEntry(new CborText("label"), new CborText(v.label())));
         }
+        csilEntries.add(new CborEntry(new CborText("default_enabled"), new CborBool(v.defaultEnabled())));
+        csilEntries.add(new CborEntry(new CborText("default_group_ids"), encArray(v.defaultGroupIds(), csilElem0 -> new CborText(csilElem0))));
         return new CborMap(csilEntries);
     }
 
@@ -2455,7 +2641,9 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "label");
             label = csilField != null ? asText(csilField) : null;
         }
-        return new CreateNodeTokenRequest(label);
+        boolean defaultEnabled = asBool(require(csilRoot, "default_enabled"));
+        List<String> defaultGroupIds = decArray(require(csilRoot, "default_group_ids"), csilE0 -> asText(csilE0));
+        return new CreateNodeTokenRequest(label, defaultEnabled, defaultGroupIds);
     }
 
     public static byte[] encodeCreateNodeTokenRequest(CreateNodeTokenRequest v) {
@@ -2467,8 +2655,9 @@ public final class CsilCbor {
     }
 
     static CborValue encNodeTokenResult(NodeTokenResult v) {
-        List<CborEntry> csilEntries = new ArrayList<>(2);
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         csilEntries.add(new CborEntry(new CborText("token"), new CborText(v.token())));
+        csilEntries.add(new CborEntry(new CborText("satellite"), encSatelliteTokenInfo(v.satellite())));
         csilEntries.add(new CborEntry(new CborText("fingerprints"), encArray(v.fingerprints(), csilElem0 -> new CborText(csilElem0))));
         return new CborMap(csilEntries);
     }
@@ -2476,7 +2665,8 @@ public final class CsilCbor {
     static NodeTokenResult decNodeTokenResult(CborValue csilRoot) {
         String token = asText(require(csilRoot, "token"));
         List<String> fingerprints = decArray(require(csilRoot, "fingerprints"), csilE0 -> asText(csilE0));
-        return new NodeTokenResult(token, fingerprints);
+        SatelliteTokenInfo satellite = decSatelliteTokenInfo(require(csilRoot, "satellite"));
+        return new NodeTokenResult(token, fingerprints, satellite);
     }
 
     public static byte[] encodeNodeTokenResult(NodeTokenResult v) {
@@ -2485,6 +2675,25 @@ public final class CsilCbor {
 
     public static NodeTokenResult decodeNodeTokenResult(byte[] data) {
         return decNodeTokenResult(decode(data));
+    }
+
+    static CborValue encRevokeSatelliteTokenRequest(RevokeSatelliteTokenRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("satellite_id"), new CborText(v.satelliteId())));
+        return new CborMap(csilEntries);
+    }
+
+    static RevokeSatelliteTokenRequest decRevokeSatelliteTokenRequest(CborValue csilRoot) {
+        String satelliteId = asText(require(csilRoot, "satellite_id"));
+        return new RevokeSatelliteTokenRequest(satelliteId);
+    }
+
+    public static byte[] encodeRevokeSatelliteTokenRequest(RevokeSatelliteTokenRequest v) {
+        return encode(encRevokeSatelliteTokenRequest(v));
+    }
+
+    public static RevokeSatelliteTokenRequest decodeRevokeSatelliteTokenRequest(byte[] data) {
+        return decRevokeSatelliteTokenRequest(decode(data));
     }
 
     static CborValue encImportTrackRequest(ImportTrackRequest v) {
@@ -2585,6 +2794,27 @@ public final class CsilCbor {
 
     public static SetSettingRequest decodeSetSettingRequest(byte[] data) {
         return decSetSettingRequest(decode(data));
+    }
+
+    static CborValue encLibraryResyncStatus(LibraryResyncStatus v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("running"), new CborBool(v.running())));
+        csilEntries.add(new CborEntry(new CborText("started"), new CborBool(v.started())));
+        return new CborMap(csilEntries);
+    }
+
+    static LibraryResyncStatus decLibraryResyncStatus(CborValue csilRoot) {
+        boolean running = asBool(require(csilRoot, "running"));
+        boolean started = asBool(require(csilRoot, "started"));
+        return new LibraryResyncStatus(running, started);
+    }
+
+    public static byte[] encodeLibraryResyncStatus(LibraryResyncStatus v) {
+        return encode(encLibraryResyncStatus(v));
+    }
+
+    public static LibraryResyncStatus decodeLibraryResyncStatus(byte[] data) {
+        return decLibraryResyncStatus(decode(data));
     }
 
     static CborValue encRole(Role v) {

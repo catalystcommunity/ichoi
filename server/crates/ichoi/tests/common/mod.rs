@@ -70,6 +70,15 @@ pub fn ctx_user(account_id: &str) -> Ctx {
     }
 }
 
+pub fn ctx_admin(account_id: &str) -> Ctx {
+    Ctx {
+        identity: Identity::User {
+            account_id: account_id.to_string(),
+            role: "admin".to_string(),
+        },
+    }
+}
+
 pub fn ctx_node(node_id: &str) -> Ctx {
     Ctx {
         identity: Identity::Node {

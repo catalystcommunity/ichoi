@@ -28,6 +28,7 @@ const NowPlayingPage = lazy(() =>
   import("./routes/NowPlayingPage.tsx").then((m) => ({ default: m.NowPlayingPage })),
 );
 const SettingsPage = lazy(() => import("./routes/SettingsPage.tsx").then((m) => ({ default: m.SettingsPage })));
+const SatellitePage = lazy(() => import("./routes/SatellitePage.tsx").then((m) => ({ default: m.SatellitePage })));
 
 export function App(): JSX.Element {
   return (
@@ -47,6 +48,7 @@ export function App(): JSX.Element {
                 <Route path="/jukebox" component={JukeboxPage} />
                 <Route path="/now-playing" component={NowPlayingPage} />
                 <Route path="/settings" component={SettingsPage} />
+                <Route path="/satellite" component={SatellitePage} />
                 <Route path="*" component={LibraryPage} />
               </Router>
             </PlaybackProvider>

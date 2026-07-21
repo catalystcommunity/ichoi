@@ -140,6 +140,8 @@ export interface CsilConnectionOptions {
   url: string;
   /** Session token minted by `SessionService.authenticate`, sent as `Hello.auth`. */
   auth?: string;
+  /** Device credential used only by the restricted satellite PWA. */
+  nodeToken?: string;
   /** Per-request timeout (ms) for correlated calls. */
   callTimeoutMs?: number;
   onState?: (state: ConnState, detail?: string) => void;
@@ -302,6 +304,7 @@ export class CsilConnection {
       profiles: ["verbose"],
     };
     if (this.opts.auth !== undefined) hello.auth = this.opts.auth;
+    if (this.opts.nodeToken !== undefined) hello.node_token = this.opts.nodeToken;
     this.sendControl(CONTROL.HELLO, hello);
   }
 

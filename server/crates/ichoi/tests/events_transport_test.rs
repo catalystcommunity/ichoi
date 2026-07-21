@@ -12,9 +12,11 @@ use ichoi::transport::{
     EventEnvelope,
 };
 use libichoi::csil::codec::{
-    decode_albums_response, decode_libraries_response, decode_player_state, encode_browse_request,
-    encode_page,
+    decode_albums_response, decode_libraries_response, decode_library_resync_status,
+    decode_player_state, encode_browse_request, encode_page,
 };
+use libichoi::csil::services::AdminService;
+use libichoi::csil::types::CreateNodeTokenRequest;
 use libichoi::csil::types::{BrowseRequest, Library, Page, PlayerState, PlayerStatus, QueueItem};
 
 use common::DataMap;
@@ -48,12 +50,56 @@ fn hello_frame(auth: Option<&str>) -> Vec<u8> {
     })
 }
 
+fn node_hello_frame(token: &str) -> Vec<u8> {
+    let mut payload = Vec::new();
+    ciborium::into_writer(
+        &Value::Map(vec![
+            (
+                Value::Text("versions".into()),
+                Value::Array(vec![Value::Integer(1.into())]),
+            ),
+            (
+                Value::Text("profiles".into()),
+                Value::Array(vec![Value::Text("verbose".into())]),
+            ),
+            (Value::Text("node_token".into()), Value::Text(token.into())),
+        ]),
+        &mut payload,
+    )
+    .unwrap();
+    encode_event_envelope(&EventEnvelope {
+        service: None,
+        event: "$hello".into(),
+        id: None,
+        payload,
+    })
+}
+
 #[test]
 fn hello_gets_ack() {
     let (app, _pool) = common::test_app();
     let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, &hello_frame(None));
     let env = decode_event_envelope(&reply.expect("ack frame")).unwrap();
     assert_eq!(env.event, "$hello-ack");
+}
+
+#[test]
+fn named_satellite_token_resolves_to_its_destination_identity() {
+    let (app, _pool) = common::test_app();
+    let token = app
+        .create_node_token(
+            &common::ctx_anon(),
+            CreateNodeTokenRequest {
+                label: Some("Kitchen".into()),
+                default_enabled: true,
+                default_group_ids: vec!["everyone".into()],
+            },
+        )
+        .unwrap();
+    let (identity, reply, _effects) =
+        handle_events_frame(&app, Identity::Anonymous, &node_hello_frame(&token.token));
+    assert!(reply.is_some());
+    assert!(matches!(identity, Identity::Node { node_id } if node_id == token.satellite.id));
 }
 
 #[test]
@@ -116,6 +162,29 @@ fn configured_libraries_round_trip_over_the_wire() {
         .libraries
         .iter()
         .any(|library| library.kind == Library::Audiobook));
+}
+
+#[test]
+fn admin_resync_status_round_trips_over_the_wire() {
+    let (app, _pool) = common::test_app();
+    let frame = encode_event_envelope(&EventEnvelope {
+        service: Some("admin".to_string()),
+        event: "get-resync-status".to_string(),
+        id: Some(9),
+        payload: encode_page(&Page {
+            offset: None,
+            limit: None,
+        }),
+    });
+    let (_identity, reply, _effects) = handle_events_frame(
+        &app,
+        common::ctx_admin("admin@example.com").identity,
+        &frame,
+    );
+    let envelope = decode_event_envelope(&reply.expect("reply frame")).unwrap();
+    let status = decode_library_resync_status(&envelope.payload).unwrap();
+    assert!(!status.running);
+    assert!(!status.started);
 }
 
 #[test]

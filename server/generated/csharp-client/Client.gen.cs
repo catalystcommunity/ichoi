@@ -111,13 +111,31 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<NodeInfo>(transport.Call("AdminService", "rename-node", Codec.Encode(renameNodeRequest)));
     public DeviceInfo RenameDevice(RenameDeviceRequest renameDeviceRequest) =>
         Codec.Decode<DeviceInfo>(transport.Call("AdminService", "rename-device", Codec.Encode(renameDeviceRequest)));
+    public DeviceInfo SetDeviceAccess(SetDeviceAccessRequest setDeviceAccessRequest) =>
+        Codec.Decode<DeviceInfo>(transport.Call("AdminService", "set-device-access", Codec.Encode(setDeviceAccessRequest)));
+    public ListGroupsResponse ListGroups(Page page) =>
+        Codec.Decode<ListGroupsResponse>(transport.Call("AdminService", "list-groups", Codec.Encode(page)));
+    public GroupInfo CreateGroup(CreateGroupRequest createGroupRequest) =>
+        Codec.Decode<GroupInfo>(transport.Call("AdminService", "create-group", Codec.Encode(createGroupRequest)));
+    public GroupInfo SetGroupMembers(SetGroupMembersRequest setGroupMembersRequest) =>
+        Codec.Decode<GroupInfo>(transport.Call("AdminService", "set-group-members", Codec.Encode(setGroupMembersRequest)));
+    public Ok DeleteGroup(DeleteGroupRequest deleteGroupRequest) =>
+        Codec.Decode<Ok>(transport.Call("AdminService", "delete-group", Codec.Encode(deleteGroupRequest)));
+    public ListSatelliteTokensResponse ListSatelliteTokens(Page page) =>
+        Codec.Decode<ListSatelliteTokensResponse>(transport.Call("AdminService", "list-satellite-tokens", Codec.Encode(page)));
     public NodeTokenResult CreateNodeToken(CreateNodeTokenRequest createNodeTokenRequest) =>
         Codec.Decode<NodeTokenResult>(transport.Call("AdminService", "create-node-token", Codec.Encode(createNodeTokenRequest)));
+    public Ok RevokeSatelliteToken(RevokeSatelliteTokenRequest revokeSatelliteTokenRequest) =>
+        Codec.Decode<Ok>(transport.Call("AdminService", "revoke-satellite-token", Codec.Encode(revokeSatelliteTokenRequest)));
     public ImportResult ImportTrack(ImportTrackRequest importTrackRequest) =>
         Codec.Decode<ImportResult>(transport.Call("AdminService", "import-track", Codec.Encode(importTrackRequest)));
     public Settings GetSettings(Page page) =>
         Codec.Decode<Settings>(transport.Call("AdminService", "get-settings", Codec.Encode(page)));
     public Settings SetSetting(SetSettingRequest setSettingRequest) =>
         Codec.Decode<Settings>(transport.Call("AdminService", "set-setting", Codec.Encode(setSettingRequest)));
+    public LibraryResyncStatus ResyncLibrary(Page page) =>
+        Codec.Decode<LibraryResyncStatus>(transport.Call("AdminService", "resync-library", Codec.Encode(page)));
+    public LibraryResyncStatus GetResyncStatus(Page page) =>
+        Codec.Decode<LibraryResyncStatus>(transport.Call("AdminService", "get-resync-status", Codec.Encode(page)));
 }
 

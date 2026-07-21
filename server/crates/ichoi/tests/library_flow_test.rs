@@ -39,6 +39,7 @@ fn lists_albums_with_track_counts() {
     assert_eq!(resp.albums.len(), 1);
     assert_eq!(resp.albums[0].title, "Test Album");
     assert_eq!(resp.albums[0].track_count, 2);
+    assert_eq!(resp.albums[0].artist_name.as_deref(), Some("Test Artist"));
 }
 
 #[test]

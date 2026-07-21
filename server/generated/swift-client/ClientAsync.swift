@@ -200,9 +200,44 @@ public struct AdminAsyncClient {
         return try DeviceInfo.fromCbor(csilResp)
     }
 
+    public func setDeviceAccess(_ request: SetDeviceAccessRequest) async throws -> DeviceInfo {
+        let csilResp = try await transport.call(service: "AdminService", op: "set-device-access", request: request.toCbor())
+        return try DeviceInfo.fromCbor(csilResp)
+    }
+
+    public func listGroups(_ request: Page) async throws -> ListGroupsResponse {
+        let csilResp = try await transport.call(service: "AdminService", op: "list-groups", request: request.toCbor())
+        return try ListGroupsResponse.fromCbor(csilResp)
+    }
+
+    public func createGroup(_ request: CreateGroupRequest) async throws -> GroupInfo {
+        let csilResp = try await transport.call(service: "AdminService", op: "create-group", request: request.toCbor())
+        return try GroupInfo.fromCbor(csilResp)
+    }
+
+    public func setGroupMembers(_ request: SetGroupMembersRequest) async throws -> GroupInfo {
+        let csilResp = try await transport.call(service: "AdminService", op: "set-group-members", request: request.toCbor())
+        return try GroupInfo.fromCbor(csilResp)
+    }
+
+    public func deleteGroup(_ request: DeleteGroupRequest) async throws -> Ok {
+        let csilResp = try await transport.call(service: "AdminService", op: "delete-group", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
+    public func listSatelliteTokens(_ request: Page) async throws -> ListSatelliteTokensResponse {
+        let csilResp = try await transport.call(service: "AdminService", op: "list-satellite-tokens", request: request.toCbor())
+        return try ListSatelliteTokensResponse.fromCbor(csilResp)
+    }
+
     public func createNodeToken(_ request: CreateNodeTokenRequest) async throws -> NodeTokenResult {
         let csilResp = try await transport.call(service: "AdminService", op: "create-node-token", request: request.toCbor())
         return try NodeTokenResult.fromCbor(csilResp)
+    }
+
+    public func revokeSatelliteToken(_ request: RevokeSatelliteTokenRequest) async throws -> Ok {
+        let csilResp = try await transport.call(service: "AdminService", op: "revoke-satellite-token", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
     }
 
     public func importTrack(_ request: ImportTrackRequest) async throws -> ImportResult {
@@ -218,6 +253,16 @@ public struct AdminAsyncClient {
     public func setSetting(_ request: SetSettingRequest) async throws -> Settings {
         let csilResp = try await transport.call(service: "AdminService", op: "set-setting", request: request.toCbor())
         return try Settings.fromCbor(csilResp)
+    }
+
+    public func resyncLibrary(_ request: Page) async throws -> LibraryResyncStatus {
+        let csilResp = try await transport.call(service: "AdminService", op: "resync-library", request: request.toCbor())
+        return try LibraryResyncStatus.fromCbor(csilResp)
+    }
+
+    public func getResyncStatus(_ request: Page) async throws -> LibraryResyncStatus {
+        let csilResp = try await transport.call(service: "AdminService", op: "get-resync-status", request: request.toCbor())
+        return try LibraryResyncStatus.fromCbor(csilResp)
     }
 
 }

@@ -485,6 +485,7 @@ class SessionInfo
     csil_map["role"] = (role)
     csil_map["token"] = token unless token.nil?
     csil_map["handle"] = handle
+    csil_map["can_admin"] = can_admin
     csil_map["account_id"] = account_id
     csil_map["display_name"] = display_name unless display_name.nil?
     csil_map
@@ -506,6 +507,7 @@ when "guest" then "guest"
 else
   raise ArgumentError, "csilgen: unknown inline literal #{(node["role"]).inspect}"
 end),
+      can_admin: node["can_admin"],
       token: (node.key?("token") ? node["token"] : nil)
     )
   end
@@ -592,6 +594,7 @@ class Album
     csil_map["year"] = year unless year.nil?
     csil_map["title"] = title
     csil_map["artist_id"] = artist_id unless artist_id.nil?
+    csil_map["artist_name"] = artist_name unless artist_name.nil?
     csil_map["track_count"] = track_count
     csil_map["has_cover_art"] = has_cover_art
     csil_map
@@ -606,6 +609,7 @@ class Album
       id: node["id"],
       title: node["title"],
       artist_id: (node.key?("artist_id") ? node["artist_id"] : nil),
+      artist_name: (node.key?("artist_name") ? node["artist_name"] : nil),
       year: (node.key?("year") ? node["year"] : nil),
       has_cover_art: node["has_cover_art"],
       track_count: node["track_count"]
@@ -2427,6 +2431,8 @@ class DeviceInfo
   def csil_to_tree
     csil_map = {}
     csil_map["id"] = id
+    csil_map["enabled"] = enabled
+    csil_map["group_ids"] = (group_ids).map { |csil_e| csil_e }
     csil_map["is_default"] = is_default
     csil_map["os_device_id"] = os_device_id
     csil_map["friendly_name"] = friendly_name
@@ -2442,7 +2448,9 @@ class DeviceInfo
       id: node["id"],
       os_device_id: node["os_device_id"],
       friendly_name: node["friendly_name"],
-      is_default: node["is_default"]
+      is_default: node["is_default"],
+      enabled: node["enabled"],
+      group_ids: (node["group_ids"]).map { |csil_e| csil_e }
     )
   end
 end
@@ -2574,6 +2582,216 @@ class RenameDeviceRequest
   end
 end
 
+# CBOR codec for SetDeviceAccessRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class SetDeviceAccessRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["enabled"] = enabled
+    csil_map["device_id"] = device_id
+    csil_map["group_ids"] = (group_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      device_id: node["device_id"],
+      enabled: node["enabled"],
+      group_ids: (node["group_ids"]).map { |csil_e| csil_e }
+    )
+  end
+end
+
+# CBOR codec for GroupInfo: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class GroupInfo
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["name"] = name
+    csil_map["member_account_ids"] = (member_account_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      id: node["id"],
+      name: node["name"],
+      member_account_ids: (node["member_account_ids"]).map { |csil_e| csil_e }
+    )
+  end
+end
+
+# CBOR codec for ListGroupsResponse: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ListGroupsResponse
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["groups"] = (groups).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      groups: (node["groups"]).map { |csil_e| GroupInfo.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for CreateGroupRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CreateGroupRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["name"] = name
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      name: node["name"]
+    )
+  end
+end
+
+# CBOR codec for SetGroupMembersRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class SetGroupMembersRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["group_id"] = group_id
+    csil_map["member_account_ids"] = (member_account_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      group_id: node["group_id"],
+      member_account_ids: (node["member_account_ids"]).map { |csil_e| csil_e }
+    )
+  end
+end
+
+# CBOR codec for DeleteGroupRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class DeleteGroupRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["group_id"] = group_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      group_id: node["group_id"]
+    )
+  end
+end
+
+# CBOR codec for SatelliteTokenInfo: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class SatelliteTokenInfo
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["name"] = name
+    csil_map["created_at"] = CsilCbor::Tag.new(0, (created_at).getutc.iso8601)
+    csil_map["default_enabled"] = default_enabled
+    csil_map["default_group_ids"] = (default_group_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      id: node["id"],
+      name: node["name"],
+      default_enabled: node["default_enabled"],
+      default_group_ids: (node["default_group_ids"]).map { |csil_e| csil_e },
+      created_at: Time.iso8601((node["created_at"]).value)
+    )
+  end
+end
+
+# CBOR codec for ListSatelliteTokensResponse: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ListSatelliteTokensResponse
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["satellites"] = (satellites).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      satellites: (node["satellites"]).map { |csil_e| SatelliteTokenInfo.csil_from_tree(csil_e) }
+    )
+  end
+end
+
 # CBOR codec for CreateNodeTokenRequest: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class CreateNodeTokenRequest
@@ -2584,6 +2802,8 @@ class CreateNodeTokenRequest
   def csil_to_tree
     csil_map = {}
     csil_map["label"] = label unless label.nil?
+    csil_map["default_enabled"] = default_enabled
+    csil_map["default_group_ids"] = (default_group_ids).map { |csil_e| csil_e }
     csil_map
   end
 
@@ -2593,7 +2813,9 @@ class CreateNodeTokenRequest
 
   def self.csil_from_tree(node)
     new(
-      label: (node.key?("label") ? node["label"] : nil)
+      label: (node.key?("label") ? node["label"] : nil),
+      default_enabled: node["default_enabled"],
+      default_group_ids: (node["default_group_ids"]).map { |csil_e| csil_e }
     )
   end
 end
@@ -2608,6 +2830,7 @@ class NodeTokenResult
   def csil_to_tree
     csil_map = {}
     csil_map["token"] = token
+    csil_map["satellite"] = (satellite).csil_to_tree
     csil_map["fingerprints"] = (fingerprints).map { |csil_e| csil_e }
     csil_map
   end
@@ -2619,7 +2842,32 @@ class NodeTokenResult
   def self.csil_from_tree(node)
     new(
       token: node["token"],
-      fingerprints: (node["fingerprints"]).map { |csil_e| csil_e }
+      fingerprints: (node["fingerprints"]).map { |csil_e| csil_e },
+      satellite: SatelliteTokenInfo.csil_from_tree(node["satellite"])
+    )
+  end
+end
+
+# CBOR codec for RevokeSatelliteTokenRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class RevokeSatelliteTokenRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["satellite_id"] = satellite_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      satellite_id: node["satellite_id"]
     )
   end
 end
@@ -2728,6 +2976,32 @@ class SetSettingRequest
     new(
       key: node["key"],
       value: node["value"]
+    )
+  end
+end
+
+# CBOR codec for LibraryResyncStatus: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class LibraryResyncStatus
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["running"] = running
+    csil_map["started"] = started
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      running: node["running"],
+      started: node["started"]
     )
   end
 end

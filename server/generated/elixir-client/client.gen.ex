@@ -444,6 +444,88 @@ defmodule Csilgen.Generated.AdminClient do
     Csilgen.Generated.DeviceInfo.from_cbor(resp)
   end
 
+  @spec set_device_access(t(), Csilgen.Generated.SetDeviceAccessRequest.t()) ::
+          Csilgen.Generated.DeviceInfo.t()
+  def set_device_access(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "set-device-access",
+        Csilgen.Generated.SetDeviceAccessRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.DeviceInfo.from_cbor(resp)
+  end
+
+  @spec list_groups(t(), Csilgen.Generated.Page.t()) :: Csilgen.Generated.ListGroupsResponse.t()
+  def list_groups(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "list-groups",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.ListGroupsResponse.from_cbor(resp)
+  end
+
+  @spec create_group(t(), Csilgen.Generated.CreateGroupRequest.t()) ::
+          Csilgen.Generated.GroupInfo.t()
+  def create_group(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "create-group",
+        Csilgen.Generated.CreateGroupRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.GroupInfo.from_cbor(resp)
+  end
+
+  @spec set_group_members(t(), Csilgen.Generated.SetGroupMembersRequest.t()) ::
+          Csilgen.Generated.GroupInfo.t()
+  def set_group_members(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "set-group-members",
+        Csilgen.Generated.SetGroupMembersRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.GroupInfo.from_cbor(resp)
+  end
+
+  @spec delete_group(t(), Csilgen.Generated.DeleteGroupRequest.t()) :: Csilgen.Generated.Ok.t()
+  def delete_group(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "delete-group",
+        Csilgen.Generated.DeleteGroupRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
+  @spec list_satellite_tokens(t(), Csilgen.Generated.Page.t()) ::
+          Csilgen.Generated.ListSatelliteTokensResponse.t()
+  def list_satellite_tokens(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "list-satellite-tokens",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.ListSatelliteTokensResponse.from_cbor(resp)
+  end
+
   @spec create_node_token(t(), Csilgen.Generated.CreateNodeTokenRequest.t()) ::
           Csilgen.Generated.NodeTokenResult.t()
   def create_node_token(%__MODULE__{transport: transport}, req) do
@@ -456,6 +538,20 @@ defmodule Csilgen.Generated.AdminClient do
       )
 
     Csilgen.Generated.NodeTokenResult.from_cbor(resp)
+  end
+
+  @spec revoke_satellite_token(t(), Csilgen.Generated.RevokeSatelliteTokenRequest.t()) ::
+          Csilgen.Generated.Ok.t()
+  def revoke_satellite_token(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "revoke-satellite-token",
+        Csilgen.Generated.RevokeSatelliteTokenRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
   end
 
   @spec import_track(t(), Csilgen.Generated.ImportTrackRequest.t()) ::
@@ -497,5 +593,33 @@ defmodule Csilgen.Generated.AdminClient do
       )
 
     Csilgen.Generated.Settings.from_cbor(resp)
+  end
+
+  @spec resync_library(t(), Csilgen.Generated.Page.t()) ::
+          Csilgen.Generated.LibraryResyncStatus.t()
+  def resync_library(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "resync-library",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.LibraryResyncStatus.from_cbor(resp)
+  end
+
+  @spec get_resync_status(t(), Csilgen.Generated.Page.t()) ::
+          Csilgen.Generated.LibraryResyncStatus.t()
+  def get_resync_status(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "get-resync-status",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.LibraryResyncStatus.from_cbor(resp)
   end
 end

@@ -430,12 +430,22 @@ public static class Codec
         ListNodesResponse csilTyped => ListNodesResponseToCborValue(csilTyped),
         RenameNodeRequest csilTyped => RenameNodeRequestToCborValue(csilTyped),
         RenameDeviceRequest csilTyped => RenameDeviceRequestToCborValue(csilTyped),
+        SetDeviceAccessRequest csilTyped => SetDeviceAccessRequestToCborValue(csilTyped),
+        GroupInfo csilTyped => GroupInfoToCborValue(csilTyped),
+        ListGroupsResponse csilTyped => ListGroupsResponseToCborValue(csilTyped),
+        CreateGroupRequest csilTyped => CreateGroupRequestToCborValue(csilTyped),
+        SetGroupMembersRequest csilTyped => SetGroupMembersRequestToCborValue(csilTyped),
+        DeleteGroupRequest csilTyped => DeleteGroupRequestToCborValue(csilTyped),
+        SatelliteTokenInfo csilTyped => SatelliteTokenInfoToCborValue(csilTyped),
+        ListSatelliteTokensResponse csilTyped => ListSatelliteTokensResponseToCborValue(csilTyped),
         CreateNodeTokenRequest csilTyped => CreateNodeTokenRequestToCborValue(csilTyped),
         NodeTokenResult csilTyped => NodeTokenResultToCborValue(csilTyped),
+        RevokeSatelliteTokenRequest csilTyped => RevokeSatelliteTokenRequestToCborValue(csilTyped),
         ImportTrackRequest csilTyped => ImportTrackRequestToCborValue(csilTyped),
         ImportResult csilTyped => ImportResultToCborValue(csilTyped),
         Settings csilTyped => SettingsToCborValue(csilTyped),
         SetSettingRequest csilTyped => SetSettingRequestToCborValue(csilTyped),
+        LibraryResyncStatus csilTyped => LibraryResyncStatusToCborValue(csilTyped),
         _ => throw new System.ArgumentException("csilgen: no CSIL codec for the requested type"),
     };
 
@@ -532,12 +542,22 @@ public static class Codec
         if (csilType == typeof(ListNodesResponse)) return ListNodesResponseFromCborValue(value);
         if (csilType == typeof(RenameNodeRequest)) return RenameNodeRequestFromCborValue(value);
         if (csilType == typeof(RenameDeviceRequest)) return RenameDeviceRequestFromCborValue(value);
+        if (csilType == typeof(SetDeviceAccessRequest)) return SetDeviceAccessRequestFromCborValue(value);
+        if (csilType == typeof(GroupInfo)) return GroupInfoFromCborValue(value);
+        if (csilType == typeof(ListGroupsResponse)) return ListGroupsResponseFromCborValue(value);
+        if (csilType == typeof(CreateGroupRequest)) return CreateGroupRequestFromCborValue(value);
+        if (csilType == typeof(SetGroupMembersRequest)) return SetGroupMembersRequestFromCborValue(value);
+        if (csilType == typeof(DeleteGroupRequest)) return DeleteGroupRequestFromCborValue(value);
+        if (csilType == typeof(SatelliteTokenInfo)) return SatelliteTokenInfoFromCborValue(value);
+        if (csilType == typeof(ListSatelliteTokensResponse)) return ListSatelliteTokensResponseFromCborValue(value);
         if (csilType == typeof(CreateNodeTokenRequest)) return CreateNodeTokenRequestFromCborValue(value);
         if (csilType == typeof(NodeTokenResult)) return NodeTokenResultFromCborValue(value);
+        if (csilType == typeof(RevokeSatelliteTokenRequest)) return RevokeSatelliteTokenRequestFromCborValue(value);
         if (csilType == typeof(ImportTrackRequest)) return ImportTrackRequestFromCborValue(value);
         if (csilType == typeof(ImportResult)) return ImportResultFromCborValue(value);
         if (csilType == typeof(Settings)) return SettingsFromCborValue(value);
         if (csilType == typeof(SetSettingRequest)) return SetSettingRequestFromCborValue(value);
+        if (csilType == typeof(LibraryResyncStatus)) return LibraryResyncStatusFromCborValue(value);
         throw new System.ArgumentException("csilgen: no CSIL codec for the requested type");
     }
 
@@ -763,10 +783,11 @@ public static class Codec
             csilEntries.Add((new CborValue.Text("token"), new CborValue.Text(csilV1)));
         }
         csilEntries.Add((new CborValue.Text("handle"), new CborValue.Text(value.Handle)));
+        csilEntries.Add((new CborValue.Text("can_admin"), new CborValue.Bool(value.CanAdmin)));
         csilEntries.Add((new CborValue.Text("account_id"), new CborValue.Text(value.AccountId)));
-        if (value.DisplayName is { } csilV4)
+        if (value.DisplayName is { } csilV5)
         {
-            csilEntries.Add((new CborValue.Text("display_name"), new CborValue.Text(csilV4)));
+            csilEntries.Add((new CborValue.Text("display_name"), new CborValue.Text(csilV5)));
         }
         return new CborValue.Map(csilEntries);
     }
@@ -778,14 +799,16 @@ public static class Codec
         var csilField1 = Cbor.AsText(Cbor.Require(value, "handle"));
         string? csilField2 = Cbor.MapGet(value, "display_name") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
         var csilField3 = RoleFromCborValue(Cbor.Require(value, "role"));
-        string? csilField4 = Cbor.MapGet(value, "token") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
+        var csilField4 = Cbor.AsBool(Cbor.Require(value, "can_admin"));
+        string? csilField5 = Cbor.MapGet(value, "token") is { } csilRaw5 ? Cbor.AsText(csilRaw5) : null;
         return new SessionInfo
         {
             AccountId = csilField0,
             Handle = csilField1,
             DisplayName = csilField2,
             Role = csilField3,
-            Token = csilField4,
+            CanAdmin = csilField4,
+            Token = csilField5,
         };
     }
 
@@ -900,6 +923,10 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("artist_id"), new CborValue.Text(csilV3)));
         }
+        if (value.ArtistName is { } csilV4)
+        {
+            csilEntries.Add((new CborValue.Text("artist_name"), new CborValue.Text(csilV4)));
+        }
         csilEntries.Add((new CborValue.Text("track_count"), new CborValue.Uint(value.TrackCount)));
         csilEntries.Add((new CborValue.Text("has_cover_art"), new CborValue.Bool(value.HasCoverArt)));
         return new CborValue.Map(csilEntries);
@@ -911,17 +938,19 @@ public static class Codec
         var csilField0 = Cbor.AsText(Cbor.Require(value, "id"));
         var csilField1 = Cbor.AsText(Cbor.Require(value, "title"));
         ArtistId? csilField2 = Cbor.MapGet(value, "artist_id") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
-        ulong? csilField3 = Cbor.MapGet(value, "year") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
-        var csilField4 = Cbor.AsBool(Cbor.Require(value, "has_cover_art"));
-        var csilField5 = Cbor.AsU64(Cbor.Require(value, "track_count"));
+        string? csilField3 = Cbor.MapGet(value, "artist_name") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
+        ulong? csilField4 = Cbor.MapGet(value, "year") is { } csilRaw4 ? Cbor.AsU64(csilRaw4) : null;
+        var csilField5 = Cbor.AsBool(Cbor.Require(value, "has_cover_art"));
+        var csilField6 = Cbor.AsU64(Cbor.Require(value, "track_count"));
         return new Album
         {
             Id = csilField0,
             Title = csilField1,
             ArtistId = csilField2,
-            Year = csilField3,
-            HasCoverArt = csilField4,
-            TrackCount = csilField5,
+            ArtistName = csilField3,
+            Year = csilField4,
+            HasCoverArt = csilField5,
+            TrackCount = csilField6,
         };
     }
 
@@ -2623,6 +2652,8 @@ public static class Codec
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("enabled"), new CborValue.Bool(value.Enabled)));
+        csilEntries.Add((new CborValue.Text("group_ids"), new CborValue.Array(value.GroupIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
         csilEntries.Add((new CborValue.Text("is_default"), new CborValue.Bool(value.IsDefault)));
         csilEntries.Add((new CborValue.Text("os_device_id"), new CborValue.Text(value.OsDeviceId)));
         csilEntries.Add((new CborValue.Text("friendly_name"), new CborValue.Text(value.FriendlyName)));
@@ -2636,12 +2667,16 @@ public static class Codec
         var csilField1 = Cbor.AsText(Cbor.Require(value, "os_device_id"));
         var csilField2 = Cbor.AsText(Cbor.Require(value, "friendly_name"));
         var csilField3 = Cbor.AsBool(Cbor.Require(value, "is_default"));
+        var csilField4 = Cbor.AsBool(Cbor.Require(value, "enabled"));
+        var csilField5 = Cbor.AsArray(Cbor.Require(value, "group_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
         return new DeviceInfo
         {
             Id = csilField0,
             OsDeviceId = csilField1,
             FriendlyName = csilField2,
             IsDefault = csilField3,
+            Enabled = csilField4,
+            GroupIds = csilField5,
         };
     }
 
@@ -2750,6 +2785,177 @@ public static class Codec
         };
     }
 
+    /// <summary>The canonical CBOR value tree for a SetDeviceAccessRequest.</summary>
+    public static CborValue SetDeviceAccessRequestToCborValue(SetDeviceAccessRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("enabled"), new CborValue.Bool(value.Enabled)));
+        csilEntries.Add((new CborValue.Text("device_id"), new CborValue.Text(value.DeviceId)));
+        csilEntries.Add((new CborValue.Text("group_ids"), new CborValue.Array(value.GroupIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a SetDeviceAccessRequest from a decoded CBOR value tree.</summary>
+    public static SetDeviceAccessRequest SetDeviceAccessRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "device_id"));
+        var csilField1 = Cbor.AsBool(Cbor.Require(value, "enabled"));
+        var csilField2 = Cbor.AsArray(Cbor.Require(value, "group_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        return new SetDeviceAccessRequest
+        {
+            DeviceId = csilField0,
+            Enabled = csilField1,
+            GroupIds = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a GroupInfo.</summary>
+    public static CborValue GroupInfoToCborValue(GroupInfo value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("name"), new CborValue.Text(value.Name)));
+        csilEntries.Add((new CborValue.Text("member_account_ids"), new CborValue.Array(value.MemberAccountIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a GroupInfo from a decoded CBOR value tree.</summary>
+    public static GroupInfo GroupInfoFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "name"));
+        var csilField2 = Cbor.AsArray(Cbor.Require(value, "member_account_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        return new GroupInfo
+        {
+            Id = csilField0,
+            Name = csilField1,
+            MemberAccountIds = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ListGroupsResponse.</summary>
+    public static CborValue ListGroupsResponseToCborValue(ListGroupsResponse value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("groups"), new CborValue.Array(value.Groups.Select(csilElem => (CborValue)GroupInfoToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ListGroupsResponse from a decoded CBOR value tree.</summary>
+    public static ListGroupsResponse ListGroupsResponseFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "groups")).Select(csilElem => GroupInfoFromCborValue(csilElem)).ToList();
+        return new ListGroupsResponse
+        {
+            Groups = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CreateGroupRequest.</summary>
+    public static CborValue CreateGroupRequestToCborValue(CreateGroupRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("name"), new CborValue.Text(value.Name)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CreateGroupRequest from a decoded CBOR value tree.</summary>
+    public static CreateGroupRequest CreateGroupRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "name"));
+        return new CreateGroupRequest
+        {
+            Name = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a SetGroupMembersRequest.</summary>
+    public static CborValue SetGroupMembersRequestToCborValue(SetGroupMembersRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("group_id"), new CborValue.Text(value.GroupId)));
+        csilEntries.Add((new CborValue.Text("member_account_ids"), new CborValue.Array(value.MemberAccountIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a SetGroupMembersRequest from a decoded CBOR value tree.</summary>
+    public static SetGroupMembersRequest SetGroupMembersRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "group_id"));
+        var csilField1 = Cbor.AsArray(Cbor.Require(value, "member_account_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        return new SetGroupMembersRequest
+        {
+            GroupId = csilField0,
+            MemberAccountIds = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a DeleteGroupRequest.</summary>
+    public static CborValue DeleteGroupRequestToCborValue(DeleteGroupRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("group_id"), new CborValue.Text(value.GroupId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a DeleteGroupRequest from a decoded CBOR value tree.</summary>
+    public static DeleteGroupRequest DeleteGroupRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "group_id"));
+        return new DeleteGroupRequest
+        {
+            GroupId = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a SatelliteTokenInfo.</summary>
+    public static CborValue SatelliteTokenInfoToCborValue(SatelliteTokenInfo value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("name"), new CborValue.Text(value.Name)));
+        csilEntries.Add((new CborValue.Text("created_at"), Cbor.EncTimestamp(value.CreatedAt)));
+        csilEntries.Add((new CborValue.Text("default_enabled"), new CborValue.Bool(value.DefaultEnabled)));
+        csilEntries.Add((new CborValue.Text("default_group_ids"), new CborValue.Array(value.DefaultGroupIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a SatelliteTokenInfo from a decoded CBOR value tree.</summary>
+    public static SatelliteTokenInfo SatelliteTokenInfoFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "name"));
+        var csilField2 = Cbor.AsBool(Cbor.Require(value, "default_enabled"));
+        var csilField3 = Cbor.AsArray(Cbor.Require(value, "default_group_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        var csilField4 = Cbor.AsTimestamp(Cbor.Require(value, "created_at"));
+        return new SatelliteTokenInfo
+        {
+            Id = csilField0,
+            Name = csilField1,
+            DefaultEnabled = csilField2,
+            DefaultGroupIds = csilField3,
+            CreatedAt = csilField4,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ListSatelliteTokensResponse.</summary>
+    public static CborValue ListSatelliteTokensResponseToCborValue(ListSatelliteTokensResponse value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("satellites"), new CborValue.Array(value.Satellites.Select(csilElem => (CborValue)SatelliteTokenInfoToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ListSatelliteTokensResponse from a decoded CBOR value tree.</summary>
+    public static ListSatelliteTokensResponse ListSatelliteTokensResponseFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "satellites")).Select(csilElem => SatelliteTokenInfoFromCborValue(csilElem)).ToList();
+        return new ListSatelliteTokensResponse
+        {
+            Satellites = csilField0,
+        };
+    }
+
     /// <summary>The canonical CBOR value tree for a CreateNodeTokenRequest.</summary>
     public static CborValue CreateNodeTokenRequestToCborValue(CreateNodeTokenRequest value)
     {
@@ -2758,6 +2964,8 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("label"), new CborValue.Text(csilV0)));
         }
+        csilEntries.Add((new CborValue.Text("default_enabled"), new CborValue.Bool(value.DefaultEnabled)));
+        csilEntries.Add((new CborValue.Text("default_group_ids"), new CborValue.Array(value.DefaultGroupIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2765,9 +2973,13 @@ public static class Codec
     public static CreateNodeTokenRequest CreateNodeTokenRequestFromCborValue(CborValue value)
     {
         string? csilField0 = Cbor.MapGet(value, "label") is { } csilRaw0 ? Cbor.AsText(csilRaw0) : null;
+        var csilField1 = Cbor.AsBool(Cbor.Require(value, "default_enabled"));
+        var csilField2 = Cbor.AsArray(Cbor.Require(value, "default_group_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
         return new CreateNodeTokenRequest
         {
             Label = csilField0,
+            DefaultEnabled = csilField1,
+            DefaultGroupIds = csilField2,
         };
     }
 
@@ -2776,6 +2988,7 @@ public static class Codec
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("token"), new CborValue.Text(value.Token)));
+        csilEntries.Add((new CborValue.Text("satellite"), SatelliteTokenInfoToCborValue(value.Satellite)));
         csilEntries.Add((new CborValue.Text("fingerprints"), new CborValue.Array(value.Fingerprints.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
         return new CborValue.Map(csilEntries);
     }
@@ -2785,10 +2998,30 @@ public static class Codec
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "token"));
         var csilField1 = Cbor.AsArray(Cbor.Require(value, "fingerprints")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        var csilField2 = SatelliteTokenInfoFromCborValue(Cbor.Require(value, "satellite"));
         return new NodeTokenResult
         {
             Token = csilField0,
             Fingerprints = csilField1,
+            Satellite = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a RevokeSatelliteTokenRequest.</summary>
+    public static CborValue RevokeSatelliteTokenRequestToCborValue(RevokeSatelliteTokenRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("satellite_id"), new CborValue.Text(value.SatelliteId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a RevokeSatelliteTokenRequest from a decoded CBOR value tree.</summary>
+    public static RevokeSatelliteTokenRequest RevokeSatelliteTokenRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "satellite_id"));
+        return new RevokeSatelliteTokenRequest
+        {
+            SatelliteId = csilField0,
         };
     }
 
@@ -2885,6 +3118,27 @@ public static class Codec
         {
             Key = csilField0,
             Value = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a LibraryResyncStatus.</summary>
+    public static CborValue LibraryResyncStatusToCborValue(LibraryResyncStatus value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("running"), new CborValue.Bool(value.Running)));
+        csilEntries.Add((new CborValue.Text("started"), new CborValue.Bool(value.Started)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a LibraryResyncStatus from a decoded CBOR value tree.</summary>
+    public static LibraryResyncStatus LibraryResyncStatusFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsBool(Cbor.Require(value, "running"));
+        var csilField1 = Cbor.AsBool(Cbor.Require(value, "started"));
+        return new LibraryResyncStatus
+        {
+            Running = csilField0,
+            Started = csilField1,
         };
     }
 }

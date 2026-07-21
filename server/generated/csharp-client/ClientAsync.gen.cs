@@ -100,13 +100,31 @@ public sealed class AdminAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<NodeInfo>(await transport.Call("AdminService", "rename-node", Codec.Encode(renameNodeRequest)));
     public async System.Threading.Tasks.Task<DeviceInfo> RenameDeviceAsync(RenameDeviceRequest renameDeviceRequest) =>
         Codec.Decode<DeviceInfo>(await transport.Call("AdminService", "rename-device", Codec.Encode(renameDeviceRequest)));
+    public async System.Threading.Tasks.Task<DeviceInfo> SetDeviceAccessAsync(SetDeviceAccessRequest setDeviceAccessRequest) =>
+        Codec.Decode<DeviceInfo>(await transport.Call("AdminService", "set-device-access", Codec.Encode(setDeviceAccessRequest)));
+    public async System.Threading.Tasks.Task<ListGroupsResponse> ListGroupsAsync(Page page) =>
+        Codec.Decode<ListGroupsResponse>(await transport.Call("AdminService", "list-groups", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<GroupInfo> CreateGroupAsync(CreateGroupRequest createGroupRequest) =>
+        Codec.Decode<GroupInfo>(await transport.Call("AdminService", "create-group", Codec.Encode(createGroupRequest)));
+    public async System.Threading.Tasks.Task<GroupInfo> SetGroupMembersAsync(SetGroupMembersRequest setGroupMembersRequest) =>
+        Codec.Decode<GroupInfo>(await transport.Call("AdminService", "set-group-members", Codec.Encode(setGroupMembersRequest)));
+    public async System.Threading.Tasks.Task<Ok> DeleteGroupAsync(DeleteGroupRequest deleteGroupRequest) =>
+        Codec.Decode<Ok>(await transport.Call("AdminService", "delete-group", Codec.Encode(deleteGroupRequest)));
+    public async System.Threading.Tasks.Task<ListSatelliteTokensResponse> ListSatelliteTokensAsync(Page page) =>
+        Codec.Decode<ListSatelliteTokensResponse>(await transport.Call("AdminService", "list-satellite-tokens", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<NodeTokenResult> CreateNodeTokenAsync(CreateNodeTokenRequest createNodeTokenRequest) =>
         Codec.Decode<NodeTokenResult>(await transport.Call("AdminService", "create-node-token", Codec.Encode(createNodeTokenRequest)));
+    public async System.Threading.Tasks.Task<Ok> RevokeSatelliteTokenAsync(RevokeSatelliteTokenRequest revokeSatelliteTokenRequest) =>
+        Codec.Decode<Ok>(await transport.Call("AdminService", "revoke-satellite-token", Codec.Encode(revokeSatelliteTokenRequest)));
     public async System.Threading.Tasks.Task<ImportResult> ImportTrackAsync(ImportTrackRequest importTrackRequest) =>
         Codec.Decode<ImportResult>(await transport.Call("AdminService", "import-track", Codec.Encode(importTrackRequest)));
     public async System.Threading.Tasks.Task<Settings> GetSettingsAsync(Page page) =>
         Codec.Decode<Settings>(await transport.Call("AdminService", "get-settings", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<Settings> SetSettingAsync(SetSettingRequest setSettingRequest) =>
         Codec.Decode<Settings>(await transport.Call("AdminService", "set-setting", Codec.Encode(setSettingRequest)));
+    public async System.Threading.Tasks.Task<LibraryResyncStatus> ResyncLibraryAsync(Page page) =>
+        Codec.Decode<LibraryResyncStatus>(await transport.Call("AdminService", "resync-library", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<LibraryResyncStatus> GetResyncStatusAsync(Page page) =>
+        Codec.Decode<LibraryResyncStatus>(await transport.Call("AdminService", "get-resync-status", Codec.Encode(page)));
 }
 

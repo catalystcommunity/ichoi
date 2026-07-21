@@ -24,6 +24,7 @@ Album = {
     id: AlbumId,
     title: text,
     ? artist_id: ArtistId,
+    ? artist_name: text,
     ? year: uint,
     has_cover_art: bool .default false,
     track_count: uint

@@ -103,6 +103,8 @@ data class SessionInfo(
     // wire key: display_name
     val displayName: String? = null,
     val role: Role,
+    // wire key: can_admin
+    val canAdmin: Boolean = false,
     val token: String? = null
 )
 
@@ -144,6 +146,8 @@ data class Album(
     val title: String,
     // wire key: artist_id
     val artistId: ArtistId? = null,
+    // wire key: artist_name
+    val artistName: String? = null,
     val year: ULong? = null,
     // wire key: has_cover_art
     val hasCoverArt: Boolean = false,
@@ -734,7 +738,10 @@ data class DeviceInfo(
     // wire key: friendly_name
     val friendlyName: String,
     // wire key: is_default
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    val enabled: Boolean = true,
+    // wire key: group_ids
+    val groupIds: List<String>
 )
 
 /** NodeInfo record. */
@@ -774,15 +781,84 @@ data class RenameDeviceRequest(
     val friendlyName: String
 )
 
+/** SetDeviceAccessRequest record. */
+data class SetDeviceAccessRequest(
+    // wire key: device_id
+    val deviceId: DeviceId,
+    val enabled: Boolean,
+    // wire key: group_ids
+    val groupIds: List<String>
+)
+
+/** GroupInfo record. */
+data class GroupInfo(
+    val id: String,
+    val name: String,
+    // wire key: member_account_ids
+    val memberAccountIds: List<AccountId>
+)
+
+/** ListGroupsResponse record. */
+data class ListGroupsResponse(
+    val groups: List<GroupInfo>
+)
+
+/** CreateGroupRequest record. */
+data class CreateGroupRequest(
+    val name: String
+)
+
+/** SetGroupMembersRequest record. */
+data class SetGroupMembersRequest(
+    // wire key: group_id
+    val groupId: String,
+    // wire key: member_account_ids
+    val memberAccountIds: List<AccountId>
+)
+
+/** DeleteGroupRequest record. */
+data class DeleteGroupRequest(
+    // wire key: group_id
+    val groupId: String
+)
+
+/** SatelliteTokenInfo record. */
+data class SatelliteTokenInfo(
+    val id: String,
+    val name: String,
+    // wire key: default_enabled
+    val defaultEnabled: Boolean = true,
+    // wire key: default_group_ids
+    val defaultGroupIds: List<String>,
+    // wire key: created_at
+    val createdAt: java.time.Instant
+)
+
+/** ListSatelliteTokensResponse record. */
+data class ListSatelliteTokensResponse(
+    val satellites: List<SatelliteTokenInfo>
+)
+
 /** CreateNodeTokenRequest record. */
 data class CreateNodeTokenRequest(
-    val label: String? = null
+    val label: String? = null,
+    // wire key: default_enabled
+    val defaultEnabled: Boolean = true,
+    // wire key: default_group_ids
+    val defaultGroupIds: List<String>
 )
 
 /** NodeTokenResult record. */
 data class NodeTokenResult(
     val token: String,
-    val fingerprints: List<String>
+    val fingerprints: List<String>,
+    val satellite: SatelliteTokenInfo
+)
+
+/** RevokeSatelliteTokenRequest record. */
+data class RevokeSatelliteTokenRequest(
+    // wire key: satellite_id
+    val satelliteId: String
 )
 
 /** ImportTrackRequest record. */
@@ -832,5 +908,11 @@ data class Settings(
 data class SetSettingRequest(
     val key: String,
     val value: String
+)
+
+/** LibraryResyncStatus record. */
+data class LibraryResyncStatus(
+    val running: Boolean,
+    val started: Boolean = false
 )
 

@@ -459,6 +459,7 @@ public extension SessionInfo {
         csilEntries.append(("role", self.role.toCborValue()))
         if let csilV = self.token { csilEntries.append(("token", .text(csilV))) }
         csilEntries.append(("handle", .text(self.handle)))
+        csilEntries.append(("can_admin", .bool(self.canAdmin)))
         csilEntries.append(("account_id", .text(self.accountId)))
         if let csilV = self.displayName { csilEntries.append(("display_name", .text(csilV))) }
         return .map(csilEntries)
@@ -470,8 +471,9 @@ public extension SessionInfo {
         let handle = try CsilCbor.asText((try CsilCbor.require(cborValue, "handle")))
         let displayName: String? = if let csilV = CsilCbor.mapGet(cborValue, "display_name") { try CsilCbor.asText(csilV) } else { nil }
         let role = try Role(cborValue: (try CsilCbor.require(cborValue, "role")))
+        let canAdmin = try CsilCbor.asBool((try CsilCbor.require(cborValue, "can_admin")))
         let token: String? = if let csilV = CsilCbor.mapGet(cborValue, "token") { try CsilCbor.asText(csilV) } else { nil }
-        self.init(accountId: accountId, handle: handle, displayName: displayName, role: role, token: token)
+        self.init(accountId: accountId, handle: handle, displayName: displayName, role: role, canAdmin: canAdmin, token: token)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -557,6 +559,7 @@ public extension Album {
         if let csilV = self.year { csilEntries.append(("year", .uint(csilV))) }
         csilEntries.append(("title", .text(self.title)))
         if let csilV = self.artistId { csilEntries.append(("artist_id", .text(csilV))) }
+        if let csilV = self.artistName { csilEntries.append(("artist_name", .text(csilV))) }
         csilEntries.append(("track_count", .uint(self.trackCount)))
         csilEntries.append(("has_cover_art", .bool(self.hasCoverArt)))
         return .map(csilEntries)
@@ -567,10 +570,11 @@ public extension Album {
         let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
         let title = try CsilCbor.asText((try CsilCbor.require(cborValue, "title")))
         let artistId: ArtistId? = if let csilV = CsilCbor.mapGet(cborValue, "artist_id") { try CsilCbor.asText(csilV) } else { nil }
+        let artistName: String? = if let csilV = CsilCbor.mapGet(cborValue, "artist_name") { try CsilCbor.asText(csilV) } else { nil }
         let year: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "year") { try CsilCbor.asU64(csilV) } else { nil }
         let hasCoverArt = try CsilCbor.asBool((try CsilCbor.require(cborValue, "has_cover_art")))
         let trackCount = try CsilCbor.asU64((try CsilCbor.require(cborValue, "track_count")))
-        self.init(id: id, title: title, artistId: artistId, year: year, hasCoverArt: hasCoverArt, trackCount: trackCount)
+        self.init(id: id, title: title, artistId: artistId, artistName: artistName, year: year, hasCoverArt: hasCoverArt, trackCount: trackCount)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2376,6 +2380,8 @@ public extension DeviceInfo {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("id", .text(self.id)))
+        csilEntries.append(("enabled", .bool(self.enabled)))
+        csilEntries.append(("group_ids", CsilCborValue.array(self.groupIds.map { .text($0) })))
         csilEntries.append(("is_default", .bool(self.isDefault)))
         csilEntries.append(("os_device_id", .text(self.osDeviceId)))
         csilEntries.append(("friendly_name", .text(self.friendlyName)))
@@ -2388,7 +2394,9 @@ public extension DeviceInfo {
         let osDeviceId = try CsilCbor.asText((try CsilCbor.require(cborValue, "os_device_id")))
         let friendlyName = try CsilCbor.asText((try CsilCbor.require(cborValue, "friendly_name")))
         let isDefault = try CsilCbor.asBool((try CsilCbor.require(cborValue, "is_default")))
-        self.init(id: id, osDeviceId: osDeviceId, friendlyName: friendlyName, isDefault: isDefault)
+        let enabled = try CsilCbor.asBool((try CsilCbor.require(cborValue, "enabled")))
+        let groupIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "group_ids"))).map { try CsilCbor.asText($0) }
+        self.init(id: id, osDeviceId: osDeviceId, friendlyName: friendlyName, isDefault: isDefault, enabled: enabled, groupIds: groupIds)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2502,18 +2510,208 @@ public extension RenameDeviceRequest {
     static func fromCbor(_ bytes: [UInt8]) throws -> RenameDeviceRequest { try RenameDeviceRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension SetDeviceAccessRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("enabled", .bool(self.enabled)))
+        csilEntries.append(("device_id", .text(self.deviceId)))
+        csilEntries.append(("group_ids", CsilCborValue.array(self.groupIds.map { .text($0) })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let deviceId = try CsilCbor.asText((try CsilCbor.require(cborValue, "device_id")))
+        let enabled = try CsilCbor.asBool((try CsilCbor.require(cborValue, "enabled")))
+        let groupIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "group_ids"))).map { try CsilCbor.asText($0) }
+        self.init(deviceId: deviceId, enabled: enabled, groupIds: groupIds)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> SetDeviceAccessRequest { try SetDeviceAccessRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension GroupInfo {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("id", .text(self.id)))
+        csilEntries.append(("name", .text(self.name)))
+        csilEntries.append(("member_account_ids", CsilCborValue.array(self.memberAccountIds.map { .text($0) })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let name = try CsilCbor.asText((try CsilCbor.require(cborValue, "name")))
+        let memberAccountIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "member_account_ids"))).map { try CsilCbor.asText($0) }
+        self.init(id: id, name: name, memberAccountIds: memberAccountIds)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> GroupInfo { try GroupInfo(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ListGroupsResponse {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("groups", CsilCborValue.array(self.groups.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let groups = try CsilCbor.asArray((try CsilCbor.require(cborValue, "groups"))).map { try GroupInfo(cborValue: $0) }
+        self.init(groups: groups)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ListGroupsResponse { try ListGroupsResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CreateGroupRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("name", .text(self.name)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let name = try CsilCbor.asText((try CsilCbor.require(cborValue, "name")))
+        self.init(name: name)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CreateGroupRequest { try CreateGroupRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension SetGroupMembersRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("group_id", .text(self.groupId)))
+        csilEntries.append(("member_account_ids", CsilCborValue.array(self.memberAccountIds.map { .text($0) })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let groupId = try CsilCbor.asText((try CsilCbor.require(cborValue, "group_id")))
+        let memberAccountIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "member_account_ids"))).map { try CsilCbor.asText($0) }
+        self.init(groupId: groupId, memberAccountIds: memberAccountIds)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> SetGroupMembersRequest { try SetGroupMembersRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension DeleteGroupRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("group_id", .text(self.groupId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let groupId = try CsilCbor.asText((try CsilCbor.require(cborValue, "group_id")))
+        self.init(groupId: groupId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> DeleteGroupRequest { try DeleteGroupRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension SatelliteTokenInfo {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("id", .text(self.id)))
+        csilEntries.append(("name", .text(self.name)))
+        csilEntries.append(("created_at", .tag(0, .text(self.createdAt))))
+        csilEntries.append(("default_enabled", .bool(self.defaultEnabled)))
+        csilEntries.append(("default_group_ids", CsilCborValue.array(self.defaultGroupIds.map { .text($0) })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let name = try CsilCbor.asText((try CsilCbor.require(cborValue, "name")))
+        let defaultEnabled = try CsilCbor.asBool((try CsilCbor.require(cborValue, "default_enabled")))
+        let defaultGroupIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "default_group_ids"))).map { try CsilCbor.asText($0) }
+        let createdAt = try CsilCbor.asTaggedText((try CsilCbor.require(cborValue, "created_at")), 0)
+        self.init(id: id, name: name, defaultEnabled: defaultEnabled, defaultGroupIds: defaultGroupIds, createdAt: createdAt)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> SatelliteTokenInfo { try SatelliteTokenInfo(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ListSatelliteTokensResponse {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("satellites", CsilCborValue.array(self.satellites.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let satellites = try CsilCbor.asArray((try CsilCbor.require(cborValue, "satellites"))).map { try SatelliteTokenInfo(cborValue: $0) }
+        self.init(satellites: satellites)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ListSatelliteTokensResponse { try ListSatelliteTokensResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension CreateNodeTokenRequest {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         if let csilV = self.label { csilEntries.append(("label", .text(csilV))) }
+        csilEntries.append(("default_enabled", .bool(self.defaultEnabled)))
+        csilEntries.append(("default_group_ids", CsilCborValue.array(self.defaultGroupIds.map { .text($0) })))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let label: String? = if let csilV = CsilCbor.mapGet(cborValue, "label") { try CsilCbor.asText(csilV) } else { nil }
-        self.init(label: label)
+        let defaultEnabled = try CsilCbor.asBool((try CsilCbor.require(cborValue, "default_enabled")))
+        let defaultGroupIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "default_group_ids"))).map { try CsilCbor.asText($0) }
+        self.init(label: label, defaultEnabled: defaultEnabled, defaultGroupIds: defaultGroupIds)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2528,6 +2726,7 @@ public extension NodeTokenResult {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("token", .text(self.token)))
+        csilEntries.append(("satellite", self.satellite.toCborValue()))
         csilEntries.append(("fingerprints", CsilCborValue.array(self.fingerprints.map { .text($0) })))
         return .map(csilEntries)
     }
@@ -2536,7 +2735,8 @@ public extension NodeTokenResult {
     init(cborValue: CsilCborValue) throws {
         let token = try CsilCbor.asText((try CsilCbor.require(cborValue, "token")))
         let fingerprints = try CsilCbor.asArray((try CsilCbor.require(cborValue, "fingerprints"))).map { try CsilCbor.asText($0) }
-        self.init(token: token, fingerprints: fingerprints)
+        let satellite = try SatelliteTokenInfo(cborValue: (try CsilCbor.require(cborValue, "satellite")))
+        self.init(token: token, fingerprints: fingerprints, satellite: satellite)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2544,6 +2744,27 @@ public extension NodeTokenResult {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> NodeTokenResult { try NodeTokenResult(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension RevokeSatelliteTokenRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("satellite_id", .text(self.satelliteId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let satelliteId = try CsilCbor.asText((try CsilCbor.require(cborValue, "satellite_id")))
+        self.init(satelliteId: satelliteId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> RevokeSatelliteTokenRequest { try RevokeSatelliteTokenRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension ImportTrackRequest {
@@ -2640,5 +2861,28 @@ public extension SetSettingRequest {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> SetSettingRequest { try SetSettingRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension LibraryResyncStatus {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("running", .bool(self.running)))
+        csilEntries.append(("started", .bool(self.started)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let running = try CsilCbor.asBool((try CsilCbor.require(cborValue, "running")))
+        let started = try CsilCbor.asBool((try CsilCbor.require(cborValue, "started")))
+        self.init(running: running, started: started)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> LibraryResyncStatus { try LibraryResyncStatus(cborValue: CsilCbor.decode(bytes)) }
 }
 

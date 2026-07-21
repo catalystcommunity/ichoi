@@ -298,6 +298,60 @@ final class AdminClient {
     return DeviceInfo.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  DeviceInfo setDeviceAccess(SetDeviceAccessRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'set-device-access',
+      request.toCbor(),
+    );
+    return DeviceInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ListGroupsResponse listGroups(Page request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'list-groups',
+      request.toCbor(),
+    );
+    return ListGroupsResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  GroupInfo createGroup(CreateGroupRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'create-group',
+      request.toCbor(),
+    );
+    return GroupInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  GroupInfo setGroupMembers(SetGroupMembersRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'set-group-members',
+      request.toCbor(),
+    );
+    return GroupInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok deleteGroup(DeleteGroupRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'delete-group',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ListSatelliteTokensResponse listSatelliteTokens(Page request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'list-satellite-tokens',
+      request.toCbor(),
+    );
+    return ListSatelliteTokensResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   NodeTokenResult createNodeToken(CreateNodeTokenRequest request) {
     final csilResp = transport.call(
       'AdminService',
@@ -305,6 +359,15 @@ final class AdminClient {
       request.toCbor(),
     );
     return NodeTokenResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok revokeSatelliteToken(RevokeSatelliteTokenRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'revoke-satellite-token',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   ImportResult importTrack(ImportTrackRequest request) {
@@ -332,5 +395,23 @@ final class AdminClient {
       request.toCbor(),
     );
     return Settings.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  LibraryResyncStatus resyncLibrary(Page request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'resync-library',
+      request.toCbor(),
+    );
+    return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  LibraryResyncStatus getResyncStatus(Page request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'get-resync-status',
+      request.toCbor(),
+    );
+    return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
   }
 }

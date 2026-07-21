@@ -83,6 +83,7 @@ type SessionInfo struct {
 	Handle      Handle    `json:"handle" yaml:"handle"`
 	DisplayName *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	Role        Role      `json:"role" yaml:"role"`
+	CanAdmin    bool      `json:"can_admin" yaml:"can_admin"`
 	Token       *string   `json:"token,omitempty" yaml:"token,omitempty"`
 }
 
@@ -113,6 +114,7 @@ type Album struct {
 	Id          AlbumId   `json:"id" yaml:"id"`
 	Title       string    `json:"title" yaml:"title"`
 	ArtistId    *ArtistId `json:"artist_id,omitempty" yaml:"artist_id,omitempty"`
+	ArtistName  *string   `json:"artist_name,omitempty" yaml:"artist_name,omitempty"`
 	Year        *uint64   `json:"year,omitempty" yaml:"year,omitempty"`
 	HasCoverArt bool      `json:"has_cover_art" yaml:"has_cover_art"`
 	TrackCount  uint64    `json:"track_count" yaml:"track_count"`
@@ -560,6 +562,8 @@ type DeviceInfo struct {
 	OsDeviceId   string   `json:"os_device_id" yaml:"os_device_id"`
 	FriendlyName string   `json:"friendly_name" yaml:"friendly_name"`
 	IsDefault    bool     `json:"is_default" yaml:"is_default"`
+	Enabled      bool     `json:"enabled" yaml:"enabled"`
+	GroupIds     []string `json:"group_ids" yaml:"group_ids"`
 }
 
 // NodeInfo represents a structured data type
@@ -592,15 +596,72 @@ type RenameDeviceRequest struct {
 	FriendlyName string   `json:"friendly_name" yaml:"friendly_name"`
 }
 
+// SetDeviceAccessRequest represents a structured data type
+type SetDeviceAccessRequest struct {
+	DeviceId DeviceId `json:"device_id" yaml:"device_id"`
+	Enabled  bool     `json:"enabled" yaml:"enabled"`
+	GroupIds []string `json:"group_ids" yaml:"group_ids"`
+}
+
+// GroupInfo represents a structured data type
+type GroupInfo struct {
+	Id               string      `json:"id" yaml:"id"`
+	Name             string      `json:"name" yaml:"name"`
+	MemberAccountIds []AccountId `json:"member_account_ids" yaml:"member_account_ids"`
+}
+
+// ListGroupsResponse represents a structured data type
+type ListGroupsResponse struct {
+	Groups []GroupInfo `json:"groups" yaml:"groups"`
+}
+
+// CreateGroupRequest represents a structured data type
+type CreateGroupRequest struct {
+	Name string `json:"name" yaml:"name"`
+}
+
+// SetGroupMembersRequest represents a structured data type
+type SetGroupMembersRequest struct {
+	GroupId          string      `json:"group_id" yaml:"group_id"`
+	MemberAccountIds []AccountId `json:"member_account_ids" yaml:"member_account_ids"`
+}
+
+// DeleteGroupRequest represents a structured data type
+type DeleteGroupRequest struct {
+	GroupId string `json:"group_id" yaml:"group_id"`
+}
+
+// SatelliteTokenInfo represents a structured data type
+type SatelliteTokenInfo struct {
+	Id              string    `json:"id" yaml:"id"`
+	Name            string    `json:"name" yaml:"name"`
+	DefaultEnabled  bool      `json:"default_enabled" yaml:"default_enabled"`
+	DefaultGroupIds []string  `json:"default_group_ids" yaml:"default_group_ids"`
+	CreatedAt       time.Time `json:"created_at" yaml:"created_at"`
+}
+
+// ListSatelliteTokensResponse represents a structured data type
+type ListSatelliteTokensResponse struct {
+	Satellites []SatelliteTokenInfo `json:"satellites" yaml:"satellites"`
+}
+
 // CreateNodeTokenRequest represents a structured data type
 type CreateNodeTokenRequest struct {
-	Label *string `json:"label,omitempty" yaml:"label,omitempty"`
+	Label           *string  `json:"label,omitempty" yaml:"label,omitempty"`
+	DefaultEnabled  bool     `json:"default_enabled" yaml:"default_enabled"`
+	DefaultGroupIds []string `json:"default_group_ids" yaml:"default_group_ids"`
 }
 
 // NodeTokenResult represents a structured data type
 type NodeTokenResult struct {
-	Token        string   `json:"token" yaml:"token"`
-	Fingerprints []string `json:"fingerprints" yaml:"fingerprints"`
+	Token        string             `json:"token" yaml:"token"`
+	Fingerprints []string           `json:"fingerprints" yaml:"fingerprints"`
+	Satellite    SatelliteTokenInfo `json:"satellite" yaml:"satellite"`
+}
+
+// RevokeSatelliteTokenRequest represents a structured data type
+type RevokeSatelliteTokenRequest struct {
+	SatelliteId string `json:"satellite_id" yaml:"satellite_id"`
 }
 
 // ImportTrackRequest represents a structured data type
@@ -627,4 +688,10 @@ type Settings struct {
 type SetSettingRequest struct {
 	Key   string `json:"key" yaml:"key"`
 	Value string `json:"value" yaml:"value"`
+}
+
+// LibraryResyncStatus represents a structured data type
+type LibraryResyncStatus struct {
+	Running bool `json:"running" yaml:"running"`
+	Started bool `json:"started" yaml:"started"`
 }

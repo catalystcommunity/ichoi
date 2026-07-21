@@ -474,6 +474,9 @@ async fn ws_conn(mut socket: WebSocket, app: App) {
                             // device and, via subscribe, drives its audio.
                             app.presence.attach(player_id, conn_id);
                         }
+                        if let Some(player_id) = effects.node_session {
+                            app.nodes.subscribe(player_id, conn_id, tx.clone());
+                        }
                         if let Some(frame) = reply {
                             if socket.send(Message::Binary(frame)).await.is_err() {
                                 break;
@@ -511,4 +514,5 @@ async fn ws_conn(mut socket: WebSocket, app: App) {
     }
     app.subs.unsubscribe_conn(conn_id);
     app.presence.detach_conn(conn_id);
+    app.nodes.unsubscribe_conn(conn_id);
 }

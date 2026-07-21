@@ -428,15 +428,65 @@ pub const ListNodesResponse = struct {
     nodes: []NodeInfo,
 };
 
+/// GroupInfo is a structured data type.
+pub const GroupInfo = struct {
+    id: []const u8,
+    name: []const u8,
+    member_account_ids: []AccountId,
+};
+
+/// ListGroupsResponse is a structured data type.
+pub const ListGroupsResponse = struct {
+    groups: []GroupInfo,
+};
+
+/// CreateGroupRequest is a structured data type.
+pub const CreateGroupRequest = struct {
+    name: []const u8,
+};
+
+/// SetGroupMembersRequest is a structured data type.
+pub const SetGroupMembersRequest = struct {
+    group_id: []const u8,
+    member_account_ids: []AccountId,
+};
+
+/// DeleteGroupRequest is a structured data type.
+pub const DeleteGroupRequest = struct {
+    group_id: []const u8,
+};
+
+/// SatelliteTokenInfo is a structured data type.
+pub const SatelliteTokenInfo = struct {
+    id: []const u8,
+    name: []const u8,
+    default_enabled: bool,
+    default_group_ids: [][]const u8,
+    created_at: CsilTimestamp,
+};
+
+/// ListSatelliteTokensResponse is a structured data type.
+pub const ListSatelliteTokensResponse = struct {
+    satellites: []SatelliteTokenInfo,
+};
+
 /// CreateNodeTokenRequest is a structured data type.
 pub const CreateNodeTokenRequest = struct {
     label: ?[]const u8 = null,
+    default_enabled: bool,
+    default_group_ids: [][]const u8,
 };
 
 /// NodeTokenResult is a structured data type.
 pub const NodeTokenResult = struct {
     token: []const u8,
     fingerprints: [][]const u8,
+    satellite: SatelliteTokenInfo,
+};
+
+/// RevokeSatelliteTokenRequest is a structured data type.
+pub const RevokeSatelliteTokenRequest = struct {
+    satellite_id: []const u8,
 };
 
 /// ImportTrackRequest is a structured data type.
@@ -465,12 +515,19 @@ pub const SetSettingRequest = struct {
     value: []const u8,
 };
 
+/// LibraryResyncStatus is a structured data type.
+pub const LibraryResyncStatus = struct {
+    running: bool,
+    started: bool,
+};
+
 /// SessionInfo is a structured data type.
 pub const SessionInfo = struct {
     account_id: AccountId,
     handle: Handle,
     display_name: ?[]const u8 = null,
     role: Role,
+    can_admin: bool,
     token: ?[]const u8 = null,
 };
 
@@ -498,6 +555,7 @@ pub const Album = struct {
     id: AlbumId,
     title: []const u8,
     artist_id: ?ArtistId = null,
+    artist_name: ?[]const u8 = null,
     year: ?u64 = null,
     has_cover_art: bool,
     track_count: u64,
@@ -780,6 +838,8 @@ pub const DeviceInfo = struct {
     os_device_id: []const u8,
     friendly_name: []const u8,
     is_default: bool,
+    enabled: bool,
+    group_ids: [][]const u8,
 };
 
 /// NodeInfo is a structured data type.
@@ -805,4 +865,11 @@ pub const RenameNodeRequest = struct {
 pub const RenameDeviceRequest = struct {
     device_id: DeviceId,
     friendly_name: []const u8,
+};
+
+/// SetDeviceAccessRequest is a structured data type.
+pub const SetDeviceAccessRequest = struct {
+    device_id: DeviceId,
+    enabled: bool,
+    group_ids: [][]const u8,
 };

@@ -491,6 +491,114 @@ static inline int csil_admin_rename_device(const CsilgenTransport *t, const Rena
     return csil_drc;
 }
 
+/* Invoke AdminService/set-device-access with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_set_device_access(const CsilgenTransport *t, const SetDeviceAccessRequest *req,
+                        DeviceInfo *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_SetDeviceAccessRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "set-device-access", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_DeviceInfo(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/list-groups with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_list_groups(const CsilgenTransport *t, const Page *req,
+                        ListGroupsResponse *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_Page(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "list-groups", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_ListGroupsResponse(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/create-group with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_create_group(const CsilgenTransport *t, const CreateGroupRequest *req,
+                        GroupInfo *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_CreateGroupRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "create-group", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_GroupInfo(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/set-group-members with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_set_group_members(const CsilgenTransport *t, const SetGroupMembersRequest *req,
+                        GroupInfo *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_SetGroupMembersRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "set-group-members", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_GroupInfo(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/delete-group with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_delete_group(const CsilgenTransport *t, const DeleteGroupRequest *req,
+                        Ok *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_DeleteGroupRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "delete-group", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_Ok(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/list-satellite-tokens with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_list_satellite_tokens(const CsilgenTransport *t, const Page *req,
+                        ListSatelliteTokensResponse *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_Page(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "list-satellite-tokens", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_ListSatelliteTokensResponse(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
 /* Invoke AdminService/create-node-token with a typed request and decode the typed
  * response. *resp_owner holds the response's backing storage; free it once
  * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
@@ -505,6 +613,24 @@ static inline int csil_admin_create_node_token(const CsilgenTransport *t, const 
     free(csil_reqb);
     if (csil_rc != 0) { free(csil_respb); return csil_rc; }
     int csil_drc = csil_decode_NodeTokenResult(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/revoke-satellite-token with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_revoke_satellite_token(const CsilgenTransport *t, const RevokeSatelliteTokenRequest *req,
+                        Ok *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_RevokeSatelliteTokenRequest(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "revoke-satellite-token", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_Ok(csil_respb, csil_respn, resp, resp_owner);
     free(csil_respb);
     return csil_drc;
 }
@@ -559,6 +685,42 @@ static inline int csil_admin_set_setting(const CsilgenTransport *t, const SetSet
     free(csil_reqb);
     if (csil_rc != 0) { free(csil_respb); return csil_rc; }
     int csil_drc = csil_decode_Settings(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/resync-library with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_resync_library(const CsilgenTransport *t, const Page *req,
+                        LibraryResyncStatus *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_Page(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "resync-library", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_LibraryResyncStatus(csil_respb, csil_respn, resp, resp_owner);
+    free(csil_respb);
+    return csil_drc;
+}
+
+/* Invoke AdminService/get-resync-status with a typed request and decode the typed
+ * response. *resp_owner holds the response's backing storage; free it once
+ * with csil_codec_arena_free when done with *resp. Returns non-zero on failure. */
+static inline int csil_admin_get_resync_status(const CsilgenTransport *t, const Page *req,
+                        LibraryResyncStatus *resp, CsilCodecArena **resp_owner) {
+    uint8_t *csil_reqb = NULL;
+    size_t csil_reqn = 0;
+    if (csil_encode_Page(req, &csil_reqb, &csil_reqn)) return -1;
+    uint8_t *csil_respb = NULL;
+    size_t csil_respn = 0;
+    int csil_rc = t->call(t->self, "AdminService", "get-resync-status", csil_reqb, csil_reqn, &csil_respb, &csil_respn);
+    free(csil_reqb);
+    if (csil_rc != 0) { free(csil_respb); return csil_rc; }
+    int csil_drc = csil_decode_LibraryResyncStatus(csil_respb, csil_respn, resp, resp_owner);
     free(csil_respb);
     return csil_drc;
 }

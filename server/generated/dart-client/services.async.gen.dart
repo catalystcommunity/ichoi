@@ -299,6 +299,60 @@ final class AdminAsyncClient {
     return DeviceInfo.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<DeviceInfo> setDeviceAccess(SetDeviceAccessRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'set-device-access',
+      request.toCbor(),
+    );
+    return DeviceInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ListGroupsResponse> listGroups(Page request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'list-groups',
+      request.toCbor(),
+    );
+    return ListGroupsResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<GroupInfo> createGroup(CreateGroupRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'create-group',
+      request.toCbor(),
+    );
+    return GroupInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<GroupInfo> setGroupMembers(SetGroupMembersRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'set-group-members',
+      request.toCbor(),
+    );
+    return GroupInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> deleteGroup(DeleteGroupRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'delete-group',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ListSatelliteTokensResponse> listSatelliteTokens(Page request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'list-satellite-tokens',
+      request.toCbor(),
+    );
+    return ListSatelliteTokensResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<NodeTokenResult> createNodeToken(
     CreateNodeTokenRequest request,
   ) async {
@@ -308,6 +362,15 @@ final class AdminAsyncClient {
       request.toCbor(),
     );
     return NodeTokenResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> revokeSatelliteToken(RevokeSatelliteTokenRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'revoke-satellite-token',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   Future<ImportResult> importTrack(ImportTrackRequest request) async {
@@ -335,5 +398,23 @@ final class AdminAsyncClient {
       request.toCbor(),
     );
     return Settings.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<LibraryResyncStatus> resyncLibrary(Page request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'resync-library',
+      request.toCbor(),
+    );
+    return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<LibraryResyncStatus> getResyncStatus(Page request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'get-resync-status',
+      request.toCbor(),
+    );
+    return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
   }
 }

@@ -2,8 +2,8 @@
 // Source: <csil spec>
 // Target: typescript-client
 
-import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CommandRequest, CoverArt, CoverArtRequest, CreateNodeTokenRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ImportResult, ImportTrackRequest, LibrariesResponse, ListAccountsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
-import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromListAccountsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBrowseRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateNodeTokenRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toSearchRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toTrustDomainRequestCbor, toUpdateAudiobookProgressRequestCbor } from "./codec.gen.ts";
+import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, GroupInfo, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromGroupInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromLibraryResyncStatusCbor, fromListAccountsResponseCbor, fromListGroupsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromListSatelliteTokensResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBrowseRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateGroupRequestCbor, toCreateNodeTokenRequestCbor, toDeleteGroupRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toRevokeSatelliteTokenRequestCbor, toSearchRequestCbor, toSetDeviceAccessRequestCbor, toSetGroupMembersRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toTrustDomainRequestCbor, toUpdateAudiobookProgressRequestCbor } from "./codec.gen.ts";
 
 export interface AsyncServiceTransport {
   call(service: string, op: string, req: Uint8Array): Promise<Uint8Array>;
@@ -84,9 +84,72 @@ export class AdminAsyncClient {
    * @throws {ServiceError} when the API returns an error response
    * @throws transport errors (network, timeout) raised by the transport
    */
+  async setDeviceAccess(req: SetDeviceAccessRequest): Promise<DeviceInfo> {
+    const csilResp = await this.t.call("AdminService", "set-device-access", toSetDeviceAccessRequestCbor(req));
+    return fromDeviceInfoCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async listGroups(req: Page): Promise<ListGroupsResponse> {
+    const csilResp = await this.t.call("AdminService", "list-groups", toPageCbor(req));
+    return fromListGroupsResponseCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async createGroup(req: CreateGroupRequest): Promise<GroupInfo> {
+    const csilResp = await this.t.call("AdminService", "create-group", toCreateGroupRequestCbor(req));
+    return fromGroupInfoCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async setGroupMembers(req: SetGroupMembersRequest): Promise<GroupInfo> {
+    const csilResp = await this.t.call("AdminService", "set-group-members", toSetGroupMembersRequestCbor(req));
+    return fromGroupInfoCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async deleteGroup(req: DeleteGroupRequest): Promise<Ok> {
+    const csilResp = await this.t.call("AdminService", "delete-group", toDeleteGroupRequestCbor(req));
+    return fromOkCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async listSatelliteTokens(req: Page): Promise<ListSatelliteTokensResponse> {
+    const csilResp = await this.t.call("AdminService", "list-satellite-tokens", toPageCbor(req));
+    return fromListSatelliteTokensResponseCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
   async createNodeToken(req: CreateNodeTokenRequest): Promise<NodeTokenResult> {
     const csilResp = await this.t.call("AdminService", "create-node-token", toCreateNodeTokenRequestCbor(req));
     return fromNodeTokenResultCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async revokeSatelliteToken(req: RevokeSatelliteTokenRequest): Promise<Ok> {
+    const csilResp = await this.t.call("AdminService", "revoke-satellite-token", toRevokeSatelliteTokenRequestCbor(req));
+    return fromOkCbor(csilResp);
   }
 
   /**
@@ -114,6 +177,24 @@ export class AdminAsyncClient {
   async setSetting(req: SetSettingRequest): Promise<Settings> {
     const csilResp = await this.t.call("AdminService", "set-setting", toSetSettingRequestCbor(req));
     return fromSettingsCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async resyncLibrary(req: Page): Promise<LibraryResyncStatus> {
+    const csilResp = await this.t.call("AdminService", "resync-library", toPageCbor(req));
+    return fromLibraryResyncStatusCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async getResyncStatus(req: Page): Promise<LibraryResyncStatus> {
+    const csilResp = await this.t.call("AdminService", "get-resync-status", toPageCbor(req));
+    return fromLibraryResyncStatusCbor(csilResp);
   }
 }
 

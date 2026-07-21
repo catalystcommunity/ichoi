@@ -37,6 +37,7 @@ and session_info = {
   handle : handle;
   display_name : string option;
   role : role;
+  can_admin : bool;
   token : string option;
 }
 
@@ -64,6 +65,7 @@ and album = {
   id : album_id;
   title : string;
   artist_id : artist_id option;
+  artist_name : string option;
   year : int64 option;
   has_cover_art : bool;
   track_count : int64;
@@ -305,6 +307,8 @@ and device_info = {
   os_device_id : string;
   friendly_name : string;
   is_default : bool;
+  enabled : bool;
+  group_ids : string list;
 }
 
 and node_info = {
@@ -323,8 +327,53 @@ and node_info = {
 and list_nodes_response = { nodes : node_info list }
 and rename_node_request = { node_id : node_id; friendly_name : string }
 and rename_device_request = { device_id : device_id; friendly_name : string }
-and create_node_token_request = { label : string option }
-and node_token_result = { token : string; fingerprints : string list }
+
+and set_device_access_request = {
+  device_id : device_id;
+  enabled : bool;
+  group_ids : string list;
+}
+
+and group_info = {
+  id : string;
+  name : string;
+  member_account_ids : account_id list;
+}
+
+and list_groups_response = { groups : group_info list }
+and create_group_request = { name : string }
+
+and set_group_members_request = {
+  group_id : string;
+  member_account_ids : account_id list;
+}
+
+and delete_group_request = { group_id : string }
+
+and satellite_token_info = {
+  id : string;
+  name : string;
+  default_enabled : bool;
+  default_group_ids : string list;
+  (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
+  created_at : string;
+}
+
+and list_satellite_tokens_response = { satellites : satellite_token_info list }
+
+and create_node_token_request = {
+  label : string option;
+  default_enabled : bool;
+  default_group_ids : string list;
+}
+
+and node_token_result = {
+  token : string;
+  fingerprints : string list;
+  satellite : satellite_token_info;
+}
+
+and revoke_satellite_token_request = { satellite_id : string }
 
 and import_track_request = {
   root_relative_path : string;
@@ -341,3 +390,4 @@ and import_result = {
 
 and settings = { entries : (string * string) list }
 and set_setting_request = { key : string; value : string }
+and library_resync_status = { running : bool; started : bool }
