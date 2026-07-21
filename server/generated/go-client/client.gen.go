@@ -333,6 +333,60 @@ func (c *AdminClient) RenameDevice(ctx context.Context, req RenameDeviceRequest)
 	return DecodeDeviceInfo(csilResp)
 }
 
+func (c *AdminClient) SetDeviceAccess(ctx context.Context, req SetDeviceAccessRequest) (DeviceInfo, error) {
+	var csilZero DeviceInfo
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "set-device-access", EncodeSetDeviceAccessRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeDeviceInfo(csilResp)
+}
+
+func (c *AdminClient) ListGroups(ctx context.Context, req Page) (ListGroupsResponse, error) {
+	var csilZero ListGroupsResponse
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "list-groups", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeListGroupsResponse(csilResp)
+}
+
+func (c *AdminClient) CreateGroup(ctx context.Context, req CreateGroupRequest) (GroupInfo, error) {
+	var csilZero GroupInfo
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "create-group", EncodeCreateGroupRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeGroupInfo(csilResp)
+}
+
+func (c *AdminClient) SetGroupMembers(ctx context.Context, req SetGroupMembersRequest) (GroupInfo, error) {
+	var csilZero GroupInfo
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "set-group-members", EncodeSetGroupMembersRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeGroupInfo(csilResp)
+}
+
+func (c *AdminClient) DeleteGroup(ctx context.Context, req DeleteGroupRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "delete-group", EncodeDeleteGroupRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
+func (c *AdminClient) ListSatelliteTokens(ctx context.Context, req Page) (ListSatelliteTokensResponse, error) {
+	var csilZero ListSatelliteTokensResponse
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "list-satellite-tokens", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeListSatelliteTokensResponse(csilResp)
+}
+
 func (c *AdminClient) CreateNodeToken(ctx context.Context, req CreateNodeTokenRequest) (NodeTokenResult, error) {
 	var csilZero NodeTokenResult
 	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "create-node-token", EncodeCreateNodeTokenRequest(req))
@@ -340,6 +394,15 @@ func (c *AdminClient) CreateNodeToken(ctx context.Context, req CreateNodeTokenRe
 		return csilZero, csilErr
 	}
 	return DecodeNodeTokenResult(csilResp)
+}
+
+func (c *AdminClient) RevokeSatelliteToken(ctx context.Context, req RevokeSatelliteTokenRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "revoke-satellite-token", EncodeRevokeSatelliteTokenRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
 }
 
 func (c *AdminClient) ImportTrack(ctx context.Context, req ImportTrackRequest) (ImportResult, error) {
@@ -367,4 +430,22 @@ func (c *AdminClient) SetSetting(ctx context.Context, req SetSettingRequest) (Se
 		return csilZero, csilErr
 	}
 	return DecodeSettings(csilResp)
+}
+
+func (c *AdminClient) ResyncLibrary(ctx context.Context, req Page) (LibraryResyncStatus, error) {
+	var csilZero LibraryResyncStatus
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "resync-library", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeLibraryResyncStatus(csilResp)
+}
+
+func (c *AdminClient) GetResyncStatus(ctx context.Context, req Page) (LibraryResyncStatus, error) {
+	var csilZero LibraryResyncStatus
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "get-resync-status", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeLibraryResyncStatus(csilResp)
 }

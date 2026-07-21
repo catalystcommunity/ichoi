@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateNodeTokenRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, Handle, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, ListAccountsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, Role, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, GroupInfo, Handle, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -447,6 +447,7 @@ export function toSessionInfoCborValue(v: SessionInfo): CborValue {
   csilMap.set("role", v.role);
   if (v.token !== undefined) csilMap.set("token", v.token);
   csilMap.set("handle", v.handle);
+  csilMap.set("can_admin", v.canAdmin);
   csilMap.set("account_id", v.accountId);
   if (v.displayName !== undefined) csilMap.set("display_name", v.displayName);
   return csilMap;
@@ -458,6 +459,7 @@ export function fromSessionInfoCborValue(value: CborValue): SessionInfo {
     handle: asString(requireKey(value, "handle")),
     displayName: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "display_name")),
     role: (asEnumMember(asString(requireKey(value, "role")), ["admin", "member", "guest"]) as "admin" | "member" | "guest"),
+    canAdmin: asBool(requireKey(value, "can_admin")),
     token: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "token")),
   };
 }
@@ -524,6 +526,7 @@ export function toAlbumCborValue(v: Album): CborValue {
   if (v.year !== undefined) csilMap.set("year", v.year);
   csilMap.set("title", v.title);
   if (v.artistId !== undefined) csilMap.set("artist_id", v.artistId);
+  if (v.artistName !== undefined) csilMap.set("artist_name", v.artistName);
   csilMap.set("track_count", v.trackCount);
   csilMap.set("has_cover_art", v.hasCoverArt);
   return csilMap;
@@ -534,6 +537,7 @@ export function fromAlbumCborValue(value: CborValue): Album {
     id: asString(requireKey(value, "id")),
     title: asString(requireKey(value, "title")),
     artistId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "artist_id")),
+    artistName: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "artist_name")),
     year: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "year")),
     hasCoverArt: asBool(requireKey(value, "has_cover_art")),
     trackCount: asNumber(requireKey(value, "track_count")),
@@ -2157,6 +2161,8 @@ export function fromTrustedDomainsCbor(bytes: Uint8Array): TrustedDomains {
 export function toDeviceInfoCborValue(v: DeviceInfo): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
   csilMap.set("id", v.id);
+  csilMap.set("enabled", v.enabled);
+  csilMap.set("group_ids", v.groupIds);
   csilMap.set("is_default", v.isDefault);
   csilMap.set("os_device_id", v.osDeviceId);
   csilMap.set("friendly_name", v.friendlyName);
@@ -2169,6 +2175,8 @@ export function fromDeviceInfoCborValue(value: CborValue): DeviceInfo {
     osDeviceId: asString(requireKey(value, "os_device_id")),
     friendlyName: asString(requireKey(value, "friendly_name")),
     isDefault: asBool(requireKey(value, "is_default")),
+    enabled: asBool(requireKey(value, "enabled")),
+    groupIds: asArray(requireKey(value, "group_ids")).map((csilE) => asString(csilE)),
   };
 }
 
@@ -2280,15 +2288,197 @@ export function fromRenameDeviceRequestCbor(bytes: Uint8Array): RenameDeviceRequ
   return fromRenameDeviceRequestCborValue(decode(bytes));
 }
 
+export function toSetDeviceAccessRequestCborValue(v: SetDeviceAccessRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("enabled", v.enabled);
+  csilMap.set("device_id", v.deviceId);
+  csilMap.set("group_ids", v.groupIds);
+  return csilMap;
+}
+
+export function fromSetDeviceAccessRequestCborValue(value: CborValue): SetDeviceAccessRequest {
+  return {
+    deviceId: asString(requireKey(value, "device_id")),
+    enabled: asBool(requireKey(value, "enabled")),
+    groupIds: asArray(requireKey(value, "group_ids")).map((csilE) => asString(csilE)),
+  };
+}
+
+export function toSetDeviceAccessRequestCbor(v: SetDeviceAccessRequest): Uint8Array {
+  return encodeValue(toSetDeviceAccessRequestCborValue(v));
+}
+
+export function fromSetDeviceAccessRequestCbor(bytes: Uint8Array): SetDeviceAccessRequest {
+  return fromSetDeviceAccessRequestCborValue(decode(bytes));
+}
+
+export function toGroupInfoCborValue(v: GroupInfo): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  csilMap.set("name", v.name);
+  csilMap.set("member_account_ids", v.memberAccountIds);
+  return csilMap;
+}
+
+export function fromGroupInfoCborValue(value: CborValue): GroupInfo {
+  return {
+    id: asString(requireKey(value, "id")),
+    name: asString(requireKey(value, "name")),
+    memberAccountIds: asArray(requireKey(value, "member_account_ids")).map((csilE) => asString(csilE)),
+  };
+}
+
+export function toGroupInfoCbor(v: GroupInfo): Uint8Array {
+  return encodeValue(toGroupInfoCborValue(v));
+}
+
+export function fromGroupInfoCbor(bytes: Uint8Array): GroupInfo {
+  return fromGroupInfoCborValue(decode(bytes));
+}
+
+export function toListGroupsResponseCborValue(v: ListGroupsResponse): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("groups", v.groups.map((csilE): CborValue => toGroupInfoCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromListGroupsResponseCborValue(value: CborValue): ListGroupsResponse {
+  return {
+    groups: asArray(requireKey(value, "groups")).map((csilE) => fromGroupInfoCborValue(csilE)),
+  };
+}
+
+export function toListGroupsResponseCbor(v: ListGroupsResponse): Uint8Array {
+  return encodeValue(toListGroupsResponseCborValue(v));
+}
+
+export function fromListGroupsResponseCbor(bytes: Uint8Array): ListGroupsResponse {
+  return fromListGroupsResponseCborValue(decode(bytes));
+}
+
+export function toCreateGroupRequestCborValue(v: CreateGroupRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("name", v.name);
+  return csilMap;
+}
+
+export function fromCreateGroupRequestCborValue(value: CborValue): CreateGroupRequest {
+  return {
+    name: asString(requireKey(value, "name")),
+  };
+}
+
+export function toCreateGroupRequestCbor(v: CreateGroupRequest): Uint8Array {
+  return encodeValue(toCreateGroupRequestCborValue(v));
+}
+
+export function fromCreateGroupRequestCbor(bytes: Uint8Array): CreateGroupRequest {
+  return fromCreateGroupRequestCborValue(decode(bytes));
+}
+
+export function toSetGroupMembersRequestCborValue(v: SetGroupMembersRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("group_id", v.groupId);
+  csilMap.set("member_account_ids", v.memberAccountIds);
+  return csilMap;
+}
+
+export function fromSetGroupMembersRequestCborValue(value: CborValue): SetGroupMembersRequest {
+  return {
+    groupId: asString(requireKey(value, "group_id")),
+    memberAccountIds: asArray(requireKey(value, "member_account_ids")).map((csilE) => asString(csilE)),
+  };
+}
+
+export function toSetGroupMembersRequestCbor(v: SetGroupMembersRequest): Uint8Array {
+  return encodeValue(toSetGroupMembersRequestCborValue(v));
+}
+
+export function fromSetGroupMembersRequestCbor(bytes: Uint8Array): SetGroupMembersRequest {
+  return fromSetGroupMembersRequestCborValue(decode(bytes));
+}
+
+export function toDeleteGroupRequestCborValue(v: DeleteGroupRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("group_id", v.groupId);
+  return csilMap;
+}
+
+export function fromDeleteGroupRequestCborValue(value: CborValue): DeleteGroupRequest {
+  return {
+    groupId: asString(requireKey(value, "group_id")),
+  };
+}
+
+export function toDeleteGroupRequestCbor(v: DeleteGroupRequest): Uint8Array {
+  return encodeValue(toDeleteGroupRequestCborValue(v));
+}
+
+export function fromDeleteGroupRequestCbor(bytes: Uint8Array): DeleteGroupRequest {
+  return fromDeleteGroupRequestCborValue(decode(bytes));
+}
+
+export function toSatelliteTokenInfoCborValue(v: SatelliteTokenInfo): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  csilMap.set("name", v.name);
+  csilMap.set("created_at", { tag: 0, value: csilTsToText(v.createdAt) });
+  csilMap.set("default_enabled", v.defaultEnabled);
+  csilMap.set("default_group_ids", v.defaultGroupIds);
+  return csilMap;
+}
+
+export function fromSatelliteTokenInfoCborValue(value: CborValue): SatelliteTokenInfo {
+  return {
+    id: asString(requireKey(value, "id")),
+    name: asString(requireKey(value, "name")),
+    defaultEnabled: asBool(requireKey(value, "default_enabled")),
+    defaultGroupIds: asArray(requireKey(value, "default_group_ids")).map((csilE) => asString(csilE)),
+    createdAt: asTimestamp(requireKey(value, "created_at")),
+  };
+}
+
+export function toSatelliteTokenInfoCbor(v: SatelliteTokenInfo): Uint8Array {
+  return encodeValue(toSatelliteTokenInfoCborValue(v));
+}
+
+export function fromSatelliteTokenInfoCbor(bytes: Uint8Array): SatelliteTokenInfo {
+  return fromSatelliteTokenInfoCborValue(decode(bytes));
+}
+
+export function toListSatelliteTokensResponseCborValue(v: ListSatelliteTokensResponse): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("satellites", v.satellites.map((csilE): CborValue => toSatelliteTokenInfoCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromListSatelliteTokensResponseCborValue(value: CborValue): ListSatelliteTokensResponse {
+  return {
+    satellites: asArray(requireKey(value, "satellites")).map((csilE) => fromSatelliteTokenInfoCborValue(csilE)),
+  };
+}
+
+export function toListSatelliteTokensResponseCbor(v: ListSatelliteTokensResponse): Uint8Array {
+  return encodeValue(toListSatelliteTokensResponseCborValue(v));
+}
+
+export function fromListSatelliteTokensResponseCbor(bytes: Uint8Array): ListSatelliteTokensResponse {
+  return fromListSatelliteTokensResponseCborValue(decode(bytes));
+}
+
 export function toCreateNodeTokenRequestCborValue(v: CreateNodeTokenRequest): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
   if (v.label !== undefined) csilMap.set("label", v.label);
+  csilMap.set("default_enabled", v.defaultEnabled);
+  csilMap.set("default_group_ids", v.defaultGroupIds);
   return csilMap;
 }
 
 export function fromCreateNodeTokenRequestCborValue(value: CborValue): CreateNodeTokenRequest {
   return {
     label: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "label")),
+    defaultEnabled: asBool(requireKey(value, "default_enabled")),
+    defaultGroupIds: asArray(requireKey(value, "default_group_ids")).map((csilE) => asString(csilE)),
   };
 }
 
@@ -2303,6 +2493,7 @@ export function fromCreateNodeTokenRequestCbor(bytes: Uint8Array): CreateNodeTok
 export function toNodeTokenResultCborValue(v: NodeTokenResult): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
   csilMap.set("token", v.token);
+  csilMap.set("satellite", toSatelliteTokenInfoCborValue(v.satellite));
   csilMap.set("fingerprints", v.fingerprints);
   return csilMap;
 }
@@ -2311,6 +2502,7 @@ export function fromNodeTokenResultCborValue(value: CborValue): NodeTokenResult 
   return {
     token: asString(requireKey(value, "token")),
     fingerprints: asArray(requireKey(value, "fingerprints")).map((csilE) => asString(csilE)),
+    satellite: fromSatelliteTokenInfoCborValue(requireKey(value, "satellite")),
   };
 }
 
@@ -2320,6 +2512,26 @@ export function toNodeTokenResultCbor(v: NodeTokenResult): Uint8Array {
 
 export function fromNodeTokenResultCbor(bytes: Uint8Array): NodeTokenResult {
   return fromNodeTokenResultCborValue(decode(bytes));
+}
+
+export function toRevokeSatelliteTokenRequestCborValue(v: RevokeSatelliteTokenRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("satellite_id", v.satelliteId);
+  return csilMap;
+}
+
+export function fromRevokeSatelliteTokenRequestCborValue(value: CborValue): RevokeSatelliteTokenRequest {
+  return {
+    satelliteId: asString(requireKey(value, "satellite_id")),
+  };
+}
+
+export function toRevokeSatelliteTokenRequestCbor(v: RevokeSatelliteTokenRequest): Uint8Array {
+  return encodeValue(toRevokeSatelliteTokenRequestCborValue(v));
+}
+
+export function fromRevokeSatelliteTokenRequestCbor(bytes: Uint8Array): RevokeSatelliteTokenRequest {
+  return fromRevokeSatelliteTokenRequestCborValue(decode(bytes));
 }
 
 export function toImportTrackRequestCborValue(v: ImportTrackRequest): CborValue {
@@ -2412,5 +2624,27 @@ export function toSetSettingRequestCbor(v: SetSettingRequest): Uint8Array {
 
 export function fromSetSettingRequestCbor(bytes: Uint8Array): SetSettingRequest {
   return fromSetSettingRequestCborValue(decode(bytes));
+}
+
+export function toLibraryResyncStatusCborValue(v: LibraryResyncStatus): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("running", v.running);
+  csilMap.set("started", v.started);
+  return csilMap;
+}
+
+export function fromLibraryResyncStatusCborValue(value: CborValue): LibraryResyncStatus {
+  return {
+    running: asBool(requireKey(value, "running")),
+    started: asBool(requireKey(value, "started")),
+  };
+}
+
+export function toLibraryResyncStatusCbor(v: LibraryResyncStatus): Uint8Array {
+  return encodeValue(toLibraryResyncStatusCborValue(v));
+}
+
+export function fromLibraryResyncStatusCbor(bytes: Uint8Array): LibraryResyncStatus {
+  return fromLibraryResyncStatusCborValue(decode(bytes));
 }
 

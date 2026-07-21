@@ -480,6 +480,7 @@ fun SessionInfo.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("role") to this.role.toCborValue())
     this.token?.let { csilV -> csilEntries.add(CborValue.CText("token") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("handle") to CborValue.CText(this.handle))
+    csilEntries.add(CborValue.CText("can_admin") to CborValue.CBool(this.canAdmin))
     csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
     this.displayName?.let { csilV -> csilEntries.add(CborValue.CText("display_name") to CborValue.CText(csilV)) }
     return CborValue.CMap(csilEntries)
@@ -494,8 +495,9 @@ fun sessionInfoFromCborValue(cbor: CborValue): SessionInfo {
     val handle = CsilCbor.asText(CsilCbor.require(cbor, "handle"))
     val displayName = CsilCbor.mapGet(cbor, "display_name")?.let { csilV -> CsilCbor.asText(csilV) }
     val role = roleFromCborValue(CsilCbor.require(cbor, "role"))
+    val canAdmin = CsilCbor.asBoolean(CsilCbor.require(cbor, "can_admin"))
     val token = CsilCbor.mapGet(cbor, "token")?.let { csilV -> CsilCbor.asText(csilV) }
-    return SessionInfo(accountId = accountId, handle = handle, displayName = displayName, role = role, token = token)
+    return SessionInfo(accountId = accountId, handle = handle, displayName = displayName, role = role, canAdmin = canAdmin, token = token)
 }
 
 /** Decode CSIL CBOR bytes into a SessionInfo. */
@@ -568,6 +570,7 @@ fun Album.toCborValue(): CborValue {
     this.year?.let { csilV -> csilEntries.add(CborValue.CText("year") to CborValue.CUint(csilV)) }
     csilEntries.add(CborValue.CText("title") to CborValue.CText(this.title))
     this.artistId?.let { csilV -> csilEntries.add(CborValue.CText("artist_id") to CborValue.CText(csilV)) }
+    this.artistName?.let { csilV -> csilEntries.add(CborValue.CText("artist_name") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("track_count") to CborValue.CUint(this.trackCount))
     csilEntries.add(CborValue.CText("has_cover_art") to CborValue.CBool(this.hasCoverArt))
     return CborValue.CMap(csilEntries)
@@ -581,10 +584,11 @@ fun albumFromCborValue(cbor: CborValue): Album {
     val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
     val title = CsilCbor.asText(CsilCbor.require(cbor, "title"))
     val artistId = CsilCbor.mapGet(cbor, "artist_id")?.let { csilV -> CsilCbor.asText(csilV) }
+    val artistName = CsilCbor.mapGet(cbor, "artist_name")?.let { csilV -> CsilCbor.asText(csilV) }
     val year = CsilCbor.mapGet(cbor, "year")?.let { csilV -> CsilCbor.asULong(csilV) }
     val hasCoverArt = CsilCbor.asBoolean(CsilCbor.require(cbor, "has_cover_art"))
     val trackCount = CsilCbor.asULong(CsilCbor.require(cbor, "track_count"))
-    return Album(id = id, title = title, artistId = artistId, year = year, hasCoverArt = hasCoverArt, trackCount = trackCount)
+    return Album(id = id, title = title, artistId = artistId, artistName = artistName, year = year, hasCoverArt = hasCoverArt, trackCount = trackCount)
 }
 
 /** Decode CSIL CBOR bytes into a Album. */
@@ -2157,6 +2161,8 @@ fun audioOutputsStateFromCborValue(cbor: CborValue): AudioOutputsState = when (C
 fun DeviceInfo.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("enabled") to CborValue.CBool(this.enabled))
+    csilEntries.add(CborValue.CText("group_ids") to CborValue.CArray((this.groupIds).map { csilE -> CborValue.CText(csilE) }))
     csilEntries.add(CborValue.CText("is_default") to CborValue.CBool(this.isDefault))
     csilEntries.add(CborValue.CText("os_device_id") to CborValue.CText(this.osDeviceId))
     csilEntries.add(CborValue.CText("friendly_name") to CborValue.CText(this.friendlyName))
@@ -2172,7 +2178,9 @@ fun deviceInfoFromCborValue(cbor: CborValue): DeviceInfo {
     val osDeviceId = CsilCbor.asText(CsilCbor.require(cbor, "os_device_id"))
     val friendlyName = CsilCbor.asText(CsilCbor.require(cbor, "friendly_name"))
     val isDefault = CsilCbor.asBoolean(CsilCbor.require(cbor, "is_default"))
-    return DeviceInfo(id = id, osDeviceId = osDeviceId, friendlyName = friendlyName, isDefault = isDefault)
+    val enabled = CsilCbor.asBoolean(CsilCbor.require(cbor, "enabled"))
+    val groupIds = CsilCbor.asArray(CsilCbor.require(cbor, "group_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return DeviceInfo(id = id, osDeviceId = osDeviceId, friendlyName = friendlyName, isDefault = isDefault, enabled = enabled, groupIds = groupIds)
 }
 
 /** Decode CSIL CBOR bytes into a DeviceInfo. */
@@ -2274,10 +2282,182 @@ fun renameDeviceRequestFromCborValue(cbor: CborValue): RenameDeviceRequest {
 /** Decode CSIL CBOR bytes into a RenameDeviceRequest. */
 fun renameDeviceRequestFromCbor(bytes: ByteArray): RenameDeviceRequest = renameDeviceRequestFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a SetDeviceAccessRequest (deep, canonical key order). */
+fun SetDeviceAccessRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("enabled") to CborValue.CBool(this.enabled))
+    csilEntries.add(CborValue.CText("device_id") to CborValue.CText(this.deviceId))
+    csilEntries.add(CborValue.CText("group_ids") to CborValue.CArray((this.groupIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a SetDeviceAccessRequest to canonical CSIL CBOR bytes. */
+fun SetDeviceAccessRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a SetDeviceAccessRequest from a decoded CBOR value tree. */
+fun setDeviceAccessRequestFromCborValue(cbor: CborValue): SetDeviceAccessRequest {
+    val deviceId = CsilCbor.asText(CsilCbor.require(cbor, "device_id"))
+    val enabled = CsilCbor.asBoolean(CsilCbor.require(cbor, "enabled"))
+    val groupIds = CsilCbor.asArray(CsilCbor.require(cbor, "group_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return SetDeviceAccessRequest(deviceId = deviceId, enabled = enabled, groupIds = groupIds)
+}
+
+/** Decode CSIL CBOR bytes into a SetDeviceAccessRequest. */
+fun setDeviceAccessRequestFromCbor(bytes: ByteArray): SetDeviceAccessRequest = setDeviceAccessRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a GroupInfo (deep, canonical key order). */
+fun GroupInfo.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("name") to CborValue.CText(this.name))
+    csilEntries.add(CborValue.CText("member_account_ids") to CborValue.CArray((this.memberAccountIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a GroupInfo to canonical CSIL CBOR bytes. */
+fun GroupInfo.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a GroupInfo from a decoded CBOR value tree. */
+fun groupInfoFromCborValue(cbor: CborValue): GroupInfo {
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val name = CsilCbor.asText(CsilCbor.require(cbor, "name"))
+    val memberAccountIds = CsilCbor.asArray(CsilCbor.require(cbor, "member_account_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return GroupInfo(id = id, name = name, memberAccountIds = memberAccountIds)
+}
+
+/** Decode CSIL CBOR bytes into a GroupInfo. */
+fun groupInfoFromCbor(bytes: ByteArray): GroupInfo = groupInfoFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ListGroupsResponse (deep, canonical key order). */
+fun ListGroupsResponse.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("groups") to CborValue.CArray((this.groups).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ListGroupsResponse to canonical CSIL CBOR bytes. */
+fun ListGroupsResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ListGroupsResponse from a decoded CBOR value tree. */
+fun listGroupsResponseFromCborValue(cbor: CborValue): ListGroupsResponse {
+    val groups = CsilCbor.asArray(CsilCbor.require(cbor, "groups")).map { csilE -> groupInfoFromCborValue(csilE) }
+    return ListGroupsResponse(groups = groups)
+}
+
+/** Decode CSIL CBOR bytes into a ListGroupsResponse. */
+fun listGroupsResponseFromCbor(bytes: ByteArray): ListGroupsResponse = listGroupsResponseFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CreateGroupRequest (deep, canonical key order). */
+fun CreateGroupRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("name") to CborValue.CText(this.name))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CreateGroupRequest to canonical CSIL CBOR bytes. */
+fun CreateGroupRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CreateGroupRequest from a decoded CBOR value tree. */
+fun createGroupRequestFromCborValue(cbor: CborValue): CreateGroupRequest {
+    val name = CsilCbor.asText(CsilCbor.require(cbor, "name"))
+    return CreateGroupRequest(name = name)
+}
+
+/** Decode CSIL CBOR bytes into a CreateGroupRequest. */
+fun createGroupRequestFromCbor(bytes: ByteArray): CreateGroupRequest = createGroupRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a SetGroupMembersRequest (deep, canonical key order). */
+fun SetGroupMembersRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("group_id") to CborValue.CText(this.groupId))
+    csilEntries.add(CborValue.CText("member_account_ids") to CborValue.CArray((this.memberAccountIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a SetGroupMembersRequest to canonical CSIL CBOR bytes. */
+fun SetGroupMembersRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a SetGroupMembersRequest from a decoded CBOR value tree. */
+fun setGroupMembersRequestFromCborValue(cbor: CborValue): SetGroupMembersRequest {
+    val groupId = CsilCbor.asText(CsilCbor.require(cbor, "group_id"))
+    val memberAccountIds = CsilCbor.asArray(CsilCbor.require(cbor, "member_account_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return SetGroupMembersRequest(groupId = groupId, memberAccountIds = memberAccountIds)
+}
+
+/** Decode CSIL CBOR bytes into a SetGroupMembersRequest. */
+fun setGroupMembersRequestFromCbor(bytes: ByteArray): SetGroupMembersRequest = setGroupMembersRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a DeleteGroupRequest (deep, canonical key order). */
+fun DeleteGroupRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("group_id") to CborValue.CText(this.groupId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a DeleteGroupRequest to canonical CSIL CBOR bytes. */
+fun DeleteGroupRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a DeleteGroupRequest from a decoded CBOR value tree. */
+fun deleteGroupRequestFromCborValue(cbor: CborValue): DeleteGroupRequest {
+    val groupId = CsilCbor.asText(CsilCbor.require(cbor, "group_id"))
+    return DeleteGroupRequest(groupId = groupId)
+}
+
+/** Decode CSIL CBOR bytes into a DeleteGroupRequest. */
+fun deleteGroupRequestFromCbor(bytes: ByteArray): DeleteGroupRequest = deleteGroupRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a SatelliteTokenInfo (deep, canonical key order). */
+fun SatelliteTokenInfo.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("name") to CborValue.CText(this.name))
+    csilEntries.add(CborValue.CText("created_at") to CborValue.CTag(0uL, CborValue.CText((this.createdAt).toString())))
+    csilEntries.add(CborValue.CText("default_enabled") to CborValue.CBool(this.defaultEnabled))
+    csilEntries.add(CborValue.CText("default_group_ids") to CborValue.CArray((this.defaultGroupIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a SatelliteTokenInfo to canonical CSIL CBOR bytes. */
+fun SatelliteTokenInfo.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a SatelliteTokenInfo from a decoded CBOR value tree. */
+fun satelliteTokenInfoFromCborValue(cbor: CborValue): SatelliteTokenInfo {
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val name = CsilCbor.asText(CsilCbor.require(cbor, "name"))
+    val defaultEnabled = CsilCbor.asBoolean(CsilCbor.require(cbor, "default_enabled"))
+    val defaultGroupIds = CsilCbor.asArray(CsilCbor.require(cbor, "default_group_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    val createdAt = java.time.Instant.parse(CsilCbor.asTaggedText(CsilCbor.require(cbor, "created_at"), 0uL))
+    return SatelliteTokenInfo(id = id, name = name, defaultEnabled = defaultEnabled, defaultGroupIds = defaultGroupIds, createdAt = createdAt)
+}
+
+/** Decode CSIL CBOR bytes into a SatelliteTokenInfo. */
+fun satelliteTokenInfoFromCbor(bytes: ByteArray): SatelliteTokenInfo = satelliteTokenInfoFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ListSatelliteTokensResponse (deep, canonical key order). */
+fun ListSatelliteTokensResponse.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("satellites") to CborValue.CArray((this.satellites).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ListSatelliteTokensResponse to canonical CSIL CBOR bytes. */
+fun ListSatelliteTokensResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ListSatelliteTokensResponse from a decoded CBOR value tree. */
+fun listSatelliteTokensResponseFromCborValue(cbor: CborValue): ListSatelliteTokensResponse {
+    val satellites = CsilCbor.asArray(CsilCbor.require(cbor, "satellites")).map { csilE -> satelliteTokenInfoFromCborValue(csilE) }
+    return ListSatelliteTokensResponse(satellites = satellites)
+}
+
+/** Decode CSIL CBOR bytes into a ListSatelliteTokensResponse. */
+fun listSatelliteTokensResponseFromCbor(bytes: ByteArray): ListSatelliteTokensResponse = listSatelliteTokensResponseFromCborValue(CsilCbor.decode(bytes))
+
 /** The CBOR value tree for a CreateNodeTokenRequest (deep, canonical key order). */
 fun CreateNodeTokenRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     this.label?.let { csilV -> csilEntries.add(CborValue.CText("label") to CborValue.CText(csilV)) }
+    csilEntries.add(CborValue.CText("default_enabled") to CborValue.CBool(this.defaultEnabled))
+    csilEntries.add(CborValue.CText("default_group_ids") to CborValue.CArray((this.defaultGroupIds).map { csilE -> CborValue.CText(csilE) }))
     return CborValue.CMap(csilEntries)
 }
 
@@ -2287,7 +2467,9 @@ fun CreateNodeTokenRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValu
 /** Reconstruct a CreateNodeTokenRequest from a decoded CBOR value tree. */
 fun createNodeTokenRequestFromCborValue(cbor: CborValue): CreateNodeTokenRequest {
     val label = CsilCbor.mapGet(cbor, "label")?.let { csilV -> CsilCbor.asText(csilV) }
-    return CreateNodeTokenRequest(label = label)
+    val defaultEnabled = CsilCbor.asBoolean(CsilCbor.require(cbor, "default_enabled"))
+    val defaultGroupIds = CsilCbor.asArray(CsilCbor.require(cbor, "default_group_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return CreateNodeTokenRequest(label = label, defaultEnabled = defaultEnabled, defaultGroupIds = defaultGroupIds)
 }
 
 /** Decode CSIL CBOR bytes into a CreateNodeTokenRequest. */
@@ -2297,6 +2479,7 @@ fun createNodeTokenRequestFromCbor(bytes: ByteArray): CreateNodeTokenRequest = c
 fun NodeTokenResult.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("token") to CborValue.CText(this.token))
+    csilEntries.add(CborValue.CText("satellite") to this.satellite.toCborValue())
     csilEntries.add(CborValue.CText("fingerprints") to CborValue.CArray((this.fingerprints).map { csilE -> CborValue.CText(csilE) }))
     return CborValue.CMap(csilEntries)
 }
@@ -2308,11 +2491,31 @@ fun NodeTokenResult.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 fun nodeTokenResultFromCborValue(cbor: CborValue): NodeTokenResult {
     val token = CsilCbor.asText(CsilCbor.require(cbor, "token"))
     val fingerprints = CsilCbor.asArray(CsilCbor.require(cbor, "fingerprints")).map { csilE -> CsilCbor.asText(csilE) }
-    return NodeTokenResult(token = token, fingerprints = fingerprints)
+    val satellite = satelliteTokenInfoFromCborValue(CsilCbor.require(cbor, "satellite"))
+    return NodeTokenResult(token = token, fingerprints = fingerprints, satellite = satellite)
 }
 
 /** Decode CSIL CBOR bytes into a NodeTokenResult. */
 fun nodeTokenResultFromCbor(bytes: ByteArray): NodeTokenResult = nodeTokenResultFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a RevokeSatelliteTokenRequest (deep, canonical key order). */
+fun RevokeSatelliteTokenRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("satellite_id") to CborValue.CText(this.satelliteId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a RevokeSatelliteTokenRequest to canonical CSIL CBOR bytes. */
+fun RevokeSatelliteTokenRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a RevokeSatelliteTokenRequest from a decoded CBOR value tree. */
+fun revokeSatelliteTokenRequestFromCborValue(cbor: CborValue): RevokeSatelliteTokenRequest {
+    val satelliteId = CsilCbor.asText(CsilCbor.require(cbor, "satellite_id"))
+    return RevokeSatelliteTokenRequest(satelliteId = satelliteId)
+}
+
+/** Decode CSIL CBOR bytes into a RevokeSatelliteTokenRequest. */
+fun revokeSatelliteTokenRequestFromCbor(bytes: ByteArray): RevokeSatelliteTokenRequest = revokeSatelliteTokenRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a ImportTrackRequest (deep, canonical key order). */
 fun ImportTrackRequest.toCborValue(): CborValue {
@@ -2402,6 +2605,27 @@ fun setSettingRequestFromCborValue(cbor: CborValue): SetSettingRequest {
 /** Decode CSIL CBOR bytes into a SetSettingRequest. */
 fun setSettingRequestFromCbor(bytes: ByteArray): SetSettingRequest = setSettingRequestFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a LibraryResyncStatus (deep, canonical key order). */
+fun LibraryResyncStatus.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("running") to CborValue.CBool(this.running))
+    csilEntries.add(CborValue.CText("started") to CborValue.CBool(this.started))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a LibraryResyncStatus to canonical CSIL CBOR bytes. */
+fun LibraryResyncStatus.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a LibraryResyncStatus from a decoded CBOR value tree. */
+fun libraryResyncStatusFromCborValue(cbor: CborValue): LibraryResyncStatus {
+    val running = CsilCbor.asBoolean(CsilCbor.require(cbor, "running"))
+    val started = CsilCbor.asBoolean(CsilCbor.require(cbor, "started"))
+    return LibraryResyncStatus(running = running, started = started)
+}
+
+/** Decode CSIL CBOR bytes into a LibraryResyncStatus. */
+fun libraryResyncStatusFromCbor(bytes: ByteArray): LibraryResyncStatus = libraryResyncStatusFromCborValue(CsilCbor.decode(bytes))
+
 /** Encode a generated CSIL record to canonical CBOR bytes. */
 fun <T> encode(value: T): ByteArray = CsilCbor.encode(csilToCborValue(value))
 
@@ -2485,12 +2709,22 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is ListNodesResponse -> value.toCborValue()
     is RenameNodeRequest -> value.toCborValue()
     is RenameDeviceRequest -> value.toCborValue()
+    is SetDeviceAccessRequest -> value.toCborValue()
+    is GroupInfo -> value.toCborValue()
+    is ListGroupsResponse -> value.toCborValue()
+    is CreateGroupRequest -> value.toCborValue()
+    is SetGroupMembersRequest -> value.toCborValue()
+    is DeleteGroupRequest -> value.toCborValue()
+    is SatelliteTokenInfo -> value.toCborValue()
+    is ListSatelliteTokensResponse -> value.toCborValue()
     is CreateNodeTokenRequest -> value.toCborValue()
     is NodeTokenResult -> value.toCborValue()
+    is RevokeSatelliteTokenRequest -> value.toCborValue()
     is ImportTrackRequest -> value.toCborValue()
     is ImportResult -> value.toCborValue()
     is Settings -> value.toCborValue()
     is SetSettingRequest -> value.toCborValue()
+    is LibraryResyncStatus -> value.toCborValue()
     else -> throw CborError("no CSIL CBOR codec for ${value::class}")
 }
 
@@ -2577,11 +2811,21 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     ListNodesResponse::class -> listNodesResponseFromCborValue(cbor)
     RenameNodeRequest::class -> renameNodeRequestFromCborValue(cbor)
     RenameDeviceRequest::class -> renameDeviceRequestFromCborValue(cbor)
+    SetDeviceAccessRequest::class -> setDeviceAccessRequestFromCborValue(cbor)
+    GroupInfo::class -> groupInfoFromCborValue(cbor)
+    ListGroupsResponse::class -> listGroupsResponseFromCborValue(cbor)
+    CreateGroupRequest::class -> createGroupRequestFromCborValue(cbor)
+    SetGroupMembersRequest::class -> setGroupMembersRequestFromCborValue(cbor)
+    DeleteGroupRequest::class -> deleteGroupRequestFromCborValue(cbor)
+    SatelliteTokenInfo::class -> satelliteTokenInfoFromCborValue(cbor)
+    ListSatelliteTokensResponse::class -> listSatelliteTokensResponseFromCborValue(cbor)
     CreateNodeTokenRequest::class -> createNodeTokenRequestFromCborValue(cbor)
     NodeTokenResult::class -> nodeTokenResultFromCborValue(cbor)
+    RevokeSatelliteTokenRequest::class -> revokeSatelliteTokenRequestFromCborValue(cbor)
     ImportTrackRequest::class -> importTrackRequestFromCborValue(cbor)
     ImportResult::class -> importResultFromCborValue(cbor)
     Settings::class -> settingsFromCborValue(cbor)
     SetSettingRequest::class -> setSettingRequestFromCborValue(cbor)
+    LibraryResyncStatus::class -> libraryResyncStatusFromCborValue(cbor)
     else -> throw CborError("no CSIL CBOR codec for $type")
 }

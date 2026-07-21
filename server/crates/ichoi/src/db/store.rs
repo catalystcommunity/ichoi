@@ -351,7 +351,7 @@ pub fn list_albums(
         .distinct();
     albums::table
         .filter(albums::id.eq_any(album_ids))
-        .order(albums::title.asc())
+        .order((albums::title.asc(), albums::id.asc()))
         .offset(offset)
         .limit(limit)
         .select(Album::as_select())
@@ -777,8 +777,11 @@ pub fn sync_core_outputs(
             os_device_id: out.os_device_id.clone(),
             friendly_name: out.friendly_name.clone(),
             is_default: i32::from(out.is_default),
+            enabled: 1,
         };
-        upsert_device(conn, &dev)?;
+        if upsert_device(conn, &dev)? {
+            set_device_access(conn, &dev.id, true, &["everyone".to_string()])?;
+        }
         create_player(
             conn,
             &Player {
@@ -832,14 +835,23 @@ pub fn devices_for_node(
         .load(conn)
 }
 
-pub fn upsert_device(conn: &mut SqliteConnection, row: &OutputDevice) -> QueryResult<()> {
-    diesel::insert_into(output_devices::table)
+pub fn upsert_device(conn: &mut SqliteConnection, row: &OutputDevice) -> QueryResult<bool> {
+    let inserted = diesel::insert_into(output_devices::table)
         .values(row)
         .on_conflict(output_devices::id)
-        .do_update()
-        .set(row)
+        .do_nothing()
         .execute(conn)?;
-    Ok(())
+    if inserted == 0 {
+        diesel::update(output_devices::table.find(&row.id))
+            .set((
+                output_devices::node_id.eq(&row.node_id),
+                output_devices::os_device_id.eq(&row.os_device_id),
+                output_devices::friendly_name.eq(&row.friendly_name),
+                output_devices::is_default.eq(row.is_default),
+            ))
+            .execute(conn)?;
+    }
+    Ok(inserted != 0)
 }
 
 pub fn rename_device(
@@ -850,6 +862,182 @@ pub fn rename_device(
     diesel::update(output_devices::table.find(id))
         .set(output_devices::friendly_name.eq(friendly_name))
         .execute(conn)
+}
+
+pub fn device_by_id(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<OutputDevice>> {
+    output_devices::table
+        .find(id)
+        .select(OutputDevice::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn set_device_access(
+    conn: &mut SqliteConnection,
+    id: &str,
+    enabled: bool,
+    group_ids: &[String],
+) -> QueryResult<usize> {
+    conn.transaction(|conn| {
+        let changed = diesel::update(output_devices::table.find(id))
+            .set(output_devices::enabled.eq(i32::from(enabled)))
+            .execute(conn)?;
+        diesel::delete(output_device_groups::table.filter(output_device_groups::device_id.eq(id)))
+            .execute(conn)?;
+        for group_id in group_ids {
+            diesel::insert_into(output_device_groups::table)
+                .values((
+                    output_device_groups::device_id.eq(id),
+                    output_device_groups::group_id.eq(group_id),
+                ))
+                .execute(conn)?;
+        }
+        Ok(changed)
+    })
+}
+
+pub fn device_group_ids(conn: &mut SqliteConnection, id: &str) -> QueryResult<Vec<String>> {
+    output_device_groups::table
+        .filter(output_device_groups::device_id.eq(id))
+        .select(output_device_groups::group_id)
+        .order(output_device_groups::group_id.asc())
+        .load(conn)
+}
+
+pub fn device_visible_to(
+    conn: &mut SqliteConnection,
+    device_id: &str,
+    account_id: Option<&str>,
+) -> QueryResult<bool> {
+    let Some(device) = device_by_id(conn, device_id)? else {
+        return Ok(false);
+    };
+    if device.enabled == 0 {
+        return Ok(false);
+    }
+    let groups = device_group_ids(conn, device_id)?;
+    if groups.iter().any(|id| id == "everyone") {
+        return Ok(true);
+    }
+    let Some(account_id) = account_id else {
+        return Ok(false);
+    };
+    let count: i64 = account_access_groups::table
+        .filter(account_access_groups::account_id.eq(account_id))
+        .filter(account_access_groups::group_id.eq_any(groups))
+        .count()
+        .get_result(conn)?;
+    Ok(count > 0)
+}
+
+// ----------------------------------------------------------------------------- access groups / satellite credentials
+
+pub fn list_access_groups(conn: &mut SqliteConnection) -> QueryResult<Vec<AccessGroup>> {
+    access_groups::table
+        .order(access_groups::name.asc())
+        .select(AccessGroup::as_select())
+        .load(conn)
+}
+
+pub fn create_access_group(conn: &mut SqliteConnection, row: &AccessGroup) -> QueryResult<()> {
+    diesel::insert_into(access_groups::table)
+        .values(row)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn delete_access_group(conn: &mut SqliteConnection, id: &str) -> QueryResult<usize> {
+    diesel::delete(access_groups::table.find(id)).execute(conn)
+}
+
+pub fn group_member_ids(conn: &mut SqliteConnection, id: &str) -> QueryResult<Vec<String>> {
+    account_access_groups::table
+        .filter(account_access_groups::group_id.eq(id))
+        .select(account_access_groups::account_id)
+        .order(account_access_groups::account_id.asc())
+        .load(conn)
+}
+
+pub fn set_group_members(
+    conn: &mut SqliteConnection,
+    id: &str,
+    account_ids: &[String],
+) -> QueryResult<()> {
+    conn.transaction(|conn| {
+        diesel::delete(account_access_groups::table.filter(account_access_groups::group_id.eq(id)))
+            .execute(conn)?;
+        for account_id in account_ids {
+            diesel::insert_into(account_access_groups::table)
+                .values((
+                    account_access_groups::group_id.eq(id),
+                    account_access_groups::account_id.eq(account_id),
+                ))
+                .execute(conn)?;
+        }
+        Ok(())
+    })
+}
+
+pub fn satellite_for_hash(
+    conn: &mut SqliteConnection,
+    hash: &str,
+) -> QueryResult<Option<SatelliteToken>> {
+    satellite_tokens::table
+        .filter(satellite_tokens::token_sha256.eq(hash))
+        .select(SatelliteToken::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn satellite_by_id(
+    conn: &mut SqliteConnection,
+    id: &str,
+) -> QueryResult<Option<SatelliteToken>> {
+    satellite_tokens::table
+        .find(id)
+        .select(SatelliteToken::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn list_satellites(conn: &mut SqliteConnection) -> QueryResult<Vec<SatelliteToken>> {
+    satellite_tokens::table
+        .order(satellite_tokens::name.asc())
+        .select(SatelliteToken::as_select())
+        .load(conn)
+}
+
+pub fn satellite_group_ids(conn: &mut SqliteConnection, id: &str) -> QueryResult<Vec<String>> {
+    satellite_token_groups::table
+        .filter(satellite_token_groups::satellite_id.eq(id))
+        .select(satellite_token_groups::group_id)
+        .order(satellite_token_groups::group_id.asc())
+        .load(conn)
+}
+
+pub fn create_satellite(
+    conn: &mut SqliteConnection,
+    row: &SatelliteToken,
+    group_ids: &[String],
+) -> QueryResult<()> {
+    conn.transaction(|conn| {
+        diesel::insert_into(satellite_tokens::table)
+            .values(row)
+            .execute(conn)?;
+        for group_id in group_ids {
+            diesel::insert_into(satellite_token_groups::table)
+                .values((
+                    satellite_token_groups::satellite_id.eq(&row.id),
+                    satellite_token_groups::group_id.eq(group_id),
+                ))
+                .execute(conn)?;
+        }
+        Ok(())
+    })
+}
+
+pub fn delete_satellite(conn: &mut SqliteConnection, id: &str) -> QueryResult<usize> {
+    diesel::delete(satellite_tokens::table.find(id)).execute(conn)
 }
 
 // ----------------------------------------------------------------------------- players
@@ -867,6 +1055,17 @@ pub fn list_players(conn: &mut SqliteConnection, kind: Option<&str>) -> QueryRes
 pub fn get_player(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<Player>> {
     players::table
         .find(id)
+        .select(Player::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn player_for_device(
+    conn: &mut SqliteConnection,
+    device_id: &str,
+) -> QueryResult<Option<Player>> {
+    players::table
+        .filter(players::output_device_id.eq(device_id))
         .select(Player::as_select())
         .first(conn)
         .optional()

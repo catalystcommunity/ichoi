@@ -2,10 +2,14 @@
 
 package csilgen.generated;
 
+import java.util.List;
+
 public record DeviceInfo(
     DeviceId id /* wire: "id" */,
     String osDeviceId /* wire: "os_device_id" */,
     String friendlyName /* wire: "friendly_name" */,
-    boolean isDefault /* wire: "is_default" */
+    boolean isDefault /* wire: "is_default" */,
+    boolean enabled /* wire: "enabled" */,
+    List<String> groupIds /* wire: "group_ids" */
 ) {
 }

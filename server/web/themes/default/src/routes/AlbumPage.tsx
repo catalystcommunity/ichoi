@@ -43,6 +43,9 @@ export function AlbumPage(): JSX.Element {
                   <h1 class="page-title" style={{ margin: "6px 0" }}>
                     {d().album.title}
                   </h1>
+                  <Show when={d().album.artist_name}>
+                    {(artist) => <p class="page-sub">{artist()}</p>}
+                  </Show>
                   <p class="page-sub mono">
                     {t("library.tracksCount", { count: d().album.track_count })} ·{" "}
                     {formatDuration(totalMs())}

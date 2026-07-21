@@ -46,6 +46,7 @@ export interface SessionInfo {
   handle: string;
   display_name?: string;
   role: Role;
+  can_admin?: boolean;
   /** Minted session token, returned once on `authenticate`. */
   token?: string;
 }
@@ -76,6 +77,7 @@ export interface Album {
   id: string;
   title: string;
   artist_id?: string;
+  artist_name?: string;
   year?: number;
   has_cover_art?: boolean;
   track_count: number;
@@ -297,6 +299,21 @@ export interface AudioOutput {
   sample_rates: number[];
   is_default?: boolean;
 }
+export interface RegisterNodeRequest {
+  hostname: string;
+  platform: string;
+  arch: string;
+  outputs: AudioOutput[];
+}
+export interface RegisterNodeResponse {
+  node_id: string;
+  players: Player[];
+}
+export interface NodeReport {
+  player_id: string;
+  status: PlayerStatus;
+  position_ms?: number;
+}
 
 // --- admin.csil ----------------------------------------------------------
 
@@ -329,6 +346,8 @@ export interface DeviceInfo {
   os_device_id: string;
   friendly_name: string;
   is_default?: boolean;
+  enabled?: boolean;
+  group_ids: string[];
 }
 export interface NodeInfo {
   id: string;
@@ -354,11 +373,33 @@ export interface RenameDeviceRequest {
 }
 export interface CreateNodeTokenRequest {
   label?: string;
+  default_enabled?: boolean;
+  default_group_ids: string[];
 }
 export interface NodeTokenResult {
   token: string;
   fingerprints: string[];
+  satellite: SatelliteTokenInfo;
 }
+export interface SetDeviceAccessRequest {
+  device_id: string;
+  enabled: boolean;
+  group_ids: string[];
+}
+export interface GroupInfo {
+  id: string;
+  name: string;
+  member_account_ids: string[];
+}
+export interface ListGroupsResponse { groups: GroupInfo[] }
+export interface SatelliteTokenInfo {
+  id: string;
+  name: string;
+  default_enabled?: boolean;
+  default_group_ids: string[];
+  created_at: Date;
+}
+export interface ListSatelliteTokensResponse { satellites: SatelliteTokenInfo[] }
 export interface ImportTrackRequest {
   root_relative_path: string;
   content_type: string;
@@ -376,4 +417,8 @@ export interface Settings {
 export interface SetSettingRequest {
   key: string;
   value: string;
+}
+export interface LibraryResyncStatus {
+  running: boolean;
+  started?: boolean;
 }

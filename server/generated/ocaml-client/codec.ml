@@ -73,6 +73,7 @@ and encode_session_info (v : session_info) : Cbor.t =
          Some (Cbor.Text "role", (encode_role v.role));
          (match v.token with Some csil_x -> Some (Cbor.Text "token", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "handle", (Cbor.Text v.handle));
+         Some (Cbor.Text "can_admin", (Cbor.Bool v.can_admin));
          Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
          (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
        ])
@@ -111,6 +112,7 @@ and encode_album (v : album) : Cbor.t =
          (match v.year with Some csil_x -> Some (Cbor.Text "year", (Cbor.int64 csil_x)) | None -> None);
          Some (Cbor.Text "title", (Cbor.Text v.title));
          (match v.artist_id with Some csil_x -> Some (Cbor.Text "artist_id", (Cbor.Text csil_x)) | None -> None);
+         (match v.artist_name with Some csil_x -> Some (Cbor.Text "artist_name", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "track_count", (Cbor.int64 v.track_count));
          Some (Cbor.Text "has_cover_art", (Cbor.Bool v.has_cover_art));
        ])
@@ -752,6 +754,8 @@ and encode_device_info (v : device_info) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "enabled", (Cbor.Bool v.enabled));
+         Some (Cbor.Text "group_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.group_ids)));
          Some (Cbor.Text "is_default", (Cbor.Bool v.is_default));
          Some (Cbor.Text "os_device_id", (Cbor.Text v.os_device_id));
          Some (Cbor.Text "friendly_name", (Cbor.Text v.friendly_name));
@@ -799,12 +803,87 @@ and encode_rename_device_request (v : rename_device_request) : Cbor.t =
          Some (Cbor.Text "friendly_name", (Cbor.Text v.friendly_name));
        ])
 
+and encode_set_device_access_request (v : set_device_access_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "enabled", (Cbor.Bool v.enabled));
+         Some (Cbor.Text "device_id", (Cbor.Text v.device_id));
+         Some (Cbor.Text "group_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.group_ids)));
+       ])
+
+and encode_group_info (v : group_info) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "name", (Cbor.Text v.name));
+         Some (Cbor.Text "member_account_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.member_account_ids)));
+       ])
+
+and encode_list_groups_response (v : list_groups_response) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "groups", (Cbor.Array (List.map (fun csil_e -> (encode_group_info csil_e)) v.groups)));
+       ])
+
+and encode_create_group_request (v : create_group_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "name", (Cbor.Text v.name));
+       ])
+
+and encode_set_group_members_request (v : set_group_members_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "group_id", (Cbor.Text v.group_id));
+         Some (Cbor.Text "member_account_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.member_account_ids)));
+       ])
+
+and encode_delete_group_request (v : delete_group_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "group_id", (Cbor.Text v.group_id));
+       ])
+
+and encode_satellite_token_info (v : satellite_token_info) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "name", (Cbor.Text v.name));
+         Some (Cbor.Text "created_at", (Cbor.Tag (0, Cbor.Text v.created_at)));
+         Some (Cbor.Text "default_enabled", (Cbor.Bool v.default_enabled));
+         Some (Cbor.Text "default_group_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.default_group_ids)));
+       ])
+
+and encode_list_satellite_tokens_response (v : list_satellite_tokens_response) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "satellites", (Cbor.Array (List.map (fun csil_e -> (encode_satellite_token_info csil_e)) v.satellites)));
+       ])
+
 and encode_create_node_token_request (v : create_node_token_request) : Cbor.t =
   Cbor.Map
     (List.filter_map
        (fun x -> x)
        [
          (match v.label with Some csil_x -> Some (Cbor.Text "label", (Cbor.Text csil_x)) | None -> None);
+         Some (Cbor.Text "default_enabled", (Cbor.Bool v.default_enabled));
+         Some (Cbor.Text "default_group_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.default_group_ids)));
        ])
 
 and encode_node_token_result (v : node_token_result) : Cbor.t =
@@ -813,7 +892,16 @@ and encode_node_token_result (v : node_token_result) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "token", (Cbor.Text v.token));
+         Some (Cbor.Text "satellite", (encode_satellite_token_info v.satellite));
          Some (Cbor.Text "fingerprints", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.fingerprints)));
+       ])
+
+and encode_revoke_satellite_token_request (v : revoke_satellite_token_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "satellite_id", (Cbor.Text v.satellite_id));
        ])
 
 and encode_import_track_request (v : import_track_request) : Cbor.t =
@@ -852,6 +940,15 @@ and encode_set_setting_request (v : set_setting_request) : Cbor.t =
        [
          Some (Cbor.Text "key", (Cbor.Text v.key));
          Some (Cbor.Text "value", (Cbor.Text v.value));
+       ])
+
+and encode_library_resync_status (v : library_resync_status) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "running", (Cbor.Bool v.running));
+         Some (Cbor.Text "started", (Cbor.Bool v.started));
        ])
 
 let rec decode_role (csil_c : Cbor.t) : role =
@@ -949,6 +1046,7 @@ and decode_session_info (csil_c : Cbor.t) : session_info =
         role = (decode_role (csil_req "role"));
         token = (match csil_field "token" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         handle = (Cbor.to_text (csil_req "handle"));
+        can_admin = (Cbor.to_bool (csil_req "can_admin"));
         account_id = (Cbor.to_text (csil_req "account_id"));
         display_name = (match csil_field "display_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
       }
@@ -997,6 +1095,7 @@ and decode_album (csil_c : Cbor.t) : album =
         year = (match csil_field "year" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
         title = (Cbor.to_text (csil_req "title"));
         artist_id = (match csil_field "artist_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        artist_name = (match csil_field "artist_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         track_count = (Cbor.to_i64 (csil_req "track_count"));
         has_cover_art = (Cbor.to_bool (csil_req "has_cover_art"));
       }
@@ -1976,6 +2075,8 @@ and decode_device_info (csil_c : Cbor.t) : device_info =
       ignore csil_req;
       {
         id = (Cbor.to_text (csil_req "id"));
+        enabled = (Cbor.to_bool (csil_req "enabled"));
+        group_ids = (match (csil_req "group_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
         is_default = (Cbor.to_bool (csil_req "is_default"));
         os_device_id = (Cbor.to_text (csil_req "os_device_id"));
         friendly_name = (Cbor.to_text (csil_req "friendly_name"));
@@ -2044,6 +2145,119 @@ and decode_rename_device_request (csil_c : Cbor.t) : rename_device_request =
       }
   | _ -> failwith "csilgen: expected map for rename_device_request"
 
+and decode_set_device_access_request (csil_c : Cbor.t) : set_device_access_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        enabled = (Cbor.to_bool (csil_req "enabled"));
+        device_id = (Cbor.to_text (csil_req "device_id"));
+        group_ids = (match (csil_req "group_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for set_device_access_request"
+
+and decode_group_info (csil_c : Cbor.t) : group_info =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        name = (Cbor.to_text (csil_req "name"));
+        member_account_ids = (match (csil_req "member_account_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for group_info"
+
+and decode_list_groups_response (csil_c : Cbor.t) : list_groups_response =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        groups = (match (csil_req "groups") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_group_info csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for list_groups_response"
+
+and decode_create_group_request (csil_c : Cbor.t) : create_group_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        name = (Cbor.to_text (csil_req "name"));
+      }
+  | _ -> failwith "csilgen: expected map for create_group_request"
+
+and decode_set_group_members_request (csil_c : Cbor.t) : set_group_members_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        group_id = (Cbor.to_text (csil_req "group_id"));
+        member_account_ids = (match (csil_req "member_account_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for set_group_members_request"
+
+and decode_delete_group_request (csil_c : Cbor.t) : delete_group_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        group_id = (Cbor.to_text (csil_req "group_id"));
+      }
+  | _ -> failwith "csilgen: expected map for delete_group_request"
+
+and decode_satellite_token_info (csil_c : Cbor.t) : satellite_token_info =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        name = (Cbor.to_text (csil_req "name"));
+        created_at = (match (csil_req "created_at") with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp");
+        default_enabled = (Cbor.to_bool (csil_req "default_enabled"));
+        default_group_ids = (match (csil_req "default_group_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for satellite_token_info"
+
+and decode_list_satellite_tokens_response (csil_c : Cbor.t) : list_satellite_tokens_response =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        satellites = (match (csil_req "satellites") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_satellite_token_info csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for list_satellite_tokens_response"
+
 and decode_create_node_token_request (csil_c : Cbor.t) : create_node_token_request =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -2054,6 +2268,8 @@ and decode_create_node_token_request (csil_c : Cbor.t) : create_node_token_reque
       ignore csil_req;
       {
         label = (match csil_field "label" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        default_enabled = (Cbor.to_bool (csil_req "default_enabled"));
+        default_group_ids = (match (csil_req "default_group_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
       }
   | _ -> failwith "csilgen: expected map for create_node_token_request"
 
@@ -2067,9 +2283,23 @@ and decode_node_token_result (csil_c : Cbor.t) : node_token_result =
       ignore csil_req;
       {
         token = (Cbor.to_text (csil_req "token"));
+        satellite = (decode_satellite_token_info (csil_req "satellite"));
         fingerprints = (match (csil_req "fingerprints") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
       }
   | _ -> failwith "csilgen: expected map for node_token_result"
+
+and decode_revoke_satellite_token_request (csil_c : Cbor.t) : revoke_satellite_token_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        satellite_id = (Cbor.to_text (csil_req "satellite_id"));
+      }
+  | _ -> failwith "csilgen: expected map for revoke_satellite_token_request"
 
 and decode_import_track_request (csil_c : Cbor.t) : import_track_request =
   match csil_c with
@@ -2128,6 +2358,20 @@ and decode_set_setting_request (csil_c : Cbor.t) : set_setting_request =
         value = (Cbor.to_text (csil_req "value"));
       }
   | _ -> failwith "csilgen: expected map for set_setting_request"
+
+and decode_library_resync_status (csil_c : Cbor.t) : library_resync_status =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        running = (Cbor.to_bool (csil_req "running"));
+        started = (Cbor.to_bool (csil_req "started"));
+      }
+  | _ -> failwith "csilgen: expected map for library_resync_status"
 
 let encode_role_bytes (v : role) : bytes = Cbor.encode (encode_role v)
 let decode_role_bytes (b : bytes) : role =
@@ -2493,6 +2737,38 @@ let encode_rename_device_request_bytes (v : rename_device_request) : bytes = Cbo
 let decode_rename_device_request_bytes (b : bytes) : rename_device_request =
   match Cbor.decode b with Ok c -> decode_rename_device_request c | Error e -> failwith e
 
+let encode_set_device_access_request_bytes (v : set_device_access_request) : bytes = Cbor.encode (encode_set_device_access_request v)
+let decode_set_device_access_request_bytes (b : bytes) : set_device_access_request =
+  match Cbor.decode b with Ok c -> decode_set_device_access_request c | Error e -> failwith e
+
+let encode_group_info_bytes (v : group_info) : bytes = Cbor.encode (encode_group_info v)
+let decode_group_info_bytes (b : bytes) : group_info =
+  match Cbor.decode b with Ok c -> decode_group_info c | Error e -> failwith e
+
+let encode_list_groups_response_bytes (v : list_groups_response) : bytes = Cbor.encode (encode_list_groups_response v)
+let decode_list_groups_response_bytes (b : bytes) : list_groups_response =
+  match Cbor.decode b with Ok c -> decode_list_groups_response c | Error e -> failwith e
+
+let encode_create_group_request_bytes (v : create_group_request) : bytes = Cbor.encode (encode_create_group_request v)
+let decode_create_group_request_bytes (b : bytes) : create_group_request =
+  match Cbor.decode b with Ok c -> decode_create_group_request c | Error e -> failwith e
+
+let encode_set_group_members_request_bytes (v : set_group_members_request) : bytes = Cbor.encode (encode_set_group_members_request v)
+let decode_set_group_members_request_bytes (b : bytes) : set_group_members_request =
+  match Cbor.decode b with Ok c -> decode_set_group_members_request c | Error e -> failwith e
+
+let encode_delete_group_request_bytes (v : delete_group_request) : bytes = Cbor.encode (encode_delete_group_request v)
+let decode_delete_group_request_bytes (b : bytes) : delete_group_request =
+  match Cbor.decode b with Ok c -> decode_delete_group_request c | Error e -> failwith e
+
+let encode_satellite_token_info_bytes (v : satellite_token_info) : bytes = Cbor.encode (encode_satellite_token_info v)
+let decode_satellite_token_info_bytes (b : bytes) : satellite_token_info =
+  match Cbor.decode b with Ok c -> decode_satellite_token_info c | Error e -> failwith e
+
+let encode_list_satellite_tokens_response_bytes (v : list_satellite_tokens_response) : bytes = Cbor.encode (encode_list_satellite_tokens_response v)
+let decode_list_satellite_tokens_response_bytes (b : bytes) : list_satellite_tokens_response =
+  match Cbor.decode b with Ok c -> decode_list_satellite_tokens_response c | Error e -> failwith e
+
 let encode_create_node_token_request_bytes (v : create_node_token_request) : bytes = Cbor.encode (encode_create_node_token_request v)
 let decode_create_node_token_request_bytes (b : bytes) : create_node_token_request =
   match Cbor.decode b with Ok c -> decode_create_node_token_request c | Error e -> failwith e
@@ -2500,6 +2776,10 @@ let decode_create_node_token_request_bytes (b : bytes) : create_node_token_reque
 let encode_node_token_result_bytes (v : node_token_result) : bytes = Cbor.encode (encode_node_token_result v)
 let decode_node_token_result_bytes (b : bytes) : node_token_result =
   match Cbor.decode b with Ok c -> decode_node_token_result c | Error e -> failwith e
+
+let encode_revoke_satellite_token_request_bytes (v : revoke_satellite_token_request) : bytes = Cbor.encode (encode_revoke_satellite_token_request v)
+let decode_revoke_satellite_token_request_bytes (b : bytes) : revoke_satellite_token_request =
+  match Cbor.decode b with Ok c -> decode_revoke_satellite_token_request c | Error e -> failwith e
 
 let encode_import_track_request_bytes (v : import_track_request) : bytes = Cbor.encode (encode_import_track_request v)
 let decode_import_track_request_bytes (b : bytes) : import_track_request =
@@ -2516,3 +2796,7 @@ let decode_settings_bytes (b : bytes) : settings =
 let encode_set_setting_request_bytes (v : set_setting_request) : bytes = Cbor.encode (encode_set_setting_request v)
 let decode_set_setting_request_bytes (b : bytes) : set_setting_request =
   match Cbor.decode b with Ok c -> decode_set_setting_request c | Error e -> failwith e
+
+let encode_library_resync_status_bytes (v : library_resync_status) : bytes = Cbor.encode (encode_library_resync_status v)
+let decode_library_resync_status_bytes (b : bytes) : library_resync_status =
+  match Cbor.decode b with Ok c -> decode_library_resync_status c | Error e -> failwith e

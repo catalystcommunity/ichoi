@@ -605,7 +605,7 @@ fn dec_AuthRequest(alloc: std.mem.Allocator, m: Value, out: *types.AuthRequest) 
 }
 
 fn enc_SessionInfo(out: *std.ArrayList(u8), v: *const types.SessionInfo) CodecError!void {
-    var csil_n: usize = 3;
+    var csil_n: usize = 4;
     if (v.token != null) csil_n += 1;
     if (v.display_name != null) csil_n += 1;
     try w_map_head(out, csil_n);
@@ -617,6 +617,8 @@ fn enc_SessionInfo(out: *std.ArrayList(u8), v: *const types.SessionInfo) CodecEr
     }
     try w_text(out, "handle");
     try w_text(out, v.handle);
+    try w_text(out, "can_admin");
+    try w_bool(out, v.can_admin);
     try w_text(out, "account_id");
     try w_text(out, v.account_id);
     if (v.display_name) |csil_x| {
@@ -641,6 +643,10 @@ fn dec_SessionInfo(alloc: std.mem.Allocator, m: Value, out: *types.SessionInfo) 
     {
         const csil_fv = try req(m, "handle");
         out.handle = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "can_admin");
+        out.can_admin = try as_bool(csil_fv);
     }
     {
         const csil_fv = try req(m, "account_id");
@@ -818,6 +824,7 @@ fn enc_Album(out: *std.ArrayList(u8), v: *const types.Album) CodecError!void {
     var csil_n: usize = 4;
     if (v.year != null) csil_n += 1;
     if (v.artist_id != null) csil_n += 1;
+    if (v.artist_name != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "id");
     try w_text(out, v.id);
@@ -829,6 +836,10 @@ fn enc_Album(out: *std.ArrayList(u8), v: *const types.Album) CodecError!void {
     try w_text(out, v.title);
     if (v.artist_id) |csil_x| {
         try w_text(out, "artist_id");
+        try w_text(out, csil_x);
+    }
+    if (v.artist_name) |csil_x| {
+        try w_text(out, "artist_name");
         try w_text(out, csil_x);
     }
     try w_text(out, "track_count");
@@ -860,6 +871,13 @@ fn dec_Album(alloc: std.mem.Allocator, m: Value, out: *types.Album) CodecError!v
             out.artist_id = try as_text(csil_fv);
         } else {
             out.artist_id = null;
+        }
+    }
+    {
+        if (mget(m, "artist_name")) |csil_fv| {
+            out.artist_name = try as_text(csil_fv);
+        } else {
+            out.artist_name = null;
         }
     }
     {
@@ -3118,9 +3136,16 @@ fn dec_AudioOutputsState(alloc: std.mem.Allocator, src: Value, out: *types.Audio
 }
 
 fn enc_DeviceInfo(out: *std.ArrayList(u8), v: *const types.DeviceInfo) CodecError!void {
-    try w_map_head(out, 4);
+    try w_map_head(out, 6);
     try w_text(out, "id");
     try w_text(out, v.id);
+    try w_text(out, "enabled");
+    try w_bool(out, v.enabled);
+    try w_text(out, "group_ids");
+    try w_array_head(out, v.group_ids.len);
+    for (v.group_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
     try w_text(out, "is_default");
     try w_bool(out, v.is_default);
     try w_text(out, "os_device_id");
@@ -3130,11 +3155,22 @@ fn enc_DeviceInfo(out: *std.ArrayList(u8), v: *const types.DeviceInfo) CodecErro
 }
 
 fn dec_DeviceInfo(alloc: std.mem.Allocator, m: Value, out: *types.DeviceInfo) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
     {
         const csil_fv = try req(m, "id");
         out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "enabled");
+        out.enabled = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "group_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.group_ids = try alloc.alloc([]const u8, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.group_ids[csil_i] = try as_text(csil_it);
+        }
     }
     {
         const csil_fv = try req(m, "is_default");
@@ -3290,18 +3326,235 @@ fn dec_RenameDeviceRequest(alloc: std.mem.Allocator, m: Value, out: *types.Renam
     }
 }
 
+fn enc_SetDeviceAccessRequest(out: *std.ArrayList(u8), v: *const types.SetDeviceAccessRequest) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "enabled");
+    try w_bool(out, v.enabled);
+    try w_text(out, "device_id");
+    try w_text(out, v.device_id);
+    try w_text(out, "group_ids");
+    try w_array_head(out, v.group_ids.len);
+    for (v.group_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_SetDeviceAccessRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetDeviceAccessRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "enabled");
+        out.enabled = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "device_id");
+        out.device_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "group_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.group_ids = try alloc.alloc([]const u8, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.group_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+}
+
+fn enc_GroupInfo(out: *std.ArrayList(u8), v: *const types.GroupInfo) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "name");
+    try w_text(out, v.name);
+    try w_text(out, "member_account_ids");
+    try w_array_head(out, v.member_account_ids.len);
+    for (v.member_account_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_GroupInfo(alloc: std.mem.Allocator, m: Value, out: *types.GroupInfo) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "name");
+        out.name = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "member_account_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.member_account_ids = try alloc.alloc(types.AccountId, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.member_account_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+}
+
+fn enc_ListGroupsResponse(out: *std.ArrayList(u8), v: *const types.ListGroupsResponse) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "groups");
+    try w_array_head(out, v.groups.len);
+    for (v.groups) |csil_it| {
+        try enc_GroupInfo(out, &(csil_it));
+    }
+}
+
+fn dec_ListGroupsResponse(alloc: std.mem.Allocator, m: Value, out: *types.ListGroupsResponse) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "groups");
+        if (csil_fv != .array) return error.WrongType;
+        out.groups = try alloc.alloc(types.GroupInfo, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_GroupInfo(alloc, csil_it, &(out.groups[csil_i]));
+        }
+    }
+}
+
+fn enc_CreateGroupRequest(out: *std.ArrayList(u8), v: *const types.CreateGroupRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "name");
+    try w_text(out, v.name);
+}
+
+fn dec_CreateGroupRequest(alloc: std.mem.Allocator, m: Value, out: *types.CreateGroupRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "name");
+        out.name = try as_text(csil_fv);
+    }
+}
+
+fn enc_SetGroupMembersRequest(out: *std.ArrayList(u8), v: *const types.SetGroupMembersRequest) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "group_id");
+    try w_text(out, v.group_id);
+    try w_text(out, "member_account_ids");
+    try w_array_head(out, v.member_account_ids.len);
+    for (v.member_account_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_SetGroupMembersRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetGroupMembersRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "group_id");
+        out.group_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "member_account_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.member_account_ids = try alloc.alloc(types.AccountId, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.member_account_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+}
+
+fn enc_DeleteGroupRequest(out: *std.ArrayList(u8), v: *const types.DeleteGroupRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "group_id");
+    try w_text(out, v.group_id);
+}
+
+fn dec_DeleteGroupRequest(alloc: std.mem.Allocator, m: Value, out: *types.DeleteGroupRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "group_id");
+        out.group_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_SatelliteTokenInfo(out: *std.ArrayList(u8), v: *const types.SatelliteTokenInfo) CodecError!void {
+    try w_map_head(out, 5);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "name");
+    try w_text(out, v.name);
+    try w_text(out, "created_at");
+    try w_tag(out, 0);
+    try w_text(out, (v.created_at).rfc3339);
+    try w_text(out, "default_enabled");
+    try w_bool(out, v.default_enabled);
+    try w_text(out, "default_group_ids");
+    try w_array_head(out, v.default_group_ids.len);
+    for (v.default_group_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_SatelliteTokenInfo(alloc: std.mem.Allocator, m: Value, out: *types.SatelliteTokenInfo) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "name");
+        out.name = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "created_at");
+        out.created_at = .{ .rfc3339 = try as_tagged_text(csil_fv, 0), .epoch_seconds = 0 };
+    }
+    {
+        const csil_fv = try req(m, "default_enabled");
+        out.default_enabled = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "default_group_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.default_group_ids = try alloc.alloc([]const u8, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.default_group_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+}
+
+fn enc_ListSatelliteTokensResponse(out: *std.ArrayList(u8), v: *const types.ListSatelliteTokensResponse) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "satellites");
+    try w_array_head(out, v.satellites.len);
+    for (v.satellites) |csil_it| {
+        try enc_SatelliteTokenInfo(out, &(csil_it));
+    }
+}
+
+fn dec_ListSatelliteTokensResponse(alloc: std.mem.Allocator, m: Value, out: *types.ListSatelliteTokensResponse) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "satellites");
+        if (csil_fv != .array) return error.WrongType;
+        out.satellites = try alloc.alloc(types.SatelliteTokenInfo, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_SatelliteTokenInfo(alloc, csil_it, &(out.satellites[csil_i]));
+        }
+    }
+}
+
 fn enc_CreateNodeTokenRequest(out: *std.ArrayList(u8), v: *const types.CreateNodeTokenRequest) CodecError!void {
-    var csil_n: usize = 0;
+    var csil_n: usize = 2;
     if (v.label != null) csil_n += 1;
     try w_map_head(out, csil_n);
     if (v.label) |csil_x| {
         try w_text(out, "label");
         try w_text(out, csil_x);
     }
+    try w_text(out, "default_enabled");
+    try w_bool(out, v.default_enabled);
+    try w_text(out, "default_group_ids");
+    try w_array_head(out, v.default_group_ids.len);
+    for (v.default_group_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
 }
 
 fn dec_CreateNodeTokenRequest(alloc: std.mem.Allocator, m: Value, out: *types.CreateNodeTokenRequest) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
     {
         if (mget(m, "label")) |csil_fv| {
@@ -3310,12 +3563,26 @@ fn dec_CreateNodeTokenRequest(alloc: std.mem.Allocator, m: Value, out: *types.Cr
             out.label = null;
         }
     }
+    {
+        const csil_fv = try req(m, "default_enabled");
+        out.default_enabled = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "default_group_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.default_group_ids = try alloc.alloc([]const u8, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.default_group_ids[csil_i] = try as_text(csil_it);
+        }
+    }
 }
 
 fn enc_NodeTokenResult(out: *std.ArrayList(u8), v: *const types.NodeTokenResult) CodecError!void {
-    try w_map_head(out, 2);
+    try w_map_head(out, 3);
     try w_text(out, "token");
     try w_text(out, v.token);
+    try w_text(out, "satellite");
+    try enc_SatelliteTokenInfo(out, &(v.satellite));
     try w_text(out, "fingerprints");
     try w_array_head(out, v.fingerprints.len);
     for (v.fingerprints) |csil_it| {
@@ -3330,12 +3597,31 @@ fn dec_NodeTokenResult(alloc: std.mem.Allocator, m: Value, out: *types.NodeToken
         out.token = try as_text(csil_fv);
     }
     {
+        const csil_fv = try req(m, "satellite");
+        try dec_SatelliteTokenInfo(alloc, csil_fv, &(out.satellite));
+    }
+    {
         const csil_fv = try req(m, "fingerprints");
         if (csil_fv != .array) return error.WrongType;
         out.fingerprints = try alloc.alloc([]const u8, csil_fv.array.len);
         for (csil_fv.array, 0..) |csil_it, csil_i| {
             out.fingerprints[csil_i] = try as_text(csil_it);
         }
+    }
+}
+
+fn enc_RevokeSatelliteTokenRequest(out: *std.ArrayList(u8), v: *const types.RevokeSatelliteTokenRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "satellite_id");
+    try w_text(out, v.satellite_id);
+}
+
+fn dec_RevokeSatelliteTokenRequest(alloc: std.mem.Allocator, m: Value, out: *types.RevokeSatelliteTokenRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "satellite_id");
+        out.satellite_id = try as_text(csil_fv);
     }
 }
 
@@ -3459,6 +3745,27 @@ fn dec_SetSettingRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetSett
     {
         const csil_fv = try req(m, "value");
         out.value = try as_text(csil_fv);
+    }
+}
+
+fn enc_LibraryResyncStatus(out: *std.ArrayList(u8), v: *const types.LibraryResyncStatus) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "running");
+    try w_bool(out, v.running);
+    try w_text(out, "started");
+    try w_bool(out, v.started);
+}
+
+fn dec_LibraryResyncStatus(alloc: std.mem.Allocator, m: Value, out: *types.LibraryResyncStatus) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "running");
+        out.running = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "started");
+        out.started = try as_bool(csil_fv);
     }
 }
 
@@ -4918,6 +5225,134 @@ pub fn decode_RenameDeviceRequest(alloc: std.mem.Allocator, bytes: []const u8, o
     try dec_RenameDeviceRequest(alloc, root, out);
 }
 
+/// Encode a SetDeviceAccessRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_SetDeviceAccessRequest(alloc: std.mem.Allocator, v: *const types.SetDeviceAccessRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_SetDeviceAccessRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a SetDeviceAccessRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_SetDeviceAccessRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SetDeviceAccessRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_SetDeviceAccessRequest(alloc, root, out);
+}
+
+/// Encode a GroupInfo to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_GroupInfo(alloc: std.mem.Allocator, v: *const types.GroupInfo) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_GroupInfo(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a GroupInfo. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_GroupInfo(alloc: std.mem.Allocator, bytes: []const u8, out: *types.GroupInfo) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_GroupInfo(alloc, root, out);
+}
+
+/// Encode a ListGroupsResponse to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ListGroupsResponse(alloc: std.mem.Allocator, v: *const types.ListGroupsResponse) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ListGroupsResponse(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ListGroupsResponse. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ListGroupsResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ListGroupsResponse) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ListGroupsResponse(alloc, root, out);
+}
+
+/// Encode a CreateGroupRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CreateGroupRequest(alloc: std.mem.Allocator, v: *const types.CreateGroupRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CreateGroupRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CreateGroupRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CreateGroupRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CreateGroupRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CreateGroupRequest(alloc, root, out);
+}
+
+/// Encode a SetGroupMembersRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_SetGroupMembersRequest(alloc: std.mem.Allocator, v: *const types.SetGroupMembersRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_SetGroupMembersRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a SetGroupMembersRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_SetGroupMembersRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SetGroupMembersRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_SetGroupMembersRequest(alloc, root, out);
+}
+
+/// Encode a DeleteGroupRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_DeleteGroupRequest(alloc: std.mem.Allocator, v: *const types.DeleteGroupRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_DeleteGroupRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a DeleteGroupRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_DeleteGroupRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.DeleteGroupRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_DeleteGroupRequest(alloc, root, out);
+}
+
+/// Encode a SatelliteTokenInfo to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_SatelliteTokenInfo(alloc: std.mem.Allocator, v: *const types.SatelliteTokenInfo) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_SatelliteTokenInfo(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a SatelliteTokenInfo. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_SatelliteTokenInfo(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SatelliteTokenInfo) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_SatelliteTokenInfo(alloc, root, out);
+}
+
+/// Encode a ListSatelliteTokensResponse to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ListSatelliteTokensResponse(alloc: std.mem.Allocator, v: *const types.ListSatelliteTokensResponse) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ListSatelliteTokensResponse(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ListSatelliteTokensResponse. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ListSatelliteTokensResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ListSatelliteTokensResponse) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ListSatelliteTokensResponse(alloc, root, out);
+}
+
 /// Encode a CreateNodeTokenRequest to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_CreateNodeTokenRequest(alloc: std.mem.Allocator, v: *const types.CreateNodeTokenRequest) CodecError![]u8 {
@@ -4948,6 +5383,22 @@ pub fn encode_NodeTokenResult(alloc: std.mem.Allocator, v: *const types.NodeToke
 pub fn decode_NodeTokenResult(alloc: std.mem.Allocator, bytes: []const u8, out: *types.NodeTokenResult) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_NodeTokenResult(alloc, root, out);
+}
+
+/// Encode a RevokeSatelliteTokenRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_RevokeSatelliteTokenRequest(alloc: std.mem.Allocator, v: *const types.RevokeSatelliteTokenRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_RevokeSatelliteTokenRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a RevokeSatelliteTokenRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_RevokeSatelliteTokenRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.RevokeSatelliteTokenRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_RevokeSatelliteTokenRequest(alloc, root, out);
 }
 
 /// Encode a ImportTrackRequest to CBOR. The returned slice is owned by the caller
@@ -5012,4 +5463,20 @@ pub fn encode_SetSettingRequest(alloc: std.mem.Allocator, v: *const types.SetSet
 pub fn decode_SetSettingRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SetSettingRequest) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_SetSettingRequest(alloc, root, out);
+}
+
+/// Encode a LibraryResyncStatus to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_LibraryResyncStatus(alloc: std.mem.Allocator, v: *const types.LibraryResyncStatus) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_LibraryResyncStatus(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a LibraryResyncStatus. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_LibraryResyncStatus(alloc: std.mem.Allocator, bytes: []const u8, out: *types.LibraryResyncStatus) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_LibraryResyncStatus(alloc, root, out);
 }

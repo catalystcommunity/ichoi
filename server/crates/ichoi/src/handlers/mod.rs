@@ -5,6 +5,7 @@
 //! are pre-alpha stubs (§16) — the media/jukebox loops are the next implementation frontier.
 
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
@@ -53,6 +54,12 @@ impl SubHub {
             }
         }
     }
+
+    pub fn drop_player(&self, player_id: &str) {
+        if let Ok(mut map) = self.inner.lock() {
+            map.remove(player_id);
+        }
+    }
 }
 
 /// Live directive channels to satellite nodes. A satellite opens `NodeService.session` for
@@ -87,6 +94,20 @@ impl NodeHub {
             for (_, tx) in list {
                 let _ = tx.send(payload.clone());
             }
+        }
+    }
+
+    pub fn is_present(&self, player_id: &str) -> bool {
+        self.inner
+            .lock()
+            .ok()
+            .and_then(|map| map.get(player_id).map(|listeners| !listeners.is_empty()))
+            .unwrap_or(false)
+    }
+
+    pub fn drop_player(&self, player_id: &str) {
+        if let Ok(mut map) = self.inner.lock() {
+            map.remove(player_id);
         }
     }
 }
@@ -156,6 +177,7 @@ pub struct App {
     pub subs: SubHub,
     pub presence: Presence,
     pub nodes: NodeHub,
+    pub scan_running: Arc<AtomicBool>,
     pub local_rp: Option<crate::auth::local_rp::DynBackend>,
 }
 
@@ -175,6 +197,7 @@ impl App {
             subs: SubHub::new(),
             presence: Presence::new(),
             nodes: NodeHub::new(),
+            scan_running: Arc::new(AtomicBool::new(false)),
             local_rp,
         }
     }
@@ -202,6 +225,18 @@ fn internal<E: std::fmt::Display>(e: E) -> ServiceError {
 }
 fn db<T>(r: diesel::QueryResult<T>) -> Result<T, ServiceError> {
     r.map_err(internal)
+}
+
+fn require_admin_or_guest_instance(
+    ctx: &Ctx,
+    conn: &mut diesel::sqlite::SqliteConnection,
+) -> Result<(), ServiceError> {
+    match &ctx.identity {
+        Identity::User { role, .. } if role == "admin" => Ok(()),
+        Identity::Anonymous if db(store::count_accounts(conn))? == 0 => Ok(()),
+        Identity::Anonymous => Err(err(401, "admin authentication required")),
+        _ => Err(err(403, "admin role required")),
+    }
 }
 
 fn setting_enabled(
@@ -303,14 +338,33 @@ fn map_album(
     library_id: &str,
     a: &models::Album,
 ) -> Result<Album, ServiceError> {
-    let track_count = db(store::tracks_for_album(conn, &a.id))?
+    let library_tracks = db(store::tracks_for_album(conn, &a.id))?
         .into_iter()
         .filter(|track| track.library_id == library_id)
-        .count() as i64;
+        .collect::<Vec<_>>();
+    let track_count = library_tracks.len() as i64;
+    let artist_name = if let Some(artist_id) = a.artist_id.as_deref() {
+        db(store::get_artist(conn, artist_id))?.map(|artist| artist.name)
+    } else {
+        let artist_ids = library_tracks
+            .iter()
+            .filter_map(|track| track.artist_id.as_deref())
+            .collect::<HashSet<_>>();
+        match artist_ids.len() {
+            0 => None,
+            1 => db(store::get_artist(
+                conn,
+                artist_ids.into_iter().next().unwrap(),
+            ))?
+            .map(|artist| artist.name),
+            _ => Some("Various Artists".to_string()),
+        }
+    };
     Ok(Album {
         id: a.id.clone(),
         title: a.title.clone(),
         artist_id: a.artist_id.clone(),
+        artist_name,
         year: a.year.map(|y| y as u64),
         has_cover_art: a.has_cover_art != 0,
         track_count: track_count.max(0) as u64,
@@ -435,6 +489,7 @@ impl SessionService for App {
                     handle: a.handle,
                     display_name: a.display_name,
                     role: to_role(&a.role),
+                    can_admin: a.role == "admin",
                     token: None,
                 })
             }
@@ -446,6 +501,7 @@ impl SessionService for App {
                         handle: "guest".to_string(),
                         display_name: None,
                         role: Role::Guest,
+                        can_admin: true,
                         token: None,
                     })
                 } else {
@@ -481,6 +537,7 @@ impl App {
             handle: acct.handle,
             display_name: acct.display_name,
             role: to_role(&acct.role),
+            can_admin: acct.role == "admin",
             token: Some(minted.token),
         })
     }
@@ -823,6 +880,31 @@ impl App {
         })
     }
 
+    pub fn can_access_player(&self, identity: &Identity, player_id: &str) -> bool {
+        let Ok(mut conn) = self.pool.get() else {
+            return false;
+        };
+        let Ok(Some(player)) = store::get_player(&mut conn, player_id) else {
+            return false;
+        };
+        let Some(device_id) = player.output_device_id.as_deref() else {
+            return true;
+        };
+        if let Identity::Node { node_id } = identity {
+            return store::device_by_id(&mut conn, device_id)
+                .ok()
+                .flatten()
+                .is_some_and(|device| {
+                    device.enabled != 0 && device.node_id == format!("sat:{node_id}")
+                });
+        }
+        let account_id = match identity {
+            Identity::User { account_id, .. } => Some(account_id.as_str()),
+            _ => None,
+        };
+        store::device_visible_to(&mut conn, device_id, account_id).unwrap_or(false)
+    }
+
     pub fn record_node_report(&self, report: NodeReport) -> Result<PlayerState, ServiceError> {
         let mut conn = self.conn()?;
         let row = models::PlayerStateRow {
@@ -850,7 +932,7 @@ impl PlayerService for App {
 
     fn list_players(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         input: ListPlayersRequest,
     ) -> Result<ListPlayersResponse, ServiceError> {
         let mut conn = self.conn()?;
@@ -867,10 +949,28 @@ impl PlayerService for App {
                 if p.kind != "shared" {
                     return true;
                 }
-                if p.id.starts_with("player:core:") {
-                    return server_output_enabled;
+                if p.id.starts_with("player:core:") && !server_output_enabled {
+                    return false;
                 }
-                p.output_device_id.is_some() || self.presence.is_present(&p.id)
+                if let Some(device_id) = p.output_device_id.as_deref() {
+                    if let Identity::Node { node_id } = &ctx.identity {
+                        return store::device_by_id(&mut conn, device_id)
+                            .ok()
+                            .flatten()
+                            .is_some_and(|device| {
+                                device.enabled != 0 && device.node_id == format!("sat:{node_id}")
+                            });
+                    }
+                    let account_id = match &ctx.identity {
+                        Identity::User { account_id, .. } => Some(account_id.as_str()),
+                        _ => None,
+                    };
+                    let live = p.id.starts_with("player:core:") || self.nodes.is_present(&p.id);
+                    return live
+                        && store::device_visible_to(&mut conn, device_id, account_id)
+                            .unwrap_or(false);
+                }
+                self.presence.is_present(&p.id)
             })
             .map(|p| Player {
                 id: p.id,
@@ -899,6 +999,21 @@ impl PlayerService for App {
         let mut conn = self.conn()?;
         let pid = &input.player_id;
         if let Some(player) = db(store::get_player(&mut conn, pid))? {
+            if let Some(device_id) = player.output_device_id.as_deref() {
+                let owns_device = match &ctx.identity {
+                    Identity::Node { node_id } => db(store::device_by_id(&mut conn, device_id))?
+                        .is_some_and(|device| device.node_id == format!("sat:{node_id}")),
+                    _ => false,
+                };
+                let account_id = match &ctx.identity {
+                    Identity::User { account_id, .. } => Some(account_id.as_str()),
+                    _ => None,
+                };
+                if !owns_device && !db(store::device_visible_to(&mut conn, device_id, account_id))?
+                {
+                    return Err(err(403, "this output is not available to your group"));
+                }
+            }
             if player.kind == "shared" && db(store::count_accounts(&mut conn))? > 0 {
                 match &ctx.identity {
                     Identity::User { .. } => {}
@@ -1167,7 +1282,20 @@ impl NodeService for App {
             return Err(err(401, "node token required"));
         }
         let mut conn = self.conn()?;
-        let node_id = format!("sat:{}", input.hostname);
+        let authenticated_id = match &ctx.identity {
+            Identity::Node { node_id } => node_id.clone(),
+            _ => unreachable!(),
+        };
+        let node_id = if authenticated_id.starts_with("pending:") {
+            format!("sat:{}", input.hostname)
+        } else {
+            format!("sat:{authenticated_id}")
+        };
+        let token_record = db(store::satellite_by_id(&mut conn, &authenticated_id))?;
+        let friendly_name = token_record
+            .as_ref()
+            .map(|token| token.name.clone())
+            .unwrap_or_else(|| input.hostname.clone());
         let audio = if input.outputs.is_empty() {
             "none"
         } else {
@@ -1177,12 +1305,14 @@ impl NodeService for App {
             id: node_id.clone(),
             kind: "satellite".to_string(),
             hostname: input.hostname.clone(),
-            friendly_name: input.hostname.clone(),
+            friendly_name,
             token_sha256: match &ctx.identity {
                 Identity::Node { node_id } if node_id.starts_with("pending:") => {
                     Some(node_id.trim_start_matches("pending:").to_string())
                 }
-                _ => None,
+                _ => token_record
+                    .as_ref()
+                    .map(|token| token.token_sha256.clone()),
             },
             platform: input.platform,
             arch: input.arch,
@@ -1202,8 +1332,29 @@ impl NodeService for App {
                     .clone()
                     .unwrap_or_else(|| out.os_device_id.clone()),
                 is_default: i32::from(out.is_default),
+                enabled: token_record
+                    .as_ref()
+                    .map_or(1, |token| token.default_enabled),
             };
-            db(store::upsert_device(&mut conn, &dev))?;
+            let inserted = db(store::upsert_device(&mut conn, &dev))?;
+            if inserted {
+                let defaults = if token_record.is_some() {
+                    db(store::satellite_group_ids(&mut conn, &authenticated_id))?
+                } else {
+                    vec!["everyone".to_string()]
+                };
+                db(store::set_device_access(
+                    &mut conn,
+                    &dev.id,
+                    dev.enabled != 0,
+                    &defaults,
+                ))?;
+            }
+            if !db(store::device_by_id(&mut conn, &dev.id))?
+                .is_some_and(|device| device.enabled != 0)
+            {
+                continue;
+            }
             let player = models::Player {
                 id: format!("player:{}", dev.id),
                 kind: "shared".to_string(),
@@ -1240,8 +1391,9 @@ impl NodeService for App {
 impl AdminService for App {
     type Context = Ctx;
 
-    fn list_accounts(&self, _ctx: &Ctx, input: Page) -> Result<ListAccountsResponse, ServiceError> {
+    fn list_accounts(&self, ctx: &Ctx, input: Page) -> Result<ListAccountsResponse, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         let (off, lim) = page(input.offset, input.limit);
         let accounts = db(store::list_accounts(&mut conn, off, lim))?
             .into_iter()
@@ -1250,8 +1402,9 @@ impl AdminService for App {
         std::result::Result::Ok(ListAccountsResponse { accounts })
     }
 
-    fn set_role(&self, _ctx: &Ctx, input: SetRoleRequest) -> Result<Account, ServiceError> {
+    fn set_role(&self, ctx: &Ctx, input: SetRoleRequest) -> Result<Account, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         db(store::set_role(
             &mut conn,
             &input.account_id,
@@ -1264,10 +1417,11 @@ impl AdminService for App {
 
     fn trust_domain(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         input: TrustDomainRequest,
     ) -> Result<TrustedDomains, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         let selector = crate::auth::local_rp::parse_selector(&input.domain)
             .map_err(|e| err(400, e.to_string()))?;
         if selector.handle.is_some() {
@@ -1287,28 +1441,33 @@ impl AdminService for App {
 
     fn list_trusted_domains(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         _input: Page,
     ) -> Result<TrustedDomains, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         std::result::Result::Ok(TrustedDomains {
             domains: db(store::list_trusted_domains(&mut conn))?,
         })
     }
 
-    fn list_nodes(&self, _ctx: &Ctx, _input: Page) -> Result<ListNodesResponse, ServiceError> {
+    fn list_nodes(&self, ctx: &Ctx, _input: Page) -> Result<ListNodesResponse, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         let mut nodes = Vec::new();
         for n in db(store::list_nodes(&mut conn))? {
-            let devices = db(store::devices_for_node(&mut conn, &n.id))?
-                .into_iter()
-                .map(|d| DeviceInfo {
+            let mut devices = Vec::new();
+            for d in db(store::devices_for_node(&mut conn, &n.id))? {
+                let group_ids = db(store::device_group_ids(&mut conn, &d.id))?;
+                devices.push(DeviceInfo {
                     id: d.id,
                     os_device_id: d.os_device_id,
                     friendly_name: d.friendly_name,
                     is_default: d.is_default != 0,
-                })
-                .collect();
+                    enabled: d.enabled != 0,
+                    group_ids,
+                });
+            }
             nodes.push(NodeInfo {
                 id: n.id,
                 kind: match n.kind.as_str() {
@@ -1332,8 +1491,9 @@ impl AdminService for App {
         std::result::Result::Ok(ListNodesResponse { nodes })
     }
 
-    fn rename_node(&self, _ctx: &Ctx, input: RenameNodeRequest) -> Result<NodeInfo, ServiceError> {
+    fn rename_node(&self, ctx: &Ctx, input: RenameNodeRequest) -> Result<NodeInfo, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         if db(store::rename_node(
             &mut conn,
             &input.node_id,
@@ -1342,9 +1502,10 @@ impl AdminService for App {
         {
             return Err(err(404, "node not found"));
         }
+        drop(conn);
         // Re-read via list (small N); simpler than a dedicated getter for pre-alpha.
         self.list_nodes(
-            _ctx,
+            ctx,
             Page {
                 offset: None,
                 limit: None,
@@ -1358,10 +1519,11 @@ impl AdminService for App {
 
     fn rename_device(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         input: RenameDeviceRequest,
     ) -> Result<DeviceInfo, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         if db(store::rename_device(
             &mut conn,
             &input.device_id,
@@ -1370,37 +1532,210 @@ impl AdminService for App {
         {
             return Err(err(404, "device not found"));
         }
-        std::result::Result::Ok(DeviceInfo {
-            id: input.device_id,
-            os_device_id: String::new(),
-            friendly_name: input.friendly_name,
-            is_default: false,
+        let device = db(store::device_by_id(&mut conn, &input.device_id))?
+            .ok_or_else(|| err(404, "device not found"))?;
+        Ok(DeviceInfo {
+            id: device.id,
+            os_device_id: device.os_device_id,
+            friendly_name: device.friendly_name,
+            is_default: device.is_default != 0,
+            enabled: device.enabled != 0,
+            group_ids: db(store::device_group_ids(&mut conn, &input.device_id))?,
         })
+    }
+
+    fn set_device_access(
+        &self,
+        ctx: &Ctx,
+        input: SetDeviceAccessRequest,
+    ) -> Result<DeviceInfo, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        if db(store::set_device_access(
+            &mut conn,
+            &input.device_id,
+            input.enabled,
+            &input.group_ids,
+        ))? == 0
+        {
+            return Err(err(404, "output device not found"));
+        }
+        let device = db(store::device_by_id(&mut conn, &input.device_id))?
+            .ok_or_else(|| err(404, "output device not found"))?;
+        if !input.enabled {
+            if let Some(player) = db(store::player_for_device(&mut conn, &input.device_id))? {
+                self.subs.drop_player(&player.id);
+                self.nodes.drop_player(&player.id);
+            }
+        }
+        Ok(DeviceInfo {
+            id: device.id,
+            os_device_id: device.os_device_id,
+            friendly_name: device.friendly_name,
+            is_default: device.is_default != 0,
+            enabled: device.enabled != 0,
+            group_ids: db(store::device_group_ids(&mut conn, &input.device_id))?,
+        })
+    }
+
+    fn list_groups(&self, ctx: &Ctx, _input: Page) -> Result<ListGroupsResponse, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        let mut groups = Vec::new();
+        for group in db(store::list_access_groups(&mut conn))? {
+            groups.push(GroupInfo {
+                member_account_ids: db(store::group_member_ids(&mut conn, &group.id))?,
+                id: group.id,
+                name: group.name,
+            });
+        }
+        Ok(ListGroupsResponse { groups })
+    }
+
+    fn create_group(
+        &self,
+        ctx: &Ctx,
+        input: CreateGroupRequest,
+    ) -> Result<GroupInfo, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        let name = input.name.trim();
+        if name.is_empty() {
+            return Err(err(400, "group name cannot be empty"));
+        }
+        let id = format!("group:{}", &auth::sha256_hex(name)[..16]);
+        db(store::create_access_group(
+            &mut conn,
+            &models::AccessGroup {
+                id: id.clone(),
+                name: name.to_string(),
+            },
+        ))?;
+        Ok(GroupInfo {
+            id,
+            name: name.to_string(),
+            member_account_ids: Vec::new(),
+        })
+    }
+
+    fn set_group_members(
+        &self,
+        ctx: &Ctx,
+        input: SetGroupMembersRequest,
+    ) -> Result<GroupInfo, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        if input.group_id == "everyone" {
+            return Err(err(400, "the Everyone group has implicit membership"));
+        }
+        db(store::set_group_members(
+            &mut conn,
+            &input.group_id,
+            &input.member_account_ids,
+        ))?;
+        let group = db(store::list_access_groups(&mut conn))?
+            .into_iter()
+            .find(|group| group.id == input.group_id)
+            .ok_or_else(|| err(404, "group not found"))?;
+        Ok(GroupInfo {
+            id: group.id,
+            name: group.name,
+            member_account_ids: input.member_account_ids,
+        })
+    }
+
+    fn delete_group(&self, ctx: &Ctx, input: DeleteGroupRequest) -> Result<Ok, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        if input.group_id == "everyone" {
+            return Err(err(400, "the Everyone group cannot be deleted"));
+        }
+        if db(store::delete_access_group(&mut conn, &input.group_id))? == 0 {
+            return Err(err(404, "group not found"));
+        }
+        Ok(Ok { ok: true })
+    }
+
+    fn list_satellite_tokens(
+        &self,
+        ctx: &Ctx,
+        _input: Page,
+    ) -> Result<ListSatelliteTokensResponse, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        let mut satellites = Vec::new();
+        for satellite in db(store::list_satellites(&mut conn))? {
+            let group_ids = db(store::satellite_group_ids(&mut conn, &satellite.id))?;
+            satellites.push(SatelliteTokenInfo {
+                id: satellite.id,
+                name: satellite.name,
+                default_enabled: satellite.default_enabled != 0,
+                default_group_ids: group_ids,
+                created_at: parse_dt(&satellite.created_at),
+            });
+        }
+        Ok(ListSatelliteTokensResponse { satellites })
     }
 
     fn create_node_token(
         &self,
-        _ctx: &Ctx,
-        _input: CreateNodeTokenRequest,
+        ctx: &Ctx,
+        input: CreateNodeTokenRequest,
     ) -> Result<NodeTokenResult, ServiceError> {
         let minted = auth::mint_token();
         let mut conn = self.conn()?;
-        db(store::set_setting(
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        let name = input.label.as_deref().unwrap_or("Satellite").trim();
+        if name.is_empty() {
+            return Err(err(400, "satellite name cannot be empty"));
+        }
+        let id = format!("destination:{}", &minted.sha256_hex[..16]);
+        let created_at = Utc::now().to_rfc3339();
+        let row = models::SatelliteToken {
+            id: id.clone(),
+            name: name.to_string(),
+            token_sha256: minted.sha256_hex,
+            default_enabled: i32::from(input.default_enabled),
+            created_at: created_at.clone(),
+        };
+        db(store::create_satellite(
             &mut conn,
-            &format!("node_token:{}", minted.sha256_hex),
-            &Utc::now().to_rfc3339(),
+            &row,
+            &input.default_group_ids,
         ))?;
         std::result::Result::Ok(NodeTokenResult {
             token: minted.token,
             fingerprints: Vec::new(),
+            satellite: SatelliteTokenInfo {
+                id,
+                name: name.to_string(),
+                default_enabled: input.default_enabled,
+                default_group_ids: input.default_group_ids,
+                created_at: parse_dt(&created_at),
+            },
         })
+    }
+
+    fn revoke_satellite_token(
+        &self,
+        ctx: &Ctx,
+        input: RevokeSatelliteTokenRequest,
+    ) -> Result<Ok, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        if db(store::delete_satellite(&mut conn, &input.satellite_id))? == 0 {
+            return Err(err(404, "satellite destination not found"));
+        }
+        Ok(Ok { ok: true })
     }
 
     fn import_track(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         input: ImportTrackRequest,
     ) -> Result<ImportResult, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         // Cross-server copy destination (§7): write the file under the music root, let the
         // scanner index it. Admin-only by policy (enforced at the transport for pre-alpha).
         let root = self
@@ -1436,15 +1771,49 @@ impl AdminService for App {
         std::result::Result::Ok(Settings { entries })
     }
 
-    fn set_setting(&self, _ctx: &Ctx, input: SetSettingRequest) -> Result<Settings, ServiceError> {
+    fn set_setting(&self, ctx: &Ctx, input: SetSettingRequest) -> Result<Settings, ServiceError> {
         let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
         db(store::set_setting(&mut conn, &input.key, &input.value))?;
+        drop(conn);
         self.get_settings(
-            _ctx,
+            ctx,
             Page {
                 offset: None,
                 limit: None,
             },
         )
+    }
+
+    fn resync_library(&self, ctx: &Ctx, _input: Page) -> Result<LibraryResyncStatus, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        drop(conn);
+        match self.start_library_scan(false).map_err(internal)? {
+            crate::app::ScanStart::Started => Ok(LibraryResyncStatus {
+                running: true,
+                started: true,
+            }),
+            crate::app::ScanStart::AlreadyRunning => Ok(LibraryResyncStatus {
+                running: true,
+                started: false,
+            }),
+            crate::app::ScanStart::NoLibraries => {
+                Err(err(503, "no configured library directory is available"))
+            }
+        }
+    }
+
+    fn get_resync_status(
+        &self,
+        ctx: &Ctx,
+        _input: Page,
+    ) -> Result<LibraryResyncStatus, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        Ok(LibraryResyncStatus {
+            running: self.library_scan_running(),
+            started: false,
+        })
     }
 }

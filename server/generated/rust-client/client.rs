@@ -354,6 +354,69 @@ impl<T: Transport> AdminClient<T> {
         decode_device_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// set-device-access (request/response).
+    pub fn set_device_access(
+        &self,
+        req: SetDeviceAccessRequest,
+    ) -> Result<DeviceInfo, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "set-device-access",
+            &encode_set_device_access_request(&req),
+        )?;
+        decode_device_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// list-groups (request/response).
+    pub fn list_groups(&self, req: Page) -> Result<ListGroupsResponse, ClientError> {
+        let csil_resp = self
+            .transport
+            .call("AdminService", "list-groups", &encode_page(&req))?;
+        decode_list_groups_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// create-group (request/response).
+    pub fn create_group(&self, req: CreateGroupRequest) -> Result<GroupInfo, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "create-group",
+            &encode_create_group_request(&req),
+        )?;
+        decode_group_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// set-group-members (request/response).
+    pub fn set_group_members(&self, req: SetGroupMembersRequest) -> Result<GroupInfo, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "set-group-members",
+            &encode_set_group_members_request(&req),
+        )?;
+        decode_group_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// delete-group (request/response).
+    pub fn delete_group(&self, req: DeleteGroupRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "delete-group",
+            &encode_delete_group_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// list-satellite-tokens (request/response).
+    pub fn list_satellite_tokens(
+        &self,
+        req: Page,
+    ) -> Result<ListSatelliteTokensResponse, ClientError> {
+        let csil_resp =
+            self.transport
+                .call("AdminService", "list-satellite-tokens", &encode_page(&req))?;
+        decode_list_satellite_tokens_response(&csil_resp)
+            .map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// create-node-token (request/response).
     pub fn create_node_token(
         &self,
@@ -365,6 +428,19 @@ impl<T: Transport> AdminClient<T> {
             &encode_create_node_token_request(&req),
         )?;
         decode_node_token_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// revoke-satellite-token (request/response).
+    pub fn revoke_satellite_token(
+        &self,
+        req: RevokeSatelliteTokenRequest,
+    ) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "revoke-satellite-token",
+            &encode_revoke_satellite_token_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
     /// import-track (request/response).
@@ -393,5 +469,21 @@ impl<T: Transport> AdminClient<T> {
             &encode_set_setting_request(&req),
         )?;
         decode_settings(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// resync-library (request/response).
+    pub fn resync_library(&self, req: Page) -> Result<LibraryResyncStatus, ClientError> {
+        let csil_resp =
+            self.transport
+                .call("AdminService", "resync-library", &encode_page(&req))?;
+        decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// get-resync-status (request/response).
+    pub fn get_resync_status(&self, req: Page) -> Result<LibraryResyncStatus, ClientError> {
+        let csil_resp =
+            self.transport
+                .call("AdminService", "get-resync-status", &encode_page(&req))?;
+        decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 }

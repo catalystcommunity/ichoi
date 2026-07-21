@@ -41,8 +41,36 @@ public final class AdminClient {
         return CsilCbor.decodeDeviceInfo(transport.call("AdminService", "rename-device", CsilCbor.encodeRenameDeviceRequest(req)));
     }
 
+    public DeviceInfo setDeviceAccess(SetDeviceAccessRequest req) throws ClientException {
+        return CsilCbor.decodeDeviceInfo(transport.call("AdminService", "set-device-access", CsilCbor.encodeSetDeviceAccessRequest(req)));
+    }
+
+    public ListGroupsResponse listGroups(Page req) throws ClientException {
+        return CsilCbor.decodeListGroupsResponse(transport.call("AdminService", "list-groups", CsilCbor.encodePage(req)));
+    }
+
+    public GroupInfo createGroup(CreateGroupRequest req) throws ClientException {
+        return CsilCbor.decodeGroupInfo(transport.call("AdminService", "create-group", CsilCbor.encodeCreateGroupRequest(req)));
+    }
+
+    public GroupInfo setGroupMembers(SetGroupMembersRequest req) throws ClientException {
+        return CsilCbor.decodeGroupInfo(transport.call("AdminService", "set-group-members", CsilCbor.encodeSetGroupMembersRequest(req)));
+    }
+
+    public Ok deleteGroup(DeleteGroupRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("AdminService", "delete-group", CsilCbor.encodeDeleteGroupRequest(req)));
+    }
+
+    public ListSatelliteTokensResponse listSatelliteTokens(Page req) throws ClientException {
+        return CsilCbor.decodeListSatelliteTokensResponse(transport.call("AdminService", "list-satellite-tokens", CsilCbor.encodePage(req)));
+    }
+
     public NodeTokenResult createNodeToken(CreateNodeTokenRequest req) throws ClientException {
         return CsilCbor.decodeNodeTokenResult(transport.call("AdminService", "create-node-token", CsilCbor.encodeCreateNodeTokenRequest(req)));
+    }
+
+    public Ok revokeSatelliteToken(RevokeSatelliteTokenRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("AdminService", "revoke-satellite-token", CsilCbor.encodeRevokeSatelliteTokenRequest(req)));
     }
 
     public ImportResult importTrack(ImportTrackRequest req) throws ClientException {
@@ -55,5 +83,13 @@ public final class AdminClient {
 
     public Settings setSetting(SetSettingRequest req) throws ClientException {
         return CsilCbor.decodeSettings(transport.call("AdminService", "set-setting", CsilCbor.encodeSetSettingRequest(req)));
+    }
+
+    public LibraryResyncStatus resyncLibrary(Page req) throws ClientException {
+        return CsilCbor.decodeLibraryResyncStatus(transport.call("AdminService", "resync-library", CsilCbor.encodePage(req)));
+    }
+
+    public LibraryResyncStatus getResyncStatus(Page req) throws ClientException {
+        return CsilCbor.decodeLibraryResyncStatus(transport.call("AdminService", "get-resync-status", CsilCbor.encodePage(req)));
     }
 }

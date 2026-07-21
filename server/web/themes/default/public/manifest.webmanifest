@@ -1,0 +1,13 @@
+{
+  "name": "Ichoi",
+  "short_name": "Ichoi",
+  "description": "Music library, jukebox, and satellite output",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101417",
+  "theme_color": "#101417",
+  "icons": [
+    { "src": "/ichoi-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

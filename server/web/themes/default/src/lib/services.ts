@@ -26,22 +26,29 @@ import type {
   CoverArt,
   CoverArtRequest,
   CreateNodeTokenRequest,
+  GroupInfo,
   DeviceInfo,
   DisableShareRequest,
   EnableShareRequest,
   ImportResult,
   ImportTrackRequest,
   ListAccountsResponse,
+  ListGroupsResponse,
   LibrariesResponse,
+  LibraryResyncStatus,
   ListNodesResponse,
+  ListSatelliteTokensResponse,
   ListPlayersRequest,
   ListPlayersResponse,
   MediaControl,
   MediaEvent,
   NodeInfo,
+  NodeReport,
   NodeTokenResult,
   Ok,
   Page,
+  RegisterNodeRequest,
+  RegisterNodeResponse,
   PlayerState,
   PlaylistDetail,
   PlaylistRequest,
@@ -50,6 +57,7 @@ import type {
   SearchResponse,
   SessionInfo,
   SetRoleRequest,
+  SetDeviceAccessRequest,
   SetSettingRequest,
   Settings,
   ShareResult,
@@ -64,6 +72,7 @@ const LIBRARY = "LibraryService";
 const PLAYER = "PlayerService";
 const MEDIA = "MediaService";
 const ADMIN = "AdminService";
+const NODE = "NodeService";
 
 function encodeRecord(obj: object): Uint8Array {
   return cborEncode(obj as CborValue);
@@ -223,8 +232,29 @@ export class AdminService {
   renameDevice(device_id: string, friendly_name: string): Promise<DeviceInfo> {
     return this.conn.call(ADMIN, "rename-device", encodeRecord({ device_id, friendly_name }), decodeRecord<DeviceInfo>);
   }
-  createNodeToken(req: CreateNodeTokenRequest = {}): Promise<NodeTokenResult> {
+  setDeviceAccess(req: SetDeviceAccessRequest): Promise<DeviceInfo> {
+    return this.conn.call(ADMIN, "set-device-access", encodeRecord(req), decodeRecord<DeviceInfo>);
+  }
+  listGroups(page: Page = {}): Promise<ListGroupsResponse> {
+    return this.conn.call(ADMIN, "list-groups", encodeRecord(page), decodeRecord<ListGroupsResponse>);
+  }
+  createGroup(name: string): Promise<GroupInfo> {
+    return this.conn.call(ADMIN, "create-group", encodeRecord({ name }), decodeRecord<GroupInfo>);
+  }
+  setGroupMembers(group_id: string, member_account_ids: string[]): Promise<GroupInfo> {
+    return this.conn.call(ADMIN, "set-group-members", encodeRecord({ group_id, member_account_ids }), decodeRecord<GroupInfo>);
+  }
+  deleteGroup(group_id: string): Promise<Ok> {
+    return this.conn.call(ADMIN, "delete-group", encodeRecord({ group_id }), decodeRecord<Ok>);
+  }
+  listSatelliteTokens(page: Page = {}): Promise<ListSatelliteTokensResponse> {
+    return this.conn.call(ADMIN, "list-satellite-tokens", encodeRecord(page), decodeRecord<ListSatelliteTokensResponse>);
+  }
+  createNodeToken(req: CreateNodeTokenRequest = { default_group_ids: ["everyone"] }): Promise<NodeTokenResult> {
     return this.conn.call(ADMIN, "create-node-token", encodeRecord(req), decodeRecord<NodeTokenResult>);
+  }
+  revokeSatelliteToken(satellite_id: string): Promise<Ok> {
+    return this.conn.call(ADMIN, "revoke-satellite-token", encodeRecord({ satellite_id }), decodeRecord<Ok>);
   }
   importTrack(req: ImportTrackRequest): Promise<ImportResult> {
     return this.conn.call(ADMIN, "import-track", encodeRecord(req), decodeRecord<ImportResult>);
@@ -234,6 +264,32 @@ export class AdminService {
   }
   setSetting(req: SetSettingRequest): Promise<Settings> {
     return this.conn.call(ADMIN, "set-setting", encodeRecord(req), decodeRecord<Settings>);
+  }
+  resyncLibrary(page: Page = {}): Promise<LibraryResyncStatus> {
+    return this.conn.call(
+      ADMIN,
+      "resync-library",
+      encodeRecord(page),
+      decodeRecord<LibraryResyncStatus>,
+    );
+  }
+  getResyncStatus(page: Page = {}): Promise<LibraryResyncStatus> {
+    return this.conn.call(
+      ADMIN,
+      "get-resync-status",
+      encodeRecord(page),
+      decodeRecord<LibraryResyncStatus>,
+    );
+  }
+}
+
+export class NodeService {
+  constructor(private readonly conn: CsilConnection) {}
+  register(req: RegisterNodeRequest): Promise<RegisterNodeResponse> {
+    return this.conn.call(NODE, "register", encodeRecord(req), decodeRecord<RegisterNodeResponse>);
+  }
+  report(report: NodeReport): void {
+    this.conn.sendChannel(NODE, "session", encodeRecord(report));
   }
 }
 
@@ -270,12 +326,14 @@ export class ServerApi {
   readonly library: LibraryService;
   readonly player: PlayerService;
   readonly admin: AdminService;
+  readonly node: NodeService;
 
   constructor(readonly conn: CsilConnection) {
     this.session = new SessionService(conn);
     this.library = new LibraryService(conn);
     this.player = new PlayerService(conn);
     this.admin = new AdminService(conn);
+    this.node = new NodeService(conn);
   }
 
   mediaStream(): MediaStream {

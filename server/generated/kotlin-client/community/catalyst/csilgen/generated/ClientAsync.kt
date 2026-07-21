@@ -122,8 +122,29 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     suspend fun renameDevice(request: RenameDeviceRequest): DeviceInfo {
         return decode<DeviceInfo>(transport.call("AdminService", "rename-device", encode(request)))
     }
+    suspend fun setDeviceAccess(request: SetDeviceAccessRequest): DeviceInfo {
+        return decode<DeviceInfo>(transport.call("AdminService", "set-device-access", encode(request)))
+    }
+    suspend fun listGroups(request: Page): ListGroupsResponse {
+        return decode<ListGroupsResponse>(transport.call("AdminService", "list-groups", encode(request)))
+    }
+    suspend fun createGroup(request: CreateGroupRequest): GroupInfo {
+        return decode<GroupInfo>(transport.call("AdminService", "create-group", encode(request)))
+    }
+    suspend fun setGroupMembers(request: SetGroupMembersRequest): GroupInfo {
+        return decode<GroupInfo>(transport.call("AdminService", "set-group-members", encode(request)))
+    }
+    suspend fun deleteGroup(request: DeleteGroupRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "delete-group", encode(request)))
+    }
+    suspend fun listSatelliteTokens(request: Page): ListSatelliteTokensResponse {
+        return decode<ListSatelliteTokensResponse>(transport.call("AdminService", "list-satellite-tokens", encode(request)))
+    }
     suspend fun createNodeToken(request: CreateNodeTokenRequest): NodeTokenResult {
         return decode<NodeTokenResult>(transport.call("AdminService", "create-node-token", encode(request)))
+    }
+    suspend fun revokeSatelliteToken(request: RevokeSatelliteTokenRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "revoke-satellite-token", encode(request)))
     }
     suspend fun importTrack(request: ImportTrackRequest): ImportResult {
         return decode<ImportResult>(transport.call("AdminService", "import-track", encode(request)))
@@ -133,6 +154,12 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun setSetting(request: SetSettingRequest): Settings {
         return decode<Settings>(transport.call("AdminService", "set-setting", encode(request)))
+    }
+    suspend fun resyncLibrary(request: Page): LibraryResyncStatus {
+        return decode<LibraryResyncStatus>(transport.call("AdminService", "resync-library", encode(request)))
+    }
+    suspend fun getResyncStatus(request: Page): LibraryResyncStatus {
+        return decode<LibraryResyncStatus>(transport.call("AdminService", "get-resync-status", encode(request)))
     }
 }
 

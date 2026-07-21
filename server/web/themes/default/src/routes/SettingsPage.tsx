@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show, type JSX } from "solid-js";
+import { createEffect, createResource, createSignal, For, onCleanup, Show, type JSX } from "solid-js";
 import { useI18n, LOCALES } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { usePlayback } from "../stores/playback.tsx";
@@ -6,6 +6,7 @@ import { useTheme, type ThemeMode } from "../stores/theme.tsx";
 import { CsilServiceError } from "../lib/csil.ts";
 import type { TranscodeCodec } from "../lib/schema.ts";
 import { EmptyState } from "../components/common.tsx";
+import { SatelliteAdmin } from "../components/SatelliteAdmin.tsx";
 
 export function SettingsPage(): JSX.Element {
   const { t, locale, setLocale } = useI18n();
@@ -33,8 +34,51 @@ export function SettingsPage(): JSX.Element {
     },
   );
 
-  const isAdmin = () => servers.active()?.session?.role === "admin";
+  const isAdmin = () => servers.active()?.session?.can_admin === true;
   const [saveError, setSaveError] = createSignal<string>();
+  const [resyncRunning, setResyncRunning] = createSignal(false);
+  const [resyncMessage, setResyncMessage] = createSignal<string>();
+  let resyncTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const checkResync = async () => {
+    const api = servers.api();
+    if (!api || !isAdmin()) return;
+    try {
+      const status = await api.admin.getResyncStatus();
+      const wasRunning = resyncRunning();
+      setResyncRunning(status.running);
+      if (status.running) {
+        resyncTimer = setTimeout(() => void checkResync(), 2_000);
+      } else if (wasRunning) {
+        setResyncMessage(t("settings.resyncComplete"));
+      }
+    } catch (err) {
+      setResyncMessage(err instanceof CsilServiceError ? err.message : String(err));
+    }
+  };
+
+  createEffect(() => {
+    servers.activeId();
+    if (isAdmin()) void checkResync();
+  });
+  onCleanup(() => clearTimeout(resyncTimer));
+
+  const startResync = async () => {
+    const api = servers.api();
+    if (!api) return;
+    clearTimeout(resyncTimer);
+    setResyncMessage(undefined);
+    try {
+      const status = await api.admin.resyncLibrary();
+      setResyncRunning(status.running);
+      setResyncMessage(
+        status.started ? t("settings.resyncRunning") : t("settings.resyncAlreadyRunning"),
+      );
+      if (status.running) resyncTimer = setTimeout(() => void checkResync(), 2_000);
+    } catch (err) {
+      setResyncMessage(err instanceof CsilServiceError ? err.message : String(err));
+    }
+  };
 
   const saveSetting = async (key: string, value: string) => {
     const api = servers.api();
@@ -175,7 +219,27 @@ export function SettingsPage(): JSX.Element {
             {saveError()}
           </p>
         </Show>
+        <Show when={isAdmin()}>
+          <div class="field" style={{ "margin-top": "22px" }}>
+            <label>{t("settings.libraryResync")}</label>
+            <p class="hint">{t("settings.libraryResyncHint")}</p>
+            <div class="row" style={{ gap: "12px", "margin-top": "10px" }}>
+              <button
+                type="button"
+                class="btn"
+                disabled={resyncRunning()}
+                onClick={() => void startResync()}
+              >
+                {resyncRunning() ? t("settings.resyncing") : t("settings.resync")}
+              </button>
+              <Show when={resyncMessage()}>
+                {(message) => <span class="hint">{message()}</span>}
+              </Show>
+            </div>
+          </div>
+        </Show>
       </section>
+      <Show when={isAdmin()}><SatelliteAdmin /></Show>
     </div>
   );
 }

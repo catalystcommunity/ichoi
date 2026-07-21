@@ -186,9 +186,44 @@ class AdminClient
     DeviceInfo.from_cbor(@transport.call("AdminService", "rename-device", req.to_cbor))
   end
 
+  # set-device-access: -> DeviceInfo
+  def set_device_access(req)
+    DeviceInfo.from_cbor(@transport.call("AdminService", "set-device-access", req.to_cbor))
+  end
+
+  # list-groups: -> ListGroupsResponse
+  def list_groups(req)
+    ListGroupsResponse.from_cbor(@transport.call("AdminService", "list-groups", req.to_cbor))
+  end
+
+  # create-group: -> GroupInfo
+  def create_group(req)
+    GroupInfo.from_cbor(@transport.call("AdminService", "create-group", req.to_cbor))
+  end
+
+  # set-group-members: -> GroupInfo
+  def set_group_members(req)
+    GroupInfo.from_cbor(@transport.call("AdminService", "set-group-members", req.to_cbor))
+  end
+
+  # delete-group: -> Ok
+  def delete_group(req)
+    Ok.from_cbor(@transport.call("AdminService", "delete-group", req.to_cbor))
+  end
+
+  # list-satellite-tokens: -> ListSatelliteTokensResponse
+  def list_satellite_tokens(req)
+    ListSatelliteTokensResponse.from_cbor(@transport.call("AdminService", "list-satellite-tokens", req.to_cbor))
+  end
+
   # create-node-token: -> NodeTokenResult
   def create_node_token(req)
     NodeTokenResult.from_cbor(@transport.call("AdminService", "create-node-token", req.to_cbor))
+  end
+
+  # revoke-satellite-token: -> Ok
+  def revoke_satellite_token(req)
+    Ok.from_cbor(@transport.call("AdminService", "revoke-satellite-token", req.to_cbor))
   end
 
   # import-track: -> ImportResult
@@ -204,5 +239,15 @@ class AdminClient
   # set-setting: -> Settings
   def set_setting(req)
     Settings.from_cbor(@transport.call("AdminService", "set-setting", req.to_cbor))
+  end
+
+  # resync-library: -> LibraryResyncStatus
+  def resync_library(req)
+    LibraryResyncStatus.from_cbor(@transport.call("AdminService", "resync-library", req.to_cbor))
+  end
+
+  # get-resync-status: -> LibraryResyncStatus
+  def get_resync_status(req)
+    LibraryResyncStatus.from_cbor(@transport.call("AdminService", "get-resync-status", req.to_cbor))
   end
 end

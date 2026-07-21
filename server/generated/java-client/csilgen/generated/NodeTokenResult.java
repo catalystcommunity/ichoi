@@ -6,6 +6,7 @@ import java.util.List;
 
 public record NodeTokenResult(
     String token /* wire: "token" */,
-    List<String> fingerprints /* wire: "fingerprints" */
+    List<String> fingerprints /* wire: "fingerprints" */,
+    SatelliteTokenInfo satellite /* wire: "satellite" */
 ) {
 }

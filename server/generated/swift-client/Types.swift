@@ -159,13 +159,16 @@ public struct SessionInfo: Equatable, Sendable {
     /// wire key: display_name
     public let displayName: String?
     public let role: Role
+    /// wire key: can_admin
+    public let canAdmin: Bool
     public let token: String?
 
-    public init(accountId: AccountId, handle: Handle, displayName: String? = nil, role: Role, token: String? = nil) {
+    public init(accountId: AccountId, handle: Handle, displayName: String? = nil, role: Role, canAdmin: Bool = false, token: String? = nil) {
         self.accountId = accountId
         self.handle = handle
         self.displayName = displayName
         self.role = role
+        self.canAdmin = canAdmin
         self.token = token
     }
 
@@ -175,6 +178,7 @@ public struct SessionInfo: Equatable, Sendable {
         "handle": "handle",
         "displayName": "display_name",
         "role": "role",
+        "canAdmin": "can_admin",
         "token": "token"
     ]
 }
@@ -257,16 +261,19 @@ public struct Album: Equatable, Sendable {
     public let title: String
     /// wire key: artist_id
     public let artistId: ArtistId?
+    /// wire key: artist_name
+    public let artistName: String?
     public let year: UInt64?
     /// wire key: has_cover_art
     public let hasCoverArt: Bool
     /// wire key: track_count
     public let trackCount: UInt64
 
-    public init(id: AlbumId, title: String, artistId: ArtistId? = nil, year: UInt64? = nil, hasCoverArt: Bool = false, trackCount: UInt64) {
+    public init(id: AlbumId, title: String, artistId: ArtistId? = nil, artistName: String? = nil, year: UInt64? = nil, hasCoverArt: Bool = false, trackCount: UInt64) {
         self.id = id
         self.title = title
         self.artistId = artistId
+        self.artistName = artistName
         self.year = year
         self.hasCoverArt = hasCoverArt
         self.trackCount = trackCount
@@ -277,6 +284,7 @@ public struct Album: Equatable, Sendable {
         "id": "id",
         "title": "title",
         "artistId": "artist_id",
+        "artistName": "artist_name",
         "year": "year",
         "hasCoverArt": "has_cover_art",
         "trackCount": "track_count"
@@ -1624,12 +1632,17 @@ public struct DeviceInfo: Equatable, Sendable {
     public let friendlyName: String
     /// wire key: is_default
     public let isDefault: Bool
+    public let enabled: Bool
+    /// wire key: group_ids
+    public let groupIds: [String]
 
-    public init(id: DeviceId, osDeviceId: String, friendlyName: String, isDefault: Bool = false) {
+    public init(id: DeviceId, osDeviceId: String, friendlyName: String, isDefault: Bool = false, enabled: Bool = true, groupIds: [String]) {
         self.id = id
         self.osDeviceId = osDeviceId
         self.friendlyName = friendlyName
         self.isDefault = isDefault
+        self.enabled = enabled
+        self.groupIds = groupIds
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
@@ -1637,7 +1650,9 @@ public struct DeviceInfo: Equatable, Sendable {
         "id": "id",
         "osDeviceId": "os_device_id",
         "friendlyName": "friendly_name",
-        "isDefault": "is_default"
+        "isDefault": "is_default",
+        "enabled": "enabled",
+        "groupIds": "group_ids"
     ]
 }
 
@@ -1754,17 +1769,183 @@ public struct RenameDeviceRequest: Equatable, Sendable {
     ]
 }
 
-/// CreateNodeTokenRequest is a generated CSIL record type.
-public struct CreateNodeTokenRequest: Equatable, Sendable {
-    public let label: String?
+/// SetDeviceAccessRequest is a generated CSIL record type.
+public struct SetDeviceAccessRequest: Equatable, Sendable {
+    /// wire key: device_id
+    public let deviceId: DeviceId
+    public let enabled: Bool
+    /// wire key: group_ids
+    public let groupIds: [String]
 
-    public init(label: String? = nil) {
-        self.label = label
+    public init(deviceId: DeviceId, enabled: Bool, groupIds: [String]) {
+        self.deviceId = deviceId
+        self.enabled = enabled
+        self.groupIds = groupIds
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "label": "label"
+        "deviceId": "device_id",
+        "enabled": "enabled",
+        "groupIds": "group_ids"
+    ]
+}
+
+/// GroupInfo is a generated CSIL record type.
+public struct GroupInfo: Equatable, Sendable {
+    public let id: String
+    public let name: String
+    /// wire key: member_account_ids
+    public let memberAccountIds: [AccountId]
+
+    public init(id: String, name: String, memberAccountIds: [AccountId]) {
+        self.id = id
+        self.name = name
+        self.memberAccountIds = memberAccountIds
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "id": "id",
+        "name": "name",
+        "memberAccountIds": "member_account_ids"
+    ]
+}
+
+/// ListGroupsResponse is a generated CSIL record type.
+public struct ListGroupsResponse: Equatable, Sendable {
+    public let groups: [GroupInfo]
+
+    public init(groups: [GroupInfo]) {
+        self.groups = groups
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "groups": "groups"
+    ]
+}
+
+/// CreateGroupRequest is a generated CSIL record type.
+public struct CreateGroupRequest: Equatable, Sendable {
+    public let name: String
+
+    public init(name: String) {
+        self.name = name
+    }
+
+    /// Validate field constraints, throwing CsilValidationError on the first failure.
+    public func validate() throws {
+        if self.name.count < 1 {
+            throw CsilValidationError("field 'name' must have at least 1 elements")
+        }
+        if self.name.count > 64 {
+            throw CsilValidationError("field 'name' must have at most 64 elements")
+        }
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "name": "name"
+    ]
+}
+
+/// SetGroupMembersRequest is a generated CSIL record type.
+public struct SetGroupMembersRequest: Equatable, Sendable {
+    /// wire key: group_id
+    public let groupId: String
+    /// wire key: member_account_ids
+    public let memberAccountIds: [AccountId]
+
+    public init(groupId: String, memberAccountIds: [AccountId]) {
+        self.groupId = groupId
+        self.memberAccountIds = memberAccountIds
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "groupId": "group_id",
+        "memberAccountIds": "member_account_ids"
+    ]
+}
+
+/// DeleteGroupRequest is a generated CSIL record type.
+public struct DeleteGroupRequest: Equatable, Sendable {
+    /// wire key: group_id
+    public let groupId: String
+
+    public init(groupId: String) {
+        self.groupId = groupId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "groupId": "group_id"
+    ]
+}
+
+/// SatelliteTokenInfo is a generated CSIL record type.
+public struct SatelliteTokenInfo: Equatable, Sendable {
+    public let id: String
+    public let name: String
+    /// wire key: default_enabled
+    public let defaultEnabled: Bool
+    /// wire key: default_group_ids
+    public let defaultGroupIds: [String]
+    /// wire key: created_at
+    public let createdAt: String
+
+    public init(id: String, name: String, defaultEnabled: Bool = true, defaultGroupIds: [String], createdAt: String) {
+        self.id = id
+        self.name = name
+        self.defaultEnabled = defaultEnabled
+        self.defaultGroupIds = defaultGroupIds
+        self.createdAt = createdAt
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "id": "id",
+        "name": "name",
+        "defaultEnabled": "default_enabled",
+        "defaultGroupIds": "default_group_ids",
+        "createdAt": "created_at"
+    ]
+}
+
+/// ListSatelliteTokensResponse is a generated CSIL record type.
+public struct ListSatelliteTokensResponse: Equatable, Sendable {
+    public let satellites: [SatelliteTokenInfo]
+
+    public init(satellites: [SatelliteTokenInfo]) {
+        self.satellites = satellites
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "satellites": "satellites"
+    ]
+}
+
+/// CreateNodeTokenRequest is a generated CSIL record type.
+public struct CreateNodeTokenRequest: Equatable, Sendable {
+    public let label: String?
+    /// wire key: default_enabled
+    public let defaultEnabled: Bool
+    /// wire key: default_group_ids
+    public let defaultGroupIds: [String]
+
+    public init(label: String? = nil, defaultEnabled: Bool = true, defaultGroupIds: [String]) {
+        self.label = label
+        self.defaultEnabled = defaultEnabled
+        self.defaultGroupIds = defaultGroupIds
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "label": "label",
+        "defaultEnabled": "default_enabled",
+        "defaultGroupIds": "default_group_ids"
     ]
 }
 
@@ -1772,16 +1953,34 @@ public struct CreateNodeTokenRequest: Equatable, Sendable {
 public struct NodeTokenResult: Equatable, Sendable {
     public let token: String
     public let fingerprints: [String]
+    public let satellite: SatelliteTokenInfo
 
-    public init(token: String, fingerprints: [String]) {
+    public init(token: String, fingerprints: [String], satellite: SatelliteTokenInfo) {
         self.token = token
         self.fingerprints = fingerprints
+        self.satellite = satellite
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "token": "token",
-        "fingerprints": "fingerprints"
+        "fingerprints": "fingerprints",
+        "satellite": "satellite"
+    ]
+}
+
+/// RevokeSatelliteTokenRequest is a generated CSIL record type.
+public struct RevokeSatelliteTokenRequest: Equatable, Sendable {
+    /// wire key: satellite_id
+    public let satelliteId: String
+
+    public init(satelliteId: String) {
+        self.satelliteId = satelliteId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "satelliteId": "satellite_id"
     ]
 }
 
@@ -1861,6 +2060,23 @@ public struct SetSettingRequest: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "key": "key",
         "value": "value"
+    ]
+}
+
+/// LibraryResyncStatus is a generated CSIL record type.
+public struct LibraryResyncStatus: Equatable, Sendable {
+    public let running: Bool
+    public let started: Bool
+
+    public init(running: Bool, started: Bool = false) {
+        self.running = running
+        self.started = started
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "running": "running",
+        "started": "started"
     ]
 }
 

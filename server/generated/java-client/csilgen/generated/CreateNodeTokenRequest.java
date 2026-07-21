@@ -2,7 +2,11 @@
 
 package csilgen.generated;
 
+import java.util.List;
+
 public record CreateNodeTokenRequest(
-    String label /* wire: "label" */
+    String label /* wire: "label" */,
+    boolean defaultEnabled /* wire: "default_enabled" */,
+    List<String> defaultGroupIds /* wire: "default_group_ids" */
 ) {
 }

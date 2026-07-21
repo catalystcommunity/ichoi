@@ -159,12 +159,22 @@ typedef struct NodeInfo NodeInfo;
 typedef struct ListNodesResponse ListNodesResponse;
 typedef struct RenameNodeRequest RenameNodeRequest;
 typedef struct RenameDeviceRequest RenameDeviceRequest;
+typedef struct SetDeviceAccessRequest SetDeviceAccessRequest;
+typedef struct GroupInfo GroupInfo;
+typedef struct ListGroupsResponse ListGroupsResponse;
+typedef struct CreateGroupRequest CreateGroupRequest;
+typedef struct SetGroupMembersRequest SetGroupMembersRequest;
+typedef struct DeleteGroupRequest DeleteGroupRequest;
+typedef struct SatelliteTokenInfo SatelliteTokenInfo;
+typedef struct ListSatelliteTokensResponse ListSatelliteTokensResponse;
 typedef struct CreateNodeTokenRequest CreateNodeTokenRequest;
 typedef struct NodeTokenResult NodeTokenResult;
+typedef struct RevokeSatelliteTokenRequest RevokeSatelliteTokenRequest;
 typedef struct ImportTrackRequest ImportTrackRequest;
 typedef struct ImportResult ImportResult;
 typedef struct Settings Settings;
 typedef struct SetSettingRequest SetSettingRequest;
+typedef struct LibraryResyncStatus LibraryResyncStatus;
 
 /* AccountId is a type alias. */
 typedef char *AccountId;
@@ -230,6 +240,7 @@ typedef struct SessionInfo {
     Handle handle;
     char *display_name;
     Role role;
+    bool can_admin;
     char *token;
 } SessionInfo;
 
@@ -257,6 +268,7 @@ typedef struct Album {
     AlbumId id;
     char *title;
     ArtistId *artist_id;
+    char *artist_name;
     uint64_t *year;
     bool has_cover_art;
     uint64_t track_count;
@@ -788,6 +800,9 @@ typedef struct DeviceInfo {
     char *os_device_id;
     char *friendly_name;
     bool is_default;
+    bool enabled;
+    char **group_ids;
+    size_t group_ids_count;
 } DeviceInfo;
 
 /* NodeInfo is a structured data type. */
@@ -822,9 +837,67 @@ typedef struct RenameDeviceRequest {
     char *friendly_name;
 } RenameDeviceRequest;
 
+/* SetDeviceAccessRequest is a structured data type. */
+typedef struct SetDeviceAccessRequest {
+    DeviceId device_id;
+    bool enabled;
+    char **group_ids;
+    size_t group_ids_count;
+} SetDeviceAccessRequest;
+
+/* GroupInfo is a structured data type. */
+typedef struct GroupInfo {
+    char *id;
+    char *name;
+    AccountId *member_account_ids;
+    size_t member_account_ids_count;
+} GroupInfo;
+
+/* ListGroupsResponse is a structured data type. */
+typedef struct ListGroupsResponse {
+    GroupInfo *groups;
+    size_t groups_count;
+} ListGroupsResponse;
+
+/* CreateGroupRequest is a structured data type. */
+typedef struct CreateGroupRequest {
+    char *name;
+} CreateGroupRequest;
+
+/* SetGroupMembersRequest is a structured data type. */
+typedef struct SetGroupMembersRequest {
+    char *group_id;
+    AccountId *member_account_ids;
+    size_t member_account_ids_count;
+} SetGroupMembersRequest;
+
+/* DeleteGroupRequest is a structured data type. */
+typedef struct DeleteGroupRequest {
+    char *group_id;
+} DeleteGroupRequest;
+
+/* SatelliteTokenInfo is a structured data type. */
+typedef struct SatelliteTokenInfo {
+    char *id;
+    char *name;
+    bool default_enabled;
+    char **default_group_ids;
+    size_t default_group_ids_count;
+    CsilTimestamp created_at;
+} SatelliteTokenInfo;
+
+/* ListSatelliteTokensResponse is a structured data type. */
+typedef struct ListSatelliteTokensResponse {
+    SatelliteTokenInfo *satellites;
+    size_t satellites_count;
+} ListSatelliteTokensResponse;
+
 /* CreateNodeTokenRequest is a structured data type. */
 typedef struct CreateNodeTokenRequest {
     char *label;
+    bool default_enabled;
+    char **default_group_ids;
+    size_t default_group_ids_count;
 } CreateNodeTokenRequest;
 
 /* NodeTokenResult is a structured data type. */
@@ -832,7 +905,13 @@ typedef struct NodeTokenResult {
     char *token;
     char **fingerprints;
     size_t fingerprints_count;
+    SatelliteTokenInfo satellite;
 } NodeTokenResult;
+
+/* RevokeSatelliteTokenRequest is a structured data type. */
+typedef struct RevokeSatelliteTokenRequest {
+    char *satellite_id;
+} RevokeSatelliteTokenRequest;
 
 /* ImportTrackRequest is a structured data type. */
 typedef struct ImportTrackRequest {
@@ -861,5 +940,11 @@ typedef struct SetSettingRequest {
     char *key;
     char *value;
 } SetSettingRequest;
+
+/* LibraryResyncStatus is a structured data type. */
+typedef struct LibraryResyncStatus {
+    bool running;
+    bool started;
+} LibraryResyncStatus;
 
 #endif /* CSILGEN_TYPES_GEN_H */

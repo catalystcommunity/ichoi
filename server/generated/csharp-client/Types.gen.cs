@@ -115,6 +115,8 @@ public sealed record SessionInfo
     public string? DisplayName { get; init; }
     // CBOR key: role
     public required Role Role { get; init; }
+    // CBOR key: can_admin
+    public required bool CanAdmin { get; init; }
     // CBOR key: token
     public string? Token { get; init; }
 }
@@ -169,6 +171,8 @@ public sealed record Album
     public required string Title { get; init; }
     // CBOR key: artist_id
     public ArtistId? ArtistId { get; init; }
+    // CBOR key: artist_name
+    public string? ArtistName { get; init; }
     // CBOR key: year
     public ulong? Year { get; init; }
     // CBOR key: has_cover_art
@@ -901,6 +905,10 @@ public sealed record DeviceInfo
     public required string FriendlyName { get; init; }
     // CBOR key: is_default
     public required bool IsDefault { get; init; }
+    // CBOR key: enabled
+    public required bool Enabled { get; init; }
+    // CBOR key: group_ids
+    public required System.Collections.Generic.List<string> GroupIds { get; init; }
 }
 
 public sealed record NodeInfo
@@ -973,10 +981,93 @@ public sealed record RenameDeviceRequest
     }
 }
 
+public sealed record SetDeviceAccessRequest
+{
+    // CBOR key: device_id
+    public required DeviceId DeviceId { get; init; }
+    // CBOR key: enabled
+    public required bool Enabled { get; init; }
+    // CBOR key: group_ids
+    public required System.Collections.Generic.List<string> GroupIds { get; init; }
+}
+
+public sealed record GroupInfo
+{
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: name
+    public required string Name { get; init; }
+    // CBOR key: member_account_ids
+    public required System.Collections.Generic.List<AccountId> MemberAccountIds { get; init; }
+}
+
+public sealed record ListGroupsResponse
+{
+    // CBOR key: groups
+    public required System.Collections.Generic.List<GroupInfo> Groups { get; init; }
+}
+
+public sealed record CreateGroupRequest
+{
+    // CBOR key: name
+    public required string Name { get; init; }
+
+    /// <summary>Throws System.ArgumentException when a field violates a CSIL constraint.</summary>
+    public void Validate()
+    {
+        if (Name.Length < 1)
+        {
+            throw new System.ArgumentException("field 'Name' must have at least 1 elements");
+        }
+        if (Name.Length > 64)
+        {
+            throw new System.ArgumentException("field 'Name' must have at most 64 elements");
+        }
+    }
+}
+
+public sealed record SetGroupMembersRequest
+{
+    // CBOR key: group_id
+    public required string GroupId { get; init; }
+    // CBOR key: member_account_ids
+    public required System.Collections.Generic.List<AccountId> MemberAccountIds { get; init; }
+}
+
+public sealed record DeleteGroupRequest
+{
+    // CBOR key: group_id
+    public required string GroupId { get; init; }
+}
+
+public sealed record SatelliteTokenInfo
+{
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: name
+    public required string Name { get; init; }
+    // CBOR key: default_enabled
+    public required bool DefaultEnabled { get; init; }
+    // CBOR key: default_group_ids
+    public required System.Collections.Generic.List<string> DefaultGroupIds { get; init; }
+    // CBOR key: created_at
+    public required System.DateTimeOffset CreatedAt { get; init; }
+}
+
+public sealed record ListSatelliteTokensResponse
+{
+    // CBOR key: satellites
+    public required System.Collections.Generic.List<SatelliteTokenInfo> Satellites { get; init; }
+}
+
 public sealed record CreateNodeTokenRequest
 {
     // CBOR key: label
     public string? Label { get; init; }
+    // CBOR key: default_enabled
+    public required bool DefaultEnabled { get; init; }
+    // CBOR key: default_group_ids
+    public required System.Collections.Generic.List<string> DefaultGroupIds { get; init; }
 }
 
 public sealed record NodeTokenResult
@@ -985,6 +1076,14 @@ public sealed record NodeTokenResult
     public required string Token { get; init; }
     // CBOR key: fingerprints
     public required System.Collections.Generic.List<string> Fingerprints { get; init; }
+    // CBOR key: satellite
+    public required SatelliteTokenInfo Satellite { get; init; }
+}
+
+public sealed record RevokeSatelliteTokenRequest
+{
+    // CBOR key: satellite_id
+    public required string SatelliteId { get; init; }
 }
 
 public sealed record ImportTrackRequest
@@ -1021,5 +1120,13 @@ public sealed record SetSettingRequest
     public required string Key { get; init; }
     // CBOR key: value
     public required string Value { get; init; }
+}
+
+public sealed record LibraryResyncStatus
+{
+    // CBOR key: running
+    public required bool Running { get; init; }
+    // CBOR key: started
+    public required bool Started { get; init; }
 }
 

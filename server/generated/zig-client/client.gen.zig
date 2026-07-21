@@ -359,6 +359,72 @@ pub const AdminClient = struct {
         try codec.decode_DeviceInfo(alloc, csil_respb, out);
     }
 
+    /// Invoke AdminService/set-device-access with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn set_device_access(self: AdminClient, alloc: std.mem.Allocator, req: *const types.SetDeviceAccessRequest, out: *types.DeviceInfo) anyerror!void {
+        const csil_reqb = try codec.encode_SetDeviceAccessRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "set-device-access", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_DeviceInfo(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/list-groups with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_groups(self: AdminClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.ListGroupsResponse) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "list-groups", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ListGroupsResponse(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/create-group with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn create_group(self: AdminClient, alloc: std.mem.Allocator, req: *const types.CreateGroupRequest, out: *types.GroupInfo) anyerror!void {
+        const csil_reqb = try codec.encode_CreateGroupRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "create-group", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_GroupInfo(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/set-group-members with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn set_group_members(self: AdminClient, alloc: std.mem.Allocator, req: *const types.SetGroupMembersRequest, out: *types.GroupInfo) anyerror!void {
+        const csil_reqb = try codec.encode_SetGroupMembersRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "set-group-members", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_GroupInfo(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/delete-group with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn delete_group(self: AdminClient, alloc: std.mem.Allocator, req: *const types.DeleteGroupRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_DeleteGroupRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "delete-group", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/list-satellite-tokens with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_satellite_tokens(self: AdminClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.ListSatelliteTokensResponse) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "list-satellite-tokens", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ListSatelliteTokensResponse(alloc, csil_respb, out);
+    }
+
     /// Invoke AdminService/create-node-token with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.
@@ -368,6 +434,17 @@ pub const AdminClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "create-node-token", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_NodeTokenResult(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/revoke-satellite-token with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn revoke_satellite_token(self: AdminClient, alloc: std.mem.Allocator, req: *const types.RevokeSatelliteTokenRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_RevokeSatelliteTokenRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "revoke-satellite-token", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
     }
 
     /// Invoke AdminService/import-track with a typed request, returning the decoded
@@ -401,5 +478,27 @@ pub const AdminClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "set-setting", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_Settings(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/resync-library with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn resync_library(self: AdminClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.LibraryResyncStatus) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "resync-library", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_LibraryResyncStatus(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/get-resync-status with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn get_resync_status(self: AdminClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.LibraryResyncStatus) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "get-resync-status", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_LibraryResyncStatus(alloc, csil_respb, out);
     }
 };

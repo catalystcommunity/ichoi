@@ -7,6 +7,7 @@ public record SessionInfo(
     Handle handle /* wire: "handle" */,
     String displayName /* wire: "display_name" */,
     Role role /* wire: "role" */,
+    boolean canAdmin /* wire: "can_admin" */,
     String token /* wire: "token" */
 ) {
 }

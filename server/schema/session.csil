@@ -11,6 +11,7 @@ SessionInfo = {
     handle: Handle,
     ? display_name: text,
     role: Role,
+    can_admin: bool .default false,  ;; true for admins and login-less guest instances
     ? token: text                    ;; minted session token, returned once on authenticate
 }
 

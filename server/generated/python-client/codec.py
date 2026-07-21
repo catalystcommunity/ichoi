@@ -488,6 +488,7 @@ def _encode_session_info_value(v: "SessionInfo") -> Dict[Any, Any]:
     if csil_x is not None:
         csil_m["token"] = csil_x
     csil_m["handle"] = v.handle
+    csil_m["can_admin"] = v.can_admin
     csil_m["account_id"] = v.account_id
     csil_x = v.display_name
     if csil_x is not None:
@@ -501,6 +502,7 @@ def _decode_session_info_value(tree: Any) -> "SessionInfo":
         handle=_csil_expect_text(tree["handle"]),
         display_name=(None if tree.get("display_name") is None else _csil_expect_text(tree["display_name"])),
         role=_decode_role_value(tree["role"]),
+        can_admin=_csil_expect_bool(tree["can_admin"]),
         token=(None if tree.get("token") is None else _csil_expect_text(tree["token"])),
     )
 
@@ -591,6 +593,9 @@ def _encode_album_value(v: "Album") -> Dict[Any, Any]:
     csil_x = v.artist_id
     if csil_x is not None:
         csil_m["artist_id"] = csil_x
+    csil_x = v.artist_name
+    if csil_x is not None:
+        csil_m["artist_name"] = csil_x
     csil_m["track_count"] = v.track_count
     csil_m["has_cover_art"] = v.has_cover_art
     return csil_m
@@ -601,6 +606,7 @@ def _decode_album_value(tree: Any) -> "Album":
         id=_csil_expect_text(tree["id"]),
         title=_csil_expect_text(tree["title"]),
         artist_id=(None if tree.get("artist_id") is None else _csil_expect_text(tree["artist_id"])),
+        artist_name=(None if tree.get("artist_name") is None else _csil_expect_text(tree["artist_name"])),
         year=(None if tree.get("year") is None else _csil_expect_uint(tree["year"])),
         has_cover_art=_csil_expect_bool(tree["has_cover_art"]),
         track_count=_csil_expect_uint(tree["track_count"]),
@@ -2346,6 +2352,8 @@ TrustedDomains.from_cbor = staticmethod(_trusted_domains_from_cbor)
 def _encode_device_info_value(v: "DeviceInfo") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["id"] = v.id
+    csil_m["enabled"] = v.enabled
+    csil_m["group_ids"] = v.group_ids
     csil_m["is_default"] = v.is_default
     csil_m["os_device_id"] = v.os_device_id
     csil_m["friendly_name"] = v.friendly_name
@@ -2358,6 +2366,8 @@ def _decode_device_info_value(tree: Any) -> "DeviceInfo":
         os_device_id=_csil_expect_text(tree["os_device_id"]),
         friendly_name=_csil_expect_text(tree["friendly_name"]),
         is_default=_csil_expect_bool(tree["is_default"]),
+        enabled=_csil_expect_bool(tree["enabled"]),
+        group_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["group_ids"])],
     )
 
 
@@ -2486,17 +2496,223 @@ def _rename_device_request_from_cbor(data: bytes) -> "RenameDeviceRequest":
 RenameDeviceRequest.to_cbor = _rename_device_request_to_cbor
 RenameDeviceRequest.from_cbor = staticmethod(_rename_device_request_from_cbor)
 
+def _encode_set_device_access_request_value(v: "SetDeviceAccessRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["enabled"] = v.enabled
+    csil_m["device_id"] = v.device_id
+    csil_m["group_ids"] = v.group_ids
+    return csil_m
+
+def _decode_set_device_access_request_value(tree: Any) -> "SetDeviceAccessRequest":
+    tree = _csil_expect_map(tree)
+    return SetDeviceAccessRequest(
+        device_id=_csil_expect_text(tree["device_id"]),
+        enabled=_csil_expect_bool(tree["enabled"]),
+        group_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["group_ids"])],
+    )
+
+
+def _set_device_access_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_set_device_access_request_value(self))
+
+
+def _set_device_access_request_from_cbor(data: bytes) -> "SetDeviceAccessRequest":
+    return _decode_set_device_access_request_value(cbor_decode(data))
+
+
+SetDeviceAccessRequest.to_cbor = _set_device_access_request_to_cbor
+SetDeviceAccessRequest.from_cbor = staticmethod(_set_device_access_request_from_cbor)
+
+def _encode_group_info_value(v: "GroupInfo") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["name"] = v.name
+    csil_m["member_account_ids"] = v.member_account_ids
+    return csil_m
+
+def _decode_group_info_value(tree: Any) -> "GroupInfo":
+    tree = _csil_expect_map(tree)
+    return GroupInfo(
+        id=_csil_expect_text(tree["id"]),
+        name=_csil_expect_text(tree["name"]),
+        member_account_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["member_account_ids"])],
+    )
+
+
+def _group_info_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_group_info_value(self))
+
+
+def _group_info_from_cbor(data: bytes) -> "GroupInfo":
+    return _decode_group_info_value(cbor_decode(data))
+
+
+GroupInfo.to_cbor = _group_info_to_cbor
+GroupInfo.from_cbor = staticmethod(_group_info_from_cbor)
+
+def _encode_list_groups_response_value(v: "ListGroupsResponse") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["groups"] = [_encode_group_info_value(csil_e) for csil_e in v.groups]
+    return csil_m
+
+def _decode_list_groups_response_value(tree: Any) -> "ListGroupsResponse":
+    tree = _csil_expect_map(tree)
+    return ListGroupsResponse(
+        groups=[_decode_group_info_value(csil_e) for csil_e in _csil_expect_array(tree["groups"])],
+    )
+
+
+def _list_groups_response_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_list_groups_response_value(self))
+
+
+def _list_groups_response_from_cbor(data: bytes) -> "ListGroupsResponse":
+    return _decode_list_groups_response_value(cbor_decode(data))
+
+
+ListGroupsResponse.to_cbor = _list_groups_response_to_cbor
+ListGroupsResponse.from_cbor = staticmethod(_list_groups_response_from_cbor)
+
+def _encode_create_group_request_value(v: "CreateGroupRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["name"] = v.name
+    return csil_m
+
+def _decode_create_group_request_value(tree: Any) -> "CreateGroupRequest":
+    tree = _csil_expect_map(tree)
+    return CreateGroupRequest(
+        name=_csil_expect_text(tree["name"]),
+    )
+
+
+def _create_group_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_create_group_request_value(self))
+
+
+def _create_group_request_from_cbor(data: bytes) -> "CreateGroupRequest":
+    return _decode_create_group_request_value(cbor_decode(data))
+
+
+CreateGroupRequest.to_cbor = _create_group_request_to_cbor
+CreateGroupRequest.from_cbor = staticmethod(_create_group_request_from_cbor)
+
+def _encode_set_group_members_request_value(v: "SetGroupMembersRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["group_id"] = v.group_id
+    csil_m["member_account_ids"] = v.member_account_ids
+    return csil_m
+
+def _decode_set_group_members_request_value(tree: Any) -> "SetGroupMembersRequest":
+    tree = _csil_expect_map(tree)
+    return SetGroupMembersRequest(
+        group_id=_csil_expect_text(tree["group_id"]),
+        member_account_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["member_account_ids"])],
+    )
+
+
+def _set_group_members_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_set_group_members_request_value(self))
+
+
+def _set_group_members_request_from_cbor(data: bytes) -> "SetGroupMembersRequest":
+    return _decode_set_group_members_request_value(cbor_decode(data))
+
+
+SetGroupMembersRequest.to_cbor = _set_group_members_request_to_cbor
+SetGroupMembersRequest.from_cbor = staticmethod(_set_group_members_request_from_cbor)
+
+def _encode_delete_group_request_value(v: "DeleteGroupRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["group_id"] = v.group_id
+    return csil_m
+
+def _decode_delete_group_request_value(tree: Any) -> "DeleteGroupRequest":
+    tree = _csil_expect_map(tree)
+    return DeleteGroupRequest(
+        group_id=_csil_expect_text(tree["group_id"]),
+    )
+
+
+def _delete_group_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_delete_group_request_value(self))
+
+
+def _delete_group_request_from_cbor(data: bytes) -> "DeleteGroupRequest":
+    return _decode_delete_group_request_value(cbor_decode(data))
+
+
+DeleteGroupRequest.to_cbor = _delete_group_request_to_cbor
+DeleteGroupRequest.from_cbor = staticmethod(_delete_group_request_from_cbor)
+
+def _encode_satellite_token_info_value(v: "SatelliteTokenInfo") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["name"] = v.name
+    csil_m["created_at"] = CborTag(0, _csil_ts_to_text(v.created_at))
+    csil_m["default_enabled"] = v.default_enabled
+    csil_m["default_group_ids"] = v.default_group_ids
+    return csil_m
+
+def _decode_satellite_token_info_value(tree: Any) -> "SatelliteTokenInfo":
+    tree = _csil_expect_map(tree)
+    return SatelliteTokenInfo(
+        id=_csil_expect_text(tree["id"]),
+        name=_csil_expect_text(tree["name"]),
+        default_enabled=_csil_expect_bool(tree["default_enabled"]),
+        default_group_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["default_group_ids"])],
+        created_at=_csil_ts_from_tree(tree["created_at"]),
+    )
+
+
+def _satellite_token_info_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_satellite_token_info_value(self))
+
+
+def _satellite_token_info_from_cbor(data: bytes) -> "SatelliteTokenInfo":
+    return _decode_satellite_token_info_value(cbor_decode(data))
+
+
+SatelliteTokenInfo.to_cbor = _satellite_token_info_to_cbor
+SatelliteTokenInfo.from_cbor = staticmethod(_satellite_token_info_from_cbor)
+
+def _encode_list_satellite_tokens_response_value(v: "ListSatelliteTokensResponse") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["satellites"] = [_encode_satellite_token_info_value(csil_e) for csil_e in v.satellites]
+    return csil_m
+
+def _decode_list_satellite_tokens_response_value(tree: Any) -> "ListSatelliteTokensResponse":
+    tree = _csil_expect_map(tree)
+    return ListSatelliteTokensResponse(
+        satellites=[_decode_satellite_token_info_value(csil_e) for csil_e in _csil_expect_array(tree["satellites"])],
+    )
+
+
+def _list_satellite_tokens_response_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_list_satellite_tokens_response_value(self))
+
+
+def _list_satellite_tokens_response_from_cbor(data: bytes) -> "ListSatelliteTokensResponse":
+    return _decode_list_satellite_tokens_response_value(cbor_decode(data))
+
+
+ListSatelliteTokensResponse.to_cbor = _list_satellite_tokens_response_to_cbor
+ListSatelliteTokensResponse.from_cbor = staticmethod(_list_satellite_tokens_response_from_cbor)
+
 def _encode_create_node_token_request_value(v: "CreateNodeTokenRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_x = v.label
     if csil_x is not None:
         csil_m["label"] = csil_x
+    csil_m["default_enabled"] = v.default_enabled
+    csil_m["default_group_ids"] = v.default_group_ids
     return csil_m
 
 def _decode_create_node_token_request_value(tree: Any) -> "CreateNodeTokenRequest":
     tree = _csil_expect_map(tree)
     return CreateNodeTokenRequest(
         label=(None if tree.get("label") is None else _csil_expect_text(tree["label"])),
+        default_enabled=_csil_expect_bool(tree["default_enabled"]),
+        default_group_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["default_group_ids"])],
     )
 
 
@@ -2514,6 +2730,7 @@ CreateNodeTokenRequest.from_cbor = staticmethod(_create_node_token_request_from_
 def _encode_node_token_result_value(v: "NodeTokenResult") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["token"] = v.token
+    csil_m["satellite"] = _encode_satellite_token_info_value(v.satellite)
     csil_m["fingerprints"] = v.fingerprints
     return csil_m
 
@@ -2522,6 +2739,7 @@ def _decode_node_token_result_value(tree: Any) -> "NodeTokenResult":
     return NodeTokenResult(
         token=_csil_expect_text(tree["token"]),
         fingerprints=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["fingerprints"])],
+        satellite=_decode_satellite_token_info_value(tree["satellite"]),
     )
 
 
@@ -2535,6 +2753,29 @@ def _node_token_result_from_cbor(data: bytes) -> "NodeTokenResult":
 
 NodeTokenResult.to_cbor = _node_token_result_to_cbor
 NodeTokenResult.from_cbor = staticmethod(_node_token_result_from_cbor)
+
+def _encode_revoke_satellite_token_request_value(v: "RevokeSatelliteTokenRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["satellite_id"] = v.satellite_id
+    return csil_m
+
+def _decode_revoke_satellite_token_request_value(tree: Any) -> "RevokeSatelliteTokenRequest":
+    tree = _csil_expect_map(tree)
+    return RevokeSatelliteTokenRequest(
+        satellite_id=_csil_expect_text(tree["satellite_id"]),
+    )
+
+
+def _revoke_satellite_token_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_revoke_satellite_token_request_value(self))
+
+
+def _revoke_satellite_token_request_from_cbor(data: bytes) -> "RevokeSatelliteTokenRequest":
+    return _decode_revoke_satellite_token_request_value(cbor_decode(data))
+
+
+RevokeSatelliteTokenRequest.to_cbor = _revoke_satellite_token_request_to_cbor
+RevokeSatelliteTokenRequest.from_cbor = staticmethod(_revoke_satellite_token_request_from_cbor)
 
 def _encode_import_track_request_value(v: "ImportTrackRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -2643,6 +2884,31 @@ def _set_setting_request_from_cbor(data: bytes) -> "SetSettingRequest":
 
 SetSettingRequest.to_cbor = _set_setting_request_to_cbor
 SetSettingRequest.from_cbor = staticmethod(_set_setting_request_from_cbor)
+
+def _encode_library_resync_status_value(v: "LibraryResyncStatus") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["running"] = v.running
+    csil_m["started"] = v.started
+    return csil_m
+
+def _decode_library_resync_status_value(tree: Any) -> "LibraryResyncStatus":
+    tree = _csil_expect_map(tree)
+    return LibraryResyncStatus(
+        running=_csil_expect_bool(tree["running"]),
+        started=_csil_expect_bool(tree["started"]),
+    )
+
+
+def _library_resync_status_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_library_resync_status_value(self))
+
+
+def _library_resync_status_from_cbor(data: bytes) -> "LibraryResyncStatus":
+    return _decode_library_resync_status_value(cbor_decode(data))
+
+
+LibraryResyncStatus.to_cbor = _library_resync_status_to_cbor
+LibraryResyncStatus.from_cbor = staticmethod(_library_resync_status_from_cbor)
 
 def _encode_player_command_value(csil_v):
     if isinstance(csil_v, CmdEnqueue):

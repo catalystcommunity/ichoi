@@ -67,9 +67,10 @@ end
 # handle [Handle]
 # display_name [String]
 # role [Role]
+# can_admin [Boolean]
 # token [String]
-SessionInfo = Data.define(:account_id, :handle, :display_name, :role, :token) do
-  def initialize(account_id:, handle:, role:, display_name: nil, token: nil)
+SessionInfo = Data.define(:account_id, :handle, :display_name, :role, :can_admin, :token) do
+  def initialize(account_id:, handle:, role:, display_name: nil, can_admin: false, token: nil)
     super
   end
 end
@@ -100,11 +101,12 @@ end
 # id [AlbumId]
 # title [String]
 # artist_id [ArtistId]
+# artist_name [String]
 # year [Integer]
 # has_cover_art [Boolean]
 # track_count [Integer]
-Album = Data.define(:id, :title, :artist_id, :year, :has_cover_art, :track_count) do
-  def initialize(id:, title:, track_count:, artist_id: nil, year: nil, has_cover_art: false)
+Album = Data.define(:id, :title, :artist_id, :artist_name, :year, :has_cover_art, :track_count) do
+  def initialize(id:, title:, track_count:, artist_id: nil, artist_name: nil, year: nil, has_cover_art: false)
     super
   end
 end
@@ -523,8 +525,10 @@ TrustedDomains = Data.define(:domains)
 # os_device_id [String]
 # friendly_name [String]
 # is_default [Boolean]
-DeviceInfo = Data.define(:id, :os_device_id, :friendly_name, :is_default) do
-  def initialize(id:, os_device_id:, friendly_name:, is_default: false)
+# enabled [Boolean]
+# group_ids [Array<String>]
+DeviceInfo = Data.define(:id, :os_device_id, :friendly_name, :is_default, :enabled, :group_ids) do
+  def initialize(id:, os_device_id:, friendly_name:, group_ids:, is_default: false, enabled: true)
     super
   end
 end
@@ -569,16 +573,66 @@ RenameDeviceRequest = Data.define(:device_id, :friendly_name) do
   end
 end
 
+# device_id [DeviceId]
+# enabled [Boolean]
+# group_ids [Array<String>]
+SetDeviceAccessRequest = Data.define(:device_id, :enabled, :group_ids)
+
+# id [String]
+# name [String]
+# member_account_ids [Array<AccountId>]
+GroupInfo = Data.define(:id, :name, :member_account_ids)
+
+# groups [Array<GroupInfo>]
+ListGroupsResponse = Data.define(:groups)
+
+# name [String]
+CreateGroupRequest = Data.define(:name) do
+  # Raises ArgumentError on the first constraint violation.
+  def validate
+    raise ArgumentError, "field 'name' must have at least 1 elements" if name.length < 1
+    raise ArgumentError, "field 'name' must have at most 64 elements" if name.length > 64
+    nil
+  end
+end
+
+# group_id [String]
+# member_account_ids [Array<AccountId>]
+SetGroupMembersRequest = Data.define(:group_id, :member_account_ids)
+
+# group_id [String]
+DeleteGroupRequest = Data.define(:group_id)
+
+# id [String]
+# name [String]
+# default_enabled [Boolean]
+# default_group_ids [Array<String>]
+# created_at [Time]
+SatelliteTokenInfo = Data.define(:id, :name, :default_enabled, :default_group_ids, :created_at) do
+  def initialize(id:, name:, default_group_ids:, created_at:, default_enabled: true)
+    super
+  end
+end
+
+# satellites [Array<SatelliteTokenInfo>]
+ListSatelliteTokensResponse = Data.define(:satellites)
+
 # label [String]
-CreateNodeTokenRequest = Data.define(:label) do
-  def initialize(label: nil)
+# default_enabled [Boolean]
+# default_group_ids [Array<String>]
+CreateNodeTokenRequest = Data.define(:label, :default_enabled, :default_group_ids) do
+  def initialize(default_group_ids:, label: nil, default_enabled: true)
     super
   end
 end
 
 # token [String]
 # fingerprints [Array<String>]
-NodeTokenResult = Data.define(:token, :fingerprints)
+# satellite [SatelliteTokenInfo]
+NodeTokenResult = Data.define(:token, :fingerprints, :satellite)
+
+# satellite_id [String]
+RevokeSatelliteTokenRequest = Data.define(:satellite_id)
 
 # root_relative_path [String]
 # content_type [String]
@@ -605,3 +659,11 @@ Settings = Data.define(:entries)
 # key [String]
 # value [String]
 SetSettingRequest = Data.define(:key, :value)
+
+# running [Boolean]
+# started [Boolean]
+LibraryResyncStatus = Data.define(:running, :started) do
+  def initialize(running:, started: false)
+    super
+  end
+end

@@ -46,3 +46,9 @@ fun RenameDeviceRequest.validate() {
     require(friendlyName.length <= 64) { "field 'friendlyName' must have at most 64 characters" }
 }
 
+/** Validate a CreateGroupRequest; throws IllegalArgumentException on a constraint breach. */
+fun CreateGroupRequest.validate() {
+    require(name.length >= 1) { "field 'name' must have at least 1 characters" }
+    require(name.length <= 64) { "field 'name' must have at most 64 characters" }
+}
+

@@ -3,10 +3,13 @@
 mod common;
 
 use std::collections::HashSet;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
+use std::time::Duration;
 
 use common::DataMap;
 use ichoi::db::{models, store};
-use libichoi::csil::services::{LibraryService, SessionService};
+use libichoi::csil::services::{AdminService, LibraryService, SessionService};
 use libichoi::csil::types::*;
 
 fn account(id: &str) -> models::Account {
@@ -320,6 +323,96 @@ fn disc_subfolders_flatten_into_the_parent_album_and_can_be_disabled() {
         .iter()
         .all(|track| !track.title.starts_with("CD")));
 
+    drop(conn);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn admin_resync_reconciles_missing_and_new_files_and_is_single_flight() {
+    let (mut app, pool) = common::test_app();
+    assert_eq!(
+        app.resync_library(
+            &common::ctx_user("member@example.com"),
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+        .unwrap_err()
+        .code,
+        403
+    );
+
+    let root = std::env::temp_dir().join(format!("ichoi-resync-{}", uuid::Uuid::now_v7()));
+    std::fs::create_dir_all(root.join("New Album")).unwrap();
+    std::fs::write(root.join("New Album/new.mp3"), b"not-really-mp3").unwrap();
+    let mut config = common::test_config();
+    config.music_dir = Some(root.clone());
+    app.config = Arc::new(config);
+
+    let mut conn = pool.get().unwrap();
+    common::create_artist(&mut conn, &DataMap::new());
+    common::create_album(&mut conn, &DataMap::new());
+    let mut stale = DataMap::new();
+    stale.insert("id".into(), "stale-track".into());
+    stale.insert("root_relative_path".into(), "Missing Album/gone.mp3".into());
+    common::create_track(&mut conn, &stale);
+    drop(conn);
+
+    app.scan_running.store(true, Ordering::Release);
+    let duplicate = app
+        .resync_library(
+            &common::ctx_admin("admin@example.com"),
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert!(!duplicate.started);
+    assert!(duplicate.running);
+    app.scan_running.store(false, Ordering::Release);
+
+    let started = app
+        .resync_library(
+            &common::ctx_admin("admin@example.com"),
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert!(started.started);
+    assert!(started.running);
+
+    for _ in 0..200 {
+        if !app.library_scan_running() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(!app.library_scan_running(), "resync did not finish");
+    let status = app
+        .get_resync_status(
+            &common::ctx_admin("admin@example.com"),
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert!(!status.running);
+
+    let mut conn = pool.get().unwrap();
+    assert!(store::get_track(&mut conn, "stale-track")
+        .unwrap()
+        .is_none());
+    assert_eq!(
+        store::tracks_for_library(&mut conn, "lib:music")
+            .unwrap()
+            .len(),
+        1
+    );
     drop(conn);
     std::fs::remove_dir_all(root).unwrap();
 }

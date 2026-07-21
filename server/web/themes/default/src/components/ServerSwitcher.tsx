@@ -162,6 +162,10 @@ function AuthArea(): JSX.Element {
           {t("auth.signedInAs", { handle: session()!.display_name ?? session()!.handle })}
           <br />
           <span class="badge role">{session()!.role}</span>
+          <br />
+          <button type="button" class="btn btn-ghost" onClick={() => void servers.signOut()}>
+            {t("auth.signOut")}
+          </button>
         </div>
       </Show>
       <Dialog open={showLogin()} title={t("auth.signIn")} onClose={() => setShowLogin(false)}>

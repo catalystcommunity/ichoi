@@ -262,12 +262,54 @@ pub trait AdminService {
         ctx: &Self::Context,
         input: RenameDeviceRequest,
     ) -> Result<DeviceInfo, ServiceError>;
+    /// set-device-access (request/response).
+    fn set_device_access(
+        &self,
+        ctx: &Self::Context,
+        input: SetDeviceAccessRequest,
+    ) -> Result<DeviceInfo, ServiceError>;
+    /// list-groups (request/response).
+    fn list_groups(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<ListGroupsResponse, ServiceError>;
+    /// create-group (request/response).
+    fn create_group(
+        &self,
+        ctx: &Self::Context,
+        input: CreateGroupRequest,
+    ) -> Result<GroupInfo, ServiceError>;
+    /// set-group-members (request/response).
+    fn set_group_members(
+        &self,
+        ctx: &Self::Context,
+        input: SetGroupMembersRequest,
+    ) -> Result<GroupInfo, ServiceError>;
+    /// delete-group (request/response).
+    fn delete_group(
+        &self,
+        ctx: &Self::Context,
+        input: DeleteGroupRequest,
+    ) -> Result<Ok, ServiceError>;
+    /// list-satellite-tokens (request/response).
+    fn list_satellite_tokens(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<ListSatelliteTokensResponse, ServiceError>;
     /// create-node-token (request/response).
     fn create_node_token(
         &self,
         ctx: &Self::Context,
         input: CreateNodeTokenRequest,
     ) -> Result<NodeTokenResult, ServiceError>;
+    /// revoke-satellite-token (request/response).
+    fn revoke_satellite_token(
+        &self,
+        ctx: &Self::Context,
+        input: RevokeSatelliteTokenRequest,
+    ) -> Result<Ok, ServiceError>;
     /// import-track (request/response).
     fn import_track(
         &self,
@@ -282,4 +324,16 @@ pub trait AdminService {
         ctx: &Self::Context,
         input: SetSettingRequest,
     ) -> Result<Settings, ServiceError>;
+    /// resync-library (request/response).
+    fn resync_library(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<LibraryResyncStatus, ServiceError>;
+    /// get-resync-status (request/response).
+    fn get_resync_status(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<LibraryResyncStatus, ServiceError>;
 }

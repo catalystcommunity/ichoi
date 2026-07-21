@@ -148,6 +148,13 @@
     "server": "Server settings",
     "serverNote": "These are read from the server and shared across every UI.",
     "adminOnly": "Server settings require the admin role.",
+    "libraryResync": "Library resync",
+    "libraryResyncHint": "Rescan configured libraries, update changed metadata, and remove catalog entries for files that no longer exist.",
+    "resync": "Resync library",
+    "resyncing": "Resyncing…",
+    "resyncRunning": "Library resync is running.",
+    "resyncAlreadyRunning": "A library resync is already running.",
+    "resyncComplete": "Library resync completed.",
     "save": "Save"
   },
   "player": {

@@ -124,6 +124,26 @@ pub struct OutputDevice {
     pub os_device_id: String,
     pub friendly_name: String,
     pub is_default: i32,
+    pub enabled: i32,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable)]
+#[diesel(table_name = access_groups)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct AccessGroup {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable)]
+#[diesel(table_name = satellite_tokens)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct SatelliteToken {
+    pub id: String,
+    pub name: String,
+    pub token_sha256: String,
+    pub default_enabled: i32,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]

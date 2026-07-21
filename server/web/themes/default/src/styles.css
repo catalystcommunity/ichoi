@@ -464,6 +464,25 @@ h3 {
   grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 22px 20px;
 }
+.virtual-album-grid {
+  position: relative;
+  width: 100%;
+}
+.virtual-album-window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 22px 20px;
+  overflow: hidden;
+}
+.virtual-album-window > .tile {
+  min-width: 0;
+  overflow: hidden;
+}
+.virtual-album-placeholder {
+  opacity: 0.45;
+}
 .tile {
   cursor: pointer;
   border: none;
@@ -1176,3 +1195,20 @@ h3 {
   cursor: pointer;
 }
 .toast:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* --- Installed PWA satellite console ------------------------------------ */
+.satellite-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at top, color-mix(in srgb, var(--cyan) 12%, transparent), transparent 52%), var(--bg);
+}
+.satellite-console { width: min(720px, 100%); display: grid; gap: 20px; }
+.satellite-now-playing { min-height: 150px; display: grid; align-content: center; text-align: center; }
+.satellite-now-playing h2 { font-size: clamp(28px, 6vw, 54px); margin: 8px 0; }
+.satellite-actions { flex-wrap: wrap; }
+.settings-list { display: grid; gap: 10px; margin: 12px 0 22px; }
+.settings-row { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.check-grid { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; }
+.token-reveal code { display: block; overflow-wrap: anywhere; padding: 12px; background: var(--surface); border-radius: var(--radius-sm); }

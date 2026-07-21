@@ -100,6 +100,26 @@ bundled-next-to-the-binary first, then `PATH`; if neither is found, transcoding 
 disabled and the core serves direct mode only — Ichoi never fails to start for lack of
 ffmpeg.
 
+Administrators can start a full library resync from Settings. Resync uses the same single-flight
+scanner as startup, updates changed metadata, and removes catalog rows for files that disappeared;
+starting another resync while one is active does not create a competing scan.
+
+### Chromebook and browser satellites
+
+The default web UI is an installable PWA. An administrator (or anyone on a login-less guest
+instance) can create a named, one-time satellite token in Settings and enter it at `/satellite`.
+The token is stored only in that browser profile. While present, every other application route
+redirects to the restricted satellite console; leaving satellite mode and signing in normally are
+separate, explicit actions.
+
+Satellite tokens define whether newly discovered audio outputs are shared and which access groups
+inherit them. The built-in `Everyone` group includes guests and every account. Administrators can
+create narrower groups, change an individual output's groups, or disable an output globally so it
+is not listed or controllable by anyone. The console supports Chrome's audio-output chooser when
+available, falls back to the system default, and offers a fullscreen action. ChromeOS still requires
+a user gesture through **Enable audio** before remote playback and a personal ChromeOS login after a
+reboot; session restore can reopen the installed PWA afterward.
+
 ### DNS-less LinkKeys login on a LAN
 
 Local-RP login is completely opt-in and gives Ichoi a key-fingerprint identity rather than

@@ -215,6 +215,30 @@ pub fn dispatch(
                 encode_device_info
             )
         }
+        ("admin", "set-device-access") => rr!(
+            decode_set_device_access_request,
+            set_device_access,
+            encode_device_info
+        ),
+        ("admin", "list-groups") => {
+            rr!(decode_page, list_groups, encode_list_groups_response)
+        }
+        ("admin", "create-group") => {
+            rr!(decode_create_group_request, create_group, encode_group_info)
+        }
+        ("admin", "set-group-members") => rr!(
+            decode_set_group_members_request,
+            set_group_members,
+            encode_group_info
+        ),
+        ("admin", "delete-group") => {
+            rr!(decode_delete_group_request, delete_group, encode_ok)
+        }
+        ("admin", "list-satellite-tokens") => rr!(
+            decode_page,
+            list_satellite_tokens,
+            encode_list_satellite_tokens_response
+        ),
         ("admin", "create-node-token") => {
             rr!(
                 decode_create_node_token_request,
@@ -222,6 +246,11 @@ pub fn dispatch(
                 encode_node_token_result
             )
         }
+        ("admin", "revoke-satellite-token") => rr!(
+            decode_revoke_satellite_token_request,
+            revoke_satellite_token,
+            encode_ok
+        ),
         ("admin", "import-track") => {
             rr!(
                 decode_import_track_request,
@@ -231,6 +260,12 @@ pub fn dispatch(
         }
         ("admin", "get-settings") => rr!(decode_page, get_settings, encode_settings),
         ("admin", "set-setting") => rr!(decode_set_setting_request, set_setting, encode_settings),
+        ("admin", "resync-library") => {
+            rr!(decode_page, resync_library, encode_library_resync_status)
+        }
+        ("admin", "get-resync-status") => {
+            rr!(decode_page, get_resync_status, encode_library_resync_status)
+        }
 
         // Channel operations require the streaming transport (not this request path).
         ("player", "subscribe") | ("media", "stream") | ("node", "session") => Err(ServiceError {
@@ -427,7 +462,7 @@ pub fn handle_events_frame(
 
     // Channel event (no id): a subscribe registers for live pushes and gets an initial state.
     if service == "player" && env.event == "subscribe" {
-        if let Some((reply, player_id)) = subscribe_snapshot(app, &env.payload) {
+        if let Some((reply, player_id)) = subscribe_snapshot(app, &ident, &env.payload) {
             return (
                 ident,
                 Some(reply),
@@ -446,6 +481,9 @@ pub fn handle_events_frame(
         }
         if let Ok(report) = decode_node_report(&env.payload) {
             let player_id = report.player_id.clone();
+            if !app.can_access_player(&ident, &player_id) {
+                return (ident, None, FrameEffects::default());
+            }
             let _ = app.record_node_report(report);
             return (
                 ident,
@@ -522,7 +560,13 @@ fn handle_control(
                                     app.config.node_token.as_ref().is_some_and(|configured| {
                                         crate::auth::sha256_hex(configured) == hash
                                     });
-                                if configured
+                                if let Ok(Some(satellite)) =
+                                    crate::db::store::satellite_for_hash(&mut conn, &hash)
+                                {
+                                    ident = Identity::Node {
+                                        node_id: satellite.id,
+                                    };
+                                } else if configured
                                     || crate::db::store::get_setting(&mut conn, &pending_key)
                                         .ok()
                                         .flatten()
@@ -562,8 +606,11 @@ fn handle_control(
 }
 
 /// On player.subscribe, return the initial state frame and the subscribed player id.
-fn subscribe_snapshot(app: &App, payload: &[u8]) -> Option<(Vec<u8>, String)> {
+fn subscribe_snapshot(app: &App, identity: &Identity, payload: &[u8]) -> Option<(Vec<u8>, String)> {
     let req = decode_subscribe_request(payload).ok()?;
+    if !app.can_access_player(identity, &req.player_id) {
+        return None;
+    }
     let mut conn = app.pool.get().ok()?;
     let state = app.load_player_state(&mut conn, &req.player_id).ok()?;
     Some((player_state_frame(&state), req.player_id))

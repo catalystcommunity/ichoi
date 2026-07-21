@@ -93,4 +93,21 @@ defmodule Csilgen.Generated.Validation do
       :ok
     end
   end
+
+  @spec validate_create_group_request(Csilgen.Generated.CreateGroupRequest.t()) ::
+          :ok | {:error, String.t()}
+  def validate_create_group_request(%Csilgen.Generated.CreateGroupRequest{} = v) do
+    with :ok <-
+           if(String.length(v.name) >= 1,
+             do: :ok,
+             else: {:error, "field 'name' must have at least 1 elements"}
+           ),
+         :ok <-
+           if(String.length(v.name) <= 64,
+             do: :ok,
+             else: {:error, "field 'name' must have at most 64 elements"}
+           ) do
+      :ok
+    end
+  end
 end

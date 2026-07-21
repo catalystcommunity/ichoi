@@ -78,3 +78,14 @@ func (v *RenameDeviceRequest) Validate() error {
 	}
 	return nil
 }
+
+// ValidateCreateGroupRequest validates the CreateGroupRequest struct
+func (v *CreateGroupRequest) Validate() error {
+	if len(v.Name) < 1 {
+		return fmt.Errorf("field 'Name' must have at least 1 elements")
+	}
+	if len(v.Name) > 64 {
+		return fmt.Errorf("field 'Name' must have at most 64 elements")
+	}
+	return nil
+}

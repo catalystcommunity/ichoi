@@ -242,7 +242,8 @@ fn consolidate_small_albums(
             .map(|e| e.album_artist.clone())
             .collect::<std::collections::HashSet<_>>()
             .len();
-        let is_dump = group.entries.len() > DUMP_TRACKS || distinct_artists >= DUMP_ARTISTS;
+        let is_dump = (group.entries.len() > DUMP_TRACKS || distinct_artists >= DUMP_ARTISTS)
+            && !looks_like_compilation_folder(&group.title);
 
         if split_dumps && is_dump {
             // Per-artist "Singles" album.
@@ -271,12 +272,15 @@ fn consolidate_small_albums(
                 .map(|e| e.library_id.clone())
                 .unwrap_or_default();
             let folder_id = id_of(&["folderalbum", &library_id, &folder_rel]);
+            let folder_artist = (distinct_artists == 1)
+                .then(|| group.entries.first().and_then(|e| e.album_artist.clone()))
+                .flatten();
             store::upsert_album(
                 conn,
                 &models::Album {
                     id: folder_id.clone(),
                     title: group.title,
-                    artist_id: group.entries.first().and_then(|e| e.album_artist.clone()),
+                    artist_id: folder_artist,
                     year: group.entries.first().and_then(|e| e.year),
                     has_cover_art: group.has_cover,
                     cover_art_path: group.cover_path,
@@ -290,6 +294,22 @@ fn consolidate_small_albums(
     }
     store::delete_empty_albums(conn)?;
     Ok(())
+}
+
+fn looks_like_compilation_folder(title: &str) -> bool {
+    let normalized = normalized_match_text(title);
+    let words = normalized.split_whitespace().collect::<Vec<_>>();
+    let numbered_collection = words
+        .first()
+        .and_then(|word| word.parse::<usize>().ok())
+        .is_some_and(|count| count > 1);
+    numbered_collection
+        || words.iter().any(|word| {
+            matches!(
+                *word,
+                "anthology" | "collection" | "compilation" | "greatest" | "hits" | "soundtrack"
+            )
+        })
 }
 
 /// `(parent_folder_relpath, folder_display_name)` for a root-relative track path.
@@ -906,7 +926,11 @@ pub fn extract_embedded_cover(path: &Path) -> Option<(String, Vec<u8>)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{flattened_subfolder_album, is_disc_subfolder};
+    use super::{
+        consolidate_small_albums, flattened_subfolder_album, is_disc_subfolder,
+        looks_like_compilation_folder, AlbumSubfolderOptions,
+    };
+    use crate::db::{self, models, store};
 
     fn words() -> Vec<String> {
         ["cd", "disc", "disk", "bonus disc"]
@@ -939,5 +963,93 @@ mod tests {
             Some(10_000)
         );
         assert!(flattened_subfolder_album("CD1/track.mp3", &words()).is_none());
+    }
+
+    #[test]
+    fn numbered_greatest_hits_folder_stays_one_compilation_album() {
+        assert!(looks_like_compilation_folder("100 Greatest Dance Hits"));
+        let pool = db::test_pool();
+        let mut conn = pool.get().unwrap();
+        store::upsert_library(
+            &mut conn,
+            &models::Library {
+                id: "lib:music".into(),
+                kind: "music".into(),
+                path: ".".into(),
+            },
+        )
+        .unwrap();
+        for index in 1..=100 {
+            let artist_id = format!("artist-{index}");
+            let album_id = format!("source-album-{index}");
+            store::upsert_artist(
+                &mut conn,
+                &models::Artist {
+                    id: artist_id.clone(),
+                    name: format!("Artist {index}"),
+                },
+            )
+            .unwrap();
+            store::upsert_album(
+                &mut conn,
+                &models::Album {
+                    id: album_id.clone(),
+                    title: format!("Source Album {index}"),
+                    artist_id: Some(artist_id.clone()),
+                    year: None,
+                    has_cover_art: 0,
+                    cover_art_path: None,
+                    art_checked: 0,
+                },
+            )
+            .unwrap();
+            store::upsert_track(
+                &mut conn,
+                &models::Track {
+                    id: format!("track-{index}"),
+                    library_id: "lib:music".into(),
+                    root_relative_path: format!("100 Greatest Dance Hits/{index:03} - Track.mp3"),
+                    title: format!("Track {index}"),
+                    artist_id: Some(artist_id),
+                    album_id: Some(album_id),
+                    track_no: Some(index),
+                    disc_no: None,
+                    duration_ms: 60_000,
+                    codec: "mp3".into(),
+                    bitrate_kbps: Some(320),
+                    sample_rate: 44_100,
+                    channels: 2,
+                    bit_depth: None,
+                    size_bytes: 1,
+                    mtime: "0".into(),
+                    content_hash: None,
+                    trim_start_samples: 0,
+                    trim_end_samples: 0,
+                },
+            )
+            .unwrap();
+        }
+
+        consolidate_small_albums(
+            &mut conn,
+            "lib:music",
+            4,
+            true,
+            AlbumSubfolderOptions {
+                flat: false,
+                words: &[],
+            },
+        )
+        .unwrap();
+        let albums = store::list_albums(&mut conn, "lib:music", 0, 200).unwrap();
+        assert_eq!(albums.len(), 1);
+        assert_eq!(albums[0].title, "100 Greatest Dance Hits");
+        assert!(albums[0].artist_id.is_none());
+        assert_eq!(
+            store::tracks_for_album(&mut conn, &albums[0].id)
+                .unwrap()
+                .len(),
+            100
+        );
     }
 }

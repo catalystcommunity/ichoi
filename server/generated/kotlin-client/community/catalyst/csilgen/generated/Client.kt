@@ -132,8 +132,29 @@ class AdminClient(private val transport: Transport) {
     fun renameDevice(request: RenameDeviceRequest): DeviceInfo {
         return decode<DeviceInfo>(transport.call("AdminService", "rename-device", encode(request)))
     }
+    fun setDeviceAccess(request: SetDeviceAccessRequest): DeviceInfo {
+        return decode<DeviceInfo>(transport.call("AdminService", "set-device-access", encode(request)))
+    }
+    fun listGroups(request: Page): ListGroupsResponse {
+        return decode<ListGroupsResponse>(transport.call("AdminService", "list-groups", encode(request)))
+    }
+    fun createGroup(request: CreateGroupRequest): GroupInfo {
+        return decode<GroupInfo>(transport.call("AdminService", "create-group", encode(request)))
+    }
+    fun setGroupMembers(request: SetGroupMembersRequest): GroupInfo {
+        return decode<GroupInfo>(transport.call("AdminService", "set-group-members", encode(request)))
+    }
+    fun deleteGroup(request: DeleteGroupRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "delete-group", encode(request)))
+    }
+    fun listSatelliteTokens(request: Page): ListSatelliteTokensResponse {
+        return decode<ListSatelliteTokensResponse>(transport.call("AdminService", "list-satellite-tokens", encode(request)))
+    }
     fun createNodeToken(request: CreateNodeTokenRequest): NodeTokenResult {
         return decode<NodeTokenResult>(transport.call("AdminService", "create-node-token", encode(request)))
+    }
+    fun revokeSatelliteToken(request: RevokeSatelliteTokenRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "revoke-satellite-token", encode(request)))
     }
     fun importTrack(request: ImportTrackRequest): ImportResult {
         return decode<ImportResult>(transport.call("AdminService", "import-track", encode(request)))
@@ -143,6 +164,12 @@ class AdminClient(private val transport: Transport) {
     }
     fun setSetting(request: SetSettingRequest): Settings {
         return decode<Settings>(transport.call("AdminService", "set-setting", encode(request)))
+    }
+    fun resyncLibrary(request: Page): LibraryResyncStatus {
+        return decode<LibraryResyncStatus>(transport.call("AdminService", "resync-library", encode(request)))
+    }
+    fun getResyncStatus(request: Page): LibraryResyncStatus {
+        return decode<LibraryResyncStatus>(transport.call("AdminService", "get-resync-status", encode(request)))
     }
 }
 
