@@ -46,7 +46,7 @@ impl Backend for FakeBackend {
         Ok(VerifiedIdentity {
             user_id: "regular-user-uuid".to_string(),
             domain: pending.user_domain,
-            handle: "alice".to_string(),
+            handle: "alice-public".to_string(),
             display_name: Some("Alice Regular".to_string()),
         })
     }
@@ -60,7 +60,7 @@ fn enabled_app() -> App {
     config.linkkeys_rp_api_key = Some("test-api-key".to_string());
     config.linkkeys_rp_domain = Some("ichoi.example".to_string());
     config.public_url = Some("https://ichoi.example".to_string());
-    config.linkkeys_trusted_identities = vec!["alice@family.example".to_string()];
+    config.linkkeys_trusted_identities = vec!["family.example".to_string()];
     let pool = ichoi::db::test_pool();
     ichoi::auth::local_rp::initialize_database(&pool, &config).unwrap();
     App::new(pool, Arc::new(config)).with_regular_rp_backend(Arc::new(FakeBackend))
@@ -165,7 +165,7 @@ async fn regular_rp_browser_flow_is_mocked_single_use_and_mints_session() {
         )
         .unwrap();
     assert_eq!(info.account_id, "regular-user-uuid@family.example");
-    assert_eq!(info.handle, "alice");
+    assert_eq!(info.handle, "alice-public");
     assert_eq!(info.role, Role::Admin);
     assert!(info.can_admin);
     assert!(info.token.is_some());

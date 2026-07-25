@@ -223,7 +223,7 @@ async fn local_rp_callback(
         Ok(Err(e)) => return (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    finish_linkkeys_login(&s.app, attempt, verified)
+    finish_linkkeys_login(&s.app, verified)
 }
 
 async fn regular_rp_start(
@@ -333,29 +333,18 @@ async fn regular_rp_callback(
         Ok(Err(e)) => return (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    finish_linkkeys_login(&s.app, attempt, verified)
+    finish_linkkeys_login(&s.app, verified)
 }
 
-fn finish_linkkeys_login(
-    app: &App,
-    attempt: crate::db::models::LinkkeysLoginAttempt,
-    verified: crate::auth::local_rp::VerifiedIdentity,
-) -> Response {
+fn finish_linkkeys_login(app: &App, verified: crate::auth::local_rp::VerifiedIdentity) -> Response {
     let mut conn = match app.pool.get() {
         Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    if attempt
-        .expected_handle
-        .as_deref()
-        .is_some_and(|expected| expected != verified.handle)
-    {
-        return (
-            StatusCode::FORBIDDEN,
-            "verified LinkKeys handle does not match login",
-        )
-            .into_response();
-    }
+    // The prefix entered at login is an IDP user hint, not an authorization
+    // fact. A LinkKeys username may legitimately differ from its public
+    // `handle` claim (for example `tod` versus `todpunk`). Admission below is
+    // therefore based only on the cryptographically verified domain/handle.
     match crate::db::store::linkkeys_identity_is_trusted(
         &mut conn,
         &verified.domain,
