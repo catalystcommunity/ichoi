@@ -44,10 +44,16 @@ struct FileConfig {
     album_subfolder_words: Option<Vec<String>>,
     linkkeys_local_rp: Option<bool>,
     linkkeys_local_rp_name: Option<String>,
+    linkkeys_rp: Option<bool>,
+    linkkeys_rp_addr: Option<String>,
+    linkkeys_rp_fingerprints: Option<Vec<String>>,
+    linkkeys_rp_api_key: Option<String>,
+    linkkeys_rp_domain: Option<String>,
+    public_url: Option<String>,
     linkkeys_trusted_identities: Option<Vec<String>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Config {
     pub role: Role,
     pub music_dir: Option<PathBuf>,
@@ -86,6 +92,19 @@ pub struct Config {
     pub linkkeys_local_rp: bool,
     /// Human-readable name embedded in the local RP's signed descriptor.
     pub linkkeys_local_rp_name: Option<String>,
+    /// DNS-pinned LinkKeys RP client mode. Like local RP mode, an environment
+    /// override enables it only when its value is exactly `true`.
+    pub linkkeys_rp: bool,
+    /// TCP endpoint for the external RP service.
+    pub linkkeys_rp_addr: Option<String>,
+    /// TLS certificate fingerprints pinning the external RP service.
+    pub linkkeys_rp_fingerprints: Vec<String>,
+    /// API key authorizing Ichoi to call the external RP service.
+    pub linkkeys_rp_api_key: Option<String>,
+    /// DNS identity held by the external RP service.
+    pub linkkeys_rp_domain: Option<String>,
+    /// Browser-visible HTTPS origin used for the regular-RP callback.
+    pub public_url: Option<String>,
     /// Admission selectors: either `domain` or `handle@domain`.
     pub linkkeys_trusted_identities: Vec<String>,
 }
@@ -96,6 +115,13 @@ fn env(key: &str) -> Option<String> {
 
 fn exactly_true(value: Option<&str>) -> bool {
     value == Some("true")
+}
+
+fn read_secret_file(path: &str) -> anyhow::Result<String> {
+    Ok(std::fs::read_to_string(path)
+        .map_err(|e| anyhow::anyhow!("reading ICHOI_LINKKEYS_RP_API_KEY_FILE: {e}"))?
+        .trim_end_matches(['\r', '\n'])
+        .to_string())
 }
 
 const DEFAULT_ALBUM_SUBFOLDER_WORDS: &[&str] = &["cd", "disc", "disk", "bonus disc"];
@@ -147,6 +173,14 @@ impl Config {
         let linkkeys_local_rp = match std::env::var("ICHOI_LINKKEYS_LOCAL_RP") {
             Ok(value) => exactly_true(Some(&value)),
             Err(_) => file.linkkeys_local_rp.unwrap_or(false),
+        };
+        let linkkeys_rp = match std::env::var("ICHOI_LINKKEYS_RP") {
+            Ok(value) => exactly_true(Some(&value)),
+            Err(_) => file.linkkeys_rp.unwrap_or(false),
+        };
+        let linkkeys_rp_api_key_file = match env("ICHOI_LINKKEYS_RP_API_KEY_FILE") {
+            Some(path) => Some(read_secret_file(&path)?),
+            None => None,
         };
         let music_dir =
             pick_opt("ICHOI_MUSIC_DIR", file.music_dir.map(pb_to_string)).map(PathBuf::from);
@@ -215,6 +249,25 @@ impl Config {
                 "ICHOI_LINKKEYS_LOCAL_RP_NAME",
                 file.linkkeys_local_rp_name,
             ),
+            linkkeys_rp,
+            linkkeys_rp_addr: pick_opt("ICHOI_LINKKEYS_RP_ADDR", file.linkkeys_rp_addr),
+            linkkeys_rp_fingerprints: pick_opt(
+                "ICHOI_LINKKEYS_RP_FINGERPRINTS",
+                file.linkkeys_rp_fingerprints.map(|v| v.join(",")),
+            )
+            .map(|s| {
+                s.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(ToOwned::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default(),
+            linkkeys_rp_api_key: env("ICHOI_LINKKEYS_RP_API_KEY")
+                .or(linkkeys_rp_api_key_file)
+                .or(file.linkkeys_rp_api_key),
+            linkkeys_rp_domain: pick_opt("ICHOI_LINKKEYS_RP_DOMAIN", file.linkkeys_rp_domain),
+            public_url: pick_opt("ICHOI_PUBLIC_URL", file.public_url),
             linkkeys_trusted_identities: pick_opt(
                 "ICHOI_LINKKEYS_TRUSTED_IDENTITIES",
                 file.linkkeys_trusted_identities.map(|v| v.join(",")),
@@ -257,7 +310,9 @@ fn pb_to_string(p: PathBuf) -> String {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{album_subfolder_words, configurable_bool, exactly_true, FileConfig};
+    use super::{
+        album_subfolder_words, configurable_bool, exactly_true, read_secret_file, FileConfig,
+    };
 
     #[test]
     fn local_rp_environment_enablement_is_exact() {
@@ -266,6 +321,16 @@ mod tests {
         }
         assert!(exactly_true(Some("true")));
         assert!(!exactly_true(None));
+    }
+
+    #[test]
+    fn regular_rp_api_key_file_trims_only_line_endings() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(file.path(), " key with spaces \r\n").unwrap();
+        assert_eq!(
+            read_secret_file(file.path().to_str().unwrap()).unwrap(),
+            " key with spaces "
+        );
     }
 
     #[test]
@@ -294,6 +359,34 @@ audiobook_dir = "/media/audiobooks"
         assert_eq!(
             parsed.audiobook_dir.unwrap(),
             PathBuf::from("/media/audiobooks")
+        );
+    }
+
+    #[test]
+    fn regular_rp_configuration_parses_from_toml() {
+        let parsed: FileConfig = toml::from_str(
+            r#"
+linkkeys_rp = true
+linkkeys_rp_addr = "linkkeys.example:4987"
+linkkeys_rp_fingerprints = ["aaaa", "bbbb"]
+linkkeys_rp_api_key = "secret"
+linkkeys_rp_domain = "ichoi.example"
+public_url = "https://ichoi.example:4042"
+linkkeys_trusted_identities = ["alice@example.com"]
+"#,
+        )
+        .unwrap();
+        assert_eq!(parsed.linkkeys_rp, Some(true));
+        assert_eq!(
+            parsed.linkkeys_rp_addr.as_deref(),
+            Some("linkkeys.example:4987")
+        );
+        assert_eq!(parsed.linkkeys_rp_fingerprints.unwrap().len(), 2);
+        assert_eq!(parsed.linkkeys_rp_api_key.as_deref(), Some("secret"));
+        assert_eq!(parsed.linkkeys_rp_domain.as_deref(), Some("ichoi.example"));
+        assert_eq!(
+            parsed.public_url.as_deref(),
+            Some("https://ichoi.example:4042")
         );
     }
 

@@ -5,6 +5,7 @@ use rand::RngCore;
 use sha2::{Digest, Sha256};
 
 pub mod local_rp;
+pub mod regular_rp;
 
 /// A minted session token and the hash we persist. The plaintext is returned to the client
 /// once and never stored.

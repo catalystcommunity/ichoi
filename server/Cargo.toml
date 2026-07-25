@@ -53,6 +53,9 @@ x509-parser = "0.16"
 # DNS-less LinkKeys relying-party SDK. Pin the repository revision so releases
 # remain reproducible even before the SDK has an independently versioned crate.
 linkkeys-local-rp = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "57cebd1f53ff6eb86154e9f05b350d78ca6ee730" }
+liblinkkeys = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "57cebd1f53ff6eb86154e9f05b350d78ca6ee730" }
+linkkeys-rpc-client = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "57cebd1f53ff6eb86154e9f05b350d78ca6ee730" }
+hickory-resolver = "0.24"
 
 [profile.release]
 lto = "thin"

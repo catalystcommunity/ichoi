@@ -179,6 +179,7 @@ pub struct App {
     pub nodes: NodeHub,
     pub scan_running: Arc<AtomicBool>,
     pub local_rp: Option<crate::auth::local_rp::DynBackend>,
+    pub regular_rp: Option<crate::auth::regular_rp::DynBackend>,
 }
 
 impl App {
@@ -191,6 +192,14 @@ impl App {
         } else {
             None
         };
+        let regular_rp = if config.linkkeys_rp {
+            Some(Arc::new(
+                crate::auth::regular_rp::RpcBackend::from_config(&config)
+                    .expect("validated regular RP configuration"),
+            ) as crate::auth::regular_rp::DynBackend)
+        } else {
+            None
+        };
         App {
             pool,
             config,
@@ -199,11 +208,17 @@ impl App {
             nodes: NodeHub::new(),
             scan_running: Arc::new(AtomicBool::new(false)),
             local_rp,
+            regular_rp,
         }
     }
 
     pub fn with_local_rp_backend(mut self, backend: crate::auth::local_rp::DynBackend) -> App {
         self.local_rp = Some(backend);
+        self
+    }
+
+    pub fn with_regular_rp_backend(mut self, backend: crate::auth::regular_rp::DynBackend) -> App {
+        self.regular_rp = Some(backend);
         self
     }
 
@@ -440,29 +455,16 @@ impl SessionService for App {
             }
         }
 
-        // LinkKeys assertion path. TODO: verify via linkkeys-rpc-client and extract
-        // uuid@domain + the `handle` claim (§7.1). Pre-alpha accepts a placeholder identity.
         if input.linkkeys_assertion.is_some() {
-            if self.config.linkkeys_local_rp {
-                return Err(err(
-                    400,
-                    "full-RP assertions are not accepted while local RP mode is enabled",
-                ));
-            }
-            let acct = models::Account {
-                id: "user@example.com".to_string(),
-                handle: "user".to_string(),
-                display_name: None,
-                role: "member".to_string(),
-                created_at: Utc::now().to_rfc3339(),
-            };
-            db(store::upsert_account(&mut conn, &acct))?;
-            return self.mint_session(&mut conn, acct);
+            return Err(err(
+                400,
+                "raw LinkKeys assertions are not accepted; use the browser login exchange",
+            ));
         }
 
         if let Some(code) = input.linkkeys_exchange_code.as_deref() {
-            if !self.config.linkkeys_local_rp {
-                return Err(err(401, "LinkKeys local RP mode is disabled"));
+            if !self.config.linkkeys_local_rp && !self.config.linkkeys_rp {
+                return Err(err(401, "LinkKeys login is disabled"));
             }
             let exchange = db(store::consume_linkkeys_exchange(
                 &mut conn,

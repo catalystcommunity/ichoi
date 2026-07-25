@@ -78,6 +78,12 @@ settings:
 | Admin bootstrap token | `ICHOI_ADMIN_TOKEN` | unset |
 | DNS-less LinkKeys RP | `ICHOI_LINKKEYS_LOCAL_RP` | disabled; only exact `true` enables |
 | Local RP name | `ICHOI_LINKKEYS_LOCAL_RP_NAME` | unset |
+| Regular LinkKeys RP | `ICHOI_LINKKEYS_RP` | disabled; only exact `true` enables |
+| RP TCP endpoint | `ICHOI_LINKKEYS_RP_ADDR` | unset |
+| RP TLS fingerprints | `ICHOI_LINKKEYS_RP_FINGERPRINTS` | unset |
+| RP API key | `ICHOI_LINKKEYS_RP_API_KEY` or `ICHOI_LINKKEYS_RP_API_KEY_FILE` | unset |
+| RP domain | `ICHOI_LINKKEYS_RP_DOMAIN` | unset |
+| Public HTTPS origin | `ICHOI_PUBLIC_URL` | unset |
 | Trusted LinkKeys identities | `ICHOI_LINKKEYS_TRUSTED_IDENTITIES` | unset |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → `PATH` |
 | Default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
@@ -142,6 +148,28 @@ SDK's opaque key bundle in `ichoi.db`. It remains stable across restarts; changi
 does not silently rotate it. Backups of the database therefore contain private RP key
 material and must be protected. Approve the fingerprint reported in the log or `/api/auth`
 at each trusted LinkKeys domain before users log in.
+
+### Regular LinkKeys RP login
+
+For a public deployment backed by an existing DNS-pinned LinkKeys RP service,
+enable regular-RP mode instead. It is mutually exclusive with DNS-less mode:
+
+```sh
+ICHOI_LINKKEYS_RP=true
+ICHOI_LINKKEYS_RP_ADDR="linkkeys.example.com:4987"
+ICHOI_LINKKEYS_RP_FINGERPRINTS="fingerprint1,fingerprint2"
+ICHOI_LINKKEYS_RP_API_KEY_FILE="/run/secrets/linkkeys_rp_api_key"
+ICHOI_LINKKEYS_RP_DOMAIN="ichoi.example.com"
+ICHOI_PUBLIC_URL="https://ichoi.example.com"
+ICHOI_LINKKEYS_TRUSTED_IDENTITIES="family.example,alice@friends.example"
+```
+
+The API key must belong to an RP service account with LinkKeys' `api_access`
+relation. The file form is preferred for containers because it keeps the key
+out of Compose interpolation and the container environment. Ichoi pins the RP
+server's TLS certificate to the configured fingerprints, requests and verifies
+the `handle` claim, and applies the same domain/handle admission selectors used
+by DNS-less mode.
 
 ## Native satellite installation
 

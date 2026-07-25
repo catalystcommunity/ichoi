@@ -154,16 +154,11 @@ impl Backend for SdkBackend {
 /// Seed configured admission rules and create the SDK identity once. This is
 /// called after migrations and before any network listener starts.
 pub fn initialize_database(pool: &SqlitePool, config: &Config) -> anyhow::Result<()> {
-    if !config.linkkeys_local_rp {
+    if !config.linkkeys_local_rp && !config.linkkeys_rp {
         return Ok(());
     }
-    let name = config
-        .linkkeys_local_rp_name
-        .as_deref()
-        .filter(|name| !name.trim().is_empty())
-        .ok_or_else(|| anyhow::anyhow!("local RP mode requires ICHOI_LINKKEYS_LOCAL_RP_NAME"))?;
     if config.linkkeys_trusted_identities.is_empty() {
-        anyhow::bail!("local RP mode requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES");
+        anyhow::bail!("LinkKeys login requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES");
     }
 
     let mut conn = pool.get()?;
@@ -179,6 +174,15 @@ pub fn initialize_database(pool: &SqlitePool, config: &Config) -> anyhow::Result
             store::add_trusted_domain(&mut conn, &selector.domain)?;
         }
     }
+    if !config.linkkeys_local_rp {
+        return Ok(());
+    }
+
+    let name = config
+        .linkkeys_local_rp_name
+        .as_deref()
+        .filter(|name| !name.trim().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("local RP mode requires ICHOI_LINKKEYS_LOCAL_RP_NAME"))?;
 
     if let Some(existing) = store::active_local_rp_identity(&mut conn)? {
         let decoded = local_rp_identity_from_bytes(&existing.identity_bundle)

@@ -42,12 +42,22 @@ services:
       # ICHOI_LINKKEYS_LOCAL_RP: "true"
       # ICHOI_LINKKEYS_LOCAL_RP_NAME: "Home Ichoi"
       # ICHOI_LINKKEYS_TRUSTED_IDENTITIES: "family.example,alice@friends.example"
+      # Optional regular LinkKeys RP service. This mode and local RP mode are
+      # mutually exclusive, and only exact lowercase "true" enables either.
+      # ICHOI_LINKKEYS_RP: "true"
+      # ICHOI_LINKKEYS_RP_ADDR: "linkkeys.example:4987"
+      # ICHOI_LINKKEYS_RP_FINGERPRINTS: "fingerprint1,fingerprint2"
+      # ICHOI_LINKKEYS_RP_API_KEY_FILE: "/run/secrets/linkkeys_rp_api_key"
+      # ICHOI_LINKKEYS_RP_DOMAIN: "ichoi.example"
+      # ICHOI_PUBLIC_URL: "https://ichoi.example"
     volumes:
       - ./music:/music:ro
       # For an audiobook collection outside ./music, uncomment this mount and
       # set ICHOI_AUDIOBOOK_DIR=/audiobooks above.
       # - ./audiobooks:/audiobooks:ro
       - ./data:/data
+      # For regular RP mode, mount an operator-created 0600 API-key file:
+      # - ./secrets/linkkeys_rp_api_key:/run/secrets/linkkeys_rp_api_key:ro
     # :4043 must be reachable directly by native clients and satellites.
     ports:
       - "4043:4043"

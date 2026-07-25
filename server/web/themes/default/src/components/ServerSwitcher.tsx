@@ -104,9 +104,8 @@ export function ServerSwitcher(): JSX.Element {
   );
 }
 
-/** Sign-in area. LinkKeys is the real identity path (§8); the handshake is stubbed
- * with a clear TODO. Login-less connections are already guests, so this only
- * *upgrades* identity. */
+/** Sign-in upgrades the login-less guest connection through whichever
+ * LinkKeys RP mode the server advertises. */
 function AuthArea(): JSX.Element {
   const servers = useServers();
   const { t } = useI18n();
@@ -121,6 +120,7 @@ function AuthArea(): JSX.Element {
     }
   };
   const [available, setAvailable] = createSignal(false);
+  const [startUrl, setStartUrl] = createSignal("/auth/linkkeys/local/start");
   const [showLogin, setShowLogin] = createSignal(false);
   const [identity, setIdentity] = createSignal("");
   const [error, setError] = createSignal("");
@@ -128,14 +128,21 @@ function AuthArea(): JSX.Element {
   onMount(() => {
     void fetch("/api/auth")
       .then((response) => response.json())
-      .then((body: { local_rp?: unknown }) => setAvailable(Boolean(body.local_rp)))
+      .then((body: {
+        local_rp?: { start_url?: string };
+        regular_rp?: { start_url?: string };
+      }) => {
+        const provider = body.regular_rp ?? body.local_rp;
+        setAvailable(Boolean(provider));
+        if (provider?.start_url) setStartUrl(provider.start_url);
+      })
       .catch(() => setAvailable(false));
   });
 
   const startLinkKeys = async (e: Event) => {
     e.preventDefault();
     setError("");
-    const response = await fetch("/auth/linkkeys/local/start", {
+    const response = await fetch(startUrl(), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ identity: identity() }),
