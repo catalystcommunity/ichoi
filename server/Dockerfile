@@ -42,6 +42,7 @@
 FROM --platform=$BUILDPLATFORM debian:bookworm-slim AS ffmpeg
 ARG FFMPEG_VERSION=7.1
 ARG LAME_VERSION=3.100
+ARG LAME_SHA256=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential nasm yasm pkg-config curl xz-utils ca-certificates && \
@@ -55,7 +56,16 @@ ENV PATH="/opt/aarch64-linux-musl-cross/bin:${PATH}"
 # Static libmp3lame (LGPL-2.0). Linked only into the ffmpeg subprocess, never into Ichoi
 # (DESIGN Sec.13). --host=<triple> makes autotools use <triple>-gcc for the arm64 cross.
 WORKDIR /src
-RUN curl -fsSL "https://downloads.sourceforge.net/project/lame/lame/${LAME_VERSION}/lame-${LAME_VERSION}.tar.gz" -o lame.tar.gz && \
+RUN set -eux; \
+    for url in \
+      "https://deb.debian.org/debian/pool/main/l/lame/lame_${LAME_VERSION}.orig.tar.gz" \
+      "https://downloads.sourceforge.net/project/lame/lame/${LAME_VERSION}/lame-${LAME_VERSION}.tar.gz"; do \
+      if curl -fL --retry 3 --retry-all-errors --connect-timeout 15 --max-time 120 \
+          "$url" -o lame.tar.gz; then \
+        break; \
+      fi; \
+    done; \
+    echo "${LAME_SHA256}  lame.tar.gz" | sha256sum -c - && \
     tar -xzf lame.tar.gz && cd "lame-${LAME_VERSION}" && \
     if [ "$TARGETARCH" = "arm64" ]; then CH="--host=aarch64-linux-musl"; else CH=""; fi && \
     ./configure --prefix=/opt/lame --disable-shared --enable-static --disable-frontend $CH && \
