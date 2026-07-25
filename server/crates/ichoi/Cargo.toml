@@ -50,6 +50,9 @@ walkdir = { workspace = true }
 libloading = { workspace = true }
 reqwest = { workspace = true }
 linkkeys-local-rp = { workspace = true }
+liblinkkeys = { workspace = true }
+linkkeys-rpc-client = { workspace = true }
+hickory-resolver = { workspace = true }
 rustls = { workspace = true }
 tokio-rustls = { workspace = true }
 rcgen = { workspace = true }

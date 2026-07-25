@@ -181,6 +181,12 @@ mod tests {
             require_music: false,
             linkkeys_local_rp: false,
             linkkeys_local_rp_name: None,
+            linkkeys_rp: false,
+            linkkeys_rp_addr: None,
+            linkkeys_rp_fingerprints: vec![],
+            linkkeys_rp_api_key: None,
+            linkkeys_rp_domain: None,
+            public_url: None,
             linkkeys_trusted_identities: vec![],
         };
         let pref = StreamPref {

@@ -184,7 +184,7 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
+pub fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
     if config.role == Role::Satellite {
         if config.core_addr.as_deref().unwrap_or_default().is_empty() {
             anyhow::bail!("satellite role requires ICHOI_CORE_ADDR");
@@ -216,23 +216,50 @@ fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
         }
     }
 
-    if config.linkkeys_local_rp {
-        if config
+    if config.linkkeys_local_rp && config.linkkeys_rp {
+        anyhow::bail!(
+            "ICHOI_LINKKEYS_LOCAL_RP=true and ICHOI_LINKKEYS_RP=true are mutually exclusive"
+        );
+    }
+
+    if config.linkkeys_local_rp || config.linkkeys_rp {
+        if config.linkkeys_trusted_identities.is_empty() {
+            anyhow::bail!("LinkKeys login requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES");
+        }
+        for selector in &config.linkkeys_trusted_identities {
+            crate::auth::local_rp::parse_selector(selector)?;
+        }
+    }
+
+    if config.linkkeys_local_rp
+        && config
             .linkkeys_local_rp_name
             .as_deref()
             .unwrap_or_default()
             .trim()
             .is_empty()
+    {
+        anyhow::bail!("ICHOI_LINKKEYS_LOCAL_RP=true requires ICHOI_LINKKEYS_LOCAL_RP_NAME");
+    }
+
+    if config.linkkeys_rp {
+        crate::auth::regular_rp::RpcBackend::from_config(config)?;
+        if config.linkkeys_rp_fingerprints.is_empty() {
+            anyhow::bail!("ICHOI_LINKKEYS_RP=true requires ICHOI_LINKKEYS_RP_FINGERPRINTS");
+        }
+        let public_url = config
+            .public_url
+            .as_deref()
+            .ok_or_else(|| anyhow::anyhow!("ICHOI_LINKKEYS_RP=true requires ICHOI_PUBLIC_URL"))?;
+        let parsed = reqwest::Url::parse(public_url)
+            .map_err(|e| anyhow::anyhow!("invalid ICHOI_PUBLIC_URL: {e}"))?;
+        if parsed.scheme() != "https"
+            || parsed.host_str().is_none()
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+            || parsed.path() != "/"
         {
-            anyhow::bail!("ICHOI_LINKKEYS_LOCAL_RP=true requires ICHOI_LINKKEYS_LOCAL_RP_NAME");
-        }
-        if config.linkkeys_trusted_identities.is_empty() {
-            anyhow::bail!(
-                "ICHOI_LINKKEYS_LOCAL_RP=true requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES"
-            );
-        }
-        for selector in &config.linkkeys_trusted_identities {
-            crate::auth::local_rp::parse_selector(selector)?;
+            anyhow::bail!("ICHOI_PUBLIC_URL must be an HTTPS origin without a path");
         }
     }
 

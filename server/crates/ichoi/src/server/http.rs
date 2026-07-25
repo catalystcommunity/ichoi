@@ -9,7 +9,7 @@ use std::time::Duration;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
 use axum::http::{header, HeaderMap, StatusCode, Uri};
-use axum::response::{IntoResponse, Redirect};
+use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
@@ -29,6 +29,7 @@ pub struct AppState {
 
 pub fn router(app: App, web_dir: PathBuf) -> Router {
     let local_rp_enabled = app.config.linkkeys_local_rp;
+    let regular_rp_enabled = app.config.linkkeys_rp;
     let state = AppState { app };
     // Serve static files; for any unmatched path (a client-side route like /jukebox), fall
     // back to index.html so the SPA router handles it instead of 404ing (deep links, refresh).
@@ -48,6 +49,13 @@ pub fn router(app: App, web_dir: PathBuf) -> Router {
         router
             .route("/auth/linkkeys/local/start", post(local_rp_start))
             .route("/auth/linkkeys/local/callback", get(local_rp_callback))
+    } else {
+        router
+    };
+    let router = if regular_rp_enabled {
+        router
+            .route("/auth/linkkeys/start", post(regular_rp_start))
+            .route("/auth/linkkeys/callback", get(regular_rp_callback))
     } else {
         router
     };
@@ -83,7 +91,12 @@ async fn auth_status(State(s): State<AppState>) -> impl IntoResponse {
         "local_rp": s.app.local_rp.as_ref().map(|backend| serde_json::json!({
             "name": s.app.config.linkkeys_local_rp_name,
             "fingerprint": backend.fingerprint(),
-        }))
+            "start_url": "/auth/linkkeys/local/start",
+        })),
+        "regular_rp": s.app.regular_rp.as_ref().map(|_| serde_json::json!({
+            "domain": s.app.config.linkkeys_rp_domain,
+            "start_url": "/auth/linkkeys/start",
+        })),
     }))
 }
 
@@ -210,7 +223,125 @@ async fn local_rp_callback(
         Ok(Err(e)) => return (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
+    finish_linkkeys_login(&s.app, attempt, verified)
+}
+
+async fn regular_rp_start(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<LocalRpStartRequest>,
+) -> Response {
+    let Some(backend) = s.app.regular_rp.clone() else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let selector = match crate::auth::local_rp::parse_selector(&req.identity) {
+        Ok(value) => value,
+        Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+    };
+    if let Err(error) = validated_origin(&headers) {
+        return error.into_response();
+    }
     let mut conn = match s.app.pool.get() {
+        Ok(value) => value,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    match crate::db::store::linkkeys_identity_is_trusted(
+        &mut conn,
+        &selector.domain,
+        selector.handle.as_deref(),
+    ) {
+        Ok(true) => {}
+        Ok(false) => {
+            return (StatusCode::FORBIDDEN, "LinkKeys identity is not trusted").into_response()
+        }
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+    drop(conn);
+
+    let attempt = crate::auth::mint_token();
+    let public_url = s
+        .app
+        .config
+        .public_url
+        .as_deref()
+        .expect("validated regular RP public URL")
+        .trim_end_matches('/');
+    let callback_url = format!(
+        "{public_url}/auth/linkkeys/callback?attempt={}",
+        attempt.token
+    );
+    let domain = selector.domain.clone();
+    let handle = selector.handle.clone();
+    let callback = callback_url.clone();
+    let begun =
+        tokio::task::spawn_blocking(move || backend.begin(&domain, handle.as_deref(), &callback))
+            .await;
+    let (redirect_url, pending_login) = match begun {
+        Ok(Ok(value)) => value,
+        Ok(Err(e)) => return (StatusCode::BAD_GATEWAY, e.to_string()).into_response(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    let now = chrono::Utc::now();
+    let row = crate::db::models::LinkkeysLoginAttempt {
+        attempt_sha256: attempt.sha256_hex,
+        pending_login,
+        expected_handle: selector.handle,
+        created_at: now.to_rfc3339(),
+        expires_at: (now + chrono::Duration::minutes(5)).to_rfc3339(),
+    };
+    let mut conn = match s.app.pool.get() {
+        Ok(value) => value,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    if crate::db::store::purge_expired_linkkeys_state(&mut conn, &now.to_rfc3339()).is_err()
+        || crate::db::store::create_linkkeys_attempt(&mut conn, &row).is_err()
+    {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+    (StatusCode::OK, Json(LocalRpStartResponse { redirect_url })).into_response()
+}
+
+async fn regular_rp_callback(
+    State(s): State<AppState>,
+    Query(query): Query<LocalRpCallbackQuery>,
+) -> Response {
+    let Some(backend) = s.app.regular_rp.clone() else {
+        return StatusCode::NOT_FOUND.into_response();
+    };
+    let mut conn = match s.app.pool.get() {
+        Ok(value) => value,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    let attempt = match crate::db::store::consume_linkkeys_attempt(
+        &mut conn,
+        &crate::auth::sha256_hex(&query.attempt),
+    ) {
+        Ok(Some(value)) if !crate::auth::local_rp::is_expired(&value.expires_at) => value,
+        Ok(_) => {
+            return (StatusCode::UNAUTHORIZED, "invalid or expired login attempt").into_response()
+        }
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    drop(conn);
+
+    let pending = attempt.pending_login.clone();
+    let encrypted = query.encrypted_token.clone();
+    let completed =
+        tokio::task::spawn_blocking(move || backend.complete(&pending, &encrypted)).await;
+    let verified = match completed {
+        Ok(Ok(value)) => value,
+        Ok(Err(e)) => return (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    finish_linkkeys_login(&s.app, attempt, verified)
+}
+
+fn finish_linkkeys_login(
+    app: &App,
+    attempt: crate::db::models::LinkkeysLoginAttempt,
+    verified: crate::auth::local_rp::VerifiedIdentity,
+) -> Response {
+    let mut conn = match app.pool.get() {
         Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
@@ -241,6 +372,10 @@ async fn local_rp_callback(
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
     let account_id = format!("{}@{}", verified.user_id, verified.domain);
+    let first_account = match crate::db::store::count_accounts(&mut conn) {
+        Ok(count) => count == 0,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
     if crate::db::store::upsert_linkkeys_account(
         &mut conn,
         &account_id,
@@ -249,6 +384,9 @@ async fn local_rp_callback(
     )
     .is_err()
     {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    }
+    if first_account && crate::db::store::set_role(&mut conn, &account_id, "admin").is_err() {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
     let exchange = crate::auth::mint_token();
