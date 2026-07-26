@@ -16,6 +16,7 @@ import { useServers } from "../stores/servers.tsx";
 import { EmptyState } from "./common.tsx";
 import { AuthArea, ServerSwitcher } from "./ServerSwitcher.tsx";
 import { Transport } from "./Transport.tsx";
+import { VersionFooter } from "./VersionFooter.tsx";
 import {
   IconJukebox,
   IconBook,
@@ -169,6 +170,7 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
             {props.children}
           </Show>
         </ErrorBoundary>
+        <VersionFooter />
       </main>
 
       <Transport />
