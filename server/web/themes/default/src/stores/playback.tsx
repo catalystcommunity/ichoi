@@ -29,11 +29,15 @@ import type {
 import { useServers } from "./servers.tsx";
 import { useToast } from "./toasts.tsx";
 import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
+import { finishUpdateReload, updateReloadInProgress } from "../lib/app-update.ts";
 
 export const LOCAL_TARGET = "local";
+export type RepeatMode = "off" | "all" | "one";
 
 const PREF_KEY = "ichoi.streamPref";
 const OWNED_KEY = "ichoi.ownedDevices";
+const REPEAT_KEY = "ichoi.repeatMode";
+const SHUFFLE_KEY = "ichoi.shuffle";
 
 function loadPref(): StreamPref {
   try {
@@ -50,6 +54,23 @@ function loadOwned(): string[] {
     return JSON.parse(localStorage.getItem(OWNED_KEY) ?? "[]") as string[];
   } catch {
     return [];
+  }
+}
+
+function loadRepeatMode(): RepeatMode {
+  try {
+    const value = localStorage.getItem(REPEAT_KEY);
+    return value === "all" || value === "one" ? value : "off";
+  } catch {
+    return "off";
+  }
+}
+
+function loadShuffle(): boolean {
+  try {
+    return localStorage.getItem(SHUFFLE_KEY) === "true";
+  } catch {
+    return false;
   }
 }
 
@@ -80,6 +101,7 @@ interface PlaybackContextValue {
   setPref: (p: StreamPref) => void;
   playNow: (tracks: Track[], startIndex?: number, startMs?: number) => Promise<void>;
   enqueue: (tracks: Track[]) => void;
+  enqueueAndPlay: (track: Track, startMs?: number) => Promise<void>;
   playIndex: (index: number) => Promise<void>;
   togglePlay: () => void;
   next: () => Promise<void>;
@@ -106,6 +128,10 @@ interface PlaybackContextValue {
   /** Satisfy browser autoplay policy and bind the selected satellite audio sink. */
   enableOutputAudio: () => Promise<void>;
   outputAudioReady: Accessor<boolean>;
+  repeatMode: Accessor<RepeatMode>;
+  cycleRepeatMode: () => void;
+  shuffle: Accessor<boolean>;
+  toggleShuffle: () => void;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue>();
@@ -127,6 +153,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     satelliteMode ? "satellite-pending" : LOCAL_TARGET,
   );
   const [outputAudioReady, setOutputAudioReady] = createSignal(false);
+  const [repeatMode, setRepeatMode] = createSignal<RepeatMode>(loadRepeatMode());
+  const [shuffle, setShuffle] = createSignal(loadShuffle());
   let lastProgressTrack = "";
   let lastProgressPosition = -1;
   let lastSatelliteReportSecond = -1;
@@ -242,13 +270,16 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     );
     audio.addEventListener("play", () => {
       setOutputAudioReady(true);
+      finishUpdateReload();
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "playing" }));
       reportSatellite("playing", Math.round(audio.currentTime * 1000));
     });
     audio.addEventListener("pause", () => {
       setSnapshot((s): PlaybackSnapshot => (s.status === "ended" ? s : { ...s, status: "paused" }));
       reportAudiobookProgress();
-      if (!audio.ended) reportSatellite("paused", Math.round(audio.currentTime * 1000));
+      if (!audio.ended && !updateReloadInProgress()) {
+        reportSatellite("paused", Math.round(audio.currentTime * 1000));
+      }
     });
     audio.addEventListener("ended", () => {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "ended" }));
@@ -321,6 +352,14 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
         const url = mediaUrl(item.track_id);
         if (url) {
           audio.src = url;
+          const startMs = state.position_ms ?? 0;
+          if (startMs > 0) {
+            const restorePosition = () => {
+              audio.currentTime = startMs / 1000;
+              audio.removeEventListener("loadedmetadata", restorePosition);
+            };
+            audio.addEventListener("loadedmetadata", restorePosition);
+          }
           void applySatelliteSink()
             .then(() => audio.play())
             .catch((e) =>
@@ -332,6 +371,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
             );
         }
       } else if (audio.paused) {
+        const requestedSeconds = (state.position_ms ?? 0) / 1000;
+        if (Math.abs(audio.currentTime - requestedSeconds) > 1) {
+          audio.currentTime = requestedSeconds;
+        }
         void applySatelliteSink().then(() => audio.play()).catch(() => undefined);
       }
     } else if (state.status === "paused") {
@@ -351,9 +394,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     const idx = state.current_index ?? -1;
     const cur = idx >= 0 && idx < state.queue.length ? state.queue[idx] : undefined;
     if (isOwned(t)) {
+      setSnapshot((current): PlaybackSnapshot => ({
+        ...current,
+        status: mapStatus(state.status),
+        positionMs: state.position_ms ?? current.positionMs,
+        durationMs: cur?.duration_ms,
+      }));
       driveOwnerAudio(state);
-      // Status/position come from the local <audio> (we are the output); take duration + queue.
-      setSnapshot((s): PlaybackSnapshot => ({ ...s, durationMs: cur?.duration_ms }));
     } else {
       setSnapshot({
         status: mapStatus(state.status),
@@ -386,15 +433,24 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   );
   onCleanup(() => unsub?.());
 
-  function control(command: PlayerCommand): void {
+  let controlChain: Promise<PlayerState | undefined> = Promise.resolve(undefined);
+
+  function control(command: PlayerCommand): Promise<PlayerState | undefined> {
     const t = target();
-    if (t === LOCAL_TARGET) return;
-    const a = servers.api();
-    if (!a) return;
-    void a.player
-      .control({ player_id: t, command })
-      .then((st) => applyRemote(t, st))
-      .catch((e) => console.warn("[playback] control failed", e));
+    if (t === LOCAL_TARGET || t === "satellite-pending") return Promise.resolve(undefined);
+    controlChain = controlChain
+      .then(async () => {
+        const a = servers.api();
+        if (!a) return;
+        const state = await a.player.control({ player_id: t, command });
+        applyRemote(t, state);
+        return state;
+      })
+      .catch((e) => {
+        console.warn("[playback] control failed", e);
+        return undefined;
+      });
+    return controlChain;
   }
 
   // Re-assert output ownership on every (re)connect: the server forgets device presence when a
@@ -485,16 +541,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "paused" }));
   });
 
-  // --- Auto-advance ---------------------------------------------------------
-  createEffect(
-    on(
-      () => snapshot().status,
-      (status, prevStatus) => {
-        if (status === "ended" && prevStatus !== "ended") void next();
-      },
-    ),
-  );
-
   const current = () => {
     const i = currentIndex();
     return i >= 0 && i < queue.length ? queue[i] : undefined;
@@ -515,6 +561,37 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       /* ignore */
     }
   };
+
+  function cycleRepeatMode(): void {
+    setRepeatMode((current) => {
+      const next = current === "off" ? "all" : current === "all" ? "one" : "off";
+      try {
+        localStorage.setItem(REPEAT_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  function toggleShuffle(): void {
+    setShuffle((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(SHUFFLE_KEY, String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  function randomQueueIndex(): number {
+    if (queue.length <= 1) return currentIndex();
+    const current = currentIndex();
+    const candidate = Math.floor(Math.random() * (queue.length - 1));
+    return candidate >= current ? candidate + 1 : candidate;
+  }
 
   // --- Local playback -------------------------------------------------------
   async function openIndex(index: number, startMs = 0): Promise<void> {
@@ -560,30 +637,50 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       setQueue(tracks.slice());
       if (tracks.length) await openIndex(startIndex, startMs);
     } else {
-      control({ op: "clear" });
-      control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
-      control({ op: "play", index: startIndex });
-      if (startMs > 0) control({ op: "seek", position_ms: startMs });
+      await control({ op: "clear" });
+      if (!tracks.length) return;
+      await control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
+      await control({ op: "play", index: startIndex });
+      if (startMs > 0) await control({ op: "seek", position_ms: startMs });
     }
   }
 
   function enqueue(tracks: Track[]): void {
+    if (!tracks.length) return;
+    const startQueue = queue.length === 0;
     if (isLocal()) {
       setQueue((q) => [...q, ...tracks]);
-      if (currentIndex() < 0 && tracks.length) void openIndex(0);
+      if (startQueue) void openIndex(0);
     } else {
-      control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
+      void (async () => {
+        const state = await control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
+        const previousLength = state ? state.queue.length - tracks.length : queue.length;
+        if (previousLength === 0) await control({ op: "play", index: 0 });
+      })();
+    }
+  }
+
+  async function enqueueAndPlay(track: Track, startMs = 0): Promise<void> {
+    const appendedIndex = queue.length;
+    if (isLocal()) {
+      setQueue((current) => [...current, track]);
+      await openIndex(appendedIndex, startMs);
+    } else {
+      const state = await control({ op: "enqueue", track_ids: [track.id] });
+      const newIndex = state ? state.queue.length - 1 : appendedIndex;
+      await control({ op: "play", index: newIndex });
+      if (startMs > 0) await control({ op: "seek", position_ms: startMs });
     }
   }
 
   async function playIndex(index: number): Promise<void> {
     if (isLocal()) await openIndex(index);
-    else control({ op: "play", index });
+    else await control({ op: "play", index });
   }
 
   function togglePlay(): void {
     if (!isLocal()) {
-      control(snapshot().status === "playing" ? { op: "pause" } : { op: "play" });
+      void control(snapshot().status === "playing" ? { op: "pause" } : { op: "play" });
       return;
     }
     if (!audio) return;
@@ -593,18 +690,41 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   async function next(): Promise<void> {
-    if (!isLocal()) {
-      control({ op: "next" });
+    if (!queue.length) return;
+    if (shuffle() && queue.length > 1) {
+      await playIndex(randomQueueIndex());
       return;
     }
     const i = currentIndex();
-    if (i + 1 < queue.length) await openIndex(i + 1);
-    else stop();
+    if (i + 1 < queue.length) {
+      await playIndex(i + 1);
+    } else if (repeatMode() === "all") {
+      await playIndex(0);
+    } else if (isLocal()) {
+      stop();
+    }
   }
+
+  async function advanceAfterEnd(): Promise<void> {
+    if (repeatMode() === "one" && currentIndex() >= 0) {
+      await playIndex(currentIndex());
+      return;
+    }
+    await next();
+  }
+
+  createEffect(
+    on(
+      () => snapshot().status,
+      (status, prevStatus) => {
+        if (status === "ended" && prevStatus !== "ended") void advanceAfterEnd();
+      },
+    ),
+  );
 
   async function previous(): Promise<void> {
     if (!isLocal()) {
-      control({ op: "previous" });
+      await control({ op: "previous" });
       return;
     }
     if (snapshot().positionMs > 3000 && audio) {
@@ -621,13 +741,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       if (audio) audio.currentTime = ms / 1000;
     } else {
       if (audio && isOwned(target())) audio.currentTime = ms / 1000;
-      control({ op: "seek", position_ms: ms });
+      void control({ op: "seek", position_ms: ms });
     }
   }
 
   function stop(): void {
     if (!isLocal()) {
-      control({ op: "clear" });
+      void control({ op: "clear" });
       return;
     }
     if (audio) {
@@ -660,7 +780,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   function removeAt(index: number): void {
     if (!isLocal()) {
-      control({ op: "remove", index });
+      void control({ op: "remove", index });
       return;
     }
     if (index < 0 || index >= queue.length) return;
@@ -678,7 +798,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   function move(from: number, to: number): void {
     if (!isLocal()) {
-      control({ op: "reorder", from_index: from, to_index: to });
+      void control({ op: "reorder", from_index: from, to_index: to });
       return;
     }
     if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
@@ -708,6 +828,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     setPref,
     playNow,
     enqueue,
+    enqueueAndPlay,
     playIndex,
     togglePlay,
     next,
@@ -726,6 +847,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     releaseDevice,
     enableOutputAudio,
     outputAudioReady,
+    repeatMode,
+    cycleRepeatMode,
+    shuffle,
+    toggleShuffle,
   };
 
   return <PlaybackContext.Provider value={value}>{props.children}</PlaybackContext.Provider>;

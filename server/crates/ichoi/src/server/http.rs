@@ -13,6 +13,7 @@ use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tokio::sync::mpsc;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -25,12 +26,16 @@ static CONN_ID: AtomicU64 = AtomicU64::new(1);
 #[derive(Clone)]
 pub struct AppState {
     pub app: App,
+    pub release_version: String,
 }
 
 pub fn router(app: App, web_dir: PathBuf) -> Router {
     let local_rp_enabled = app.config.linkkeys_local_rp;
     let regular_rp_enabled = app.config.linkkeys_rp;
-    let state = AppState { app };
+    let state = AppState {
+        app,
+        release_version: release_version(&web_dir),
+    };
     // Serve static files; for any unmatched path (a client-side route like /jukebox), fall
     // back to index.html so the SPA router handles it instead of 404ing (deep links, refresh).
     let index = web_dir.join("index.html");
@@ -66,15 +71,48 @@ async fn healthz() -> &'static str {
     "ok"
 }
 
+fn release_version(web_dir: &std::path::Path) -> String {
+    let package = env!("CARGO_PKG_VERSION");
+    let mut files = walkdir::WalkDir::new(web_dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_file())
+        .map(|entry| entry.into_path())
+        .collect::<Vec<_>>();
+    files.sort();
+    if files.is_empty() {
+        return package.to_owned();
+    }
+    let mut hasher = Sha256::new();
+    for path in files {
+        if let Ok(relative) = path.strip_prefix(web_dir) {
+            hasher.update(relative.as_os_str().as_encoded_bytes());
+        }
+        let Ok(contents) = std::fs::read(path) else {
+            return package.to_owned();
+        };
+        hasher.update(contents);
+    }
+    let digest = hasher.finalize();
+    format!("{package}+web.{}", hex::encode(&digest[..8]))
+}
+
 async fn status(State(s): State<AppState>) -> impl IntoResponse {
+    let release_version = s.release_version.clone();
+    let fallback_version = release_version.clone();
     let value = tokio::task::spawn_blocking(move || {
         let mut conn = match s.app.pool.get() {
             Ok(c) => c,
-            Err(_) => return serde_json::json!({ "service": "ichoi", "status": "degraded" }),
+            Err(_) => return serde_json::json!({
+                "service": "ichoi",
+                "status": "degraded",
+                "version": release_version,
+            }),
         };
         serde_json::json!({
             "service": "ichoi",
             "status": "ok",
+            "version": release_version,
             "role": if matches!(s.app.config.role, crate::config::Role::Core) { "core" } else { "satellite" },
             "tracks": crate::db::store::count_tracks(&mut conn).unwrap_or(0),
             "albums": crate::db::store::count_all_albums(&mut conn).unwrap_or(0),
@@ -82,8 +120,12 @@ async fn status(State(s): State<AppState>) -> impl IntoResponse {
         })
     })
     .await
-    .unwrap_or_else(|_| serde_json::json!({ "service": "ichoi", "status": "degraded" }));
-    Json(value)
+    .unwrap_or_else(|_| serde_json::json!({
+        "service": "ichoi",
+        "status": "degraded",
+        "version": fallback_version,
+    }));
+    ([(header::CACHE_CONTROL, "no-store")], Json(value))
 }
 
 async fn auth_status(State(s): State<AppState>) -> impl IntoResponse {

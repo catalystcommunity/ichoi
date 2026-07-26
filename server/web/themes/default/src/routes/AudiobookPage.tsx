@@ -90,7 +90,10 @@ export function AudiobookPage(): JSX.Element {
                 audiobookProgress={progressMap()}
                 onPlay={(index) => {
                   const saved = progressMap().get(book().tracks[index]!.id);
-                  void playback.playNow(book().tracks, index, saved?.completed ? 0 : saved?.position_ms ?? 0);
+                  void playback.enqueueAndPlay(
+                    book().tracks[index]!,
+                    saved?.completed ? 0 : saved?.position_ms ?? 0,
+                  );
                 }}
                 onQueue={(index) => playback.enqueue([book().tracks[index]!])}
               />

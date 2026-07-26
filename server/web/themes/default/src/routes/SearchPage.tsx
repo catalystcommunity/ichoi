@@ -110,7 +110,7 @@ export function SearchPage(): JSX.Element {
                     tracks={results()!.tracks}
                     currentTrackId={pb.current()?.id}
                     playing={pb.snapshot().status === "playing"}
-                    onPlay={(i) => void pb.playNow(results()!.tracks, i)}
+                    onPlay={(i) => void pb.enqueueAndPlay(results()!.tracks[i]!)}
                     onQueue={(i) => pb.enqueue([results()!.tracks[i]!])}
                   />
                 </section>

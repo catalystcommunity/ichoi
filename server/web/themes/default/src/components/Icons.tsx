@@ -109,6 +109,25 @@ export const IconPrev = (p: IconProps) =>
   ));
 export const IconStop = (p: IconProps) =>
   base(p, <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none" />);
+export const IconRepeat = (p: IconProps) =>
+  base(p, (
+    <>
+      <path d="M17 2l3 3-3 3" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h13" />
+      <path d="M7 22l-3-3 3-3" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H4" />
+    </>
+  ));
+export const IconShuffle = (p: IconProps) =>
+  base(p, (
+    <>
+      <path d="M16 3h5v5" />
+      <path d="M4 20L21 3" />
+      <path d="M21 16v5h-5" />
+      <path d="M15 15l6 6" />
+      <path d="M4 4l5 5" />
+    </>
+  ));
 
 export const IconPlus = (p: IconProps) =>
   base(p, (
