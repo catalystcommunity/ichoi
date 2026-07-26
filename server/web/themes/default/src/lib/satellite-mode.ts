@@ -1,5 +1,6 @@
 export const SATELLITE_TOKEN_KEY = "ichoi.satelliteToken";
 export const SATELLITE_OUTPUT_KEY = "ichoi.satelliteOutput";
+export const SATELLITE_OUTPUT_NAME_KEY = "ichoi.satelliteOutputName";
 
 export function satelliteToken(): string | undefined {
   try {
@@ -7,6 +8,22 @@ export function satelliteToken(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+export function satelliteOutput(): { id: string; name: string } {
+  try {
+    return {
+      id: localStorage.getItem(SATELLITE_OUTPUT_KEY) || "default",
+      name: localStorage.getItem(SATELLITE_OUTPUT_NAME_KEY) || "Default audio output",
+    };
+  } catch {
+    return { id: "default", name: "Default audio output" };
+  }
+}
+
+export function setSatelliteOutput(id: string, name: string): void {
+  localStorage.setItem(SATELLITE_OUTPUT_KEY, id);
+  localStorage.setItem(SATELLITE_OUTPUT_NAME_KEY, name);
 }
 
 export function enterSatelliteMode(token: string): void {

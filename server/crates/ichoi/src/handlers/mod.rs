@@ -421,11 +421,11 @@ fn progress_account_id(
 ) -> Result<String, ServiceError> {
     match identity {
         Identity::User { account_id, .. } => Ok(account_id.clone()),
+        Identity::Node { node_id } => Ok(format!("__satellite__:{node_id}")),
         Identity::Anonymous if db(store::count_accounts(conn))? == 0 => {
             Ok(GUEST_PROGRESS_ACCOUNT_ID.to_string())
         }
         Identity::Anonymous => Err(err(401, "sign in to save audiobook progress")),
-        Identity::Node { .. } => Err(err(403, "nodes cannot save audiobook progress")),
     }
 }
 
@@ -510,7 +510,19 @@ impl SessionService for App {
                     Err(err(401, "not authenticated"))
                 }
             }
-            _ => Err(err(401, "not authenticated")),
+            Identity::Node { node_id } => {
+                let mut conn = self.conn()?;
+                let satellite = db(store::satellite_by_id(&mut conn, node_id))?
+                    .ok_or_else(|| err(401, "satellite credential is no longer valid"))?;
+                Ok(SessionInfo {
+                    account_id: format!("satellite:{}", satellite.id),
+                    handle: satellite.name.clone(),
+                    display_name: Some(satellite.name),
+                    role: Role::Member,
+                    can_admin: false,
+                    token: None,
+                })
+            }
         }
     }
 
@@ -890,7 +902,7 @@ impl App {
             return false;
         };
         let Some(device_id) = player.output_device_id.as_deref() else {
-            return true;
+            return !matches!(identity, Identity::Node { .. });
         };
         if let Identity::Node { node_id } = identity {
             return store::device_by_id(&mut conn, device_id)
@@ -948,6 +960,17 @@ impl PlayerService for App {
             // Reconcile against live connections: a shared device is only listed while a
             // connection is actually acting as its output (§6). Private players are unaffected.
             .filter(|p| {
+                if let Identity::Node { node_id } = &ctx.identity {
+                    let Some(device_id) = p.output_device_id.as_deref() else {
+                        return false;
+                    };
+                    return store::device_by_id(&mut conn, device_id)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|device| {
+                            device.enabled != 0 && device.node_id == format!("sat:{node_id}")
+                        });
+                }
                 if p.kind != "shared" {
                     return true;
                 }
@@ -955,14 +978,6 @@ impl PlayerService for App {
                     return false;
                 }
                 if let Some(device_id) = p.output_device_id.as_deref() {
-                    if let Identity::Node { node_id } = &ctx.identity {
-                        return store::device_by_id(&mut conn, device_id)
-                            .ok()
-                            .flatten()
-                            .is_some_and(|device| {
-                                device.enabled != 0 && device.node_id == format!("sat:{node_id}")
-                            });
-                    }
                     let account_id = match &ctx.identity {
                         Identity::User { account_id, .. } => Some(account_id.as_str()),
                         _ => None,
@@ -1001,12 +1016,19 @@ impl PlayerService for App {
         let mut conn = self.conn()?;
         let pid = &input.player_id;
         if let Some(player) = db(store::get_player(&mut conn, pid))? {
+            let mut node_owns_device = false;
             if let Some(device_id) = player.output_device_id.as_deref() {
                 let owns_device = match &ctx.identity {
                     Identity::Node { node_id } => db(store::device_by_id(&mut conn, device_id))?
-                        .is_some_and(|device| device.node_id == format!("sat:{node_id}")),
+                        .is_some_and(|device| {
+                            device.enabled != 0 && device.node_id == format!("sat:{node_id}")
+                        }),
                     _ => false,
                 };
+                node_owns_device = owns_device;
+                if matches!(&ctx.identity, Identity::Node { .. }) && !owns_device {
+                    return Err(err(403, "satellites may only control their own outputs"));
+                }
                 let account_id = match &ctx.identity {
                     Identity::User { account_id, .. } => Some(account_id.as_str()),
                     _ => None,
@@ -1015,13 +1037,18 @@ impl PlayerService for App {
                 {
                     return Err(err(403, "this output is not available to your group"));
                 }
+            } else if matches!(ctx.identity, Identity::Node { .. }) {
+                return Err(err(403, "satellites may only control their own outputs"));
             }
             if player.kind == "shared" && db(store::count_accounts(&mut conn))? > 0 {
                 match &ctx.identity {
                     Identity::User { .. } => {}
+                    Identity::Node { .. } if node_owns_device => {}
                     _ => return Err(err(401, "must be signed in to control shared devices")),
                 }
             }
+        } else if matches!(ctx.identity, Identity::Node { .. }) {
+            return Err(err(404, "satellite output not found"));
         }
         let mut st = db(store::get_state(&mut conn, pid))?.unwrap_or(models::PlayerStateRow {
             player_id: pid.clone(),
@@ -1067,6 +1094,9 @@ impl PlayerService for App {
                 let acct = db(store::get_account(&mut conn, account_id))?
                     .ok_or_else(|| err(404, "account not found"))?;
                 (acct.handle, Some(acct.id.clone()), acct.id)
+            }
+            Identity::Node { .. } => {
+                return Err(err(403, "satellites cannot create additional outputs"));
             }
             _ => {
                 if db(store::count_accounts(&mut conn))? == 0 {
@@ -1125,7 +1155,10 @@ impl PlayerService for App {
         })
     }
 
-    fn disable_share(&self, _ctx: &Ctx, input: DisableShareRequest) -> Result<Ok, ServiceError> {
+    fn disable_share(&self, ctx: &Ctx, input: DisableShareRequest) -> Result<Ok, ServiceError> {
+        if matches!(ctx.identity, Identity::Node { .. }) {
+            return Err(err(403, "satellites cannot remove outputs"));
+        }
         let mut conn = self.conn()?;
         db(store::delete_player(&mut conn, &input.player_id))?;
         std::result::Result::Ok(Ok { ok: true })

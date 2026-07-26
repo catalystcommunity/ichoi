@@ -7,10 +7,12 @@ import { usePlayback } from "../stores/playback.tsx";
 import { formatDuration, trackTechSummary } from "../lib/format.ts";
 import { Meter } from "./common.tsx";
 import { IconNext, IconPause, IconPlay, IconPrev } from "./Icons.tsx";
+import { satelliteToken } from "../lib/satellite-mode.ts";
 
 export function Transport(): JSX.Element {
   const pb = usePlayback();
   const { t } = useI18n();
+  const satelliteMode = Boolean(satelliteToken());
 
   const track = () => pb.current();
   const targetLabel = () => {
@@ -70,18 +72,23 @@ export function Transport(): JSX.Element {
               {t("nowPlaying.decoderMissing")}
             </div>
           </Show>
-          <select
-            ref={targetRef}
-            class="transport-target"
-            aria-label={t("player.target")}
-            value={pb.target()}
-            onChange={(e) => pb.setTarget(e.currentTarget.value)}
+          <Show
+            when={!satelliteMode}
+            fallback={<span class="chip">{targetLabel()}</span>}
           >
-            <option value="local">{t("player.thisDevice")}</option>
-            <For each={pb.sharedTargets()}>
-              {(p) => <option value={p.id}>{p.name}</option>}
-            </For>
-          </select>
+            <select
+              ref={targetRef}
+              class="transport-target"
+              aria-label={t("player.target")}
+              value={pb.target()}
+              onChange={(e) => pb.setTarget(e.currentTarget.value)}
+            >
+              <option value="local">{t("player.thisDevice")}</option>
+              <For each={pb.sharedTargets()}>
+                {(p) => <option value={p.id}>{p.name}</option>}
+              </For>
+            </select>
+          </Show>
         </div>
       </div>
 
@@ -135,6 +142,15 @@ export function Transport(): JSX.Element {
       </div>
 
       <div class="transport-right">
+        <Show when={satelliteMode}>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            onClick={() => void pb.enableOutputAudio().catch((error) => console.error(error))}
+          >
+            {pb.outputAudioReady() ? "Audio enabled" : "Enable audio"}
+          </button>
+        </Show>
         <Show when={track()}>
           <span class="badge">{isPlaying() ? t("jukebox.onAir") : t("jukebox.idle")}</span>
         </Show>

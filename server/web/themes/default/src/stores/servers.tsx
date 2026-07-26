@@ -16,6 +16,7 @@ import { createStore, produce } from "solid-js/store";
 import { CsilConnection, type ConnState } from "../lib/csil.ts";
 import { ServerApi } from "../lib/services.ts";
 import type { SessionInfo } from "../lib/schema.ts";
+import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 
 export interface ServerRecord {
   id: string;
@@ -25,6 +26,8 @@ export interface ServerRecord {
   detail?: string;
   session?: SessionInfo;
   token?: string;
+  /** The sole player this credential may control when connected as a satellite. */
+  satellitePlayerId?: string;
 }
 
 interface LiveConn {
@@ -140,15 +143,67 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     );
   }
 
+  async function provisionSatellite(rec: ServerRecord, api: ServerApi): Promise<void> {
+    const output = satelliteOutput();
+    const registered = await api.node.register({
+      hostname: typeof location === "undefined" ? "browser-pwa" : location.hostname,
+      platform: "chromeos",
+      arch: typeof navigator === "undefined" ? "browser" : navigator.platform || "browser",
+      outputs: [{
+        os_device_id: output.id,
+        friendly_name: output.name,
+        channels: 2,
+        sample_rates: [48_000],
+        is_default: output.id === "default",
+      }],
+    });
+    const player = registered.players[0];
+    if (!player) throw new Error("This satellite output has been disabled by the administrator");
+    const session = await api.session.whoami();
+    patch(rec.id, { session, satellitePlayerId: player.id });
+
+    // A node-session report is also the server-side presence claim. Mirror the persisted
+    // player state instead of resetting it when this PWA reconnects.
+    let off: (() => void) | undefined;
+    off = api.player.subscribe({ player_id: player.id }, (state) => {
+      api.node.report({
+        player_id: player.id,
+        status: state.status,
+        position_ms: state.position_ms,
+      });
+      off?.();
+    });
+  }
+
   async function openConnection(rec: ServerRecord): Promise<void> {
+    const nodeToken = satelliteToken();
+    let initialProvisionComplete = false;
+    let reprovisioning = false;
+    let api: ServerApi;
     const conn = new CsilConnection({
       url: rec.url,
-      auth: rec.token,
-      onState: (state, detail) => patch(rec.id, { state, detail }),
+      auth: nodeToken ? undefined : rec.token,
+      nodeToken,
+      onState: (state, detail) => {
+        patch(rec.id, { state, detail });
+        if (state === "ready" && nodeToken && initialProvisionComplete && !reprovisioning) {
+          reprovisioning = true;
+          void provisionSatellite(rec, api)
+            .catch((e) => patch(rec.id, { state: "error", detail: String(e) }))
+            .finally(() => {
+              reprovisioning = false;
+            });
+        }
+      },
     });
-    const api = new ServerApi(conn);
+    api = new ServerApi(conn);
     live.set(rec.id, { conn, api });
     await conn.connect();
+    if (nodeToken) {
+      await provisionSatellite(rec, api);
+      initialProvisionComplete = true;
+      return;
+    }
     // Login-less default: identify as guest (§8). LinkKeys sign-in upgrades later.
     try {
       const session = await api.session.whoami();
@@ -223,9 +278,12 @@ export function ServersProvider(props: ParentProps): JSX.Element {
   }
 
   // Restore persisted servers on boot and auto-connect them.
-  const persisted = loadPersisted();
+  const satellite = satelliteToken();
+  const persisted = satellite ? [] : loadPersisted();
   const seed: ServerRecord[] =
-    persisted.length > 0
+    satellite
+      ? [{ id: randomId(), name: "This satellite", url: defaultServerUrl(), state: "idle" }]
+      : persisted.length > 0
       ? persisted.map((p) => ({ ...p, state: "idle" as ConnState }))
       : [{ id: randomId(), name: "This server", url: defaultServerUrl(), state: "idle" }];
   setServers(seed);

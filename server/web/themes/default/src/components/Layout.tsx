@@ -32,9 +32,14 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const servers = useServers();
   const location = useLocation();
   const navigate = useNavigate();
+  const satelliteMode = Boolean(satelliteToken());
+  const satelliteNav = NAV.filter((item) => item.href !== "/jukebox" && item.href !== "/settings");
   createEffect(() => {
-    if (satelliteToken() && location.pathname !== "/satellite") {
-      navigate("/satellite", { replace: true });
+    if (
+      satelliteMode &&
+      (location.pathname === "/jukebox" || location.pathname.startsWith("/settings"))
+    ) {
+      navigate("/", { replace: true });
     }
   });
   const [libraries] = createResource(
@@ -61,7 +66,7 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
         </div>
 
         <ul class="nav" role="list">
-          <For each={NAV}>
+          <For each={satelliteMode ? satelliteNav : NAV}>
             {(item) => (
               <>
                 <li>
@@ -89,7 +94,12 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
         </ul>
 
         <div class="rail-spacer" />
-        <ServerSwitcher />
+        <Show
+          when={!satelliteMode}
+          fallback={<span class="chip">{servers.active()?.session?.handle ?? "Satellite"}</span>}
+        >
+          <ServerSwitcher />
+        </Show>
       </nav>
 
       <main class="main" id="main-content" tabindex="-1">
