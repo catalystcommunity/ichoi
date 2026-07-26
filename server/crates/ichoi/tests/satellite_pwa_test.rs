@@ -3,7 +3,9 @@
 mod common;
 
 use ichoi::db::{models, store};
-use libichoi::csil::services::{AdminService, NodeService, PlayerService, SessionService};
+use libichoi::csil::services::{
+    AdminService, LibraryService, NodeService, PlayerService, SessionService,
+};
 use libichoi::csil::types::*;
 
 fn seed_account(conn: &mut diesel::SqliteConnection, id: &str, role: &str) {
@@ -162,6 +164,165 @@ fn satellite_defaults_flow_to_new_outputs_and_groups_filter_players() {
         disabled.players.is_empty(),
         "disabled outputs show up for nobody"
     );
+}
+
+#[test]
+fn satellite_is_a_named_session_confined_to_its_own_player_and_queue() {
+    let (app, pool) = common::test_app();
+    let kitchen = app
+        .create_node_token(
+            &common::ctx_anon(),
+            CreateNodeTokenRequest {
+                label: Some("Kitchen Chromebook".into()),
+                default_enabled: true,
+                default_group_ids: vec!["everyone".into()],
+            },
+        )
+        .unwrap();
+    let bedroom = app
+        .create_node_token(
+            &common::ctx_anon(),
+            CreateNodeTokenRequest {
+                label: Some("Bedroom".into()),
+                default_enabled: true,
+                default_group_ids: vec!["everyone".into()],
+            },
+        )
+        .unwrap();
+
+    let register = |satellite_id: &str, output: &str| {
+        app.register(
+            &common::ctx_node(satellite_id),
+            RegisterNodeRequest {
+                hostname: "browser-pwa".into(),
+                platform: "chromeos".into(),
+                arch: "browser".into(),
+                outputs: vec![AudioOutput {
+                    os_device_id: output.into(),
+                    friendly_name: Some(output.into()),
+                    channels: 2,
+                    sample_rates: vec![48_000],
+                    is_default: true,
+                }],
+            },
+        )
+        .unwrap()
+        .players
+        .remove(0)
+    };
+    let kitchen_player = register(&kitchen.satellite.id, "Kitchen speakers");
+    let bedroom_player = register(&bedroom.satellite.id, "Bedroom speakers");
+
+    {
+        let mut conn = pool.get().unwrap();
+        seed_account(&mut conn, "person@example.com", "member");
+        common::create_artist(&mut conn, &common::DataMap::new());
+        common::create_album(&mut conn, &common::DataMap::new());
+        common::create_track(&mut conn, &common::DataMap::new());
+        store::create_player(
+            &mut conn,
+            &models::Player {
+                id: "private:person".into(),
+                kind: "private".into(),
+                output_device_id: None,
+                owner_account_id: Some("person@example.com".into()),
+                name: "Person's private player".into(),
+                name_suffix: None,
+            },
+        )
+        .unwrap();
+    }
+
+    let identity = common::ctx_node(&kitchen.satellite.id);
+    let session = app
+        .whoami(
+            &identity,
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(session.handle, "Kitchen Chromebook");
+    assert_eq!(session.display_name.as_deref(), Some("Kitchen Chromebook"));
+    assert_eq!(
+        session.account_id,
+        format!("satellite:{}", kitchen.satellite.id)
+    );
+    assert!(!session.can_admin);
+
+    let library = app
+        .list_albums(
+            &identity,
+            BrowseRequest {
+                library: Some(Library::Music),
+                offset: None,
+                limit: None,
+            },
+        )
+        .expect("satellite identity may browse songs");
+    assert_eq!(library.total, 1);
+
+    let visible = app
+        .list_players(&identity, ListPlayersRequest { kind: None })
+        .unwrap();
+    assert_eq!(
+        visible
+            .players
+            .iter()
+            .map(|player| player.id.as_str())
+            .collect::<Vec<_>>(),
+        vec![kitchen_player.id.as_str()]
+    );
+
+    app.control(
+        &identity,
+        CommandRequest {
+            player_id: kitchen_player.id.clone(),
+            command: PlayerCommand::Variant0(CmdEnqueue {
+                op: "enqueue".into(),
+                track_ids: vec!["track-1".into()],
+                at_index: None,
+            }),
+        },
+    )
+    .expect("satellite may manipulate its own queue even when accounts exist");
+    let playing = app
+        .control(
+            &identity,
+            CommandRequest {
+                player_id: kitchen_player.id,
+                command: PlayerCommand::Variant4(CmdPlay {
+                    op: "play".into(),
+                    index: Some(0),
+                }),
+            },
+        )
+        .expect("satellite may play its own queue");
+    assert_eq!(playing.status, PlayerStatus::Playing);
+    assert_eq!(playing.queue[0].track_id, "track-1");
+
+    let other_error = app
+        .control(
+            &identity,
+            CommandRequest {
+                player_id: bedroom_player.id,
+                command: PlayerCommand::Variant3(CmdClear { op: "clear".into() }),
+            },
+        )
+        .expect_err("satellite must not control another satellite");
+    assert_eq!(other_error.code, 403);
+
+    let private_error = app
+        .control(
+            &identity,
+            CommandRequest {
+                player_id: "private:person".into(),
+                command: PlayerCommand::Variant3(CmdClear { op: "clear".into() }),
+            },
+        )
+        .expect_err("satellite must not control a private player");
+    assert_eq!(private_error.code, 403);
 }
 
 #[test]

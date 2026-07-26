@@ -28,6 +28,7 @@ import type {
 } from "../lib/schema.ts";
 import { useServers } from "./servers.tsx";
 import { useToast } from "./toasts.tsx";
+import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 
 export const LOCAL_TARGET = "local";
 
@@ -102,6 +103,9 @@ interface PlaybackContextValue {
   claimOutput: (id: string) => Promise<void>;
   /** Stop being a device's output and remove the share entirely. */
   releaseDevice: (id: string) => Promise<void>;
+  /** Satisfy browser autoplay policy and bind the selected satellite audio sink. */
+  enableOutputAudio: () => Promise<void>;
+  outputAudioReady: Accessor<boolean>;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue>();
@@ -109,6 +113,7 @@ const PlaybackContext = createContext<PlaybackContextValue>();
 export function PlaybackProvider(props: ParentProps): JSX.Element {
   const servers = useServers();
   const toast = useToast();
+  const satelliteMode = Boolean(satelliteToken());
   const [queue, setQueue] = createStore<Track[]>([]);
   const [currentIndex, setCurrentIndex] = createSignal(-1);
   const [snapshot, setSnapshot] = createSignal<PlaybackSnapshot>({
@@ -118,9 +123,22 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   });
   const [pref, setPrefSignal] = createSignal<StreamPref>(loadPref());
   const [owned, setOwned] = createSignal<string[]>(loadOwned());
-  const [target, setTargetSignal] = createSignal<string>(LOCAL_TARGET);
+  const [target, setTargetSignal] = createSignal<string>(
+    satelliteMode ? "satellite-pending" : LOCAL_TARGET,
+  );
+  const [outputAudioReady, setOutputAudioReady] = createSignal(false);
   let lastProgressTrack = "";
   let lastProgressPosition = -1;
+  let lastSatelliteReportSecond = -1;
+
+  const satellitePlayerId = () => servers.active()?.satellitePlayerId;
+
+  function reportSatellite(status: "stopped" | "playing" | "paused", positionMs?: number): void {
+    const playerId = satellitePlayerId();
+    const api = servers.api();
+    if (!satelliteMode || !playerId || !api) return;
+    api.node.report({ player_id: playerId, status, position_ms: positionMs });
+  }
 
   function reportAudiobookProgress(completed = false): void {
     const track = current();
@@ -148,7 +166,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       .catch((e) => console.warn("[playback] audiobook progress failed", e));
   }
 
-  const isOwned = (id: string) => owned().includes(id);
+  const isOwned = (id: string) =>
+    owned().includes(id) || (satelliteMode && id === satellitePlayerId());
 
   function persistOwned(next: string[]): void {
     try {
@@ -183,6 +202,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   // --- Audio engine (HTTP /media + native <audio>; §5 bridge) ---------------
   const audio = typeof Audio !== "undefined" ? new Audio() : undefined;
 
+  async function applySatelliteSink(): Promise<void> {
+    if (!satelliteMode || !audio || !("setSinkId" in audio)) return;
+    await audio.setSinkId(satelliteOutput().id);
+  }
+
   function mediaBase(): string | undefined {
     const url = servers.active()?.url;
     if (!url) return undefined;
@@ -204,6 +228,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     audio.addEventListener("timeupdate", () => {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: audio.currentTime * 1000 }));
       reportAudiobookProgress();
+      const second = Math.floor(audio.currentTime);
+      if (second !== lastSatelliteReportSecond) {
+        lastSatelliteReportSecond = second;
+        reportSatellite("playing", second * 1000);
+      }
     });
     audio.addEventListener("loadedmetadata", () =>
       setSnapshot((s): PlaybackSnapshot => ({
@@ -211,14 +240,20 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
         durationMs: Number.isFinite(audio.duration) ? audio.duration * 1000 : undefined,
       })),
     );
-    audio.addEventListener("play", () => setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "playing" })));
+    audio.addEventListener("play", () => {
+      setOutputAudioReady(true);
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "playing" }));
+      reportSatellite("playing", Math.round(audio.currentTime * 1000));
+    });
     audio.addEventListener("pause", () => {
       setSnapshot((s): PlaybackSnapshot => (s.status === "ended" ? s : { ...s, status: "paused" }));
       reportAudiobookProgress();
+      if (!audio.ended) reportSatellite("paused", Math.round(audio.currentTime * 1000));
     });
     audio.addEventListener("ended", () => {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "ended" }));
       reportAudiobookProgress(true);
+      reportSatellite("stopped", 0);
     });
     audio.addEventListener("error", () =>
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: "playback error" })),
@@ -226,16 +261,22 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   // --- Shared targets -------------------------------------------------------
-  const [playersRes, { refetch: refetchPlayers }] = createResource(servers.activeId, async () => {
-    const a = servers.api();
-    if (!a) return [] as Player[];
-    try {
-      const r = await a.player.listPlayers();
-      return r.players.filter((p) => p.kind === "shared");
-    } catch {
-      return [] as Player[];
-    }
-  });
+  const [playersRes, { refetch: refetchPlayers }] = createResource(
+    () =>
+      `${servers.activeId() ?? ""}:${servers.active()?.state ?? ""}:${
+        servers.active()?.satellitePlayerId ?? ""
+      }`,
+    async () => {
+      const a = servers.api();
+      if (!a) return [] as Player[];
+      try {
+        const r = await a.player.listPlayers();
+        return r.players.filter((p) => p.kind === "shared");
+      } catch {
+        return [] as Player[];
+      }
+    },
+  );
   // Stable reference across polls when the id set is unchanged, so the <select> options don't
   // churn (which would drop the current selection).
   const sharedTargets = createMemo<Player[]>((prev) => {
@@ -251,6 +292,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   // shared "TodPhone" resumes playing its queue on load).
   let autoSelected = false;
   createEffect(() => {
+    if (satelliteMode) {
+      const playerId = satellitePlayerId();
+      if (playerId && sharedTargets().some((player) => player.id === playerId)) {
+        setTarget(playerId);
+      }
+      return;
+    }
     if (autoSelected) return;
     const ids = sharedTargets().map((p) => p.id);
     const mine = owned().find((id) => ids.includes(id));
@@ -273,10 +321,18 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
         const url = mediaUrl(item.track_id);
         if (url) {
           audio.src = url;
-          void audio.play().catch(() => undefined);
+          void applySatelliteSink()
+            .then(() => audio.play())
+            .catch((e) =>
+              setSnapshot((snapshot): PlaybackSnapshot => ({
+                ...snapshot,
+                status: "error",
+                error: `Enable browser audio and try again: ${String(e)}`,
+              })),
+            );
         }
       } else if (audio.paused) {
-        void audio.play().catch(() => undefined);
+        void applySatelliteSink().then(() => audio.play()).catch(() => undefined);
       }
     } else if (state.status === "paused") {
       audio.pause();
@@ -390,6 +446,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   let savedLocal: { tracks: Track[]; index: number } | undefined;
 
   function setTarget(id: string): void {
+    if (satelliteMode && id !== satellitePlayerId()) return;
     const prev = target();
     if (prev === LOCAL_TARGET && id !== LOCAL_TARGET) {
       savedLocal = { tracks: queue.slice(), index: currentIndex() };
@@ -409,10 +466,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   createEffect(() => {
     const t = target();
-    if (t === LOCAL_TARGET) return;
+    if (t === LOCAL_TARGET || t === "satellite-pending") return;
     const loaded = playersRes() !== undefined;
     if (!loaded) return;
     if (sharedTargets().some((p) => p.id === t)) return;
+    if (satelliteMode) return;
 
     const remoteQueue = queue.slice();
     const remoteIndex = currentIndex();
@@ -482,7 +540,20 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
   }
 
-  const isLocal = () => target() === LOCAL_TARGET;
+  const isLocal = () => !satelliteMode && target() === LOCAL_TARGET;
+
+  async function enableOutputAudio(): Promise<void> {
+    if (!audio) throw new Error("Browser audio is unavailable");
+    await applySatelliteSink();
+    const AudioContextClass = globalThis.AudioContext;
+    if (AudioContextClass) {
+      const context = new AudioContextClass();
+      await context.resume();
+      await context.close();
+    }
+    setOutputAudioReady(true);
+    if (audio.currentSrc && audio.paused) await audio.play();
+  }
 
   async function playNow(tracks: Track[], startIndex = 0, startMs = 0): Promise<void> {
     if (isLocal()) {
@@ -653,6 +724,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     markOwned,
     claimOutput,
     releaseDevice,
+    enableOutputAudio,
+    outputAudioReady,
   };
 
   return <PlaybackContext.Provider value={value}>{props.children}</PlaybackContext.Provider>;

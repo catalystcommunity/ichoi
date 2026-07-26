@@ -1,5 +1,6 @@
-;; Ichoi — satellite surface (token-authenticated, no library access). §6.
-;; A satellite pulls actual audio via MediaService (reusing the client media path).
+;; Ichoi — satellite surface (token-authenticated). §6.
+;; A satellite may browse the library as its named device identity, but PlayerService confines
+;; its queue and transport control to the output devices registered under this credential.
 
 AudioOutput = {
     os_device_id: DeviceId,
