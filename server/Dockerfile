@@ -72,9 +72,20 @@ RUN set -eux; \
     make -j"$(nproc)" && make install
 
 # ffmpeg (LGPL config, audio only, fully static binary). The license gate (DESIGN Sec.5.3)
-# inspects config.h so it works for cross builds without running the target binary.
-RUN curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" -o ffmpeg.tar.xz && \
-    tar -xf ffmpeg.tar.xz && cd "ffmpeg-${FFMPEG_VERSION}" && \
+# inspects config.h so it works for cross builds without running the target binary. ffmpeg.org
+# occasionally stalls one of the parallel architecture builds, so retry bounded connection
+# failures and fall back to FFmpeg's official GitHub tag archive.
+RUN set -eux; \
+    for url in \
+      "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
+      "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n${FFMPEG_VERSION}.tar.gz"; do \
+      if curl -fL --retry 5 --retry-all-errors --retry-delay 2 \
+          --connect-timeout 20 --max-time 300 "$url" -o ffmpeg.tar; then \
+        break; \
+      fi; \
+    done; \
+    mkdir ffmpeg-src && tar -xf ffmpeg.tar --strip-components=1 -C ffmpeg-src && \
+    cd ffmpeg-src && \
     if [ "$TARGETARCH" = "arm64" ]; then \
       CROSS="--enable-cross-compile --arch=aarch64 --target-os=linux --cross-prefix=aarch64-linux-musl-"; \
     else CROSS=""; fi && \
