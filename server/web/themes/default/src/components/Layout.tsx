@@ -1,6 +1,15 @@
 // The app shell: nav rail (brand + primary nav + server switcher) on the left,
 // routed content in the middle, the persistent transport pinned to the bottom.
-import { createEffect, createResource, ErrorBoundary, For, Show, type JSX } from "solid-js";
+import {
+  createEffect,
+  createResource,
+  createSignal,
+  ErrorBoundary,
+  For,
+  onCleanup,
+  Show,
+  type JSX,
+} from "solid-js";
 import { A, useLocation, useNavigate } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
@@ -34,12 +43,25 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const navigate = useNavigate();
   const satelliteMode = Boolean(satelliteToken());
   const satelliteNav = NAV.filter((item) => item.href !== "/jukebox" && item.href !== "/settings");
+  const [updating, setUpdating] = createSignal(false);
+  const updateListener = () => setUpdating(true);
+  window.addEventListener("ichoi:update-reloading", updateListener);
+  onCleanup(() => window.removeEventListener("ichoi:update-reloading", updateListener));
+  let initialSatelliteRoute = true;
   createEffect(() => {
+    const path = location.pathname;
+    if (satelliteMode && initialSatelliteRoute) {
+      initialSatelliteRoute = false;
+      if (path === "/") {
+        navigate("/now-playing", { replace: true });
+        return;
+      }
+    }
     if (
       satelliteMode &&
-      (location.pathname === "/jukebox" || location.pathname.startsWith("/settings"))
+      (path === "/jukebox" || path.startsWith("/settings"))
     ) {
-      navigate("/", { replace: true });
+      navigate("/now-playing", { replace: true });
     }
   });
   const [libraries] = createResource(
@@ -127,6 +149,11 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
       </main>
 
       <Transport />
+      <Show when={updating()}>
+        <div class="update-reload" role="status" aria-live="assertive">
+          Updating Ichoi and restoring this satellite…
+        </div>
+      </Show>
     </div>
     </Show>
   );

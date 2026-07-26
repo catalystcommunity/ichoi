@@ -1,19 +1,18 @@
-// A keyboard-navigable list of tracks. Each row is a button (Enter/Space plays);
-// an optional trailing button adds the track to the current queue.
+// A keyboard-navigable list of tracks. Activating a row appends it to the queue;
+// the trailing play button appends it and immediately moves playback to that new entry.
 import { For, Show, type JSX } from "solid-js";
 import type { AudiobookProgress, Track } from "../lib/schema.ts";
 import { codecLabel, formatDuration, isLossless, trackTechSummary } from "../lib/format.ts";
 import { useI18n } from "../lib/i18n.tsx";
 import { Meter } from "./common.tsx";
-import { IconPlus } from "./Icons.tsx";
+import { IconPlay } from "./Icons.tsx";
 
 interface Props {
   tracks: Track[];
   currentTrackId?: string;
   playing?: boolean;
   onPlay: (index: number) => void;
-  /** When provided, each row shows an "add to queue" button. */
-  onQueue?: (index: number) => void;
+  onQueue: (index: number) => void;
   audiobookProgress?: Map<string, AudiobookProgress>;
 }
 
@@ -36,7 +35,7 @@ export function TrackList(props: Props): JSX.Element {
                 type="button"
                 class="track-row"
                 aria-current={isCurrent() ? "true" : undefined}
-                onClick={() => props.onPlay(i())}
+                onClick={() => props.onQueue(i())}
               >
                 <span class="track-no" aria-hidden="true">
                   <Show when={isCurrent() && props.playing} fallback={track.track_no ?? i() + 1}>
@@ -62,17 +61,15 @@ export function TrackList(props: Props): JSX.Element {
                 </Show>
                 <span class="track-dur">{formatDuration(track.duration_ms)}</span>
               </button>
-              <Show when={props.onQueue}>
-                <button
-                  type="button"
-                  class="icon-btn track-queue-btn"
-                  aria-label={`Add ${track.title} to queue`}
-                  title="Add to queue"
-                  onClick={() => props.onQueue!(i())}
-                >
-                  <IconPlus size={16} />
-                </button>
-              </Show>
+              <button
+                type="button"
+                class="icon-btn track-play-btn"
+                aria-label={t("player.playTrack", { title: track.title })}
+                title={t("player.playTrack", { title: track.title })}
+                onClick={() => props.onPlay(i())}
+              >
+                <IconPlay size={16} />
+              </button>
             </li>
           );
         }}

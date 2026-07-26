@@ -165,6 +165,7 @@ export class CsilConnection {
   private reconnectAttempts = 0;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private heartbeatTimer?: ReturnType<typeof setInterval>;
+  private lastInboundAt = 0;
   private readonly opts: Required<Pick<CsilConnectionOptions, "callTimeoutMs">> &
     CsilConnectionOptions;
 
@@ -193,6 +194,7 @@ export class CsilConnection {
       }
       ws.binaryType = "arraybuffer";
       this.ws = ws;
+      this.lastInboundAt = Date.now();
 
       ws.onopen = () => this.sendHello();
       ws.onmessage = (ev) => this.onMessage(ev);
@@ -321,6 +323,7 @@ export class CsilConnection {
   }
 
   private onMessage(ev: MessageEvent): void {
+    this.lastInboundAt = Date.now();
     let env: Envelope;
     try {
       const bytes =
@@ -449,12 +452,35 @@ export class CsilConnection {
     // half-open connection. The server also pings at the WS layer (auto-ponged by the browser).
     this.heartbeatTimer = setInterval(() => {
       if (this.state !== "ready") return;
+      if (Date.now() - this.lastInboundAt > 60_000) {
+        this.reconnectStaleSocket();
+        return;
+      }
       try {
         this.sendControl(CONTROL.PING, { nonce: this.nextId++, at: Date.now() });
       } catch {
         /* socket wobble; onClose handles recovery */
       }
-    }, 25000);
+    }, 20_000);
+  }
+
+  private reconnectStaleSocket(): void {
+    const stale = this.ws;
+    this.ws = undefined;
+    if (stale) {
+      stale.onopen = null;
+      stale.onmessage = null;
+      stale.onerror = null;
+      stale.onclose = null;
+      try {
+        stale.close(4000, "heartbeat timeout");
+      } catch {
+        /* the replacement connection does not depend on orderly stale-socket shutdown */
+      }
+    }
+    this.stopHeartbeat();
+    this.teardown("closed", "heartbeat timeout");
+    this.scheduleReconnect();
   }
 
   private stopHeartbeat(): void {

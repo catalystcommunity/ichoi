@@ -60,7 +60,7 @@ export function SatellitePage(): JSX.Element {
       await api.session.whoami();
       enterSatelliteMode(clean);
       conn.close("satellite registration complete");
-      location.replace("/");
+      location.replace("/now-playing");
     } catch (cause) {
       setStatus("Satellite token was not accepted");
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -139,8 +139,8 @@ export function SatellitePage(): JSX.Element {
             </p>
           </div>
           <div class="row satellite-actions">
-            <button class="btn btn-primary" type="button" onClick={() => location.assign("/")}>
-              Open library
+            <button class="btn btn-primary" type="button" onClick={() => location.assign("/now-playing")}>
+              Open queue
             </button>
             <button class="btn" type="button" onClick={() => void chooseOutput()}>
               Choose output

@@ -89,7 +89,7 @@ export function PlaylistsPage(): JSX.Element {
                       tracks={d().tracks}
                       currentTrackId={pb.current()?.id}
                       playing={pb.snapshot().status === "playing"}
-                      onPlay={(i) => void pb.playNow(d().tracks, i)}
+                      onPlay={(i) => void pb.enqueueAndPlay(d().tracks[i]!)}
                       onQueue={(i) => pb.enqueue([d().tracks[i]!])}
                     />
                   </>

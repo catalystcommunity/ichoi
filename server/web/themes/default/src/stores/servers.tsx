@@ -17,6 +17,7 @@ import { CsilConnection, type ConnState } from "../lib/csil.ts";
 import { ServerApi } from "../lib/services.ts";
 import type { SessionInfo } from "../lib/schema.ts";
 import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
+import { reloadSatelliteForUpdate } from "../lib/app-update.ts";
 
 export interface ServerRecord {
   id: string;
@@ -188,7 +189,8 @@ export function ServersProvider(props: ParentProps): JSX.Element {
         patch(rec.id, { state, detail });
         if (state === "ready" && nodeToken && initialProvisionComplete && !reprovisioning) {
           reprovisioning = true;
-          void provisionSatellite(rec, api)
+          void reloadSatelliteForUpdate(rec.url)
+            .then((reloading) => reloading ? undefined : provisionSatellite(rec, api))
             .catch((e) => patch(rec.id, { state: "error", detail: String(e) }))
             .finally(() => {
               reprovisioning = false;
@@ -202,6 +204,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     if (nodeToken) {
       await provisionSatellite(rec, api);
       initialProvisionComplete = true;
+      await reloadSatelliteForUpdate(rec.url);
       return;
     }
     // Login-less default: identify as guest (§8). LinkKeys sign-in upgrades later.
