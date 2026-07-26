@@ -77,7 +77,7 @@ async fn healthz() -> &'static str {
 }
 
 fn release_version(web_dir: &std::path::Path) -> String {
-    let package = env!("CARGO_PKG_VERSION");
+    let package = crate::version();
     let mut files = walkdir::WalkDir::new(web_dir)
         .into_iter()
         .filter_map(Result::ok)

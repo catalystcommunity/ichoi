@@ -15,8 +15,6 @@ use diesel::SqliteConnection;
 use crate::db::store;
 use crate::scan;
 
-const USER_AGENT: &str = "Ichoi/0.0.0 (https://github.com/catalystcommunity/ichoi)";
-
 #[derive(Debug, Default)]
 pub struct ArtStats {
     pub fetched: usize,
@@ -27,7 +25,10 @@ pub struct ArtStats {
 /// Fetch cover art for up to `limit` albums that currently have none.
 pub fn fetch_missing(conn: &mut SqliteConnection, limit: usize) -> anyhow::Result<ArtStats> {
     let client = reqwest::blocking::Client::builder()
-        .user_agent(USER_AGENT)
+        .user_agent(format!(
+            "Ichoi/{} (https://github.com/catalystcommunity/ichoi)",
+            crate::version()
+        ))
         .timeout(Duration::from_secs(25))
         .build()?;
 

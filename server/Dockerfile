@@ -152,6 +152,7 @@ COPY crates/ crates/
 COPY schema/ schema/
 COPY generated/ generated/
 COPY migrations/ migrations/
+COPY version/ version/
 RUN cargo build --release --target "$(cat /tmp/triple)" --bin ichoi && \
     cp "target/$(cat /tmp/triple)/release/ichoi" /ichoi
 

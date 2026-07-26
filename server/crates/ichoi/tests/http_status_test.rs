@@ -37,6 +37,6 @@ async fn status_exposes_release_version_without_cache() {
 
     let first_version = reported_version(first.path().to_owned()).await;
     let second_version = reported_version(second.path().to_owned()).await;
-    assert!(first_version.starts_with(concat!(env!("CARGO_PKG_VERSION"), "+web.")));
+    assert!(first_version.starts_with(&format!("{}+web.", ichoi::version())));
     assert_ne!(first_version, second_version);
 }
