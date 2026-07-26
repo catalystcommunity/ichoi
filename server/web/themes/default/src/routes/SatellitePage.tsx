@@ -9,6 +9,7 @@ import {
   setSatelliteOutput,
 } from "../lib/satellite-mode.ts";
 import { useServers } from "../stores/servers.tsx";
+import { VersionFooter } from "../components/VersionFooter.tsx";
 
 interface OutputPicker extends MediaDevices {
   selectAudioOutput?: () => Promise<MediaDeviceInfo>;
@@ -158,6 +159,7 @@ export function SatellitePage(): JSX.Element {
 
         <Show when={error()}>{(message) => <p class="error">{message()}</p>}</Show>
       </section>
+      <VersionFooter />
     </main>
   );
 }
