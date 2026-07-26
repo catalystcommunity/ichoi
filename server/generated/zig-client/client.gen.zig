@@ -326,6 +326,39 @@ pub const AdminClient = struct {
         try codec.decode_TrustedDomains(alloc, csil_respb, out);
     }
 
+    /// Invoke AdminService/list-trusted-identities with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_trusted_identities(self: AdminClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.TrustedIdentities) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "list-trusted-identities", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_TrustedIdentities(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/trust-identity with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn trust_identity(self: AdminClient, alloc: std.mem.Allocator, req: *const types.TrustIdentityRequest, out: *types.TrustedIdentities) anyerror!void {
+        const csil_reqb = try codec.encode_TrustIdentityRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "trust-identity", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_TrustedIdentities(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/revoke-trusted-identity with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn revoke_trusted_identity(self: AdminClient, alloc: std.mem.Allocator, req: *const types.RevokeTrustedIdentityRequest, out: *types.TrustedIdentities) anyerror!void {
+        const csil_reqb = try codec.encode_RevokeTrustedIdentityRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "revoke-trusted-identity", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_TrustedIdentities(alloc, csil_respb, out);
+    }
+
     /// Invoke AdminService/list-nodes with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.

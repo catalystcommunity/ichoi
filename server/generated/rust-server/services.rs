@@ -244,6 +244,24 @@ pub trait AdminService {
         ctx: &Self::Context,
         input: Page,
     ) -> Result<TrustedDomains, ServiceError>;
+    /// list-trusted-identities (request/response).
+    fn list_trusted_identities(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<TrustedIdentities, ServiceError>;
+    /// trust-identity (request/response).
+    fn trust_identity(
+        &self,
+        ctx: &Self::Context,
+        input: TrustIdentityRequest,
+    ) -> Result<TrustedIdentities, ServiceError>;
+    /// revoke-trusted-identity (request/response).
+    fn revoke_trusted_identity(
+        &self,
+        ctx: &Self::Context,
+        input: RevokeTrustedIdentityRequest,
+    ) -> Result<TrustedIdentities, ServiceError>;
     /// list-nodes (request/response).
     fn list_nodes(
         &self,

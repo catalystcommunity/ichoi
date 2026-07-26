@@ -4818,6 +4818,220 @@ final class TrustedDomains {
       TrustedDomains.fromCborValue(CsilCbor.decode(bytes));
 }
 
+final class TrustedIdentity {
+  final String domain;
+  final String? handle;
+  final String source;
+  final DateTime createdAt;
+
+  const TrustedIdentity({
+    required this.domain,
+    this.handle,
+    required this.source,
+    required this.createdAt,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['domain'] = domain;
+    if (handle != null) map['handle'] = handle;
+    map['source'] = source;
+    map['created_at'] = createdAt;
+    return map;
+  }
+
+  factory TrustedIdentity.fromMap(Map<String, Object?> map) {
+    return TrustedIdentity(
+      domain: map['domain'] as String,
+      handle: map['handle'] as String?,
+      source: map['source'] as String,
+      createdAt: map['created_at'] as DateTime,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! TrustedIdentity) return false;
+    return domain == other.domain &&
+        handle == other.handle &&
+        source == other.source &&
+        createdAt == other.createdAt;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([domain, handle, source, createdAt]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['domain'] = domain;
+    if (handle != null) map['handle'] = handle!;
+    map['source'] = source;
+    map['created_at'] = createdAt;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory TrustedIdentity.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return TrustedIdentity(
+      domain: map['domain'] as String,
+      handle: map['handle'] == null ? null : map['handle'] as String,
+      source: map['source'] as String,
+      createdAt: map['created_at'] as DateTime,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory TrustedIdentity.fromCbor(List<int> bytes) =>
+      TrustedIdentity.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class TrustedIdentities {
+  final List<TrustedIdentity> identities;
+
+  const TrustedIdentities({required this.identities});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['identities'] = identities;
+    return map;
+  }
+
+  factory TrustedIdentities.fromMap(Map<String, Object?> map) {
+    return TrustedIdentities(
+      identities: map['identities'] as List<TrustedIdentity>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! TrustedIdentities) return false;
+    return identities == other.identities;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([identities]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['identities'] = identities.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory TrustedIdentities.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return TrustedIdentities(
+      identities: (map['identities'] as List)
+          .map((csilE) => TrustedIdentity.fromCborValue(csilE))
+          .cast<TrustedIdentity>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory TrustedIdentities.fromCbor(List<int> bytes) =>
+      TrustedIdentities.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class TrustIdentityRequest {
+  final String identity;
+
+  const TrustIdentityRequest({required this.identity});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['identity'] = identity;
+    return map;
+  }
+
+  factory TrustIdentityRequest.fromMap(Map<String, Object?> map) {
+    return TrustIdentityRequest(identity: map['identity'] as String);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! TrustIdentityRequest) return false;
+    return identity == other.identity;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([identity]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['identity'] = identity;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory TrustIdentityRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return TrustIdentityRequest(identity: map['identity'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory TrustIdentityRequest.fromCbor(List<int> bytes) =>
+      TrustIdentityRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class RevokeTrustedIdentityRequest {
+  final String identity;
+
+  const RevokeTrustedIdentityRequest({required this.identity});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['identity'] = identity;
+    return map;
+  }
+
+  factory RevokeTrustedIdentityRequest.fromMap(Map<String, Object?> map) {
+    return RevokeTrustedIdentityRequest(identity: map['identity'] as String);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! RevokeTrustedIdentityRequest) return false;
+    return identity == other.identity;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([identity]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['identity'] = identity;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory RevokeTrustedIdentityRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return RevokeTrustedIdentityRequest(identity: map['identity'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory RevokeTrustedIdentityRequest.fromCbor(List<int> bytes) =>
+      RevokeTrustedIdentityRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
 typedef NodeKind = String;
 
 typedef AudioOutputsState = String;

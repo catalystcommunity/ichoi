@@ -2129,6 +2129,88 @@ fun trustedDomainsFromCborValue(cbor: CborValue): TrustedDomains {
 /** Decode CSIL CBOR bytes into a TrustedDomains. */
 fun trustedDomainsFromCbor(bytes: ByteArray): TrustedDomains = trustedDomainsFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a TrustedIdentity (deep, canonical key order). */
+fun TrustedIdentity.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("domain") to CborValue.CText(this.domain))
+    this.handle?.let { csilV -> csilEntries.add(CborValue.CText("handle") to CborValue.CText(csilV)) }
+    csilEntries.add(CborValue.CText("source") to CborValue.CText(this.source))
+    csilEntries.add(CborValue.CText("created_at") to CborValue.CTag(0uL, CborValue.CText((this.createdAt).toString())))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a TrustedIdentity to canonical CSIL CBOR bytes. */
+fun TrustedIdentity.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a TrustedIdentity from a decoded CBOR value tree. */
+fun trustedIdentityFromCborValue(cbor: CborValue): TrustedIdentity {
+    val domain = CsilCbor.asText(CsilCbor.require(cbor, "domain"))
+    val handle = CsilCbor.mapGet(cbor, "handle")?.let { csilV -> CsilCbor.asText(csilV) }
+    val source = CsilCbor.asText(CsilCbor.require(cbor, "source"))
+    val createdAt = java.time.Instant.parse(CsilCbor.asTaggedText(CsilCbor.require(cbor, "created_at"), 0uL))
+    return TrustedIdentity(domain = domain, handle = handle, source = source, createdAt = createdAt)
+}
+
+/** Decode CSIL CBOR bytes into a TrustedIdentity. */
+fun trustedIdentityFromCbor(bytes: ByteArray): TrustedIdentity = trustedIdentityFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a TrustedIdentities (deep, canonical key order). */
+fun TrustedIdentities.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("identities") to CborValue.CArray((this.identities).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a TrustedIdentities to canonical CSIL CBOR bytes. */
+fun TrustedIdentities.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a TrustedIdentities from a decoded CBOR value tree. */
+fun trustedIdentitiesFromCborValue(cbor: CborValue): TrustedIdentities {
+    val identities = CsilCbor.asArray(CsilCbor.require(cbor, "identities")).map { csilE -> trustedIdentityFromCborValue(csilE) }
+    return TrustedIdentities(identities = identities)
+}
+
+/** Decode CSIL CBOR bytes into a TrustedIdentities. */
+fun trustedIdentitiesFromCbor(bytes: ByteArray): TrustedIdentities = trustedIdentitiesFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a TrustIdentityRequest (deep, canonical key order). */
+fun TrustIdentityRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("identity") to CborValue.CText(this.identity))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a TrustIdentityRequest to canonical CSIL CBOR bytes. */
+fun TrustIdentityRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a TrustIdentityRequest from a decoded CBOR value tree. */
+fun trustIdentityRequestFromCborValue(cbor: CborValue): TrustIdentityRequest {
+    val identity = CsilCbor.asText(CsilCbor.require(cbor, "identity"))
+    return TrustIdentityRequest(identity = identity)
+}
+
+/** Decode CSIL CBOR bytes into a TrustIdentityRequest. */
+fun trustIdentityRequestFromCbor(bytes: ByteArray): TrustIdentityRequest = trustIdentityRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a RevokeTrustedIdentityRequest (deep, canonical key order). */
+fun RevokeTrustedIdentityRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("identity") to CborValue.CText(this.identity))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a RevokeTrustedIdentityRequest to canonical CSIL CBOR bytes. */
+fun RevokeTrustedIdentityRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a RevokeTrustedIdentityRequest from a decoded CBOR value tree. */
+fun revokeTrustedIdentityRequestFromCborValue(cbor: CborValue): RevokeTrustedIdentityRequest {
+    val identity = CsilCbor.asText(CsilCbor.require(cbor, "identity"))
+    return RevokeTrustedIdentityRequest(identity = identity)
+}
+
+/** Decode CSIL CBOR bytes into a RevokeTrustedIdentityRequest. */
+fun revokeTrustedIdentityRequestFromCbor(bytes: ByteArray): RevokeTrustedIdentityRequest = revokeTrustedIdentityRequestFromCborValue(CsilCbor.decode(bytes))
+
 /** Encode a NodeKind enum as its bare literal value. */
 fun NodeKind.toCborValue(): CborValue = when (this) {
     NodeKind.Core -> CborValue.CText("core")
@@ -2704,6 +2786,10 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is SetRoleRequest -> value.toCborValue()
     is TrustDomainRequest -> value.toCborValue()
     is TrustedDomains -> value.toCborValue()
+    is TrustedIdentity -> value.toCborValue()
+    is TrustedIdentities -> value.toCborValue()
+    is TrustIdentityRequest -> value.toCborValue()
+    is RevokeTrustedIdentityRequest -> value.toCborValue()
     is DeviceInfo -> value.toCborValue()
     is NodeInfo -> value.toCborValue()
     is ListNodesResponse -> value.toCborValue()
@@ -2806,6 +2892,10 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     SetRoleRequest::class -> setRoleRequestFromCborValue(cbor)
     TrustDomainRequest::class -> trustDomainRequestFromCborValue(cbor)
     TrustedDomains::class -> trustedDomainsFromCborValue(cbor)
+    TrustedIdentity::class -> trustedIdentityFromCborValue(cbor)
+    TrustedIdentities::class -> trustedIdentitiesFromCborValue(cbor)
+    TrustIdentityRequest::class -> trustIdentityRequestFromCborValue(cbor)
+    RevokeTrustedIdentityRequest::class -> revokeTrustedIdentityRequestFromCborValue(cbor)
     DeviceInfo::class -> deviceInfoFromCborValue(cbor)
     NodeInfo::class -> nodeInfoFromCborValue(cbor)
     ListNodesResponse::class -> listNodesResponseFromCborValue(cbor)

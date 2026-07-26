@@ -271,6 +271,35 @@ final class AdminClient {
     return TrustedDomains.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  TrustedIdentities listTrustedIdentities(Page request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'list-trusted-identities',
+      request.toCbor(),
+    );
+    return TrustedIdentities.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  TrustedIdentities trustIdentity(TrustIdentityRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'trust-identity',
+      request.toCbor(),
+    );
+    return TrustedIdentities.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  TrustedIdentities revokeTrustedIdentity(
+    RevokeTrustedIdentityRequest request,
+  ) {
+    final csilResp = transport.call(
+      'AdminService',
+      'revoke-trusted-identity',
+      request.toCbor(),
+    );
+    return TrustedIdentities.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   ListNodesResponse listNodes(Page request) {
     final csilResp = transport.call(
       'AdminService',

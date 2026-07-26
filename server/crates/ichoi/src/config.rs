@@ -3,12 +3,31 @@
 
 use std::path::PathBuf;
 
+use ipnet::IpNet;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
     Core,
     Satellite,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AccessMode {
+    Open,
+    LanGuests,
+    LoginRequired,
+}
+
+impl AccessMode {
+    fn parse(value: &str) -> anyhow::Result<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "open" => Ok(Self::Open),
+            "lan-guests" => Ok(Self::LanGuests),
+            "login-required" => Ok(Self::LoginRequired),
+            _ => anyhow::bail!("ICHOI_ACCESS_MODE must be open, lan-guests, or login-required"),
+        }
+    }
 }
 
 impl Role {
@@ -51,6 +70,8 @@ struct FileConfig {
     linkkeys_rp_domain: Option<String>,
     public_url: Option<String>,
     linkkeys_trusted_identities: Option<Vec<String>>,
+    access_mode: Option<String>,
+    trusted_proxy_cidrs: Option<Vec<String>>,
 }
 
 #[derive(Clone)]
@@ -107,6 +128,10 @@ pub struct Config {
     pub public_url: Option<String>,
     /// Admission selectors: either `domain` or `handle@domain`.
     pub linkkeys_trusted_identities: Vec<String>,
+    /// Anonymous browser admission. Open is the backwards-compatible default.
+    pub access_mode: AccessMode,
+    /// Immediate peers whose X-Forwarded-For header may be used for LAN classification.
+    pub trusted_proxy_cidrs: Vec<IpNet>,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -170,6 +195,7 @@ impl Config {
             |envk: &str, filev: Option<String>| -> Option<String> { env(envk).or(filev) };
 
         let role = Role::parse(&pick("ICHOI_ROLE", file.role, "core"));
+        let access_mode = AccessMode::parse(&pick("ICHOI_ACCESS_MODE", file.access_mode, "open"))?;
         let linkkeys_local_rp = match std::env::var("ICHOI_LINKKEYS_LOCAL_RP") {
             Ok(value) => exactly_true(Some(&value)),
             Err(_) => file.linkkeys_local_rp.unwrap_or(false),
@@ -280,6 +306,25 @@ impl Config {
                     .collect()
             })
             .unwrap_or_default(),
+            access_mode,
+            trusted_proxy_cidrs: pick_opt(
+                "ICHOI_TRUSTED_PROXY_CIDRS",
+                file.trusted_proxy_cidrs.map(|values| values.join(",")),
+            )
+            .map(|value| {
+                value
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|item| !item.is_empty())
+                    .map(|item| {
+                        item.parse::<IpNet>().map_err(|error| {
+                            anyhow::anyhow!("invalid trusted proxy CIDR {item:?}: {error}")
+                        })
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()
+            })
+            .transpose()?
+            .unwrap_or_default(),
         })
     }
 
@@ -300,6 +345,31 @@ impl Config {
             .or_else(|| self.music_dir.clone())
             .unwrap_or_else(|| PathBuf::from("."))
     }
+
+    pub fn guest_allowed_from(&self, address: std::net::IpAddr) -> bool {
+        match self.access_mode {
+            AccessMode::Open => true,
+            AccessMode::LoginRequired => false,
+            AccessMode::LanGuests => is_lan_address(address),
+        }
+    }
+
+    pub fn trusts_proxy(&self, address: std::net::IpAddr) -> bool {
+        self.trusted_proxy_cidrs
+            .iter()
+            .any(|network| network.contains(&address))
+    }
+}
+
+fn is_lan_address(address: std::net::IpAddr) -> bool {
+    match address {
+        std::net::IpAddr::V4(address) => {
+            address.is_private() || address.is_loopback() || address.is_link_local()
+        }
+        std::net::IpAddr::V6(address) => {
+            address.is_unique_local() || address.is_loopback() || address.is_unicast_link_local()
+        }
+    }
 }
 
 fn pb_to_string(p: PathBuf) -> String {
@@ -311,7 +381,8 @@ mod tests {
     use std::path::PathBuf;
 
     use super::{
-        album_subfolder_words, configurable_bool, exactly_true, read_secret_file, FileConfig,
+        album_subfolder_words, configurable_bool, exactly_true, is_lan_address, read_secret_file,
+        AccessMode, FileConfig,
     };
 
     #[test]
@@ -321,6 +392,23 @@ mod tests {
         }
         assert!(exactly_true(Some("true")));
         assert!(!exactly_true(None));
+    }
+
+    #[test]
+    fn access_modes_classify_guest_networks() {
+        assert_eq!(AccessMode::parse("open").unwrap(), AccessMode::Open);
+        assert_eq!(
+            AccessMode::parse("lan-guests").unwrap(),
+            AccessMode::LanGuests
+        );
+        assert_eq!(
+            AccessMode::parse("login-required").unwrap(),
+            AccessMode::LoginRequired
+        );
+        assert!(AccessMode::parse("private").is_err());
+        assert!(is_lan_address("10.19.81.42".parse().unwrap()));
+        assert!(is_lan_address("fd00::42".parse().unwrap()));
+        assert!(!is_lan_address("8.8.8.8".parse().unwrap()));
     }
 
     #[test]

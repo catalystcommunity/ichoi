@@ -105,6 +105,12 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<TrustedDomains>(transport.Call("AdminService", "trust-domain", Codec.Encode(trustDomainRequest)));
     public TrustedDomains ListTrustedDomains(Page page) =>
         Codec.Decode<TrustedDomains>(transport.Call("AdminService", "list-trusted-domains", Codec.Encode(page)));
+    public TrustedIdentities ListTrustedIdentities(Page page) =>
+        Codec.Decode<TrustedIdentities>(transport.Call("AdminService", "list-trusted-identities", Codec.Encode(page)));
+    public TrustedIdentities TrustIdentity(TrustIdentityRequest trustIdentityRequest) =>
+        Codec.Decode<TrustedIdentities>(transport.Call("AdminService", "trust-identity", Codec.Encode(trustIdentityRequest)));
+    public TrustedIdentities RevokeTrustedIdentity(RevokeTrustedIdentityRequest revokeTrustedIdentityRequest) =>
+        Codec.Decode<TrustedIdentities>(transport.Call("AdminService", "revoke-trusted-identity", Codec.Encode(revokeTrustedIdentityRequest)));
     public ListNodesResponse ListNodes(Page page) =>
         Codec.Decode<ListNodesResponse>(transport.Call("AdminService", "list-nodes", Codec.Encode(page)));
     public NodeInfo RenameNode(RenameNodeRequest renameNodeRequest) =>

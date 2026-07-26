@@ -1610,6 +1610,72 @@ public struct TrustedDomains: Equatable, Sendable {
     ]
 }
 
+/// TrustedIdentity is a generated CSIL record type.
+public struct TrustedIdentity: Equatable, Sendable {
+    public let domain: String
+    public let handle: String?
+    public let source: String
+    /// wire key: created_at
+    public let createdAt: String
+
+    public init(domain: String, handle: String? = nil, source: String, createdAt: String) {
+        self.domain = domain
+        self.handle = handle
+        self.source = source
+        self.createdAt = createdAt
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "domain": "domain",
+        "handle": "handle",
+        "source": "source",
+        "createdAt": "created_at"
+    ]
+}
+
+/// TrustedIdentities is a generated CSIL record type.
+public struct TrustedIdentities: Equatable, Sendable {
+    public let identities: [TrustedIdentity]
+
+    public init(identities: [TrustedIdentity]) {
+        self.identities = identities
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "identities": "identities"
+    ]
+}
+
+/// TrustIdentityRequest is a generated CSIL record type.
+public struct TrustIdentityRequest: Equatable, Sendable {
+    public let identity: String
+
+    public init(identity: String) {
+        self.identity = identity
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "identity": "identity"
+    ]
+}
+
+/// RevokeTrustedIdentityRequest is a generated CSIL record type.
+public struct RevokeTrustedIdentityRequest: Equatable, Sendable {
+    public let identity: String
+
+    public init(identity: String) {
+        self.identity = identity
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "identity": "identity"
+    ]
+}
+
 /// NodeKind is a generated CSIL string enum (a closed set of wire values).
 public enum NodeKind: String, Equatable, Sendable, CaseIterable {
     case core = "core"

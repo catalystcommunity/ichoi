@@ -550,6 +550,29 @@ type TrustedDomains struct {
 	Domains []string `json:"domains" yaml:"domains"`
 }
 
+// TrustedIdentity represents a structured data type
+type TrustedIdentity struct {
+	Domain    string    `json:"domain" yaml:"domain"`
+	Handle    *string   `json:"handle,omitempty" yaml:"handle,omitempty"`
+	Source    string    `json:"source" yaml:"source"`
+	CreatedAt time.Time `json:"created_at" yaml:"created_at"`
+}
+
+// TrustedIdentities represents a structured data type
+type TrustedIdentities struct {
+	Identities []TrustedIdentity `json:"identities" yaml:"identities"`
+}
+
+// TrustIdentityRequest represents a structured data type
+type TrustIdentityRequest struct {
+	Identity string `json:"identity" yaml:"identity"`
+}
+
+// RevokeTrustedIdentityRequest represents a structured data type
+type RevokeTrustedIdentityRequest struct {
+	Identity string `json:"identity" yaml:"identity"`
+}
+
 // NodeKind is a type alias
 type NodeKind string
 

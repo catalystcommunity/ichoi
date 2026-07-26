@@ -272,6 +272,35 @@ final class AdminAsyncClient {
     return TrustedDomains.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<TrustedIdentities> listTrustedIdentities(Page request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'list-trusted-identities',
+      request.toCbor(),
+    );
+    return TrustedIdentities.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<TrustedIdentities> trustIdentity(TrustIdentityRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'trust-identity',
+      request.toCbor(),
+    );
+    return TrustedIdentities.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<TrustedIdentities> revokeTrustedIdentity(
+    RevokeTrustedIdentityRequest request,
+  ) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'revoke-trusted-identity',
+      request.toCbor(),
+    );
+    return TrustedIdentities.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<ListNodesResponse> listNodes(Page request) async {
     final csilResp = await transport.call(
       'AdminService',

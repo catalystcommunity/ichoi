@@ -44,7 +44,9 @@
     "identity": "LinkKeys identity",
     "identityPlaceholder": "handle@example.com",
     "loginFailed": "LinkKeys sign-in failed.",
-    "loginless": "Browsing as a guest on the local network."
+    "loginless": "Browsing as a guest on the local network.",
+    "required": "Sign in required",
+    "requiredHint": "This Ichoi server does not allow guest access from your network."
   },
   "library": {
     "title": "Library",

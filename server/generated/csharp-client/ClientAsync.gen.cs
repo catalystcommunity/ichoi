@@ -94,6 +94,12 @@ public sealed class AdminAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<TrustedDomains>(await transport.Call("AdminService", "trust-domain", Codec.Encode(trustDomainRequest)));
     public async System.Threading.Tasks.Task<TrustedDomains> ListTrustedDomainsAsync(Page page) =>
         Codec.Decode<TrustedDomains>(await transport.Call("AdminService", "list-trusted-domains", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<TrustedIdentities> ListTrustedIdentitiesAsync(Page page) =>
+        Codec.Decode<TrustedIdentities>(await transport.Call("AdminService", "list-trusted-identities", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<TrustedIdentities> TrustIdentityAsync(TrustIdentityRequest trustIdentityRequest) =>
+        Codec.Decode<TrustedIdentities>(await transport.Call("AdminService", "trust-identity", Codec.Encode(trustIdentityRequest)));
+    public async System.Threading.Tasks.Task<TrustedIdentities> RevokeTrustedIdentityAsync(RevokeTrustedIdentityRequest revokeTrustedIdentityRequest) =>
+        Codec.Decode<TrustedIdentities>(await transport.Call("AdminService", "revoke-trusted-identity", Codec.Encode(revokeTrustedIdentityRequest)));
     public async System.Threading.Tasks.Task<ListNodesResponse> ListNodesAsync(Page page) =>
         Codec.Decode<ListNodesResponse>(await transport.Call("AdminService", "list-nodes", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<NodeInfo> RenameNodeAsync(RenameNodeRequest renameNodeRequest) =>

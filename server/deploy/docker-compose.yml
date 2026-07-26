@@ -32,6 +32,12 @@ services:
       # "forgot to mount my library" case before the server starts.
       ICHOI_REQUIRE_MUSIC: "1"
       ICHOI_LOG: info
+      # Guest policy: open (default), lan-guests, or login-required.
+      # ICHOI_ACCESS_MODE: "login-required"
+      # LAN mode trusts X-Forwarded-For only from these immediate peers. This
+      # example does not expose :4042 directly, so the private Docker range is
+      # acceptable; prefer Caddy's exact /32 when it has a stable host address.
+      # ICHOI_TRUSTED_PROXY_CIDRS: "172.16.0.0/12"
       # First-run bootstrap: unlocks admin account creation while zero accounts
       # exist, then is consumed (DESIGN Sec.8). Set to a strong secret, then
       # remove after bootstrapping.

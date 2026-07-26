@@ -726,6 +726,29 @@ pub struct TrustedDomains {
     pub domains: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrustedIdentity {
+    pub domain: String,
+    pub handle: Option<String>,
+    pub source: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrustedIdentities {
+    pub identities: Vec<TrustedIdentity>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrustIdentityRequest {
+    pub identity: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RevokeTrustedIdentityRequest {
+    pub identity: String,
+}
+
 /// NodeKind variants
 #[derive(Debug, Clone, PartialEq)]
 pub enum NodeKind {

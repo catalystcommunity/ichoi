@@ -724,6 +724,30 @@ data class TrustedDomains(
     val domains: List<String>
 )
 
+/** TrustedIdentity record. */
+data class TrustedIdentity(
+    val domain: String,
+    val handle: String? = null,
+    val source: String,
+    // wire key: created_at
+    val createdAt: java.time.Instant
+)
+
+/** TrustedIdentities record. */
+data class TrustedIdentities(
+    val identities: List<TrustedIdentity>
+)
+
+/** TrustIdentityRequest record. */
+data class TrustIdentityRequest(
+    val identity: String
+)
+
+/** RevokeTrustedIdentityRequest record. */
+data class RevokeTrustedIdentityRequest(
+    val identity: String
+)
+
 /** NodeKind enum (bare-literal wire). */
 enum class NodeKind { Core, Satellite, Client }
 

@@ -9,11 +9,12 @@
 use std::path::PathBuf;
 
 use axum::body::Body;
-use axum::extract::{Path, Query, State};
+use axum::extract::{ConnectInfo, Path, Query, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use libichoi::csil::types::{StreamPref, TranscodeCodec};
 use serde::Deserialize;
+use std::net::SocketAddr;
 use tokio_util::io::ReaderStream;
 
 use crate::db::store;
@@ -34,8 +35,12 @@ pub async fn stream_media(
     Path(track_id): Path<String>,
     Query(q): Query<MediaQuery>,
     headers: HeaderMap,
+    connect: Option<ConnectInfo<SocketAddr>>,
 ) -> Response {
     let app = state.app.clone();
+    if !super::http::request_allowed(&app, &headers, connect) {
+        return (StatusCode::UNAUTHORIZED, "sign in required").into_response();
+    }
 
     // Resolve the track's absolute path and plan (blocking DB work off the async thread).
     let planned = tokio::task::spawn_blocking(move || resolve(&app, &track_id, &q))

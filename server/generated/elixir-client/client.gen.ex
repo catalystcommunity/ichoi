@@ -403,6 +403,48 @@ defmodule Csilgen.Generated.AdminClient do
     Csilgen.Generated.TrustedDomains.from_cbor(resp)
   end
 
+  @spec list_trusted_identities(t(), Csilgen.Generated.Page.t()) ::
+          Csilgen.Generated.TrustedIdentities.t()
+  def list_trusted_identities(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "list-trusted-identities",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.TrustedIdentities.from_cbor(resp)
+  end
+
+  @spec trust_identity(t(), Csilgen.Generated.TrustIdentityRequest.t()) ::
+          Csilgen.Generated.TrustedIdentities.t()
+  def trust_identity(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "trust-identity",
+        Csilgen.Generated.TrustIdentityRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.TrustedIdentities.from_cbor(resp)
+  end
+
+  @spec revoke_trusted_identity(t(), Csilgen.Generated.RevokeTrustedIdentityRequest.t()) ::
+          Csilgen.Generated.TrustedIdentities.t()
+  def revoke_trusted_identity(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "revoke-trusted-identity",
+        Csilgen.Generated.RevokeTrustedIdentityRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.TrustedIdentities.from_cbor(resp)
+  end
+
   @spec list_nodes(t(), Csilgen.Generated.Page.t()) :: Csilgen.Generated.ListNodesResponse.t()
   def list_nodes(%__MODULE__{transport: transport}, req) do
     resp =

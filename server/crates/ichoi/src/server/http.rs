@@ -2,12 +2,13 @@
 //! the CSIL surface. Nothing else — no REST, no media over HTTP. Plain HTTP by default;
 //! browser TLS is proxy-fronted (§4.2).
 
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Query, State};
+use axum::extract::{ConnectInfo, Query, State};
 use axum::http::{header, HeaderMap, StatusCode, Uri};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
@@ -46,6 +47,10 @@ pub fn router(app: App, web_dir: PathBuf) -> Router {
         .route("/healthz", get(healthz))
         .route("/status", get(status))
         .route("/api/auth", get(auth_status))
+        .route(
+            "/api/session",
+            post(set_session_cookie).delete(clear_session_cookie),
+        )
         .route("/ws", get(ws_upgrade))
         .route("/media/:track_id", get(media_http::stream_media))
         .route("/api/playlists/from-queue", post(save_queue_playlist))
@@ -128,8 +133,48 @@ async fn status(State(s): State<AppState>) -> impl IntoResponse {
     ([(header::CACHE_CONTROL, "no-store")], Json(value))
 }
 
-async fn auth_status(State(s): State<AppState>) -> impl IntoResponse {
+fn client_address(
+    app: &App,
+    headers: &HeaderMap,
+    connect: Option<ConnectInfo<SocketAddr>>,
+) -> IpAddr {
+    let peer = connect
+        .map(|ConnectInfo(address)| address.ip())
+        .unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
+    if !app.config.trusts_proxy(peer) {
+        return peer;
+    }
+    headers
+        .get("x-forwarded-for")
+        .and_then(|value| value.to_str().ok())
+        // The trusted immediate proxy appends the address it observed. Reading
+        // from the right prevents a client-supplied leading value from turning
+        // a public request into a LAN guest.
+        .and_then(|value| value.split(',').next_back())
+        .and_then(|value| value.trim().parse().ok())
+        .unwrap_or(peer)
+}
+
+fn access_mode_name(mode: crate::config::AccessMode) -> &'static str {
+    match mode {
+        crate::config::AccessMode::Open => "open",
+        crate::config::AccessMode::LanGuests => "lan-guests",
+        crate::config::AccessMode::LoginRequired => "login-required",
+    }
+}
+
+async fn auth_status(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    connect: Option<ConnectInfo<SocketAddr>>,
+) -> impl IntoResponse {
+    let guest_allowed = s
+        .app
+        .config
+        .guest_allowed_from(client_address(&s.app, &headers, connect));
     Json(serde_json::json!({
+        "access_mode": access_mode_name(s.app.config.access_mode),
+        "guest_allowed": guest_allowed,
         "local_rp": s.app.local_rp.as_ref().map(|backend| serde_json::json!({
             "name": s.app.config.linkkeys_local_rp_name,
             "fingerprint": backend.fingerprint(),
@@ -140,6 +185,81 @@ async fn auth_status(State(s): State<AppState>) -> impl IntoResponse {
             "start_url": "/auth/linkkeys/start",
         })),
     }))
+}
+
+async fn set_session_cookie(State(s): State<AppState>, headers: HeaderMap) -> Response {
+    let token = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "));
+    let Some(token) = token else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    let mut conn = match s.app.pool.get() {
+        Ok(conn) => conn,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    match crate::db::store::account_for_token(&mut conn, &crate::auth::sha256_hex(token)) {
+        Ok(Some(_)) => (
+            StatusCode::NO_CONTENT,
+            [(
+                header::SET_COOKIE,
+                "__Host-ichoi_session=".to_string()
+                    + token
+                    + "; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict",
+            )],
+        )
+            .into_response(),
+        Ok(None) => StatusCode::UNAUTHORIZED.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+async fn clear_session_cookie() -> impl IntoResponse {
+    (
+        StatusCode::NO_CONTENT,
+        [(
+            header::SET_COOKIE,
+            "__Host-ichoi_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Strict",
+        )],
+    )
+}
+
+pub(crate) fn request_has_session(app: &App, headers: &HeaderMap) -> bool {
+    let token = headers
+        .get(header::COOKIE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|cookies| {
+            cookies.split(';').find_map(|cookie| {
+                cookie
+                    .trim()
+                    .strip_prefix("__Host-ichoi_session=")
+                    .filter(|token| !token.is_empty())
+            })
+        });
+    let Some(token) = token else {
+        return false;
+    };
+    app.pool
+        .get()
+        .ok()
+        .and_then(|mut conn| {
+            crate::db::store::account_for_token(&mut conn, &crate::auth::sha256_hex(token))
+                .ok()
+                .flatten()
+        })
+        .is_some()
+}
+
+pub(crate) fn request_allowed(
+    app: &App,
+    headers: &HeaderMap,
+    connect: Option<ConnectInfo<SocketAddr>>,
+) -> bool {
+    request_has_session(app, headers)
+        || app
+            .config
+            .guest_allowed_from(client_address(app, headers, connect))
 }
 
 #[derive(Debug, Deserialize)]
@@ -480,8 +600,13 @@ struct SaveQueuePlaylistResponse {
 
 async fn save_queue_playlist(
     State(s): State<AppState>,
+    headers: HeaderMap,
+    connect: Option<ConnectInfo<SocketAddr>>,
     Json(req): Json<SaveQueuePlaylistRequest>,
 ) -> impl IntoResponse {
+    if !request_allowed(&s.app, &headers, connect) {
+        return (StatusCode::UNAUTHORIZED, "sign in required").into_response();
+    }
     let result = tokio::task::spawn_blocking(move || save_queue_playlist_sync(&s.app, req)).await;
     match result {
         Ok(Ok(saved)) => (StatusCode::OK, Json(saved)).into_response(),
@@ -606,11 +731,20 @@ fn playlist_slug(name: &str) -> String {
     }
 }
 
-async fn ws_upgrade(ws: WebSocketUpgrade, State(s): State<AppState>) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| ws_conn(socket, s.app))
+async fn ws_upgrade(
+    ws: WebSocketUpgrade,
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    connect: Option<ConnectInfo<SocketAddr>>,
+) -> impl IntoResponse {
+    let allow_guest = s
+        .app
+        .config
+        .guest_allowed_from(client_address(&s.app, &headers, connect));
+    ws.on_upgrade(move |socket| ws_conn(socket, s.app, allow_guest))
 }
 
-async fn ws_conn(mut socket: WebSocket, app: App) {
+async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
     // Connection identity, resolved from the `$hello` auth token (login-less → guest).
     let mut ident = Identity::Anonymous;
     let conn_id = CONN_ID.fetch_add(1, Ordering::Relaxed);
@@ -630,7 +764,7 @@ async fn ws_conn(mut socket: WebSocket, app: App) {
                         let app2 = app.clone();
                         let id2 = ident.clone();
                         let (new_ident, reply, effects) = tokio::task::spawn_blocking(move || {
-                            transport::handle_events_frame(&app2, id2, &bytes)
+                            transport::handle_events_frame(&app2, id2, allow_guest, &bytes)
                         })
                         .await
                         .unwrap_or((Identity::Anonymous, None, transport::FrameEffects::default()));
@@ -655,7 +789,10 @@ async fn ws_conn(mut socket: WebSocket, app: App) {
                     // Debugging convenience: text JSON envelopes (guest identity).
                     Message::Text(text) => {
                         let app2 = app.clone();
-                        let ctx = Ctx { identity: ident.clone() };
+                        let ctx = Ctx {
+                            identity: ident.clone(),
+                            allow_guest,
+                        };
                         let reply = tokio::task::spawn_blocking(move || {
                             transport::handle_json(&app2, &ctx, &text)
                         })

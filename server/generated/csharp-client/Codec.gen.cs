@@ -423,6 +423,10 @@ public static class Codec
         SetRoleRequest csilTyped => SetRoleRequestToCborValue(csilTyped),
         TrustDomainRequest csilTyped => TrustDomainRequestToCborValue(csilTyped),
         TrustedDomains csilTyped => TrustedDomainsToCborValue(csilTyped),
+        TrustedIdentity csilTyped => TrustedIdentityToCborValue(csilTyped),
+        TrustedIdentities csilTyped => TrustedIdentitiesToCborValue(csilTyped),
+        TrustIdentityRequest csilTyped => TrustIdentityRequestToCborValue(csilTyped),
+        RevokeTrustedIdentityRequest csilTyped => RevokeTrustedIdentityRequestToCborValue(csilTyped),
         NodeKind csilTyped => NodeKindToCborValue(csilTyped),
         AudioOutputsState csilTyped => AudioOutputsStateToCborValue(csilTyped),
         DeviceInfo csilTyped => DeviceInfoToCborValue(csilTyped),
@@ -535,6 +539,10 @@ public static class Codec
         if (csilType == typeof(SetRoleRequest)) return SetRoleRequestFromCborValue(value);
         if (csilType == typeof(TrustDomainRequest)) return TrustDomainRequestFromCborValue(value);
         if (csilType == typeof(TrustedDomains)) return TrustedDomainsFromCborValue(value);
+        if (csilType == typeof(TrustedIdentity)) return TrustedIdentityFromCborValue(value);
+        if (csilType == typeof(TrustedIdentities)) return TrustedIdentitiesFromCborValue(value);
+        if (csilType == typeof(TrustIdentityRequest)) return TrustIdentityRequestFromCborValue(value);
+        if (csilType == typeof(RevokeTrustedIdentityRequest)) return RevokeTrustedIdentityRequestFromCborValue(value);
         if (csilType == typeof(NodeKind)) return NodeKindFromCborValue(value);
         if (csilType == typeof(AudioOutputsState)) return AudioOutputsStateFromCborValue(value);
         if (csilType == typeof(DeviceInfo)) return DeviceInfoFromCborValue(value);
@@ -2610,6 +2618,90 @@ public static class Codec
         return new TrustedDomains
         {
             Domains = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a TrustedIdentity.</summary>
+    public static CborValue TrustedIdentityToCborValue(TrustedIdentity value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("domain"), new CborValue.Text(value.Domain)));
+        if (value.Handle is { } csilV1)
+        {
+            csilEntries.Add((new CborValue.Text("handle"), new CborValue.Text(csilV1)));
+        }
+        csilEntries.Add((new CborValue.Text("source"), new CborValue.Text(value.Source)));
+        csilEntries.Add((new CborValue.Text("created_at"), Cbor.EncTimestamp(value.CreatedAt)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a TrustedIdentity from a decoded CBOR value tree.</summary>
+    public static TrustedIdentity TrustedIdentityFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "domain"));
+        string? csilField1 = Cbor.MapGet(value, "handle") is { } csilRaw1 ? Cbor.AsText(csilRaw1) : null;
+        var csilField2 = Cbor.AsText(Cbor.Require(value, "source"));
+        var csilField3 = Cbor.AsTimestamp(Cbor.Require(value, "created_at"));
+        return new TrustedIdentity
+        {
+            Domain = csilField0,
+            Handle = csilField1,
+            Source = csilField2,
+            CreatedAt = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a TrustedIdentities.</summary>
+    public static CborValue TrustedIdentitiesToCborValue(TrustedIdentities value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("identities"), new CborValue.Array(value.Identities.Select(csilElem => (CborValue)TrustedIdentityToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a TrustedIdentities from a decoded CBOR value tree.</summary>
+    public static TrustedIdentities TrustedIdentitiesFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "identities")).Select(csilElem => TrustedIdentityFromCborValue(csilElem)).ToList();
+        return new TrustedIdentities
+        {
+            Identities = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a TrustIdentityRequest.</summary>
+    public static CborValue TrustIdentityRequestToCborValue(TrustIdentityRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("identity"), new CborValue.Text(value.Identity)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a TrustIdentityRequest from a decoded CBOR value tree.</summary>
+    public static TrustIdentityRequest TrustIdentityRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "identity"));
+        return new TrustIdentityRequest
+        {
+            Identity = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a RevokeTrustedIdentityRequest.</summary>
+    public static CborValue RevokeTrustedIdentityRequestToCborValue(RevokeTrustedIdentityRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("identity"), new CborValue.Text(value.Identity)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a RevokeTrustedIdentityRequest from a decoded CBOR value tree.</summary>
+    public static RevokeTrustedIdentityRequest RevokeTrustedIdentityRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "identity"));
+        return new RevokeTrustedIdentityRequest
+        {
+            Identity = csilField0,
         };
     }
 

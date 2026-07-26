@@ -2349,6 +2349,106 @@ def _trusted_domains_from_cbor(data: bytes) -> "TrustedDomains":
 TrustedDomains.to_cbor = _trusted_domains_to_cbor
 TrustedDomains.from_cbor = staticmethod(_trusted_domains_from_cbor)
 
+def _encode_trusted_identity_value(v: "TrustedIdentity") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["domain"] = v.domain
+    csil_x = v.handle
+    if csil_x is not None:
+        csil_m["handle"] = csil_x
+    csil_m["source"] = v.source
+    csil_m["created_at"] = CborTag(0, _csil_ts_to_text(v.created_at))
+    return csil_m
+
+def _decode_trusted_identity_value(tree: Any) -> "TrustedIdentity":
+    tree = _csil_expect_map(tree)
+    return TrustedIdentity(
+        domain=_csil_expect_text(tree["domain"]),
+        handle=(None if tree.get("handle") is None else _csil_expect_text(tree["handle"])),
+        source=_csil_expect_text(tree["source"]),
+        created_at=_csil_ts_from_tree(tree["created_at"]),
+    )
+
+
+def _trusted_identity_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_trusted_identity_value(self))
+
+
+def _trusted_identity_from_cbor(data: bytes) -> "TrustedIdentity":
+    return _decode_trusted_identity_value(cbor_decode(data))
+
+
+TrustedIdentity.to_cbor = _trusted_identity_to_cbor
+TrustedIdentity.from_cbor = staticmethod(_trusted_identity_from_cbor)
+
+def _encode_trusted_identities_value(v: "TrustedIdentities") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["identities"] = [_encode_trusted_identity_value(csil_e) for csil_e in v.identities]
+    return csil_m
+
+def _decode_trusted_identities_value(tree: Any) -> "TrustedIdentities":
+    tree = _csil_expect_map(tree)
+    return TrustedIdentities(
+        identities=[_decode_trusted_identity_value(csil_e) for csil_e in _csil_expect_array(tree["identities"])],
+    )
+
+
+def _trusted_identities_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_trusted_identities_value(self))
+
+
+def _trusted_identities_from_cbor(data: bytes) -> "TrustedIdentities":
+    return _decode_trusted_identities_value(cbor_decode(data))
+
+
+TrustedIdentities.to_cbor = _trusted_identities_to_cbor
+TrustedIdentities.from_cbor = staticmethod(_trusted_identities_from_cbor)
+
+def _encode_trust_identity_request_value(v: "TrustIdentityRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["identity"] = v.identity
+    return csil_m
+
+def _decode_trust_identity_request_value(tree: Any) -> "TrustIdentityRequest":
+    tree = _csil_expect_map(tree)
+    return TrustIdentityRequest(
+        identity=_csil_expect_text(tree["identity"]),
+    )
+
+
+def _trust_identity_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_trust_identity_request_value(self))
+
+
+def _trust_identity_request_from_cbor(data: bytes) -> "TrustIdentityRequest":
+    return _decode_trust_identity_request_value(cbor_decode(data))
+
+
+TrustIdentityRequest.to_cbor = _trust_identity_request_to_cbor
+TrustIdentityRequest.from_cbor = staticmethod(_trust_identity_request_from_cbor)
+
+def _encode_revoke_trusted_identity_request_value(v: "RevokeTrustedIdentityRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["identity"] = v.identity
+    return csil_m
+
+def _decode_revoke_trusted_identity_request_value(tree: Any) -> "RevokeTrustedIdentityRequest":
+    tree = _csil_expect_map(tree)
+    return RevokeTrustedIdentityRequest(
+        identity=_csil_expect_text(tree["identity"]),
+    )
+
+
+def _revoke_trusted_identity_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_revoke_trusted_identity_request_value(self))
+
+
+def _revoke_trusted_identity_request_from_cbor(data: bytes) -> "RevokeTrustedIdentityRequest":
+    return _decode_revoke_trusted_identity_request_value(cbor_decode(data))
+
+
+RevokeTrustedIdentityRequest.to_cbor = _revoke_trusted_identity_request_to_cbor
+RevokeTrustedIdentityRequest.from_cbor = staticmethod(_revoke_trusted_identity_request_from_cbor)
+
 def _encode_device_info_value(v: "DeviceInfo") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["id"] = v.id

@@ -63,7 +63,10 @@ import type {
   ShareResult,
   SubscribeRequest,
   TrustDomainRequest,
+  TrustIdentityRequest,
   TrustedDomains,
+  TrustedIdentities,
+  RevokeTrustedIdentityRequest,
   UpdateAudiobookProgressRequest,
 } from "./schema.ts";
 
@@ -222,6 +225,15 @@ export class AdminService {
   }
   listTrustedDomains(page: Page = {}): Promise<TrustedDomains> {
     return this.conn.call(ADMIN, "list-trusted-domains", encodeRecord(page), decodeRecord<TrustedDomains>);
+  }
+  listTrustedIdentities(page: Page = {}): Promise<TrustedIdentities> {
+    return this.conn.call(ADMIN, "list-trusted-identities", encodeRecord(page), decodeRecord<TrustedIdentities>);
+  }
+  trustIdentity(req: TrustIdentityRequest): Promise<TrustedIdentities> {
+    return this.conn.call(ADMIN, "trust-identity", encodeRecord(req), decodeRecord<TrustedIdentities>);
+  }
+  revokeTrustedIdentity(req: RevokeTrustedIdentityRequest): Promise<TrustedIdentities> {
+    return this.conn.call(ADMIN, "revoke-trusted-identity", encodeRecord(req), decodeRecord<TrustedIdentities>);
   }
   listNodes(page: Page = {}): Promise<ListNodesResponse> {
     return this.conn.call(ADMIN, "list-nodes", encodeRecord(page), decodeRecord<ListNodesResponse>);

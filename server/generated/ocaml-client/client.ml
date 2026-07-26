@@ -143,6 +143,21 @@ module Admin_service = struct
     | Ok payload -> Ok (Codec.decode_trusted_domains_bytes payload)
     | Error _ as e -> e
 
+  let list_trusted_identities (c : client) (req : page) : (trusted_identities, string) result =
+    match c.call ~service:"AdminService" ~op:"list-trusted-identities" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_trusted_identities_bytes payload)
+    | Error _ as e -> e
+
+  let trust_identity (c : client) (req : trust_identity_request) : (trusted_identities, string) result =
+    match c.call ~service:"AdminService" ~op:"trust-identity" ~payload:(Codec.encode_trust_identity_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_trusted_identities_bytes payload)
+    | Error _ as e -> e
+
+  let revoke_trusted_identity (c : client) (req : revoke_trusted_identity_request) : (trusted_identities, string) result =
+    match c.call ~service:"AdminService" ~op:"revoke-trusted-identity" ~payload:(Codec.encode_revoke_trusted_identity_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_trusted_identities_bytes payload)
+    | Error _ as e -> e
+
   let list_nodes (c : client) (req : page) : (list_nodes_response, string) result =
     match c.call ~service:"AdminService" ~op:"list-nodes" ~payload:(Codec.encode_page_bytes req) with
     | Ok payload -> Ok (Codec.decode_list_nodes_response_bytes payload)

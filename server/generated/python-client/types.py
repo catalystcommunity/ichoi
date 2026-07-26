@@ -2281,6 +2281,115 @@ class TrustedDomains:
         return cls.from_dict(json.loads(json_str))
 
 
+@dataclass
+class TrustedIdentity:
+    domain: str
+    source: str
+    created_at: datetime
+    handle: Optional[str] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'domain') and self.domain is not None:
+            result['domain'] = self.domain
+        if hasattr(self, 'handle') and self.handle is not None:
+            result['handle'] = self.handle
+        if hasattr(self, 'source') and self.source is not None:
+            result['source'] = self.source
+        if hasattr(self, 'created_at') and self.created_at is not None:
+            result['created_at'] = self.created_at
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TrustedIdentity':
+        """Create instance from dictionary."""
+        return cls(domain=data.get('domain'), handle=data.get('handle'), source=data.get('source'), created_at=data.get('created_at'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'TrustedIdentity':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class TrustedIdentities:
+    identities: List[TrustedIdentity]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'identities') and self.identities is not None:
+            result['identities'] = self.identities
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TrustedIdentities':
+        """Create instance from dictionary."""
+        return cls(identities=data.get('identities'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'TrustedIdentities':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class TrustIdentityRequest:
+    identity: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'identity') and self.identity is not None:
+            result['identity'] = self.identity
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TrustIdentityRequest':
+        """Create instance from dictionary."""
+        return cls(identity=data.get('identity'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'TrustIdentityRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class RevokeTrustedIdentityRequest:
+    identity: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'identity') and self.identity is not None:
+            result['identity'] = self.identity
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'RevokeTrustedIdentityRequest':
+        """Create instance from dictionary."""
+        return cls(identity=data.get('identity'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'RevokeTrustedIdentityRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
 NodeKind = Union[str, str, str]
 
 AudioOutputsState = Union[str, str]

@@ -410,6 +410,8 @@ dividend of dropping Subsonic (§14).
   `$hello.auth`. A multi-server client holds one such session per server.
 - **Login-less default** — accepts any user connection, correct for a trusted LAN. Node
   tokens (§6.7) are a separate, always-required axis for satellites.
+- **Optional guest policy** — `open` (default), `lan-guests`, or `login-required`. LAN
+  classification uses the direct peer unless it matches an explicitly trusted proxy CIDR.
 - **First-admin bootstrap.** `ICHOI_ADMIN_TOKEN` (or `--pre-shared-token`) unlocks account
   creation *only while zero accounts exist*; the operator authenticates via LinkKeys in
   that session and the resulting `UUID@domain.tld` becomes `admin`. Consumed on first use.
@@ -432,6 +434,8 @@ Precedence: **env (`ICHOI_`-prefixed) → TOML config → defaults.**
 | core key fingerprints (satellite) | `ICHOI_CORE_KEYS` | *(required, satellite)* |
 | node token (satellite) | `ICHOI_NODE_TOKEN` | *(required, satellite)* |
 | admin bootstrap token | `ICHOI_ADMIN_TOKEN` | unset |
+| guest access policy | `ICHOI_ACCESS_MODE` | `open` |
+| trusted HTTP proxy CIDRs | `ICHOI_TRUSTED_PROXY_CIDRS` | unset |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → PATH |
 | default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
 | log level | `ICHOI_LOG` | `warn` |

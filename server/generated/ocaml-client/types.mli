@@ -299,6 +299,18 @@ and list_accounts_response = { accounts : account list }
 and set_role_request = { account_id : account_id; role : role }
 and trust_domain_request = { domain : string }
 and trusted_domains = { domains : string list }
+
+and trusted_identity = {
+  domain : string;
+  handle : string option;
+  source : string;
+  (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
+  created_at : string;
+}
+
+and trusted_identities = { identities : trusted_identity list }
+and trust_identity_request = { identity : string }
+and revoke_trusted_identity_request = { identity : string }
 and node_kind = Core | Satellite | Client
 and audio_outputs_state = None | Some
 

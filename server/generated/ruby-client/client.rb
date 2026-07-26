@@ -171,6 +171,21 @@ class AdminClient
     TrustedDomains.from_cbor(@transport.call("AdminService", "list-trusted-domains", req.to_cbor))
   end
 
+  # list-trusted-identities: -> TrustedIdentities
+  def list_trusted_identities(req)
+    TrustedIdentities.from_cbor(@transport.call("AdminService", "list-trusted-identities", req.to_cbor))
+  end
+
+  # trust-identity: -> TrustedIdentities
+  def trust_identity(req)
+    TrustedIdentities.from_cbor(@transport.call("AdminService", "trust-identity", req.to_cbor))
+  end
+
+  # revoke-trusted-identity: -> TrustedIdentities
+  def revoke_trusted_identity(req)
+    TrustedIdentities.from_cbor(@transport.call("AdminService", "revoke-trusted-identity", req.to_cbor))
+  end
+
   # list-nodes: -> ListNodesResponse
   def list_nodes(req)
     ListNodesResponse.from_cbor(@transport.call("AdminService", "list-nodes", req.to_cbor))

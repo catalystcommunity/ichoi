@@ -115,6 +115,12 @@ pub fn dispatch(
         .strip_suffix("Service")
         .unwrap_or(service)
         .to_ascii_lowercase();
+    if matches!(ctx.identity, Identity::Anonymous) && !ctx.allow_guest && svc != "session" {
+        return Err(ServiceError {
+            code: 401,
+            message: "sign in required".to_string(),
+        });
+    }
     match (svc.as_str(), op) {
         // SessionService
         ("session", "authenticate") => rr!(decode_auth_request, authenticate, encode_session_info),
@@ -206,6 +212,23 @@ pub fn dispatch(
         ("admin", "list-trusted-domains") => {
             rr!(decode_page, list_trusted_domains, encode_trusted_domains)
         }
+        ("admin", "list-trusted-identities") => {
+            rr!(
+                decode_page,
+                list_trusted_identities,
+                encode_trusted_identities
+            )
+        }
+        ("admin", "trust-identity") => rr!(
+            decode_trust_identity_request,
+            trust_identity,
+            encode_trusted_identities
+        ),
+        ("admin", "revoke-trusted-identity") => rr!(
+            decode_revoke_trusted_identity_request,
+            revoke_trusted_identity,
+            encode_trusted_identities
+        ),
         ("admin", "list-nodes") => rr!(decode_page, list_nodes, encode_list_nodes_response),
         ("admin", "rename-node") => rr!(decode_rename_node_request, rename_node, encode_node_info),
         ("admin", "rename-device") => {
@@ -399,6 +422,7 @@ pub struct FrameEffects {
 pub fn handle_events_frame(
     app: &App,
     ident: Identity,
+    allow_guest: bool,
     bytes: &[u8],
 ) -> (Identity, Option<Vec<u8>>, FrameEffects) {
     let env = match decode_event_envelope(bytes) {
@@ -422,6 +446,7 @@ pub fn handle_events_frame(
         .to_ascii_lowercase();
     let ctx = Ctx {
         identity: ident.clone(),
+        allow_guest,
     };
 
     // Request/response: has a correlation id.
@@ -462,6 +487,9 @@ pub fn handle_events_frame(
 
     // Channel event (no id): a subscribe registers for live pushes and gets an initial state.
     if service == "player" && env.event == "subscribe" {
+        if matches!(ident, Identity::Anonymous) && !allow_guest {
+            return (ident, None, FrameEffects::default());
+        }
         if let Some((reply, player_id)) = subscribe_snapshot(app, &ident, &env.payload) {
             return (
                 ident,

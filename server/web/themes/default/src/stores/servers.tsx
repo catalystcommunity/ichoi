@@ -120,6 +120,23 @@ function isThisOriginServer(url: string): boolean {
   }
 }
 
+function serverHttpUrl(websocketUrl: string, path: string): string {
+  const url = new URL(websocketUrl);
+  url.protocol = url.protocol === "wss:" ? "https:" : "http:";
+  url.pathname = path;
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+async function syncMediaSession(websocketUrl: string, token?: string): Promise<void> {
+  await fetch(serverHttpUrl(websocketUrl, "/api/session"), {
+    method: token ? "POST" : "DELETE",
+    credentials: "include",
+    headers: token ? { authorization: `Bearer ${token}` } : undefined,
+  });
+}
+
 export function ServersProvider(props: ParentProps): JSX.Element {
   const [servers, setServers] = createStore<ServerRecord[]>([]);
   const [activeId, setActiveId] = createSignal<string | undefined>();
@@ -211,6 +228,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     try {
       const session = await api.session.whoami();
       patch(rec.id, { session });
+      if (rec.token) await syncMediaSession(rec.url, rec.token).catch(() => undefined);
     } catch (e) {
       // whoami may not be reachable on a bare server; stay a nameless guest.
       console.debug("[servers] whoami failed", e);
@@ -274,6 +292,10 @@ export function ServersProvider(props: ParentProps): JSX.Element {
       await live.get(id)?.api.session.logout();
     } catch {
       /* clearing the local credential still completes the explicit sign-out */
+    }
+    const record = servers.find((server) => server.id === id);
+    if (record) {
+      await syncMediaSession(record.url).catch(() => undefined);
     }
     patch(id, { token: undefined, session: undefined });
     savePersisted(servers);

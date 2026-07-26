@@ -306,6 +306,33 @@ func (c *AdminClient) ListTrustedDomains(ctx context.Context, req Page) (Trusted
 	return DecodeTrustedDomains(csilResp)
 }
 
+func (c *AdminClient) ListTrustedIdentities(ctx context.Context, req Page) (TrustedIdentities, error) {
+	var csilZero TrustedIdentities
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "list-trusted-identities", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeTrustedIdentities(csilResp)
+}
+
+func (c *AdminClient) TrustIdentity(ctx context.Context, req TrustIdentityRequest) (TrustedIdentities, error) {
+	var csilZero TrustedIdentities
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "trust-identity", EncodeTrustIdentityRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeTrustedIdentities(csilResp)
+}
+
+func (c *AdminClient) RevokeTrustedIdentity(ctx context.Context, req RevokeTrustedIdentityRequest) (TrustedIdentities, error) {
+	var csilZero TrustedIdentities
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "revoke-trusted-identity", EncodeRevokeTrustedIdentityRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeTrustedIdentities(csilResp)
+}
+
 func (c *AdminClient) ListNodes(ctx context.Context, req Page) (ListNodesResponse, error) {
 	var csilZero ListNodesResponse
 	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "list-nodes", EncodePage(req))

@@ -326,6 +326,42 @@ impl<T: Transport> AdminClient<T> {
         decode_trusted_domains(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// list-trusted-identities (request/response).
+    pub fn list_trusted_identities(&self, req: Page) -> Result<TrustedIdentities, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "list-trusted-identities",
+            &encode_page(&req),
+        )?;
+        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// trust-identity (request/response).
+    pub fn trust_identity(
+        &self,
+        req: TrustIdentityRequest,
+    ) -> Result<TrustedIdentities, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "trust-identity",
+            &encode_trust_identity_request(&req),
+        )?;
+        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// revoke-trusted-identity (request/response).
+    pub fn revoke_trusted_identity(
+        &self,
+        req: RevokeTrustedIdentityRequest,
+    ) -> Result<TrustedIdentities, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "revoke-trusted-identity",
+            &encode_revoke_trusted_identity_request(&req),
+        )?;
+        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// list-nodes (request/response).
     pub fn list_nodes(&self, req: Page) -> Result<ListNodesResponse, ClientError> {
         let csil_resp = self

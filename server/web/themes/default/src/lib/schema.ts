@@ -337,6 +337,21 @@ export interface TrustDomainRequest {
 export interface TrustedDomains {
   domains: string[];
 }
+export interface TrustedIdentity {
+  domain: string;
+  handle?: string;
+  source: string;
+  created_at: Date;
+}
+export interface TrustedIdentities {
+  identities: TrustedIdentity[];
+}
+export interface TrustIdentityRequest {
+  identity: string;
+}
+export interface RevokeTrustedIdentityRequest {
+  identity: string;
+}
 
 export type NodeKind = "core" | "satellite" | "client";
 export type AudioOutputsState = "none" | "some";

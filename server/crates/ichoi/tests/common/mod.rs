@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use ichoi::config::{Config, Role};
+use ichoi::config::{AccessMode, Config, Role};
 use ichoi::db::{self, models, store, SqlitePool};
 use ichoi::handlers::{App, Ctx, Identity};
 
@@ -51,6 +51,8 @@ pub fn test_config() -> Config {
         linkkeys_rp_domain: None,
         public_url: None,
         linkkeys_trusted_identities: vec![],
+        access_mode: AccessMode::Open,
+        trusted_proxy_cidrs: vec![],
     }
 }
 
@@ -64,6 +66,7 @@ pub fn test_app() -> (App, SqlitePool) {
 pub fn ctx_anon() -> Ctx {
     Ctx {
         identity: Identity::Anonymous,
+        allow_guest: true,
     }
 }
 
@@ -73,6 +76,7 @@ pub fn ctx_user(account_id: &str) -> Ctx {
             account_id: account_id.to_string(),
             role: "member".to_string(),
         },
+        allow_guest: false,
     }
 }
 
@@ -82,6 +86,7 @@ pub fn ctx_admin(account_id: &str) -> Ctx {
             account_id: account_id.to_string(),
             role: "admin".to_string(),
         },
+        allow_guest: false,
     }
 }
 
@@ -90,6 +95,7 @@ pub fn ctx_node(node_id: &str) -> Ctx {
         identity: Identity::Node {
             node_id: node_id.to_string(),
         },
+        allow_guest: false,
     }
 }
 
