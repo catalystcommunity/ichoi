@@ -16,3 +16,11 @@ pub mod scan;
 pub mod server;
 pub mod tls;
 pub mod transport;
+
+pub fn version() -> &'static str {
+    include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../version/VERSION.txt"
+    ))
+    .trim()
+}

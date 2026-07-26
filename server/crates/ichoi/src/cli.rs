@@ -168,7 +168,7 @@ pub fn run() -> anyhow::Result<()> {
         Commands::ServeWithConfig { config } => crate::install::serve_with_config(&config),
         Commands::ServiceRun { config } => crate::install::run_windows_service(config),
         Commands::Version => {
-            println!("ichoi {}", env!("CARGO_PKG_VERSION"));
+            println!("ichoi {}", crate::version());
             Ok(())
         }
         command => run_configured(command),

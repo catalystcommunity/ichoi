@@ -15,7 +15,10 @@ export function VersionFooter(): JSX.Element {
     <footer class="version-footer">
       <a href="https://catalystichoi.com">Powered by Ichoi</a>
       <Show when={status()?.version}>
-        {(version) => <span aria-label={`Ichoi version ${version()}`}> · v{version()}</span>}
+        {(version) => {
+          const release = () => version().split("+", 1)[0];
+          return <span aria-label={`Ichoi version ${release()}`}> · v{release()}</span>;
+        }}
       </Show>
     </footer>
   );
