@@ -154,6 +154,10 @@ typedef struct ListAccountsResponse ListAccountsResponse;
 typedef struct SetRoleRequest SetRoleRequest;
 typedef struct TrustDomainRequest TrustDomainRequest;
 typedef struct TrustedDomains TrustedDomains;
+typedef struct TrustedIdentity TrustedIdentity;
+typedef struct TrustedIdentities TrustedIdentities;
+typedef struct TrustIdentityRequest TrustIdentityRequest;
+typedef struct RevokeTrustedIdentityRequest RevokeTrustedIdentityRequest;
 typedef struct DeviceInfo DeviceInfo;
 typedef struct NodeInfo NodeInfo;
 typedef struct ListNodesResponse ListNodesResponse;
@@ -793,6 +797,30 @@ typedef struct TrustedDomains {
     char **domains;
     size_t domains_count;
 } TrustedDomains;
+
+/* TrustedIdentity is a structured data type. */
+typedef struct TrustedIdentity {
+    char *domain;
+    char *handle;
+    char *source;
+    CsilTimestamp created_at;
+} TrustedIdentity;
+
+/* TrustedIdentities is a structured data type. */
+typedef struct TrustedIdentities {
+    TrustedIdentity *identities;
+    size_t identities_count;
+} TrustedIdentities;
+
+/* TrustIdentityRequest is a structured data type. */
+typedef struct TrustIdentityRequest {
+    char *identity;
+} TrustIdentityRequest;
+
+/* RevokeTrustedIdentityRequest is a structured data type. */
+typedef struct RevokeTrustedIdentityRequest {
+    char *identity;
+} RevokeTrustedIdentityRequest;
 
 /* DeviceInfo is a structured data type. */
 typedef struct DeviceInfo {

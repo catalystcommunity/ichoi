@@ -185,6 +185,21 @@ public struct AdminAsyncClient {
         return try TrustedDomains.fromCbor(csilResp)
     }
 
+    public func listTrustedIdentities(_ request: Page) async throws -> TrustedIdentities {
+        let csilResp = try await transport.call(service: "AdminService", op: "list-trusted-identities", request: request.toCbor())
+        return try TrustedIdentities.fromCbor(csilResp)
+    }
+
+    public func trustIdentity(_ request: TrustIdentityRequest) async throws -> TrustedIdentities {
+        let csilResp = try await transport.call(service: "AdminService", op: "trust-identity", request: request.toCbor())
+        return try TrustedIdentities.fromCbor(csilResp)
+    }
+
+    public func revokeTrustedIdentity(_ request: RevokeTrustedIdentityRequest) async throws -> TrustedIdentities {
+        let csilResp = try await transport.call(service: "AdminService", op: "revoke-trusted-identity", request: request.toCbor())
+        return try TrustedIdentities.fromCbor(csilResp)
+    }
+
     public func listNodes(_ request: Page) async throws -> ListNodesResponse {
         let csilResp = try await transport.call(service: "AdminService", op: "list-nodes", request: request.toCbor())
         return try ListNodesResponse.fromCbor(csilResp)

@@ -123,6 +123,15 @@ class AdminClient(private val transport: Transport) {
     fun listTrustedDomains(request: Page): TrustedDomains {
         return decode<TrustedDomains>(transport.call("AdminService", "list-trusted-domains", encode(request)))
     }
+    fun listTrustedIdentities(request: Page): TrustedIdentities {
+        return decode<TrustedIdentities>(transport.call("AdminService", "list-trusted-identities", encode(request)))
+    }
+    fun trustIdentity(request: TrustIdentityRequest): TrustedIdentities {
+        return decode<TrustedIdentities>(transport.call("AdminService", "trust-identity", encode(request)))
+    }
+    fun revokeTrustedIdentity(request: RevokeTrustedIdentityRequest): TrustedIdentities {
+        return decode<TrustedIdentities>(transport.call("AdminService", "revoke-trusted-identity", encode(request)))
+    }
     fun listNodes(request: Page): ListNodesResponse {
         return decode<ListNodesResponse>(transport.call("AdminService", "list-nodes", encode(request)))
     }

@@ -877,6 +877,36 @@ public sealed record TrustedDomains
     public required System.Collections.Generic.List<string> Domains { get; init; }
 }
 
+public sealed record TrustedIdentity
+{
+    // CBOR key: domain
+    public required string Domain { get; init; }
+    // CBOR key: handle
+    public string? Handle { get; init; }
+    // CBOR key: source
+    public required string Source { get; init; }
+    // CBOR key: created_at
+    public required System.DateTimeOffset CreatedAt { get; init; }
+}
+
+public sealed record TrustedIdentities
+{
+    // CBOR key: identities
+    public required System.Collections.Generic.List<TrustedIdentity> Identities { get; init; }
+}
+
+public sealed record TrustIdentityRequest
+{
+    // CBOR key: identity
+    public required string Identity { get; init; }
+}
+
+public sealed record RevokeTrustedIdentityRequest
+{
+    // CBOR key: identity
+    public required string Identity { get; init; }
+}
+
 public enum NodeKind
 {
     // wire value: core

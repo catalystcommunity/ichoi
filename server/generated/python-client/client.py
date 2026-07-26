@@ -155,6 +155,18 @@ class AdminClient:
         """list-trusted-domains"""
         return TrustedDomains.from_cbor(self._transport.call("AdminService", "list-trusted-domains", req.to_cbor()))
 
+    def list_trusted_identities(self, req: Page) -> TrustedIdentities:
+        """list-trusted-identities"""
+        return TrustedIdentities.from_cbor(self._transport.call("AdminService", "list-trusted-identities", req.to_cbor()))
+
+    def trust_identity(self, req: TrustIdentityRequest) -> TrustedIdentities:
+        """trust-identity"""
+        return TrustedIdentities.from_cbor(self._transport.call("AdminService", "trust-identity", req.to_cbor()))
+
+    def revoke_trusted_identity(self, req: RevokeTrustedIdentityRequest) -> TrustedIdentities:
+        """revoke-trusted-identity"""
+        return TrustedIdentities.from_cbor(self._transport.call("AdminService", "revoke-trusted-identity", req.to_cbor()))
+
     def list_nodes(self, req: Page) -> ListNodesResponse:
         """list-nodes"""
         return ListNodesResponse.from_cbor(self._transport.call("AdminService", "list-nodes", req.to_cbor()))

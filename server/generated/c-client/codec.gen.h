@@ -742,6 +742,14 @@ static inline int csilc_enc_TrustDomainRequest(csilc_buf *b, const TrustDomainRe
 static inline int csilc_dec_TrustDomainRequest(const csilc_value *m, CsilCodecArena *a, TrustDomainRequest *out);
 static inline int csilc_enc_TrustedDomains(csilc_buf *b, const TrustedDomains *v);
 static inline int csilc_dec_TrustedDomains(const csilc_value *m, CsilCodecArena *a, TrustedDomains *out);
+static inline int csilc_enc_TrustedIdentity(csilc_buf *b, const TrustedIdentity *v);
+static inline int csilc_dec_TrustedIdentity(const csilc_value *m, CsilCodecArena *a, TrustedIdentity *out);
+static inline int csilc_enc_TrustedIdentities(csilc_buf *b, const TrustedIdentities *v);
+static inline int csilc_dec_TrustedIdentities(const csilc_value *m, CsilCodecArena *a, TrustedIdentities *out);
+static inline int csilc_enc_TrustIdentityRequest(csilc_buf *b, const TrustIdentityRequest *v);
+static inline int csilc_dec_TrustIdentityRequest(const csilc_value *m, CsilCodecArena *a, TrustIdentityRequest *out);
+static inline int csilc_enc_RevokeTrustedIdentityRequest(csilc_buf *b, const RevokeTrustedIdentityRequest *v);
+static inline int csilc_dec_RevokeTrustedIdentityRequest(const csilc_value *m, CsilCodecArena *a, RevokeTrustedIdentityRequest *out);
 static inline int csilc_enc_NodeKind(csilc_buf *b, const NodeKind *v);
 static inline int csilc_dec_NodeKind(const csilc_value *src, CsilCodecArena *a, NodeKind *out);
 static inline int csilc_enc_AudioOutputsState(csilc_buf *b, const AudioOutputsState *v);
@@ -3706,6 +3714,111 @@ static inline int csilc_dec_TrustedDomains(const csilc_value *m, CsilCodecArena 
     return 0;
 }
 
+/* csilc_enc_TrustedIdentity writes TrustedIdentity as a canonical CBOR map. */
+static inline int csilc_enc_TrustedIdentity(csilc_buf *b, const TrustedIdentity *v) {
+    size_t csilc_n = 3;
+    if (v->handle) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "domain", 6)) return -1;
+    if (csilc_w_text(b, (v->domain), (v->domain) ? strlen(v->domain) : 0)) return -1;
+    if (v->handle) {
+        if (csilc_w_text(b, "handle", 6)) return -1;
+        if (csilc_w_text(b, (v->handle), (v->handle) ? strlen(v->handle) : 0)) return -1;
+    }
+    if (csilc_w_text(b, "source", 6)) return -1;
+    if (csilc_w_text(b, (v->source), (v->source) ? strlen(v->source) : 0)) return -1;
+    if (csilc_w_text(b, "created_at", 10)) return -1;
+    if (csilc_w_tag(b, 0)) return -1;
+    if (csilc_w_text(b, (v->created_at).rfc3339, (v->created_at).rfc3339 ? strlen((v->created_at).rfc3339) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_TrustedIdentity reads TrustedIdentity from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_TrustedIdentity(const csilc_value *m, CsilCodecArena *a, TrustedIdentity *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "domain");
+    if (!csilc_get_text(csilc_f, &(out->domain))) return -1;
+    csilc_f = csilc_map_get(m, "handle");
+    out->handle = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "source");
+    if (!csilc_get_text(csilc_f, &(out->source))) return -1;
+    csilc_f = csilc_map_get(m, "created_at");
+    if (!csilc_get_tagged_text(csilc_f, 0, &(out->created_at).rfc3339)) return -1;
+    (out->created_at).epoch_seconds = 0;
+    return 0;
+}
+
+/* csilc_enc_TrustedIdentities writes TrustedIdentities as a canonical CBOR map. */
+static inline int csilc_enc_TrustedIdentities(csilc_buf *b, const TrustedIdentities *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "identities", 10)) return -1;
+    if (csilc_w_array_head(b, v->identities_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->identities_count; csilc_i++) {
+        if (csilc_enc_TrustedIdentity(b, &(v->identities[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_TrustedIdentities reads TrustedIdentities from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_TrustedIdentities(const csilc_value *m, CsilCodecArena *a, TrustedIdentities *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "identities");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->identities_count = csilc_f->as.array.count;
+    out->identities = NULL;
+    if (out->identities_count) {
+        out->identities = (TrustedIdentity *)csilc_arena_alloc(a, out->identities_count * sizeof(TrustedIdentity));
+        if (!out->identities) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->identities_count; csilc_i++) {
+            if (csilc_dec_TrustedIdentity(&csilc_f->as.array.items[csilc_i], a, &(out->identities[csilc_i]))) return -1;
+        }
+    }
+    return 0;
+}
+
+/* csilc_enc_TrustIdentityRequest writes TrustIdentityRequest as a canonical CBOR map. */
+static inline int csilc_enc_TrustIdentityRequest(csilc_buf *b, const TrustIdentityRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "identity", 8)) return -1;
+    if (csilc_w_text(b, (v->identity), (v->identity) ? strlen(v->identity) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_TrustIdentityRequest reads TrustIdentityRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_TrustIdentityRequest(const csilc_value *m, CsilCodecArena *a, TrustIdentityRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "identity");
+    if (!csilc_get_text(csilc_f, &(out->identity))) return -1;
+    return 0;
+}
+
+/* csilc_enc_RevokeTrustedIdentityRequest writes RevokeTrustedIdentityRequest as a canonical CBOR map. */
+static inline int csilc_enc_RevokeTrustedIdentityRequest(csilc_buf *b, const RevokeTrustedIdentityRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "identity", 8)) return -1;
+    if (csilc_w_text(b, (v->identity), (v->identity) ? strlen(v->identity) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_RevokeTrustedIdentityRequest reads RevokeTrustedIdentityRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_RevokeTrustedIdentityRequest(const csilc_value *m, CsilCodecArena *a, RevokeTrustedIdentityRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "identity");
+    if (!csilc_get_text(csilc_f, &(out->identity))) return -1;
+    return 0;
+}
+
 static CSILC_UNUSED const char *const csilc_NodeKind_names[] = {
     "core",
     "satellite",
@@ -6398,6 +6511,98 @@ static inline int csil_decode_TrustedDomains(const uint8_t *in, size_t len, Trus
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_TrustedDomains(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a TrustedIdentity to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_TrustedIdentity(const TrustedIdentity *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_TrustedIdentity(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a TrustedIdentity. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_TrustedIdentity(const uint8_t *in, size_t len, TrustedIdentity *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_TrustedIdentity(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a TrustedIdentities to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_TrustedIdentities(const TrustedIdentities *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_TrustedIdentities(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a TrustedIdentities. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_TrustedIdentities(const uint8_t *in, size_t len, TrustedIdentities *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_TrustedIdentities(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a TrustIdentityRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_TrustIdentityRequest(const TrustIdentityRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_TrustIdentityRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a TrustIdentityRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_TrustIdentityRequest(const uint8_t *in, size_t len, TrustIdentityRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_TrustIdentityRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a RevokeTrustedIdentityRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_RevokeTrustedIdentityRequest(const RevokeTrustedIdentityRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_RevokeTrustedIdentityRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a RevokeTrustedIdentityRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_RevokeTrustedIdentityRequest(const uint8_t *in, size_t len, RevokeTrustedIdentityRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_RevokeTrustedIdentityRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

@@ -58,14 +58,14 @@ fn enabled_app() -> (App, ichoi::db::SqlitePool) {
 }
 
 #[test]
-fn enabled_configuration_requires_name_and_valid_trust_selectors() {
+fn enabled_configuration_requires_name_and_accepts_optional_initial_trust() {
     let pool = ichoi::db::test_pool();
     let mut config = common::test_config();
     config.linkkeys_local_rp = true;
     assert!(ichoi::auth::local_rp::initialize_database(&pool, &config).is_err());
 
     config.linkkeys_local_rp_name = Some("Test Ichoi".to_string());
-    assert!(ichoi::auth::local_rp::initialize_database(&pool, &config).is_err());
+    assert!(ichoi::auth::local_rp::initialize_database(&pool, &config).is_ok());
 
     config.linkkeys_trusted_identities = vec!["https://family.example".to_string()];
     assert!(ichoi::auth::local_rp::initialize_database(&pool, &config).is_err());
@@ -199,6 +199,7 @@ async fn browser_flow_is_offline_single_use_and_mints_normal_session() {
         .authenticate(
             &Ctx {
                 identity: Identity::Anonymous,
+                allow_guest: false,
             },
             AuthRequest {
                 linkkeys_assertion: None,

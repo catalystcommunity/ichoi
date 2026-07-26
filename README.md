@@ -149,6 +149,30 @@ does not silently rotate it. Backups of the database therefore contain private R
 material and must be protected. Approve the fingerprint reported in the log or `/api/auth`
 at each trusted LinkKeys domain before users log in.
 
+### Guest access policy
+
+Guest access remains open by default. Public deployments can require LinkKeys login, while
+installations with split internal/public DNS can allow guests only from LAN addresses:
+
+```sh
+ICHOI_ACCESS_MODE=open
+ICHOI_ACCESS_MODE=login-required
+ICHOI_ACCESS_MODE=lan-guests
+```
+
+LAN mode recognizes loopback, link-local, RFC1918 IPv4, and unique-local IPv6 addresses.
+When a reverse proxy terminates TLS, Ichoi uses `X-Forwarded-For` only when the immediate
+peer is explicitly trusted. For example, when Caddy is `10.19.81.5`:
+
+```sh
+ICHOI_ACCESS_MODE=lan-guests
+ICHOI_TRUSTED_PROXY_CIDRS=10.19.81.5/32
+```
+
+Do not trust a proxy CIDR containing untrusted clients. Without a matching trusted proxy,
+Ichoi deliberately classifies the proxy itself rather than accepting a spoofable forwarded
+address.
+
 ### Regular LinkKeys RP login
 
 For a public deployment backed by an existing DNS-pinned LinkKeys RP service,
@@ -163,6 +187,10 @@ ICHOI_LINKKEYS_RP_DOMAIN="ichoi.example.com"
 ICHOI_PUBLIC_URL="https://ichoi.example.com"
 ICHOI_LINKKEYS_TRUSTED_IDENTITIES="family.example,alice@friends.example"
 ```
+
+The environment value is the deployment-managed portion of the trust set. It is reconciled
+at startup; administrators can add and revoke additional domain or exact-handle entries in
+Settings, and those database-managed entries are unioned with configured entries.
 
 The API key must belong to an RP service account with LinkKeys' `api_access`
 relation. The file form is preferred for containers because it keeps the key

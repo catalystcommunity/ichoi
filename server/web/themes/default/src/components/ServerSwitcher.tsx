@@ -106,7 +106,7 @@ export function ServerSwitcher(): JSX.Element {
 
 /** Sign-in upgrades the login-less guest connection through whichever
  * LinkKeys RP mode the server advertises. */
-function AuthArea(): JSX.Element {
+export function AuthArea(): JSX.Element {
   const servers = useServers();
   const { t } = useI18n();
   const session = () => servers.active()?.session;

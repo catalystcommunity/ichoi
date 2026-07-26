@@ -117,7 +117,11 @@ where
                 let app2 = app.clone();
                 let ident_in = ident.clone();
                 let (ident_out, reply, effects) =
-                    tokio::task::spawn_blocking(move || transport::handle_events_frame(&app2, ident_in, &frame)).await?;
+                    tokio::task::spawn_blocking(move || {
+                        let allow_guest =
+                            app2.config.access_mode == crate::config::AccessMode::Open;
+                        transport::handle_events_frame(&app2, ident_in, allow_guest, &frame)
+                    }).await?;
                 ident = ident_out;
                 if let Some(reply) = reply {
                     write_frame(&mut write_half, &reply).await?;
@@ -312,6 +316,7 @@ where
     let conn_id = TCP_CONN_ID.fetch_add(1, Ordering::Relaxed);
     let ctx = Ctx {
         identity: Identity::Anonymous,
+        allow_guest: app.config.access_mode == crate::config::AccessMode::Open,
     };
     loop {
         tokio::select! {

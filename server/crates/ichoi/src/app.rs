@@ -177,7 +177,10 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
     let tcp = server::tcp::serve_tcp(app.clone(), config.csil_addr.clone());
 
     tokio::select! {
-        r = axum::serve(http_listener, http_router) => r?,
+        r = axum::serve(
+            http_listener,
+            http_router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        ) => r?,
         r = tcp => r?,
         _ = tokio::signal::ctrl_c() => log::info!("shutting down"),
     }
@@ -223,9 +226,6 @@ pub fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
     }
 
     if config.linkkeys_local_rp || config.linkkeys_rp {
-        if config.linkkeys_trusted_identities.is_empty() {
-            anyhow::bail!("LinkKeys login requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES");
-        }
         for selector in &config.linkkeys_trusted_identities {
             crate::auth::local_rp::parse_selector(selector)?;
         }

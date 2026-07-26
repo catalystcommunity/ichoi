@@ -2421,6 +2421,108 @@ class TrustedDomains
   end
 end
 
+# CBOR codec for TrustedIdentity: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class TrustedIdentity
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["domain"] = domain
+    csil_map["handle"] = handle unless handle.nil?
+    csil_map["source"] = source
+    csil_map["created_at"] = CsilCbor::Tag.new(0, (created_at).getutc.iso8601)
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      domain: node["domain"],
+      handle: (node.key?("handle") ? node["handle"] : nil),
+      source: node["source"],
+      created_at: Time.iso8601((node["created_at"]).value)
+    )
+  end
+end
+
+# CBOR codec for TrustedIdentities: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class TrustedIdentities
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["identities"] = (identities).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      identities: (node["identities"]).map { |csil_e| TrustedIdentity.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for TrustIdentityRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class TrustIdentityRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["identity"] = identity
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      identity: node["identity"]
+    )
+  end
+end
+
+# CBOR codec for RevokeTrustedIdentityRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class RevokeTrustedIdentityRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["identity"] = identity
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      identity: node["identity"]
+    )
+  end
+end
+
 # CBOR codec for DeviceInfo: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class DeviceInfo

@@ -21,6 +21,7 @@ toml = "0.8"
 hex = "0.4"
 sha2 = "0.10"
 rand = "0.8"
+ipnet = "2"
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }

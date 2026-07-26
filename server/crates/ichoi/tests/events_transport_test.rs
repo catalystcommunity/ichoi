@@ -78,7 +78,8 @@ fn node_hello_frame(token: &str) -> Vec<u8> {
 #[test]
 fn hello_gets_ack() {
     let (app, _pool) = common::test_app();
-    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, &hello_frame(None));
+    let (_ident, reply, _fx) =
+        handle_events_frame(&app, Identity::Anonymous, true, &hello_frame(None));
     let env = decode_event_envelope(&reply.expect("ack frame")).unwrap();
     assert_eq!(env.event, "$hello-ack");
 }
@@ -96,8 +97,12 @@ fn named_satellite_token_resolves_to_its_destination_identity() {
             },
         )
         .unwrap();
-    let (identity, reply, _effects) =
-        handle_events_frame(&app, Identity::Anonymous, &node_hello_frame(&token.token));
+    let (identity, reply, _effects) = handle_events_frame(
+        &app,
+        Identity::Anonymous,
+        true,
+        &node_hello_frame(&token.token),
+    );
     assert!(reply.is_some());
     assert!(matches!(identity, Identity::Node { node_id } if node_id == token.satellite.id));
 }
@@ -125,13 +130,38 @@ fn request_reply_round_trips_over_the_wire() {
         payload: req_payload,
     });
 
-    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, &frame);
+    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, true, &frame);
     let env = decode_event_envelope(&reply.expect("reply frame")).unwrap();
 
     assert_eq!(env.id, Some(7), "reply correlates by id");
     let resp = decode_albums_response(&env.payload).expect("decode AlbumsResponse from payload");
     assert_eq!(resp.total, 1);
     assert_eq!(resp.albums[0].title, "Test Album");
+}
+
+#[test]
+fn login_required_rejects_anonymous_library_requests_on_the_wire() {
+    let (app, _pool) = common::test_app();
+    let frame = encode_event_envelope(&EventEnvelope {
+        service: Some("library".to_string()),
+        event: "list-albums".to_string(),
+        id: Some(70),
+        payload: encode_browse_request(&BrowseRequest {
+            library: None,
+            offset: None,
+            limit: None,
+        }),
+    });
+    let (_identity, reply, _effects) =
+        handle_events_frame(&app, Identity::Anonymous, false, &frame);
+    let envelope = decode_event_envelope(&reply.unwrap()).unwrap();
+    let value: Value = ciborium::from_reader(envelope.payload.as_slice()).unwrap();
+    let Value::Map(fields) = value else {
+        panic!("service error was not a map")
+    };
+    assert!(fields.iter().any(|(key, value)| {
+        *key == Value::Text("code".into()) && *value == Value::Integer(401.into())
+    }));
 }
 
 #[test]
@@ -155,7 +185,7 @@ fn configured_libraries_round_trip_over_the_wire() {
             limit: None,
         }),
     });
-    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, &frame);
+    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, true, &frame);
     let env = decode_event_envelope(&reply.expect("reply frame")).unwrap();
     let response = decode_libraries_response(&env.payload).unwrap();
     assert!(response
@@ -179,6 +209,7 @@ fn admin_resync_status_round_trips_over_the_wire() {
     let (_identity, reply, _effects) = handle_events_frame(
         &app,
         common::ctx_admin("admin@example.com").identity,
+        false,
         &frame,
     );
     let envelope = decode_event_envelope(&reply.expect("reply frame")).unwrap();
@@ -202,7 +233,7 @@ fn error_rides_as_service_error_map() {
         id: Some(9),
         payload: req,
     });
-    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, &frame);
+    let (_ident, reply, _fx) = handle_events_frame(&app, Identity::Anonymous, true, &frame);
     let env = decode_event_envelope(&reply.expect("reply")).unwrap();
     assert_eq!(env.id, Some(9));
     // Decode the payload as a generic CBOR map and assert it's a {code, message} error.
@@ -245,6 +276,7 @@ fn hello_auth_token_resolves_identity() {
     let (ident, _reply, _fx) = handle_events_frame(
         &app,
         Identity::Anonymous,
+        true,
         &hello_frame(Some("secret-token")),
     );
     match ident {

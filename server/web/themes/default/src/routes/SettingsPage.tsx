@@ -7,6 +7,7 @@ import { CsilServiceError } from "../lib/csil.ts";
 import type { TranscodeCodec } from "../lib/schema.ts";
 import { EmptyState } from "../components/common.tsx";
 import { SatelliteAdmin } from "../components/SatelliteAdmin.tsx";
+import { AccountAccessAdmin } from "../components/AccountAccessAdmin.tsx";
 
 export function SettingsPage(): JSX.Element {
   const { t, locale, setLocale } = useI18n();
@@ -239,7 +240,10 @@ export function SettingsPage(): JSX.Element {
           </div>
         </Show>
       </section>
-      <Show when={isAdmin()}><SatelliteAdmin /></Show>
+      <Show when={isAdmin()}>
+        <AccountAccessAdmin />
+        <SatelliteAdmin />
+      </Show>
     </div>
   );
 }

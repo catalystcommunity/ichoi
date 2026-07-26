@@ -29,6 +29,18 @@ public final class AdminClient {
         return CsilCbor.decodeTrustedDomains(transport.call("AdminService", "list-trusted-domains", CsilCbor.encodePage(req)));
     }
 
+    public TrustedIdentities listTrustedIdentities(Page req) throws ClientException {
+        return CsilCbor.decodeTrustedIdentities(transport.call("AdminService", "list-trusted-identities", CsilCbor.encodePage(req)));
+    }
+
+    public TrustedIdentities trustIdentity(TrustIdentityRequest req) throws ClientException {
+        return CsilCbor.decodeTrustedIdentities(transport.call("AdminService", "trust-identity", CsilCbor.encodeTrustIdentityRequest(req)));
+    }
+
+    public TrustedIdentities revokeTrustedIdentity(RevokeTrustedIdentityRequest req) throws ClientException {
+        return CsilCbor.decodeTrustedIdentities(transport.call("AdminService", "revoke-trusted-identity", CsilCbor.encodeRevokeTrustedIdentityRequest(req)));
+    }
+
     public ListNodesResponse listNodes(Page req) throws ClientException {
         return CsilCbor.decodeListNodesResponse(transport.call("AdminService", "list-nodes", CsilCbor.encodePage(req)));
     }

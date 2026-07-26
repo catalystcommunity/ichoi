@@ -3095,6 +3095,98 @@ fn dec_TrustedDomains(alloc: std.mem.Allocator, m: Value, out: *types.TrustedDom
     }
 }
 
+fn enc_TrustedIdentity(out: *std.ArrayList(u8), v: *const types.TrustedIdentity) CodecError!void {
+    var csil_n: usize = 3;
+    if (v.handle != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "domain");
+    try w_text(out, v.domain);
+    if (v.handle) |csil_x| {
+        try w_text(out, "handle");
+        try w_text(out, csil_x);
+    }
+    try w_text(out, "source");
+    try w_text(out, v.source);
+    try w_text(out, "created_at");
+    try w_tag(out, 0);
+    try w_text(out, (v.created_at).rfc3339);
+}
+
+fn dec_TrustedIdentity(alloc: std.mem.Allocator, m: Value, out: *types.TrustedIdentity) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "domain");
+        out.domain = try as_text(csil_fv);
+    }
+    {
+        if (mget(m, "handle")) |csil_fv| {
+            out.handle = try as_text(csil_fv);
+        } else {
+            out.handle = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "source");
+        out.source = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "created_at");
+        out.created_at = .{ .rfc3339 = try as_tagged_text(csil_fv, 0), .epoch_seconds = 0 };
+    }
+}
+
+fn enc_TrustedIdentities(out: *std.ArrayList(u8), v: *const types.TrustedIdentities) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "identities");
+    try w_array_head(out, v.identities.len);
+    for (v.identities) |csil_it| {
+        try enc_TrustedIdentity(out, &(csil_it));
+    }
+}
+
+fn dec_TrustedIdentities(alloc: std.mem.Allocator, m: Value, out: *types.TrustedIdentities) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "identities");
+        if (csil_fv != .array) return error.WrongType;
+        out.identities = try alloc.alloc(types.TrustedIdentity, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_TrustedIdentity(alloc, csil_it, &(out.identities[csil_i]));
+        }
+    }
+}
+
+fn enc_TrustIdentityRequest(out: *std.ArrayList(u8), v: *const types.TrustIdentityRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "identity");
+    try w_text(out, v.identity);
+}
+
+fn dec_TrustIdentityRequest(alloc: std.mem.Allocator, m: Value, out: *types.TrustIdentityRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "identity");
+        out.identity = try as_text(csil_fv);
+    }
+}
+
+fn enc_RevokeTrustedIdentityRequest(out: *std.ArrayList(u8), v: *const types.RevokeTrustedIdentityRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "identity");
+    try w_text(out, v.identity);
+}
+
+fn dec_RevokeTrustedIdentityRequest(alloc: std.mem.Allocator, m: Value, out: *types.RevokeTrustedIdentityRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "identity");
+        out.identity = try as_text(csil_fv);
+    }
+}
+
 fn enc_NodeKind(out: *std.ArrayList(u8), v: *const types.NodeKind) CodecError!void {
     try w_text(out, v.wire_name());
 }
@@ -5111,6 +5203,70 @@ pub fn encode_TrustedDomains(alloc: std.mem.Allocator, v: *const types.TrustedDo
 pub fn decode_TrustedDomains(alloc: std.mem.Allocator, bytes: []const u8, out: *types.TrustedDomains) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_TrustedDomains(alloc, root, out);
+}
+
+/// Encode a TrustedIdentity to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_TrustedIdentity(alloc: std.mem.Allocator, v: *const types.TrustedIdentity) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_TrustedIdentity(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a TrustedIdentity. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_TrustedIdentity(alloc: std.mem.Allocator, bytes: []const u8, out: *types.TrustedIdentity) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_TrustedIdentity(alloc, root, out);
+}
+
+/// Encode a TrustedIdentities to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_TrustedIdentities(alloc: std.mem.Allocator, v: *const types.TrustedIdentities) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_TrustedIdentities(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a TrustedIdentities. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_TrustedIdentities(alloc: std.mem.Allocator, bytes: []const u8, out: *types.TrustedIdentities) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_TrustedIdentities(alloc, root, out);
+}
+
+/// Encode a TrustIdentityRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_TrustIdentityRequest(alloc: std.mem.Allocator, v: *const types.TrustIdentityRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_TrustIdentityRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a TrustIdentityRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_TrustIdentityRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.TrustIdentityRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_TrustIdentityRequest(alloc, root, out);
+}
+
+/// Encode a RevokeTrustedIdentityRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_RevokeTrustedIdentityRequest(alloc: std.mem.Allocator, v: *const types.RevokeTrustedIdentityRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_RevokeTrustedIdentityRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a RevokeTrustedIdentityRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_RevokeTrustedIdentityRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.RevokeTrustedIdentityRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_RevokeTrustedIdentityRequest(alloc, root, out);
 }
 
 /// Encode a NodeKind to CBOR. The returned slice is owned by the caller

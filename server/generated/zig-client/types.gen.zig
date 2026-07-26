@@ -423,6 +423,29 @@ pub const TrustedDomains = struct {
     domains: [][]const u8,
 };
 
+/// TrustedIdentity is a structured data type.
+pub const TrustedIdentity = struct {
+    domain: []const u8,
+    handle: ?[]const u8 = null,
+    source: []const u8,
+    created_at: CsilTimestamp,
+};
+
+/// TrustedIdentities is a structured data type.
+pub const TrustedIdentities = struct {
+    identities: []TrustedIdentity,
+};
+
+/// TrustIdentityRequest is a structured data type.
+pub const TrustIdentityRequest = struct {
+    identity: []const u8,
+};
+
+/// RevokeTrustedIdentityRequest is a structured data type.
+pub const RevokeTrustedIdentityRequest = struct {
+    identity: []const u8,
+};
+
 /// ListNodesResponse is a structured data type.
 pub const ListNodesResponse = struct {
     nodes: []NodeInfo,

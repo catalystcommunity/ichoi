@@ -2337,6 +2337,96 @@ public extension TrustedDomains {
     static func fromCbor(_ bytes: [UInt8]) throws -> TrustedDomains { try TrustedDomains(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension TrustedIdentity {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("domain", .text(self.domain)))
+        if let csilV = self.handle { csilEntries.append(("handle", .text(csilV))) }
+        csilEntries.append(("source", .text(self.source)))
+        csilEntries.append(("created_at", .tag(0, .text(self.createdAt))))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let domain = try CsilCbor.asText((try CsilCbor.require(cborValue, "domain")))
+        let handle: String? = if let csilV = CsilCbor.mapGet(cborValue, "handle") { try CsilCbor.asText(csilV) } else { nil }
+        let source = try CsilCbor.asText((try CsilCbor.require(cborValue, "source")))
+        let createdAt = try CsilCbor.asTaggedText((try CsilCbor.require(cborValue, "created_at")), 0)
+        self.init(domain: domain, handle: handle, source: source, createdAt: createdAt)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> TrustedIdentity { try TrustedIdentity(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension TrustedIdentities {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("identities", CsilCborValue.array(self.identities.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let identities = try CsilCbor.asArray((try CsilCbor.require(cborValue, "identities"))).map { try TrustedIdentity(cborValue: $0) }
+        self.init(identities: identities)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> TrustedIdentities { try TrustedIdentities(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension TrustIdentityRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("identity", .text(self.identity)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let identity = try CsilCbor.asText((try CsilCbor.require(cborValue, "identity")))
+        self.init(identity: identity)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> TrustIdentityRequest { try TrustIdentityRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension RevokeTrustedIdentityRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("identity", .text(self.identity)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let identity = try CsilCbor.asText((try CsilCbor.require(cborValue, "identity")))
+        self.init(identity: identity)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> RevokeTrustedIdentityRequest { try RevokeTrustedIdentityRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension NodeKind {
     /// The CBOR value tree for this enum: its wire string verbatim.
     func toCborValue() -> CsilCborValue { .text(self.rawValue) }

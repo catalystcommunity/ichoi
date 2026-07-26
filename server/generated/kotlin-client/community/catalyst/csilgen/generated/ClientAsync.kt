@@ -113,6 +113,15 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     suspend fun listTrustedDomains(request: Page): TrustedDomains {
         return decode<TrustedDomains>(transport.call("AdminService", "list-trusted-domains", encode(request)))
     }
+    suspend fun listTrustedIdentities(request: Page): TrustedIdentities {
+        return decode<TrustedIdentities>(transport.call("AdminService", "list-trusted-identities", encode(request)))
+    }
+    suspend fun trustIdentity(request: TrustIdentityRequest): TrustedIdentities {
+        return decode<TrustedIdentities>(transport.call("AdminService", "trust-identity", encode(request)))
+    }
+    suspend fun revokeTrustedIdentity(request: RevokeTrustedIdentityRequest): TrustedIdentities {
+        return decode<TrustedIdentities>(transport.call("AdminService", "revoke-trusted-identity", encode(request)))
+    }
     suspend fun listNodes(request: Page): ListNodesResponse {
         return decode<ListNodesResponse>(transport.call("AdminService", "list-nodes", encode(request)))
     }

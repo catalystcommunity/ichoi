@@ -3718,6 +3718,163 @@ pub fn decode_trusted_domains(csil_data: &[u8]) -> Result<TrustedDomains, CsilCb
     csil_dec_trusted_domains(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a TrustedIdentity.
+fn csil_enc_trusted_identity(csil_v: &TrustedIdentity) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("domain"), cbor_text(&csil_v.domain)));
+    if let Some(csil_inner) = &csil_v.handle {
+        csil_entries.push((cbor_text("handle"), cbor_text(csil_inner)));
+    }
+    csil_entries.push((cbor_text("source"), cbor_text(&csil_v.source)));
+    csil_entries.push((
+        cbor_text("created_at"),
+        csil_enc_timestamp(&csil_v.created_at),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a TrustedIdentity from a decoded CBOR value tree.
+fn csil_dec_trusted_identity(csil_root: &CsilCborValue) -> Result<TrustedIdentity, CsilCborError> {
+    let domain = {
+        let csil_field = cbor_require(csil_root, "domain")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let handle = match cbor_map_get(csil_root, "handle") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let source = {
+        let csil_field = cbor_require(csil_root, "source")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let created_at = {
+        let csil_field = cbor_require(csil_root, "created_at")?;
+        let csil_decode = csil_as_timestamp;
+        csil_decode(csil_field)?
+    };
+    Ok(TrustedIdentity {
+        domain,
+        handle,
+        source,
+        created_at,
+    })
+}
+
+/// Encode a TrustedIdentity to canonical CSIL CBOR bytes.
+pub fn encode_trusted_identity(csil_v: &TrustedIdentity) -> Vec<u8> {
+    cbor_encode(&csil_enc_trusted_identity(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a TrustedIdentity.
+pub fn decode_trusted_identity(csil_data: &[u8]) -> Result<TrustedIdentity, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_trusted_identity(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a TrustedIdentities.
+fn csil_enc_trusted_identities(csil_v: &TrustedIdentities) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((
+        cbor_text("identities"),
+        cbor_enc_array(&csil_v.identities, csil_enc_trusted_identity),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a TrustedIdentities from a decoded CBOR value tree.
+fn csil_dec_trusted_identities(
+    csil_root: &CsilCborValue,
+) -> Result<TrustedIdentities, CsilCborError> {
+    let identities = {
+        let csil_field = cbor_require(csil_root, "identities")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_trusted_identity);
+        csil_decode(csil_field)?
+    };
+    Ok(TrustedIdentities { identities })
+}
+
+/// Encode a TrustedIdentities to canonical CSIL CBOR bytes.
+pub fn encode_trusted_identities(csil_v: &TrustedIdentities) -> Vec<u8> {
+    cbor_encode(&csil_enc_trusted_identities(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a TrustedIdentities.
+pub fn decode_trusted_identities(csil_data: &[u8]) -> Result<TrustedIdentities, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_trusted_identities(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a TrustIdentityRequest.
+fn csil_enc_trust_identity_request(csil_v: &TrustIdentityRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("identity"), cbor_text(&csil_v.identity)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a TrustIdentityRequest from a decoded CBOR value tree.
+fn csil_dec_trust_identity_request(
+    csil_root: &CsilCborValue,
+) -> Result<TrustIdentityRequest, CsilCborError> {
+    let identity = {
+        let csil_field = cbor_require(csil_root, "identity")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(TrustIdentityRequest { identity })
+}
+
+/// Encode a TrustIdentityRequest to canonical CSIL CBOR bytes.
+pub fn encode_trust_identity_request(csil_v: &TrustIdentityRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_trust_identity_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a TrustIdentityRequest.
+pub fn decode_trust_identity_request(
+    csil_data: &[u8],
+) -> Result<TrustIdentityRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_trust_identity_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a RevokeTrustedIdentityRequest.
+fn csil_enc_revoke_trusted_identity_request(
+    csil_v: &RevokeTrustedIdentityRequest,
+) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("identity"), cbor_text(&csil_v.identity)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a RevokeTrustedIdentityRequest from a decoded CBOR value tree.
+fn csil_dec_revoke_trusted_identity_request(
+    csil_root: &CsilCborValue,
+) -> Result<RevokeTrustedIdentityRequest, CsilCborError> {
+    let identity = {
+        let csil_field = cbor_require(csil_root, "identity")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(RevokeTrustedIdentityRequest { identity })
+}
+
+/// Encode a RevokeTrustedIdentityRequest to canonical CSIL CBOR bytes.
+pub fn encode_revoke_trusted_identity_request(csil_v: &RevokeTrustedIdentityRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_revoke_trusted_identity_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a RevokeTrustedIdentityRequest.
+pub fn decode_revoke_trusted_identity_request(
+    csil_data: &[u8],
+) -> Result<RevokeTrustedIdentityRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_revoke_trusted_identity_request(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a DeviceInfo.
 fn csil_enc_device_info(csil_v: &DeviceInfo) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);

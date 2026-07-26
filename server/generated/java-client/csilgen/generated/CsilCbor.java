@@ -2324,6 +2324,94 @@ public final class CsilCbor {
         return decTrustedDomains(decode(data));
     }
 
+    static CborValue encTrustedIdentity(TrustedIdentity v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("domain"), new CborText(v.domain())));
+        if (v.handle() != null) {
+            csilEntries.add(new CborEntry(new CborText("handle"), new CborText(v.handle())));
+        }
+        csilEntries.add(new CborEntry(new CborText("source"), new CborText(v.source())));
+        csilEntries.add(new CborEntry(new CborText("created_at"), encTimestamp(v.createdAt())));
+        return new CborMap(csilEntries);
+    }
+
+    static TrustedIdentity decTrustedIdentity(CborValue csilRoot) {
+        String domain = asText(require(csilRoot, "domain"));
+        String handle;
+        {
+            CborValue csilField = mapGet(csilRoot, "handle");
+            handle = csilField != null ? asText(csilField) : null;
+        }
+        String source = asText(require(csilRoot, "source"));
+        Instant createdAt = asTimestamp(require(csilRoot, "created_at"));
+        return new TrustedIdentity(domain, handle, source, createdAt);
+    }
+
+    public static byte[] encodeTrustedIdentity(TrustedIdentity v) {
+        return encode(encTrustedIdentity(v));
+    }
+
+    public static TrustedIdentity decodeTrustedIdentity(byte[] data) {
+        return decTrustedIdentity(decode(data));
+    }
+
+    static CborValue encTrustedIdentities(TrustedIdentities v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("identities"), encArray(v.identities(), csilElem0 -> encTrustedIdentity(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static TrustedIdentities decTrustedIdentities(CborValue csilRoot) {
+        List<TrustedIdentity> identities = decArray(require(csilRoot, "identities"), csilE0 -> decTrustedIdentity(csilE0));
+        return new TrustedIdentities(identities);
+    }
+
+    public static byte[] encodeTrustedIdentities(TrustedIdentities v) {
+        return encode(encTrustedIdentities(v));
+    }
+
+    public static TrustedIdentities decodeTrustedIdentities(byte[] data) {
+        return decTrustedIdentities(decode(data));
+    }
+
+    static CborValue encTrustIdentityRequest(TrustIdentityRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("identity"), new CborText(v.identity())));
+        return new CborMap(csilEntries);
+    }
+
+    static TrustIdentityRequest decTrustIdentityRequest(CborValue csilRoot) {
+        String identity = asText(require(csilRoot, "identity"));
+        return new TrustIdentityRequest(identity);
+    }
+
+    public static byte[] encodeTrustIdentityRequest(TrustIdentityRequest v) {
+        return encode(encTrustIdentityRequest(v));
+    }
+
+    public static TrustIdentityRequest decodeTrustIdentityRequest(byte[] data) {
+        return decTrustIdentityRequest(decode(data));
+    }
+
+    static CborValue encRevokeTrustedIdentityRequest(RevokeTrustedIdentityRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("identity"), new CborText(v.identity())));
+        return new CborMap(csilEntries);
+    }
+
+    static RevokeTrustedIdentityRequest decRevokeTrustedIdentityRequest(CborValue csilRoot) {
+        String identity = asText(require(csilRoot, "identity"));
+        return new RevokeTrustedIdentityRequest(identity);
+    }
+
+    public static byte[] encodeRevokeTrustedIdentityRequest(RevokeTrustedIdentityRequest v) {
+        return encode(encRevokeTrustedIdentityRequest(v));
+    }
+
+    public static RevokeTrustedIdentityRequest decodeRevokeTrustedIdentityRequest(byte[] data) {
+        return decRevokeTrustedIdentityRequest(decode(data));
+    }
+
     static CborValue encDeviceInfo(DeviceInfo v) {
         List<CborEntry> csilEntries = new ArrayList<>(6);
         csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));

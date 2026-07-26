@@ -1411,6 +1411,7 @@ dependencies = [
  "hickory-resolver",
  "http-body-util",
  "ichoi-decoder",
+ "ipnet",
  "libichoi",
  "liblinkkeys",
  "libloading",

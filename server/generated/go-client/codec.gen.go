@@ -5157,6 +5157,196 @@ func DecodeTrustedDomains(csilData []byte) (TrustedDomains, error) {
 	return csilDecTrustedDomains(csilRoot)
 }
 
+// csilEncTrustedIdentity builds the canonical CBOR value tree for a TrustedIdentity.
+func csilEncTrustedIdentity(csilV TrustedIdentity) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("domain"), cborText(csilV.Domain)})
+	if csilV.Handle != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("handle"), cborText((*csilV.Handle))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("source"), cborText(csilV.Source)})
+	csilEntries = append(csilEntries, cborEntry{cborText("created_at"), csilEncTimestamp(csilV.CreatedAt)})
+	return csilEntries
+}
+
+// csilDecTrustedIdentity reconstructs a TrustedIdentity from a decoded CBOR value tree.
+func csilDecTrustedIdentity(csilRoot cborValue) (TrustedIdentity, error) {
+	var csilOut TrustedIdentity
+	{
+		csilField, csilErr := cborRequire(csilRoot, "domain")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Domain = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "handle"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Handle = &csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "source")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Source = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "created_at")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (csilAsTimestamp)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CreatedAt = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeTrustedIdentity encodes a TrustedIdentity to canonical CSIL CBOR bytes.
+func EncodeTrustedIdentity(csilV TrustedIdentity) []byte {
+	return cborEncode(csilEncTrustedIdentity(csilV))
+}
+
+// DecodeTrustedIdentity decodes canonical CSIL CBOR bytes into a TrustedIdentity.
+func DecodeTrustedIdentity(csilData []byte) (TrustedIdentity, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero TrustedIdentity
+		return csilZero, csilErr
+	}
+	return csilDecTrustedIdentity(csilRoot)
+}
+
+// csilEncTrustedIdentities builds the canonical CBOR value tree for a TrustedIdentities.
+func csilEncTrustedIdentities(csilV TrustedIdentities) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("identities"), cborEncArray(csilV.Identities, func(csilElem TrustedIdentity) cborValue { return csilEncTrustedIdentity(csilElem) })})
+	return csilEntries
+}
+
+// csilDecTrustedIdentities reconstructs a TrustedIdentities from a decoded CBOR value tree.
+func csilDecTrustedIdentities(csilRoot cborValue) (TrustedIdentities, error) {
+	var csilOut TrustedIdentities
+	{
+		csilField, csilErr := cborRequire(csilRoot, "identities")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TrustedIdentity, error) { return cborDecArray(csilV, csilDecTrustedIdentity) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Identities = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeTrustedIdentities encodes a TrustedIdentities to canonical CSIL CBOR bytes.
+func EncodeTrustedIdentities(csilV TrustedIdentities) []byte {
+	return cborEncode(csilEncTrustedIdentities(csilV))
+}
+
+// DecodeTrustedIdentities decodes canonical CSIL CBOR bytes into a TrustedIdentities.
+func DecodeTrustedIdentities(csilData []byte) (TrustedIdentities, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero TrustedIdentities
+		return csilZero, csilErr
+	}
+	return csilDecTrustedIdentities(csilRoot)
+}
+
+// csilEncTrustIdentityRequest builds the canonical CBOR value tree for a TrustIdentityRequest.
+func csilEncTrustIdentityRequest(csilV TrustIdentityRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("identity"), cborText(csilV.Identity)})
+	return csilEntries
+}
+
+// csilDecTrustIdentityRequest reconstructs a TrustIdentityRequest from a decoded CBOR value tree.
+func csilDecTrustIdentityRequest(csilRoot cborValue) (TrustIdentityRequest, error) {
+	var csilOut TrustIdentityRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "identity")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Identity = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeTrustIdentityRequest encodes a TrustIdentityRequest to canonical CSIL CBOR bytes.
+func EncodeTrustIdentityRequest(csilV TrustIdentityRequest) []byte {
+	return cborEncode(csilEncTrustIdentityRequest(csilV))
+}
+
+// DecodeTrustIdentityRequest decodes canonical CSIL CBOR bytes into a TrustIdentityRequest.
+func DecodeTrustIdentityRequest(csilData []byte) (TrustIdentityRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero TrustIdentityRequest
+		return csilZero, csilErr
+	}
+	return csilDecTrustIdentityRequest(csilRoot)
+}
+
+// csilEncRevokeTrustedIdentityRequest builds the canonical CBOR value tree for a RevokeTrustedIdentityRequest.
+func csilEncRevokeTrustedIdentityRequest(csilV RevokeTrustedIdentityRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("identity"), cborText(csilV.Identity)})
+	return csilEntries
+}
+
+// csilDecRevokeTrustedIdentityRequest reconstructs a RevokeTrustedIdentityRequest from a decoded CBOR value tree.
+func csilDecRevokeTrustedIdentityRequest(csilRoot cborValue) (RevokeTrustedIdentityRequest, error) {
+	var csilOut RevokeTrustedIdentityRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "identity")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Identity = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeRevokeTrustedIdentityRequest encodes a RevokeTrustedIdentityRequest to canonical CSIL CBOR bytes.
+func EncodeRevokeTrustedIdentityRequest(csilV RevokeTrustedIdentityRequest) []byte {
+	return cborEncode(csilEncRevokeTrustedIdentityRequest(csilV))
+}
+
+// DecodeRevokeTrustedIdentityRequest decodes canonical CSIL CBOR bytes into a RevokeTrustedIdentityRequest.
+func DecodeRevokeTrustedIdentityRequest(csilData []byte) (RevokeTrustedIdentityRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero RevokeTrustedIdentityRequest
+		return csilZero, csilErr
+	}
+	return csilDecRevokeTrustedIdentityRequest(csilRoot)
+}
+
 // csilEncDeviceInfo builds the canonical CBOR value tree for a DeviceInfo.
 func csilEncDeviceInfo(csilV DeviceInfo) cborValue {
 	csilEntries := make(cborMap, 0, 6)

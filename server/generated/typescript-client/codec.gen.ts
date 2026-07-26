@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, GroupInfo, Handle, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustedDomains, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, GroupInfo, Handle, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -2156,6 +2156,92 @@ export function toTrustedDomainsCbor(v: TrustedDomains): Uint8Array {
 
 export function fromTrustedDomainsCbor(bytes: Uint8Array): TrustedDomains {
   return fromTrustedDomainsCborValue(decode(bytes));
+}
+
+export function toTrustedIdentityCborValue(v: TrustedIdentity): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("domain", v.domain);
+  if (v.handle !== undefined) csilMap.set("handle", v.handle);
+  csilMap.set("source", v.source);
+  csilMap.set("created_at", { tag: 0, value: csilTsToText(v.createdAt) });
+  return csilMap;
+}
+
+export function fromTrustedIdentityCborValue(value: CborValue): TrustedIdentity {
+  return {
+    domain: asString(requireKey(value, "domain")),
+    handle: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "handle")),
+    source: asString(requireKey(value, "source")),
+    createdAt: asTimestamp(requireKey(value, "created_at")),
+  };
+}
+
+export function toTrustedIdentityCbor(v: TrustedIdentity): Uint8Array {
+  return encodeValue(toTrustedIdentityCborValue(v));
+}
+
+export function fromTrustedIdentityCbor(bytes: Uint8Array): TrustedIdentity {
+  return fromTrustedIdentityCborValue(decode(bytes));
+}
+
+export function toTrustedIdentitiesCborValue(v: TrustedIdentities): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("identities", v.identities.map((csilE): CborValue => toTrustedIdentityCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromTrustedIdentitiesCborValue(value: CborValue): TrustedIdentities {
+  return {
+    identities: asArray(requireKey(value, "identities")).map((csilE) => fromTrustedIdentityCborValue(csilE)),
+  };
+}
+
+export function toTrustedIdentitiesCbor(v: TrustedIdentities): Uint8Array {
+  return encodeValue(toTrustedIdentitiesCborValue(v));
+}
+
+export function fromTrustedIdentitiesCbor(bytes: Uint8Array): TrustedIdentities {
+  return fromTrustedIdentitiesCborValue(decode(bytes));
+}
+
+export function toTrustIdentityRequestCborValue(v: TrustIdentityRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("identity", v.identity);
+  return csilMap;
+}
+
+export function fromTrustIdentityRequestCborValue(value: CborValue): TrustIdentityRequest {
+  return {
+    identity: asString(requireKey(value, "identity")),
+  };
+}
+
+export function toTrustIdentityRequestCbor(v: TrustIdentityRequest): Uint8Array {
+  return encodeValue(toTrustIdentityRequestCborValue(v));
+}
+
+export function fromTrustIdentityRequestCbor(bytes: Uint8Array): TrustIdentityRequest {
+  return fromTrustIdentityRequestCborValue(decode(bytes));
+}
+
+export function toRevokeTrustedIdentityRequestCborValue(v: RevokeTrustedIdentityRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("identity", v.identity);
+  return csilMap;
+}
+
+export function fromRevokeTrustedIdentityRequestCborValue(value: CborValue): RevokeTrustedIdentityRequest {
+  return {
+    identity: asString(requireKey(value, "identity")),
+  };
+}
+
+export function toRevokeTrustedIdentityRequestCbor(v: RevokeTrustedIdentityRequest): Uint8Array {
+  return encodeValue(toRevokeTrustedIdentityRequestCborValue(v));
+}
+
+export function fromRevokeTrustedIdentityRequestCbor(bytes: Uint8Array): RevokeTrustedIdentityRequest {
+  return fromRevokeTrustedIdentityRequestCborValue(decode(bytes));
 }
 
 export function toDeviceInfoCborValue(v: DeviceInfo): CborValue {

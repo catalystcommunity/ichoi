@@ -517,6 +517,25 @@ TrustDomainRequest = Data.define(:domain)
 # domains [Array<String>]
 TrustedDomains = Data.define(:domains)
 
+# domain [String]
+# handle [String]
+# source [String]
+# created_at [Time]
+TrustedIdentity = Data.define(:domain, :handle, :source, :created_at) do
+  def initialize(domain:, source:, created_at:, handle: nil)
+    super
+  end
+end
+
+# identities [Array<TrustedIdentity>]
+TrustedIdentities = Data.define(:identities)
+
+# identity [String]
+TrustIdentityRequest = Data.define(:identity)
+
+# identity [String]
+RevokeTrustedIdentityRequest = Data.define(:identity)
+
 # NodeKind is an alias for String.
 
 # AudioOutputsState is an alias for String.

@@ -157,23 +157,16 @@ pub fn initialize_database(pool: &SqlitePool, config: &Config) -> anyhow::Result
     if !config.linkkeys_local_rp && !config.linkkeys_rp {
         return Ok(());
     }
-    if config.linkkeys_trusted_identities.is_empty() {
-        anyhow::bail!("LinkKeys login requires ICHOI_LINKKEYS_TRUSTED_IDENTITIES");
-    }
-
     let mut conn = pool.get()?;
+    let mut configured_identities = Vec::new();
     for configured in &config.linkkeys_trusted_identities {
         let selector = parse_selector(configured)?;
-        store::add_linkkeys_trust(
-            &mut conn,
-            &selector.domain,
-            selector.handle.as_deref(),
-            "config",
-        )?;
+        configured_identities.push((selector.domain.clone(), selector.handle.clone()));
         if selector.handle.is_none() {
             store::add_trusted_domain(&mut conn, &selector.domain)?;
         }
     }
+    store::replace_configured_linkkeys_trust(&mut conn, &configured_identities)?;
     if !config.linkkeys_local_rp {
         return Ok(());
     }

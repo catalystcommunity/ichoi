@@ -196,6 +196,21 @@ public struct AdminClient {
         return try TrustedDomains.fromCbor(csilResp)
     }
 
+    public func listTrustedIdentities(_ request: Page) throws -> TrustedIdentities {
+        let csilResp = try transport.call(service: "AdminService", op: "list-trusted-identities", request: request.toCbor())
+        return try TrustedIdentities.fromCbor(csilResp)
+    }
+
+    public func trustIdentity(_ request: TrustIdentityRequest) throws -> TrustedIdentities {
+        let csilResp = try transport.call(service: "AdminService", op: "trust-identity", request: request.toCbor())
+        return try TrustedIdentities.fromCbor(csilResp)
+    }
+
+    public func revokeTrustedIdentity(_ request: RevokeTrustedIdentityRequest) throws -> TrustedIdentities {
+        let csilResp = try transport.call(service: "AdminService", op: "revoke-trusted-identity", request: request.toCbor())
+        return try TrustedIdentities.fromCbor(csilResp)
+    }
+
     public func listNodes(_ request: Page) throws -> ListNodesResponse {
         let csilResp = try transport.call(service: "AdminService", op: "list-nodes", request: request.toCbor())
         return try ListNodesResponse.fromCbor(csilResp)

@@ -189,18 +189,54 @@ pub fn add_linkkeys_trust(
     Ok(())
 }
 
+pub fn replace_configured_linkkeys_trust(
+    conn: &mut SqliteConnection,
+    identities: &[(String, Option<String>)],
+) -> QueryResult<()> {
+    conn.transaction(|conn| {
+        diesel::delete(
+            linkkeys_trusted_identities::table
+                .filter(linkkeys_trusted_identities::source.eq("config")),
+        )
+        .execute(conn)?;
+        for (domain, handle) in identities {
+            add_linkkeys_trust(conn, domain, handle.as_deref(), "config")?;
+        }
+        Ok(())
+    })
+}
+
+pub fn list_linkkeys_trust(
+    conn: &mut SqliteConnection,
+) -> QueryResult<Vec<LinkkeysTrustedIdentity>> {
+    linkkeys_trusted_identities::table
+        .order((
+            linkkeys_trusted_identities::domain.asc(),
+            linkkeys_trusted_identities::handle.asc(),
+        ))
+        .select(LinkkeysTrustedIdentity::as_select())
+        .load(conn)
+}
+
+pub fn remove_linkkeys_trust(
+    conn: &mut SqliteConnection,
+    domain: &str,
+    handle: Option<&str>,
+) -> QueryResult<usize> {
+    diesel::delete(
+        linkkeys_trusted_identities::table
+            .filter(linkkeys_trusted_identities::domain.eq(domain))
+            .filter(linkkeys_trusted_identities::handle.eq(handle.unwrap_or_default()))
+            .filter(linkkeys_trusted_identities::source.ne("config")),
+    )
+    .execute(conn)
+}
+
 pub fn linkkeys_identity_is_trusted(
     conn: &mut SqliteConnection,
     domain: &str,
     handle: Option<&str>,
 ) -> QueryResult<bool> {
-    let legacy_domain_count: i64 = trusted_domains::table
-        .filter(trusted_domains::domain.eq(domain))
-        .count()
-        .get_result(conn)?;
-    if legacy_domain_count > 0 {
-        return Ok(true);
-    }
     let handle = handle.unwrap_or_default();
     let count: i64 = linkkeys_trusted_identities::table
         .filter(linkkeys_trusted_identities::domain.eq(domain))

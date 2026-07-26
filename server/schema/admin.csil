@@ -7,6 +7,15 @@ SetRoleRequest       = { account_id: AccountId, role: Role }
 
 TrustDomainRequest = { domain: text }
 TrustedDomains     = { domains: [* text] }
+TrustedIdentity = {
+    domain: text,
+    ? handle: text,
+    source: text,
+    created_at: timestamp
+}
+TrustedIdentities = { identities: [* TrustedIdentity] }
+TrustIdentityRequest = { identity: text }
+RevokeTrustedIdentityRequest = { identity: text }
 
 NodeKind          = "core" / "satellite" / "client"
 AudioOutputsState = "none" / "some"      ;; "none" = scratch container, no audio (§6.1)
@@ -79,6 +88,9 @@ service AdminService {
     set-role: SetRoleRequest -> Account / ServiceError,
     trust-domain: TrustDomainRequest -> TrustedDomains / ServiceError,
     list-trusted-domains: Page -> TrustedDomains / ServiceError,
+    list-trusted-identities: Page -> TrustedIdentities / ServiceError,
+    trust-identity: TrustIdentityRequest -> TrustedIdentities / ServiceError,
+    revoke-trusted-identity: RevokeTrustedIdentityRequest -> TrustedIdentities / ServiceError,
     list-nodes: Page -> ListNodesResponse / ServiceError,
     rename-node: RenameNodeRequest -> NodeInfo / ServiceError,
     rename-device: RenameDeviceRequest -> DeviceInfo / ServiceError,

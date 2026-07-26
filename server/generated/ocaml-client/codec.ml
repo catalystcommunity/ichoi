@@ -742,6 +742,41 @@ and encode_trusted_domains (v : trusted_domains) : Cbor.t =
          Some (Cbor.Text "domains", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.domains)));
        ])
 
+and encode_trusted_identity (v : trusted_identity) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "domain", (Cbor.Text v.domain));
+         (match v.handle with Some csil_x -> Some (Cbor.Text "handle", (Cbor.Text csil_x)) | None -> None);
+         Some (Cbor.Text "source", (Cbor.Text v.source));
+         Some (Cbor.Text "created_at", (Cbor.Tag (0, Cbor.Text v.created_at)));
+       ])
+
+and encode_trusted_identities (v : trusted_identities) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "identities", (Cbor.Array (List.map (fun csil_e -> (encode_trusted_identity csil_e)) v.identities)));
+       ])
+
+and encode_trust_identity_request (v : trust_identity_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "identity", (Cbor.Text v.identity));
+       ])
+
+and encode_revoke_trusted_identity_request (v : revoke_trusted_identity_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "identity", (Cbor.Text v.identity));
+       ])
+
 and encode_node_kind (v : node_kind) : Cbor.t =
   match v with Core -> Cbor.Text "core" | Satellite -> Cbor.Text "satellite" | Client -> Cbor.Text "client"
 
@@ -2059,6 +2094,61 @@ and decode_trusted_domains (csil_c : Cbor.t) : trusted_domains =
       }
   | _ -> failwith "csilgen: expected map for trusted_domains"
 
+and decode_trusted_identity (csil_c : Cbor.t) : trusted_identity =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        domain = (Cbor.to_text (csil_req "domain"));
+        handle = (match csil_field "handle" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        source = (Cbor.to_text (csil_req "source"));
+        created_at = (match (csil_req "created_at") with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp");
+      }
+  | _ -> failwith "csilgen: expected map for trusted_identity"
+
+and decode_trusted_identities (csil_c : Cbor.t) : trusted_identities =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        identities = (match (csil_req "identities") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_trusted_identity csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for trusted_identities"
+
+and decode_trust_identity_request (csil_c : Cbor.t) : trust_identity_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        identity = (Cbor.to_text (csil_req "identity"));
+      }
+  | _ -> failwith "csilgen: expected map for trust_identity_request"
+
+and decode_revoke_trusted_identity_request (csil_c : Cbor.t) : revoke_trusted_identity_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        identity = (Cbor.to_text (csil_req "identity"));
+      }
+  | _ -> failwith "csilgen: expected map for revoke_trusted_identity_request"
+
 and decode_node_kind (csil_c : Cbor.t) : node_kind =
   match Cbor.to_text csil_c with "core" -> Core | "satellite" -> Satellite | "client" -> Client | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
 
@@ -2708,6 +2798,22 @@ let decode_trust_domain_request_bytes (b : bytes) : trust_domain_request =
 let encode_trusted_domains_bytes (v : trusted_domains) : bytes = Cbor.encode (encode_trusted_domains v)
 let decode_trusted_domains_bytes (b : bytes) : trusted_domains =
   match Cbor.decode b with Ok c -> decode_trusted_domains c | Error e -> failwith e
+
+let encode_trusted_identity_bytes (v : trusted_identity) : bytes = Cbor.encode (encode_trusted_identity v)
+let decode_trusted_identity_bytes (b : bytes) : trusted_identity =
+  match Cbor.decode b with Ok c -> decode_trusted_identity c | Error e -> failwith e
+
+let encode_trusted_identities_bytes (v : trusted_identities) : bytes = Cbor.encode (encode_trusted_identities v)
+let decode_trusted_identities_bytes (b : bytes) : trusted_identities =
+  match Cbor.decode b with Ok c -> decode_trusted_identities c | Error e -> failwith e
+
+let encode_trust_identity_request_bytes (v : trust_identity_request) : bytes = Cbor.encode (encode_trust_identity_request v)
+let decode_trust_identity_request_bytes (b : bytes) : trust_identity_request =
+  match Cbor.decode b with Ok c -> decode_trust_identity_request c | Error e -> failwith e
+
+let encode_revoke_trusted_identity_request_bytes (v : revoke_trusted_identity_request) : bytes = Cbor.encode (encode_revoke_trusted_identity_request v)
+let decode_revoke_trusted_identity_request_bytes (b : bytes) : revoke_trusted_identity_request =
+  match Cbor.decode b with Ok c -> decode_revoke_trusted_identity_request c | Error e -> failwith e
 
 let encode_node_kind_bytes (v : node_kind) : bytes = Cbor.encode (encode_node_kind v)
 let decode_node_kind_bytes (b : bytes) : node_kind =

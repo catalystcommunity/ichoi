@@ -67,15 +67,11 @@ fn enabled_app() -> App {
 }
 
 #[test]
-fn regular_rp_requires_complete_configuration_and_excludes_local_mode() {
+fn regular_rp_requires_complete_configuration_with_optional_initial_trust() {
     let mut config = common::test_config();
     config.linkkeys_rp = true;
-    assert!(ichoi::app::validate_runtime_config(&config)
-        .unwrap_err()
-        .to_string()
-        .contains("ICHOI_LINKKEYS_TRUSTED_IDENTITIES"));
+    assert!(ichoi::app::validate_runtime_config(&config).is_err());
 
-    config.linkkeys_trusted_identities = vec!["family.example".to_string()];
     config.linkkeys_rp_addr = Some("rp.example:4987".to_string());
     config.linkkeys_rp_fingerprints = vec!["a".repeat(64)];
     config.linkkeys_rp_api_key = Some("test-api-key".to_string());
@@ -156,6 +152,7 @@ async fn regular_rp_browser_flow_is_mocked_single_use_and_mints_session() {
         .authenticate(
             &Ctx {
                 identity: Identity::Anonymous,
+                allow_guest: false,
             },
             AuthRequest {
                 linkkeys_assertion: None,

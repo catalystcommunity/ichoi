@@ -167,6 +167,7 @@ pub enum Identity {
 #[derive(Debug, Clone)]
 pub struct Ctx {
     pub identity: Identity,
+    pub allow_guest: bool,
 }
 
 /// The application: shared state behind every handler.
@@ -321,6 +322,15 @@ fn map_account(a: models::Account) -> Account {
         display_name: a.display_name,
         role: to_role(&a.role),
         created_at: parse_dt(&a.created_at),
+    }
+}
+
+fn map_trusted_identity(row: models::LinkkeysTrustedIdentity) -> TrustedIdentity {
+    TrustedIdentity {
+        domain: row.domain,
+        handle: (!row.handle.is_empty()).then_some(row.handle),
+        source: row.source,
+        created_at: parse_dt(&row.created_at),
     }
 }
 
@@ -1484,6 +1494,76 @@ impl AdminService for App {
         std::result::Result::Ok(TrustedDomains {
             domains: db(store::list_trusted_domains(&mut conn))?,
         })
+    }
+
+    fn list_trusted_identities(
+        &self,
+        ctx: &Ctx,
+        _input: Page,
+    ) -> Result<TrustedIdentities, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        Ok(TrustedIdentities {
+            identities: db(store::list_linkkeys_trust(&mut conn))?
+                .into_iter()
+                .map(map_trusted_identity)
+                .collect(),
+        })
+    }
+
+    fn trust_identity(
+        &self,
+        ctx: &Ctx,
+        input: TrustIdentityRequest,
+    ) -> Result<TrustedIdentities, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        let selector = crate::auth::local_rp::parse_selector(&input.identity)
+            .map_err(|error| err(400, error.to_string()))?;
+        db(store::add_linkkeys_trust(
+            &mut conn,
+            &selector.domain,
+            selector.handle.as_deref(),
+            "admin",
+        ))?;
+        drop(conn);
+        self.list_trusted_identities(
+            ctx,
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+    }
+
+    fn revoke_trusted_identity(
+        &self,
+        ctx: &Ctx,
+        input: RevokeTrustedIdentityRequest,
+    ) -> Result<TrustedIdentities, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        let selector = crate::auth::local_rp::parse_selector(&input.identity)
+            .map_err(|error| err(400, error.to_string()))?;
+        let removed = db(store::remove_linkkeys_trust(
+            &mut conn,
+            &selector.domain,
+            selector.handle.as_deref(),
+        ))?;
+        if removed == 0 {
+            return Err(err(
+                409,
+                "configured identities must be removed from ICHOI_LINKKEYS_TRUSTED_IDENTITIES",
+            ));
+        }
+        drop(conn);
+        self.list_trusted_identities(
+            ctx,
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
     }
 
     fn list_nodes(&self, ctx: &Ctx, _input: Page) -> Result<ListNodesResponse, ServiceError> {

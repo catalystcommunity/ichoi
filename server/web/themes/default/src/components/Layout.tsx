@@ -14,7 +14,7 @@ import { A, useLocation, useNavigate } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { EmptyState } from "./common.tsx";
-import { ServerSwitcher } from "./ServerSwitcher.tsx";
+import { AuthArea, ServerSwitcher } from "./ServerSwitcher.tsx";
 import { Transport } from "./Transport.tsx";
 import {
   IconJukebox,
@@ -44,6 +44,16 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const satelliteMode = Boolean(satelliteToken());
   const satelliteNav = NAV.filter((item) => item.href !== "/jukebox" && item.href !== "/settings");
   const [updating, setUpdating] = createSignal(false);
+  const [access] = createResource(async () => {
+    const response = await fetch("/api/auth", { cache: "no-store" });
+    if (!response.ok) return { guest_allowed: true };
+    return await response.json() as { guest_allowed?: boolean };
+  });
+  const signInRequired = () =>
+    !satelliteMode &&
+    access()?.guest_allowed === false &&
+    (!servers.active()?.session ||
+      servers.active()?.session?.account_id === "__guest__");
   const updateListener = () => setUpdating(true);
   window.addEventListener("ichoi:update-reloading", updateListener);
   onCleanup(() => window.removeEventListener("ichoi:update-reloading", updateListener));
@@ -144,7 +154,20 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
             </div>
           )}
         >
-          {props.children}
+          <Show
+            when={!signInRequired()}
+            fallback={
+              <div class="page auth-required">
+                <EmptyState title={t("auth.required")} hint={t("auth.requiredHint")}>
+                  <div style={{ "max-width": "320px", margin: "18px auto 0" }}>
+                    <AuthArea />
+                  </div>
+                </EmptyState>
+              </div>
+            }
+          >
+            {props.children}
+          </Show>
         </ErrorBoundary>
       </main>
 
