@@ -8,31 +8,19 @@ import {
   type JSX,
 } from "solid-js";
 import { useNavigate } from "@solidjs/router";
-import type { Album, Library } from "../lib/schema.ts";
+import type { Artist } from "../lib/schema.ts";
 import type { ServerApi } from "../lib/services.ts";
 import { useI18n } from "../lib/i18n.tsx";
-import { CoverArt } from "./CoverArt.tsx";
 import { EmptyState, Spinner } from "./common.tsx";
-import { AlbumTile } from "./AlbumTile.tsx";
 
 const PAGE_SIZE = 100;
 const MIN_CARD_WIDTH = 168;
 const COLUMN_GAP = 20;
 const ROW_GAP = 22;
-const CARD_TEXT_HEIGHT = 92;
+const CARD_HEIGHT = 260;
 const OVERSCAN_ROWS = 3;
-const LIST_ROW_HEIGHT = 76;
 
-type AlbumSort = "title" | "artist" | "year" | "tracks";
-
-export function VirtualAlbumGrid(props: {
-  api: ServerApi;
-  view?: "grid" | "list";
-  query?: string;
-  sort?: AlbumSort;
-  library?: Library;
-  detailPath?: "album" | "audiobook";
-}): JSX.Element {
+export function VirtualArtistGrid(props: { api: ServerApi }): JSX.Element {
   const { t } = useI18n();
   const navigate = useNavigate();
   let host!: HTMLDivElement;
@@ -40,56 +28,18 @@ export function VirtualAlbumGrid(props: {
   let resizeObserver: ResizeObserver | undefined;
   let generation = 0;
 
-  const pages = new Map<number, Album[]>();
+  const pages = new Map<number, Artist[]>();
   const inflight = new Map<number, Promise<void>>();
   const [revision, setRevision] = createSignal(0);
   const [total, setTotal] = createSignal(0);
   const [initialLoading, setInitialLoading] = createSignal(true);
   const [loadError, setLoadError] = createSignal<string>();
   const [columns, setColumns] = createSignal(1);
-  const [rowHeight, setRowHeight] = createSignal(MIN_CARD_WIDTH + CARD_TEXT_HEIGHT + ROW_GAP);
+  const [rowHeight, setRowHeight] = createSignal(CARD_HEIGHT + ROW_GAP);
   const [viewportTop, setViewportTop] = createSignal(0);
   const [viewportHeight, setViewportHeight] = createSignal(800);
-  const allAlbums = createMemo(() => {
-    revision();
-    if (pages.size < Math.ceil(total() / PAGE_SIZE)) return undefined;
-    return Array.from({ length: total() }, (_, index) => albumAt(index)).filter(
-      (album): album is Album => album !== undefined,
-    );
-  });
-  const listAlbums = createMemo(() => {
-    const albums = allAlbums();
-    if (!albums) return undefined;
-    const query = props.query?.trim().toLocaleLowerCase() ?? "";
-    const filtered = query
-      ? albums.filter((album) =>
-          [album.title, album.artist_name, album.year?.toString()]
-            .filter(Boolean)
-            .some((value) => value!.toLocaleLowerCase().includes(query)),
-        )
-      : [...albums];
-    const sort = props.sort ?? "title";
-    filtered.sort((left, right) => {
-      if (sort === "artist") {
-        return (left.artist_name ?? "").localeCompare(right.artist_name ?? "")
-          || left.title.localeCompare(right.title);
-      }
-      if (sort === "year") {
-        return (left.year ?? Number.MAX_SAFE_INTEGER) - (right.year ?? Number.MAX_SAFE_INTEGER)
-          || left.title.localeCompare(right.title);
-      }
-      if (sort === "tracks") {
-        return right.track_count - left.track_count || left.title.localeCompare(right.title);
-      }
-      return left.title.localeCompare(right.title);
-    });
-    return filtered;
-  });
-  const displayTotal = createMemo(() =>
-    props.view === "list" ? (listAlbums()?.length ?? total()) : total(),
-  );
 
-  const totalRows = createMemo(() => Math.ceil(displayTotal() / columns()));
+  const totalRows = createMemo(() => Math.ceil(total() / columns()));
   const visibleRows = createMemo(() => {
     const height = rowHeight();
     const first = Math.max(0, Math.floor(viewportTop() / height) - OVERSCAN_ROWS);
@@ -102,7 +52,7 @@ export function VirtualAlbumGrid(props: {
   const visibleIndexes = createMemo(() => {
     const rows = visibleRows();
     const start = rows.first * columns();
-    const end = Math.min(displayTotal(), rows.last * columns());
+    const end = Math.min(total(), rows.last * columns());
     return Array.from({ length: Math.max(0, end - start) }, (_, index) => start + index);
   });
 
@@ -116,17 +66,11 @@ export function VirtualAlbumGrid(props: {
 
   function updateLayout(): void {
     if (!host) return;
-    if (props.view === "list") {
-      setColumns(1);
-      setRowHeight(LIST_ROW_HEIGHT);
-      updateViewport();
-      return;
-    }
     const width = host.clientWidth;
     const nextColumns = Math.max(1, Math.floor((width + COLUMN_GAP) / (MIN_CARD_WIDTH + COLUMN_GAP)));
     const cardWidth = (width - COLUMN_GAP * (nextColumns - 1)) / nextColumns;
     setColumns(nextColumns);
-    setRowHeight(cardWidth + CARD_TEXT_HEIGHT + ROW_GAP);
+    setRowHeight(cardWidth + 92 + ROW_GAP);
     updateViewport();
   }
 
@@ -149,13 +93,9 @@ export function VirtualAlbumGrid(props: {
     });
   }
 
-  function albumAt(index: number): Album | undefined {
+  function artistAt(index: number): Artist | undefined {
     revision();
     return pages.get(Math.floor(index / PAGE_SIZE))?.[index % PAGE_SIZE];
-  }
-
-  function displayedAlbumAt(index: number): Album | undefined {
-    return props.view === "list" ? listAlbums()?.[index] : albumAt(index);
   }
 
   function loadPage(page: number, activeGeneration: number): Promise<void> {
@@ -164,20 +104,19 @@ export function VirtualAlbumGrid(props: {
     if (existing) return existing;
     const request = (async () => {
       try {
-        const response = await props.api.library.listAlbums({
-          library: props.library,
+        const response = await props.api.library.listArtists({
           offset: page * PAGE_SIZE,
           limit: PAGE_SIZE,
         });
         if (activeGeneration !== generation) return;
-        pages.set(page, response.albums);
+        pages.set(page, response.artists);
         setTotal(response.total);
         setLoadError(undefined);
         setRevision((value) => value + 1);
       } catch (error) {
         if (activeGeneration === generation) {
           if (page === 0) setLoadError(String(error));
-          else console.warn(`[library] album page ${page} failed`, error);
+          else console.warn(`[library] artist page ${page} failed`, error);
         }
       } finally {
         inflight.delete(page);
@@ -200,9 +139,7 @@ export function VirtualAlbumGrid(props: {
 
   createEffect(() => {
     const api = props.api;
-    const library = props.library;
     void api;
-    void library;
     generation += 1;
     const activeGeneration = generation;
     pages.clear();
@@ -215,14 +152,12 @@ export function VirtualAlbumGrid(props: {
   });
 
   createEffect(() => {
-    props.view;
     const indexes = visibleIndexes();
     if (indexes.length === 0) return;
     const firstPage = Math.floor(indexes[0]! / PAGE_SIZE);
     const lastPage = Math.floor(indexes[indexes.length - 1]! / PAGE_SIZE);
     const activeGeneration = generation;
     for (let page = firstPage; page <= lastPage; page += 1) void loadPage(page, activeGeneration);
-    updateLayout();
   });
 
   onCleanup(() => {
@@ -234,68 +169,50 @@ export function VirtualAlbumGrid(props: {
   return (
     <Show when={!initialLoading()} fallback={<Spinner label={t("library.loading")} />}>
       <Show when={!loadError()} fallback={<EmptyState title={t("errors.generic")} hint={loadError()} />}>
-        <Show when={displayTotal() > 0} fallback={<EmptyState title={t("library.noAlbums")} />}>
+        <Show when={total() > 0} fallback={<EmptyState title={t("library.noArtists")} />}>
           <div
             ref={mountHost}
-            class={`virtual-album-grid ${props.view === "list" ? "album-list" : ""}`}
-            style={{
-              height: `${Math.max(
-                0,
-                totalRows() * rowHeight() - (props.view === "list" ? 8 : ROW_GAP),
-              )}px`,
-            }}
+            class="virtual-album-grid"
+            style={{ height: `${Math.max(0, totalRows() * rowHeight() - ROW_GAP)}px` }}
           >
             <div
               class="virtual-album-window"
               style={{
                 top: `${visibleRows().first * rowHeight()}px`,
                 "grid-template-columns": `repeat(${columns()}, minmax(0, 1fr))`,
-                "grid-auto-rows": `${rowHeight() - (props.view === "list" ? 8 : ROW_GAP)}px`,
+                "grid-auto-rows": `${rowHeight() - ROW_GAP}px`,
               }}
             >
               <For each={visibleIndexes()}>
                 {(index) => (
                   <Show
-                    when={displayedAlbumAt(index)}
+                    when={artistAt(index)}
                     fallback={
-                      <div
-                        class={props.view === "list"
-                          ? "album-list-row virtual-album-placeholder"
-                          : "tile virtual-album-placeholder"}
-                        aria-hidden="true"
-                      >
-                        <span class={props.view === "list" ? "album-list-cover" : "cover"} />
+                      <div class="tile virtual-album-placeholder" aria-hidden="true">
+                        <span class="cover" />
                         <span class="tile-sub">{t("library.loading")}</span>
                       </div>
                     }
                   >
-                    {(album) => (
-                      <Show
-                        when={props.view === "list"}
-                        fallback={
-                          <AlbumTile
-                            album={album()}
-                            href={`/${props.detailPath ?? "album"}/${encodeURIComponent(album().id)}`}
-                          />
-                        }
+                    {(artist) => (
+                      <button
+                        type="button"
+                        class="tile"
+                        onClick={() => navigate(`/artist/${encodeURIComponent(artist().id)}`)}
+                        aria-label={artist().name}
                       >
-                          <button
-                            type="button"
-                            class="album-list-row"
-                            onClick={() =>
-                              navigate(`/${props.detailPath ?? "album"}/${encodeURIComponent(album().id)}`)
-                            }
-                            aria-label={`${album().title}${album().artist_name ? `, ${album().artist_name}` : ""}`}
-                          >
-                            <span class="album-list-cover"><CoverArt album={album()} /></span>
-                            <span class="album-list-title">{album().title}</span>
-                            <span class="album-list-artist">{album().artist_name ?? "Various"}</span>
-                            <span class="album-list-year">{album().year ?? "—"}</span>
-                            <span class="album-list-tracks">
-                              {t("library.tracksCount", { count: album().track_count })}
-                            </span>
-                          </button>
-                      </Show>
+                        <span class="cover">
+                          <span class="cover-fallback">
+                            {artist().name.charAt(0).toUpperCase()}
+                          </span>
+                        </span>
+                        <span>
+                          <span class="tile-title">{artist().name}</span>
+                          <span class="tile-sub">
+                            {t("library.albumsCount", { count: artist().album_count })}
+                          </span>
+                        </span>
+                      </button>
                     )}
                   </Show>
                 )}

@@ -1,25 +1,24 @@
-import { createResource, createSignal, For, Match, Show, Switch, type JSX } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { createSignal, Show, type JSX } from "solid-js";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { VirtualAlbumGrid } from "../components/VirtualAlbumGrid.tsx";
-import { EmptyState, Spinner } from "../components/common.tsx";
+import { VirtualArtistGrid } from "../components/VirtualArtistGrid.tsx";
+import { EmptyState } from "../components/common.tsx";
 
 type Tab = "albums" | "artists";
+type AlbumView = "grid" | "list";
+type AlbumSort = "title" | "artist" | "year" | "tracks";
 
 export function LibraryPage(): JSX.Element {
   const servers = useServers();
   const { t } = useI18n();
-  const navigate = useNavigate();
   const [tab, setTab] = createSignal<Tab>("albums");
-
-  const [artists] = createResource(
-    () => (tab() === "artists" ? servers.api() : undefined),
-    (api) => api!.library.listArtists({ limit: 200 }),
-  );
+  const [albumView, setAlbumView] = createSignal<AlbumView>("grid");
+  const [albumQuery, setAlbumQuery] = createSignal("");
+  const [albumSort, setAlbumSort] = createSignal<AlbumSort>("title");
 
   return (
-    <div class="page">
+    <div class="page catalog-page">
       <header class="page-head">
         <div class="eyebrow">{t("nav.library")}</div>
         <div class="row spread">
@@ -35,47 +34,66 @@ export function LibraryPage(): JSX.Element {
         </div>
       </header>
 
-      <Show when={servers.api()} fallback={<EmptyState title={t("errors.connectFirst")} />}>
-        <Switch>
-          <Match when={tab() === "albums"}>
-            <Show when={servers.api()}>{(api) => <VirtualAlbumGrid api={api()} />}</Show>
-          </Match>
-
-          <Match when={tab() === "artists"}>
-            <Show when={!artists.loading} fallback={<Spinner label={t("library.loading")} />}>
-              <Show
-                when={(artists()?.artists.length ?? 0) > 0}
-                fallback={<EmptyState title={t("library.noArtists")} />}
-              >
-                <div class="grid">
-                  <For each={artists()!.artists}>
-                    {(artist) => (
-                      <button
-                        type="button"
-                        class="tile"
-                        onClick={() => navigate(`/artist/${encodeURIComponent(artist.id)}`)}
-                        aria-label={artist.name}
-                      >
-                        <span class="cover">
-                          <span class="cover-fallback">
-                            {artist.name.charAt(0).toUpperCase()}
-                          </span>
-                        </span>
-                        <span>
-                          <span class="tile-title">{artist.name}</span>
-                          <span class="tile-sub">
-                            {t("library.albumsCount", { count: artist.album_count })}
-                          </span>
-                        </span>
-                      </button>
-                    )}
-                  </For>
+      <div class="catalog-body">
+        <Show when={servers.api()} fallback={<EmptyState title={t("errors.connectFirst")} />}>
+          {(api) => (
+            <>
+              <div class="catalog-pane" hidden={tab() !== "albums"}>
+                <div class="library-view-controls">
+                  <div class="segmented" role="group" aria-label={t("library.view")}>
+                    <button
+                      aria-pressed={albumView() === "grid"}
+                      onClick={() => setAlbumView("grid")}
+                    >
+                      {t("library.grid")}
+                    </button>
+                    <button
+                      aria-pressed={albumView() === "list"}
+                      onClick={() => setAlbumView("list")}
+                    >
+                      {t("library.list")}
+                    </button>
+                  </div>
+                  <Show when={albumView() === "list"}>
+                    <input
+                      class="input library-filter"
+                      type="search"
+                      value={albumQuery()}
+                      placeholder={t("library.filterAlbums")}
+                      aria-label={t("library.filterAlbums")}
+                      onInput={(event) => setAlbumQuery(event.currentTarget.value)}
+                    />
+                    <select
+                      class="select library-sort"
+                      value={albumSort()}
+                      aria-label={t("library.sortAlbums")}
+                      onChange={(event) => setAlbumSort(event.currentTarget.value as AlbumSort)}
+                    >
+                      <option value="title">{t("library.sortTitle")}</option>
+                      <option value="artist">{t("library.sortArtist")}</option>
+                      <option value="year">{t("library.sortYear")}</option>
+                      <option value="tracks">{t("library.sortTracks")}</option>
+                    </select>
+                  </Show>
                 </div>
-              </Show>
-            </Show>
-          </Match>
-        </Switch>
-      </Show>
+                <div class="catalog-scroll">
+                  <VirtualAlbumGrid
+                    api={api()}
+                    view={albumView()}
+                    query={albumQuery()}
+                    sort={albumSort()}
+                  />
+                </div>
+              </div>
+              <div class="catalog-pane" hidden={tab() !== "artists"}>
+                <div class="catalog-scroll">
+                  <VirtualArtistGrid api={api()} />
+                </div>
+              </div>
+            </>
+          )}
+        </Show>
+      </div>
     </div>
   );
 }
