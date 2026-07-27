@@ -3,6 +3,7 @@
 // tinted plate when there is no art (or no connection).
 import { createResource, createSignal, onCleanup, Show, type JSX } from "solid-js";
 import type { Album } from "../lib/schema.ts";
+import { cachedCover } from "../lib/cover-art-cache.ts";
 import { useServers } from "../stores/servers.tsx";
 
 interface Props {
@@ -14,17 +15,18 @@ interface Props {
 export function CoverArt(props: Props): JSX.Element {
   const servers = useServers();
   const [url, setUrl] = createSignal<string>();
+  let disposed = false;
 
   const [data] = createResource(
-    () => (props.album.has_cover_art ? { id: props.album.id, api: servers.api() } : null),
+    () =>
+      props.album.has_cover_art
+        ? { id: props.album.id, maxSize: props.maxSize ?? 512, api: servers.api() }
+        : null,
     async (input) => {
       if (!input?.api) return undefined;
       try {
-        const art = await input.api.library.getCoverArt({
-          album_id: input.id,
-          max_size: props.maxSize ?? 512,
-        });
-        const blob = new Blob([art.data as BlobPart], { type: art.content_type });
+        const blob = await cachedCover(input.api, input.id, input.maxSize);
+        if (disposed) return undefined;
         const objUrl = URL.createObjectURL(blob);
         setUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
@@ -38,6 +40,7 @@ export function CoverArt(props: Props): JSX.Element {
   );
 
   onCleanup(() => {
+    disposed = true;
     const u = url();
     if (u) URL.revokeObjectURL(u);
   });

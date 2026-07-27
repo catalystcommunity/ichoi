@@ -443,6 +443,16 @@ fn looks_like_compilation_folder(title: &str) -> bool {
         })
 }
 
+fn compilation_folder_album(library_id: &str, track_path: &str) -> Option<(String, String)> {
+    let (folder_rel, folder_title) = folder_of(track_path);
+    looks_like_compilation_folder(&folder_title).then(|| {
+        (
+            id_of(&["folderalbum", library_id, &folder_rel]),
+            folder_title,
+        )
+    })
+}
+
 /// `(parent_folder_relpath, folder_display_name)` for a root-relative track path.
 fn folder_of(rel: &str) -> (String, String) {
     let parent = Path::new(rel)
@@ -616,6 +626,8 @@ fn index_file(
         .flat
         .then(|| flattened_subfolder_album(&rel, subfolders.words))
         .flatten();
+    let (folder_rel, folder_title) = folder_of(&rel);
+    let compilation_folder = compilation_folder_album(library_id, &rel);
     let mut track_title = m.title.clone();
     let mut disc_no = m.disc_no;
 
@@ -635,6 +647,8 @@ fn index_file(
                 flat.album_title,
                 None,
             )
+        } else if let Some((album_id, album_title)) = compilation_folder {
+            (album_id, album_title, None)
         } else if m.album_tagged {
             let aa_key = canonical_artist(&m.album_artist);
             let a_key = {
@@ -662,7 +676,6 @@ fn index_file(
             };
             (album_id, m.album.clone(), Some(aa_id))
         } else {
-            let (folder_rel, folder_title) = folder_of(&rel);
             (
                 id_of(&["folderalbum", library_id, &folder_rel]),
                 folder_title,
@@ -1058,8 +1071,8 @@ pub fn extract_embedded_cover(path: &Path) -> Option<(String, Vec<u8>)> {
 #[cfg(test)]
 mod tests {
     use super::{
-        consolidate_dump_folders, flattened_subfolder_album, id_of, is_disc_subfolder,
-        looks_like_compilation_folder, AlbumSubfolderOptions,
+        compilation_folder_album, consolidate_dump_folders, flattened_subfolder_album, id_of,
+        is_disc_subfolder, looks_like_compilation_folder, AlbumSubfolderOptions,
     };
     use crate::db::{self, models, store};
 
@@ -1094,6 +1107,24 @@ mod tests {
             Some(10_000)
         );
         assert!(flattened_subfolder_album("CD1/track.mp3", &words()).is_none());
+    }
+
+    #[test]
+    fn compilation_folder_wins_during_initial_indexing() {
+        let path =
+            "Dance Hits/100 Greatest Dance Hits of the 90s/Haddaway - What Is Love (1993).mp3";
+        let (album_id, title) = compilation_folder_album("lib:music", path).unwrap();
+
+        assert_eq!(title, "100 Greatest Dance Hits of the 90s");
+        assert_eq!(
+            album_id,
+            id_of(&[
+                "folderalbum",
+                "lib:music",
+                "Dance Hits/100 Greatest Dance Hits of the 90s",
+            ])
+        );
+        assert!(compilation_folder_album("lib:music", "Artist/Ordinary Album/Track.mp3").is_none());
     }
 
     #[test]
