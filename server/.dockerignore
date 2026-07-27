@@ -1,7 +1,8 @@
 # Build-context hygiene for the server/ image build (context = server/).
 #
 # The Dockerfile builds from server/ and COPYs only specific paths
-# (Cargo.toml, Cargo.lock, crates/, schema/, generated/, migrations/, web/themes/).
+# (Cargo.toml, Cargo.lock, crates/, schema/, generated/, migrations/, version/,
+# and web/themes/).
 # buildkit otherwise tars the ENTIRE clone as context on every build — including
 # .git and build output — which bloats the transfer and invalidates the cache.
 # Exclude everything no COPY references; this only shrinks the context, it never
@@ -25,7 +26,6 @@ dist
 .reactorcide
 deploy
 docs
-version
 scratch
 .claude
 .codex
