@@ -495,6 +495,13 @@ pub fn set_album_artist(conn: &mut SqliteConnection, id: &str, artist_id: &str) 
     Ok(())
 }
 
+pub fn clear_album_artist(conn: &mut SqliteConnection, id: &str) -> QueryResult<()> {
+    diesel::update(albums::table.find(id))
+        .set(albums::artist_id.eq::<Option<&str>>(None))
+        .execute(conn)?;
+    Ok(())
+}
+
 pub fn get_album(conn: &mut SqliteConnection, id: &str) -> QueryResult<Option<Album>> {
     albums::table
         .find(id)
@@ -509,10 +516,15 @@ pub fn list_artists(
     offset: i64,
     limit: i64,
 ) -> QueryResult<Vec<Artist>> {
-    let artist_ids = tracks::table
+    let album_ids = tracks::table
         .filter(tracks::library_id.eq(library_id))
-        .filter(tracks::artist_id.is_not_null())
-        .select(tracks::artist_id.assume_not_null())
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct();
+    let artist_ids = albums::table
+        .filter(albums::id.eq_any(album_ids))
+        .filter(albums::artist_id.is_not_null())
+        .select(albums::artist_id.assume_not_null())
         .distinct();
     artists::table
         .filter(artists::id.eq_any(artist_ids))
@@ -524,10 +536,15 @@ pub fn list_artists(
 }
 
 pub fn count_artists(conn: &mut SqliteConnection, library_id: &str) -> QueryResult<i64> {
-    let ids: Vec<String> = tracks::table
+    let album_ids = tracks::table
         .filter(tracks::library_id.eq(library_id))
-        .filter(tracks::artist_id.is_not_null())
-        .select(tracks::artist_id.assume_not_null())
+        .filter(tracks::album_id.is_not_null())
+        .select(tracks::album_id.assume_not_null())
+        .distinct();
+    let ids: Vec<String> = albums::table
+        .filter(albums::id.eq_any(album_ids))
+        .filter(albums::artist_id.is_not_null())
+        .select(albums::artist_id.assume_not_null())
         .distinct()
         .load(conn)?;
     Ok(ids.len() as i64)

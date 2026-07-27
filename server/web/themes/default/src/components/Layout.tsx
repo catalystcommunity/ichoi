@@ -20,6 +20,7 @@ import { VersionFooter } from "./VersionFooter.tsx";
 import {
   IconJukebox,
   IconBook,
+  IconBroadcast,
   IconLibrary,
   IconNowPlaying,
   IconPlaylist,
@@ -37,13 +38,17 @@ const NAV = [
   { href: "/settings", key: "nav.settings", icon: IconSettings },
 ] as const;
 
+const SATELLITE_NAV = [
+  ...NAV.filter((item) => item.href !== "/jukebox" && item.href !== "/settings"),
+  { href: "/satellite", key: "nav.satellite", icon: IconBroadcast },
+] as const;
+
 export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const { t } = useI18n();
   const servers = useServers();
   const location = useLocation();
   const navigate = useNavigate();
   const satelliteMode = Boolean(satelliteToken());
-  const satelliteNav = NAV.filter((item) => item.href !== "/jukebox" && item.href !== "/settings");
   const [updating, setUpdating] = createSignal(false);
   const [access] = createResource(async () => {
     const response = await fetch("/api/auth", { cache: "no-store" });
@@ -99,7 +104,7 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
         </div>
 
         <ul class="nav" role="list">
-          <For each={satelliteMode ? satelliteNav : NAV}>
+          <For each={satelliteMode ? SATELLITE_NAV : NAV}>
             {(item) => (
               <>
                 <li>
@@ -136,40 +141,42 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
       </nav>
 
       <main class="main" id="main-content" tabindex="-1">
-        <ErrorBoundary
-          fallback={(err, reset) => (
-            <div class="page">
-              <EmptyState title={t("errors.generic")} hint={String(err?.message ?? err)}>
-                <button
-                  type="button"
-                  class="btn btn-primary"
-                  onClick={() => {
-                    const id = servers.activeId();
-                    if (id) void servers.reconnect(id);
-                    reset();
-                  }}
-                >
-                  {t("errors.retry")}
-                </button>
-              </EmptyState>
-            </div>
-          )}
-        >
-          <Show
-            when={!signInRequired()}
-            fallback={
-              <div class="page auth-required">
-                <EmptyState title={t("auth.required")} hint={t("auth.requiredHint")}>
-                  <div style={{ "max-width": "320px", margin: "18px auto 0" }}>
-                    <AuthArea />
-                  </div>
+        <div class="main-route">
+          <ErrorBoundary
+            fallback={(err, reset) => (
+              <div class="page">
+                <EmptyState title={t("errors.generic")} hint={String(err?.message ?? err)}>
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    onClick={() => {
+                      const id = servers.activeId();
+                      if (id) void servers.reconnect(id);
+                      reset();
+                    }}
+                  >
+                    {t("errors.retry")}
+                  </button>
                 </EmptyState>
               </div>
-            }
+            )}
           >
-            {props.children}
-          </Show>
-        </ErrorBoundary>
+            <Show
+              when={!signInRequired()}
+              fallback={
+                <div class="page auth-required">
+                  <EmptyState title={t("auth.required")} hint={t("auth.requiredHint")}>
+                    <div style={{ "max-width": "320px", margin: "18px auto 0" }}>
+                      <AuthArea />
+                    </div>
+                  </EmptyState>
+                </div>
+              }
+            >
+              {props.children}
+            </Show>
+          </ErrorBoundary>
+        </div>
         <VersionFooter />
       </main>
 
