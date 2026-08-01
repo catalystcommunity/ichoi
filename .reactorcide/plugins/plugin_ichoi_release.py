@@ -42,6 +42,12 @@ SEMVER_TAGS_URL = (
 )
 AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
 
+# The runner image ships build-essential, pkg-config and a rust toolchain, but no musl C
+# compiler. cc-rs needs one to build the bundled SQLite for the amd64 musl target, and the
+# release fails at the first `cargo build --target x86_64-unknown-linux-musl` without it.
+# The aarch64 compiler is a separate download, because no Debian package provides it.
+BUILD_PACKAGES = ("musl-tools",)
+
 # Both release targets (DESIGN Sec.12); arm64 (Raspberry Pi satellites) is first-class.
 ARCHITECTURES = (("amd64", "x86_64-unknown-linux-musl"), ("arm64", "aarch64-unknown-linux-musl"))
 
@@ -410,6 +416,15 @@ def _push_version_bump(code_dir: Path, releases: List[Release]) -> bool:
 # --------------------------------------------------------------------------- release artifacts
 
 
+def _apt_install(packages: Iterable[str], cwd: Path) -> None:
+    """Install the build packages this job adds to the image."""
+    _run(["sudo", "apt-get", "update"], cwd=cwd)
+    _run(
+        ["sudo", "apt-get", "install", "-y", "--no-install-recommends", *packages],
+        cwd=cwd,
+    )
+
+
 def _rust_environment() -> Dict[str, str]:
     environment = _sanitized_environment()
     home = Path(environment.get("HOME") or "/home/runner")
@@ -455,6 +470,7 @@ def _build_artifacts(code_dir: Path, release: Release, out_dir: Path) -> List[Pa
         )
         return []
 
+    _apt_install(BUILD_PACKAGES, code_dir)
     environment = _rust_environment()
     _install_aarch64_musl_cross(environment, code_dir)
     server_dir = code_dir / "server"

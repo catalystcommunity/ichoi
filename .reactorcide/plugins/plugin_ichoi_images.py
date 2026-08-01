@@ -201,8 +201,25 @@ def build_test(code_dir: Path) -> None:
     log_stdout("=== Server build test passed ===")
 
 
+def external_image(internal: str) -> Optional[str]:
+    """Return the external image repository, or None when there is nothing extra to push.
+
+    The external registry is optional. It is also skipped when it resolves to the image the
+    internal push already covered: `containers.catalystsquad.com` and `10.16.0.1:5000` are
+    two addresses for one registry, so a second push there re-exports the same digest under
+    the same name and reports a success that proves nothing.
+    """
+    host = os.environ.get("REGISTRY_EXTERNAL", "").strip()
+    path = os.environ.get("REGISTRY_EXTERNAL_PATH", "").strip()
+    if not host or not path:
+        return None
+
+    external = f"{host}/{path}"
+    return None if external == internal else external
+
+
 def build_and_deploy(code_dir: Path) -> None:
-    """Build the multi-arch image and push it to both registries."""
+    """Build the multi-arch image and push it to the registries."""
     server_dir = code_dir / "server"
     version = (server_dir / "version" / "VERSION.txt").read_text().strip()
     log_stdout(f"Building version: {version}")
@@ -213,7 +230,7 @@ def build_and_deploy(code_dir: Path) -> None:
     _write_registry_auth(environment)
 
     internal = f"{_required('REGISTRY_INTERNAL')}/{_required('REGISTRY_INTERNAL_PATH')}"
-    external = f"{_required('REGISTRY_EXTERNAL')}/{_required('REGISTRY_EXTERNAL_PATH')}"
+    external = external_image(internal)
 
     log_stdout(f"=== Building and pushing to the internal registry ({PLATFORMS}) ===")
     _buildctl_build(
@@ -222,25 +239,30 @@ def build_and_deploy(code_dir: Path) -> None:
         f'type=image,"name={internal}:{version},{internal}:latest",push=true',
     )
 
-    log_stdout("=== Pushing to the external registry (best effort) ===")
-    pushed = _buildctl_build(
-        server_dir,
-        environment,
-        f'type=image,"name={external}:{version},{external}:latest",push=true',
-        check=False,
-    )
-    log_stdout(
-        "External push succeeded"
-        if pushed
-        else "WARNING: the external registry push failed (not fatal)"
-    )
+    # A separate build for the external registry, rather than more names on the one above,
+    # so a registry that is down cannot fail a release the internal push already landed.
+    if external is None:
+        log_stdout("No distinct external registry is configured; the one push covers it.")
+    else:
+        log_stdout("=== Pushing to the external registry (best effort) ===")
+        pushed = _buildctl_build(
+            server_dir,
+            environment,
+            f'type=image,"name={external}:{version},{external}:latest",push=true',
+            check=False,
+        )
+        log_stdout(
+            "External push succeeded"
+            if pushed
+            else "WARNING: the external registry push failed (not fatal)"
+        )
 
     log_stdout(
         "=== Server image build complete ===\n"
         f"Version: {version}\n"
         f"Platforms: {PLATFORMS}\n"
-        f"Internal: {internal}:{version}\n"
-        f"External: {external}:{version}"
+        f"Internal: {internal}:{version}"
+        + (f"\nExternal: {external}:{version}" if external else "")
     )
 
 
