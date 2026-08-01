@@ -15,6 +15,7 @@ import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { EmptyState } from "./common.tsx";
 import { AuthArea, ServerSwitcher } from "./ServerSwitcher.tsx";
+import { SatelliteAudioBlocked } from "./AudioBlocked.tsx";
 import { Transport } from "./Transport.tsx";
 import { VersionFooter } from "./VersionFooter.tsx";
 import {
@@ -181,6 +182,9 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
       </main>
 
       <Transport />
+      <Show when={satelliteMode}>
+        <SatelliteAudioBlocked />
+      </Show>
       <Show when={updating()}>
         <div class="update-reload" role="status" aria-live="assertive">
           Updating Ichoi and restoring this satellite…

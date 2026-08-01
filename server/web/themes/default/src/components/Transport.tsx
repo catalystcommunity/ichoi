@@ -15,11 +15,17 @@ import {
   IconShuffle,
 } from "./Icons.tsx";
 import { satelliteToken } from "../lib/satellite-mode.ts";
+import { isInstalledPwa } from "../lib/audio-unlock.ts";
+import { TargetAudioBlocked } from "./AudioBlocked.tsx";
 
 export function Transport(): JSX.Element {
   const pb = usePlayback();
   const { t } = useI18n();
   const satelliteMode = Boolean(satelliteToken());
+  // An installed PWA is exempt from the browser's autoplay block, and the first gesture
+  // anywhere unlocks a plain tab, so the manual button is only worth its space in a tab.
+  const showUnlockButton = satelliteMode && !isInstalledPwa();
+  const [blockedTarget, setBlockedTarget] = createSignal<string>();
 
   const track = () => pb.current();
   const targetLabel = () => {
@@ -112,11 +118,22 @@ export function Transport(): JSX.Element {
               class="transport-target"
               aria-label={t("player.target")}
               value={pb.target()}
-              onChange={(e) => pb.setTarget(e.currentTarget.value)}
+              onChange={(e) => {
+                const id = e.currentTarget.value;
+                pb.setTarget(id);
+                // Say so up front when the chosen output is a satellite that cannot make
+                // sound yet — the queue would fill and nothing would come out of it.
+                const picked = pb.sharedTargets().find((p) => p.id === id);
+                if (picked?.audio_blocked) setBlockedTarget(picked.name);
+              }}
             >
               <option value="local">{t("player.thisDevice")}</option>
               <For each={pb.sharedTargets()}>
-                {(p) => <option value={p.id}>{p.name}</option>}
+                {(p) => (
+                  <option value={p.id}>
+                    {p.audio_blocked ? `${p.name} — ${t("jukebox.blocked")}` : p.name}
+                  </option>
+                )}
               </For>
             </select>
           </Show>
@@ -213,19 +230,21 @@ export function Transport(): JSX.Element {
       </div>
 
       <div class="transport-right">
-        <Show when={satelliteMode}>
+        <Show when={showUnlockButton}>
           <button
             type="button"
             class="btn btn-ghost"
             onClick={() => void pb.enableOutputAudio().catch((error) => console.error(error))}
           >
-            {pb.outputAudioReady() ? "Audio enabled" : "Enable audio"}
+            {pb.outputAudioReady() ? t("player.audioEnabled") : t("player.enableAudio")}
           </button>
         </Show>
         <Show when={track()}>
           <span class="badge">{isPlaying() ? t("jukebox.onAir") : t("jukebox.idle")}</span>
         </Show>
       </div>
+
+      <TargetAudioBlocked name={blockedTarget()} onClose={() => setBlockedTarget(undefined)} />
     </footer>
   );
 }

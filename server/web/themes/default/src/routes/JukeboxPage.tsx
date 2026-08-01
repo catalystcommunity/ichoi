@@ -16,6 +16,7 @@ import type { Player, PlayerCommand, PlayerState } from "../lib/schema.ts";
 import { CsilServiceError } from "../lib/csil.ts";
 import { EmptyState, Spinner } from "../components/common.tsx";
 import { Dialog } from "../components/Dialog.tsx";
+import { TargetAudioBlocked } from "../components/AudioBlocked.tsx";
 import { formatDuration } from "../lib/format.ts";
 import {
   IconBroadcast,
@@ -167,6 +168,7 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
   const pb = usePlayback();
   const { t } = useI18n();
   const [state, setState] = createSignal<PlayerState>();
+  const [blockedName, setBlockedName] = createSignal<string>();
 
   const isOutput = () => pb.owned().includes(props.player.id);
 
@@ -190,6 +192,11 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
   const send = async (command: PlayerCommand) => {
     const a = servers.api();
     if (!a) return;
+    // Starting a blocked satellite looks like nothing happening at all, so say what is wrong.
+    // The command still goes through: it plays as soon as somebody touches the satellite.
+    if (props.player.audio_blocked && command.op === "play") {
+      setBlockedName(props.player.name);
+    }
     try {
       const next = await a.player.control({ player_id: props.player.id, command });
       setState(next);
@@ -203,7 +210,11 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
       <div class="strip-top">
         <div>
           <div class="strip-name">{props.player.name}</div>
-          <div class="strip-where">{t("jukebox.shared")}</div>
+          <div class="strip-where">
+            <Show when={props.player.audio_blocked} fallback={t("jukebox.shared")}>
+              {t("jukebox.blocked")}
+            </Show>
+          </div>
         </div>
         <span class="on-air-lamp">
           <span class="lamp" aria-hidden="true" />
@@ -286,6 +297,8 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
           </button>
         </Show>
       </div>
+
+      <TargetAudioBlocked name={blockedName()} onClose={() => setBlockedName(undefined)} />
     </section>
   );
 }

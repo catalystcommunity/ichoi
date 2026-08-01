@@ -2427,7 +2427,7 @@ func DecodeCoverArt(csilData []byte) (CoverArt, error) {
 
 // csilEncPlayer builds the canonical CBOR value tree for a Player.
 func csilEncPlayer(csilV Player) cborValue {
-	csilEntries := make(cborMap, 0, 6)
+	csilEntries := make(cborMap, 0, 7)
 	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText(csilV.Kind)})
 	csilEntries = append(csilEntries, cborEntry{cborText("name"), cborText(csilV.Name)})
@@ -2439,6 +2439,9 @@ func csilEncPlayer(csilV Player) cborValue {
 	}
 	if csilV.DeviceId != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("device_id"), cborText((*csilV.DeviceId))})
+	}
+	if csilV.AudioBlocked != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("audio_blocked"), cborBool((*csilV.AudioBlocked))})
 	}
 	return csilEntries
 }
@@ -2525,6 +2528,13 @@ func csilDecPlayer(csilRoot cborValue) (Player, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Owner = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "audio_blocked"); csilOk {
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AudioBlocked = &csilVal
 	}
 	return csilOut, nil
 }
@@ -4791,11 +4801,14 @@ func DecodeDirVolume(csilData []byte) (DirVolume, error) {
 
 // csilEncNodeReport builds the canonical CBOR value tree for a NodeReport.
 func csilEncNodeReport(csilV NodeReport) cborValue {
-	csilEntries := make(cborMap, 0, 3)
+	csilEntries := make(cborMap, 0, 4)
 	csilEntries = append(csilEntries, cborEntry{cborText("status"), cborText(csilV.Status)})
 	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
 	if csilV.PositionMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint((*csilV.PositionMs))})
+	}
+	if csilV.AudioBlocked != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("audio_blocked"), cborBool((*csilV.AudioBlocked))})
 	}
 	return csilEntries
 }
@@ -4848,6 +4861,13 @@ func csilDecNodeReport(csilRoot cborValue) (NodeReport, error) {
 			return csilOut, csilErr
 		}
 		csilOut.PositionMs = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "audio_blocked"); csilOk {
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AudioBlocked = &csilVal
 	}
 	return csilOut, nil
 }

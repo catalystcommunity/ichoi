@@ -1,0 +1,15 @@
+name: Ichoi Release Tag
+description: "Calculate the next version per target, tag it, and publish the GitHub release."
+
+# semver-tags tags each independently versioned top-level directory as "<target>/vX.Y.Z" and
+# stamps that target's version/VERSION.txt. The version-bump push to main is what starts the
+# deploy workflow, so the two are chained through the version file rather than through a tag.
+on:
+  events:
+    - pull_request_merged
+  branches:
+    - main
+
+jobs:
+  ichoi-release:
+    job_file: release.yaml

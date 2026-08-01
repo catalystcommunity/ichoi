@@ -167,6 +167,89 @@ fn satellite_defaults_flow_to_new_outputs_and_groups_filter_players() {
 }
 
 #[test]
+fn a_satellite_that_cannot_make_sound_says_so_to_every_controller() {
+    let (app, _pool) = common::test_app();
+    let token = app
+        .create_node_token(
+            &common::ctx_anon(),
+            CreateNodeTokenRequest {
+                label: Some("Kitchen Chromebook".into()),
+                default_enabled: true,
+                default_group_ids: vec!["everyone".into()],
+            },
+        )
+        .unwrap();
+    let node_ctx = common::ctx_node(&token.satellite.id);
+    let registered = app
+        .register(
+            &node_ctx,
+            RegisterNodeRequest {
+                hostname: "chromebook-pwa".into(),
+                platform: "chromeos".into(),
+                arch: "x86_64".into(),
+                outputs: vec![AudioOutput {
+                    os_device_id: "default".into(),
+                    friendly_name: Some("HDMI".into()),
+                    channels: 2,
+                    sample_rates: vec![48_000],
+                    is_default: true,
+                }],
+            },
+        )
+        .unwrap();
+    let player_id = registered.players[0].id.clone();
+    let (tx, _rx) = tokio::sync::mpsc::unbounded_channel();
+    app.nodes.subscribe(player_id.clone(), 42, tx);
+
+    let blocked_for_controller = || {
+        app.list_players(
+            &common::ctx_anon(),
+            ListPlayersRequest {
+                kind: Some(PlayerKind::Shared),
+            },
+        )
+        .unwrap()
+        .players
+        .into_iter()
+        .find(|player| player.id == player_id)
+        .expect("the registered output is listed")
+        .audio_blocked
+    };
+
+    assert_eq!(
+        blocked_for_controller(),
+        None,
+        "an output that has not reported is not accused of being blocked"
+    );
+
+    // The browser satellite loads, finds the autoplay policy against it, and says so.
+    app.session(
+        &node_ctx,
+        NodeReport {
+            player_id: player_id.clone(),
+            status: PlayerStatus::Stopped,
+            position_ms: None,
+            audio_blocked: Some(true),
+        },
+    )
+    .unwrap();
+    assert_eq!(blocked_for_controller(), Some(true));
+
+    // Somebody touches the satellite; its next report clears the warning everywhere.
+    app.session(
+        &node_ctx,
+        NodeReport {
+            player_id: player_id.clone(),
+            status: PlayerStatus::Playing,
+            position_ms: Some(1_000),
+            audio_blocked: Some(false),
+        },
+    )
+    .unwrap();
+    assert_eq!(blocked_for_controller(), None);
+}
+
+#[test]
 fn satellite_is_a_named_session_confined_to_its_own_player_and_queue() {
     let (app, pool) = common::test_app();
     let kitchen = app

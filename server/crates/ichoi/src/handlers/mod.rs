@@ -112,6 +112,48 @@ impl NodeHub {
     }
 }
 
+/// Whether a live output can actually make sound right now (§6.4). A browser satellite is
+/// registered, listed and controllable long before its autoplay policy lets it play, so it
+/// reports `audio_blocked` and controllers can warn instead of sending music into silence.
+/// A native node never reports it.
+///
+/// Keyed by player id, and read only for players the `NodeHub` reports as present. A
+/// satellite that disappears is dropped from the listing entirely, so an entry left behind
+/// by a closed socket is never shown; the satellite reports its state again on reconnect.
+#[derive(Clone, Default)]
+pub struct OutputHealth {
+    inner: Arc<Mutex<HashMap<String, bool>>>,
+}
+
+impl OutputHealth {
+    pub fn new() -> OutputHealth {
+        OutputHealth::default()
+    }
+
+    pub fn set_blocked(&self, player_id: &str, blocked: bool) {
+        if let Ok(mut map) = self.inner.lock() {
+            if blocked {
+                map.insert(player_id.to_string(), true);
+            } else {
+                map.remove(player_id);
+            }
+        }
+    }
+
+    pub fn is_blocked(&self, player_id: &str) -> bool {
+        self.inner
+            .lock()
+            .ok()
+            .is_some_and(|map| map.get(player_id).copied().unwrap_or(false))
+    }
+
+    pub fn clear(&self, player_id: &str) {
+        if let Ok(mut map) = self.inner.lock() {
+            map.remove(player_id);
+        }
+    }
+}
+
 /// Live output presence (§6): which connections are acting as the OUTPUT (speaker) for a
 /// shared device. A shared device is "live" — listed and controllable — only while at least
 /// one connection owns its output. This reconciles the persisted device rows against the
@@ -178,6 +220,7 @@ pub struct App {
     pub subs: SubHub,
     pub presence: Presence,
     pub nodes: NodeHub,
+    pub output_health: OutputHealth,
     pub scan_running: Arc<AtomicBool>,
     pub local_rp: Option<crate::auth::local_rp::DynBackend>,
     pub regular_rp: Option<crate::auth::regular_rp::DynBackend>,
@@ -207,6 +250,7 @@ impl App {
             subs: SubHub::new(),
             presence: Presence::new(),
             nodes: NodeHub::new(),
+            output_health: OutputHealth::new(),
             scan_running: Arc::new(AtomicBool::new(false)),
             local_rp,
             regular_rp,
@@ -942,6 +986,10 @@ impl App {
                 .unwrap_or(100),
         };
         db(store::upsert_state(&mut conn, &row))?;
+        // Every report carries the node's current ability to make sound, so this tracks the
+        // live value rather than only the moment it changes.
+        self.output_health
+            .set_blocked(&report.player_id, report.audio_blocked.unwrap_or(false));
         let state = self.load_player_state(&mut conn, &report.player_id)?;
         self.subs.publish(
             &report.player_id,
@@ -1000,6 +1048,7 @@ impl PlayerService for App {
                 self.presence.is_present(&p.id)
             })
             .map(|p| Player {
+                audio_blocked: self.output_health.is_blocked(&p.id).then_some(true),
                 id: p.id,
                 kind: if p.kind == "private" {
                     PlayerKind::Private
@@ -1130,6 +1179,7 @@ impl PlayerService for App {
             if existing.owner_account_id == owner {
                 return std::result::Result::Ok(ShareResult {
                     player: Player {
+                        audio_blocked: self.output_health.is_blocked(&existing.id).then_some(true),
                         id: existing.id,
                         kind: PlayerKind::Shared,
                         name: existing.name,
@@ -1161,6 +1211,8 @@ impl PlayerService for App {
                 node_id: None,
                 device_id: None,
                 owner,
+                // A device created by this call has not reported yet.
+                audio_blocked: None,
             },
         })
     }
@@ -1409,6 +1461,9 @@ impl NodeService for App {
                 name_suffix: None,
             };
             db(store::create_player(&mut conn, &player))?;
+            // Registration starts a fresh node session, so anything the previous one reported
+            // about this output is stale. The new session reports its own state.
+            self.output_health.clear(&player.id);
             players.push(Player {
                 id: player.id,
                 kind: PlayerKind::Shared,
@@ -1416,6 +1471,7 @@ impl NodeService for App {
                 node_id: Some(node_id.clone()),
                 device_id: Some(dev.id),
                 owner: None,
+                audio_blocked: None,
             });
         }
 
@@ -1681,6 +1737,7 @@ impl AdminService for App {
             if let Some(player) = db(store::player_for_device(&mut conn, &input.device_id))? {
                 self.subs.drop_player(&player.id);
                 self.nodes.drop_player(&player.id);
+                self.output_health.clear(&player.id);
             }
         }
         Ok(DeviceInfo {

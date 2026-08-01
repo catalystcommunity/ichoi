@@ -330,7 +330,9 @@ data class Player(
     val nodeId: NodeId? = null,
     // wire key: device_id
     val deviceId: DeviceId? = null,
-    val owner: AccountId? = null
+    val owner: AccountId? = null,
+    // wire key: audio_blocked
+    val audioBlocked: Boolean? = false
 )
 
 /** QueueItem record. */
@@ -688,7 +690,9 @@ data class NodeReport(
     val playerId: PlayerId,
     val status: PlayerStatus,
     // wire key: position_ms
-    val positionMs: ULong? = null
+    val positionMs: ULong? = null,
+    // wire key: audio_blocked
+    val audioBlocked: Boolean? = false
 )
 
 /** Account record. */

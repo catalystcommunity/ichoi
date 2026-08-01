@@ -181,6 +181,9 @@ fn report_frame(player_id: &str, status: PlayerStatus, position_ms: Option<u64>)
         player_id: player_id.to_string(),
         status,
         position_ms,
+        // A native satellite owns its sound device outright; nothing can gate it the way a
+        // browser autoplay policy gates the PWA satellite.
+        audio_blocked: None,
     };
     event_frame(Some("node"), "session", None, encode_node_report(&report))
 }

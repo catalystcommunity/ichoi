@@ -331,6 +331,7 @@ and encode_player (v : player) : Cbor.t =
          (match v.owner with Some csil_x -> Some (Cbor.Text "owner", (Cbor.Text csil_x)) | None -> None);
          (match v.node_id with Some csil_x -> Some (Cbor.Text "node_id", (Cbor.Text csil_x)) | None -> None);
          (match v.device_id with Some csil_x -> Some (Cbor.Text "device_id", (Cbor.Text csil_x)) | None -> None);
+         (match v.audio_blocked with Some csil_x -> Some (Cbor.Text "audio_blocked", (Cbor.Bool csil_x)) | None -> None);
        ])
 
 and encode_queue_item (v : queue_item) : Cbor.t =
@@ -695,6 +696,7 @@ and encode_node_report (v : node_report) : Cbor.t =
          Some (Cbor.Text "status", (encode_player_status v.status));
          Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
          (match v.position_ms with Some csil_x -> Some (Cbor.Text "position_ms", (Cbor.int64 csil_x)) | None -> None);
+         (match v.audio_blocked with Some csil_x -> Some (Cbor.Text "audio_blocked", (Cbor.Bool csil_x)) | None -> None);
        ])
 
 and encode_account (v : account) : Cbor.t =
@@ -1464,6 +1466,7 @@ and decode_player (csil_c : Cbor.t) : player =
         owner = (match csil_field "owner" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         node_id = (match csil_field "node_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         device_id = (match csil_field "device_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        audio_blocked = (match csil_field "audio_blocked" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for player"
 
@@ -2021,6 +2024,7 @@ and decode_node_report (csil_c : Cbor.t) : node_report =
         status = (decode_player_status (csil_req "status"));
         player_id = (Cbor.to_text (csil_req "player_id"));
         position_ms = (match csil_field "position_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        audio_blocked = (match csil_field "audio_blocked" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for node_report"
 

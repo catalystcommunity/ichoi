@@ -333,6 +333,8 @@ pub struct Player {
     pub node_id: Option<NodeId>,
     pub device_id: Option<DeviceId>,
     pub owner: Option<AccountId>,
+    /// default: false
+    pub audio_blocked: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -694,6 +696,8 @@ pub struct NodeReport {
     pub player_id: PlayerId,
     pub status: PlayerStatus,
     pub position_ms: Option<u64>,
+    /// default: false
+    pub audio_blocked: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

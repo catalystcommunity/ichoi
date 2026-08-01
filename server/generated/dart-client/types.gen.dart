@@ -2022,6 +2022,7 @@ final class Player {
   final NodeId? nodeId;
   final DeviceId? deviceId;
   final AccountId? owner;
+  final bool? audioBlocked;
 
   const Player({
     required this.id,
@@ -2030,6 +2031,7 @@ final class Player {
     this.nodeId,
     this.deviceId,
     this.owner,
+    this.audioBlocked,
   });
 
   Map<String, Object?> toMap() {
@@ -2040,6 +2042,7 @@ final class Player {
     if (nodeId != null) map['node_id'] = nodeId;
     if (deviceId != null) map['device_id'] = deviceId;
     if (owner != null) map['owner'] = owner;
+    if (audioBlocked != null) map['audio_blocked'] = audioBlocked;
     return map;
   }
 
@@ -2051,6 +2054,7 @@ final class Player {
       nodeId: map['node_id'] as NodeId?,
       deviceId: map['device_id'] as DeviceId?,
       owner: map['owner'] as AccountId?,
+      audioBlocked: map['audio_blocked'] as bool?,
     );
   }
 
@@ -2062,11 +2066,13 @@ final class Player {
         name == other.name &&
         nodeId == other.nodeId &&
         deviceId == other.deviceId &&
-        owner == other.owner;
+        owner == other.owner &&
+        audioBlocked == other.audioBlocked;
   }
 
   @override
-  int get hashCode => Object.hashAll([id, kind, name, nodeId, deviceId, owner]);
+  int get hashCode =>
+      Object.hashAll([id, kind, name, nodeId, deviceId, owner, audioBlocked]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
@@ -2077,6 +2083,7 @@ final class Player {
     if (nodeId != null) map['node_id'] = nodeId!;
     if (deviceId != null) map['device_id'] = deviceId!;
     if (owner != null) map['owner'] = owner!;
+    if (audioBlocked != null) map['audio_blocked'] = audioBlocked!;
     return map;
   }
 
@@ -2093,6 +2100,9 @@ final class Player {
       nodeId: map['node_id'] == null ? null : map['node_id'] as String,
       deviceId: map['device_id'] == null ? null : map['device_id'] as String,
       owner: map['owner'] == null ? null : map['owner'] as String,
+      audioBlocked: map['audio_blocked'] == null
+          ? null
+          : map['audio_blocked'] as bool,
     );
   }
 
@@ -4464,11 +4474,13 @@ final class NodeReport {
   final PlayerId playerId;
   final PlayerStatus status;
   final int? positionMs;
+  final bool? audioBlocked;
 
   const NodeReport({
     required this.playerId,
     required this.status,
     this.positionMs,
+    this.audioBlocked,
   });
 
   Map<String, Object?> toMap() {
@@ -4476,6 +4488,7 @@ final class NodeReport {
     map['player_id'] = playerId;
     map['status'] = status;
     if (positionMs != null) map['position_ms'] = positionMs;
+    if (audioBlocked != null) map['audio_blocked'] = audioBlocked;
     return map;
   }
 
@@ -4484,6 +4497,7 @@ final class NodeReport {
       playerId: map['player_id'] as PlayerId,
       status: map['status'] as PlayerStatus,
       positionMs: map['position_ms'] as int?,
+      audioBlocked: map['audio_blocked'] as bool?,
     );
   }
 
@@ -4492,11 +4506,13 @@ final class NodeReport {
     if (other is! NodeReport) return false;
     return playerId == other.playerId &&
         status == other.status &&
-        positionMs == other.positionMs;
+        positionMs == other.positionMs &&
+        audioBlocked == other.audioBlocked;
   }
 
   @override
-  int get hashCode => Object.hashAll([playerId, status, positionMs]);
+  int get hashCode =>
+      Object.hashAll([playerId, status, positionMs, audioBlocked]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
@@ -4504,6 +4520,7 @@ final class NodeReport {
     map['player_id'] = playerId;
     map['status'] = status;
     if (positionMs != null) map['position_ms'] = positionMs!;
+    if (audioBlocked != null) map['audio_blocked'] = audioBlocked!;
     return map;
   }
 
@@ -4518,6 +4535,9 @@ final class NodeReport {
         'paused',
       ]),
       positionMs: map['position_ms'] == null ? null : map['position_ms'] as int,
+      audioBlocked: map['audio_blocked'] == null
+          ? null
+          : map['audio_blocked'] as bool,
     );
   }
 

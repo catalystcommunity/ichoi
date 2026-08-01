@@ -1,54 +1,23 @@
 name: ichoi-release
-description: "Version bump with semver-tags and create GitHub release on merge to main"
+description: "Version bump with semver-tags and create a GitHub release on merge to main"
+# Compatibility trigger; see build.yaml.
 triggers:
   events:
     - pull_request_merged
   branches:
     - main
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:dev
-  command: |
-    set -e
-    sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-      pkg-config git wget build-essential musl-tools
-
-    export HOME=/home/runner
-    export PATH="/usr/local/cargo/bin:$HOME/.cargo/bin:$PATH"
-
-    if ! command -v cargo >/dev/null 2>&1; then
-      curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-    fi
-
-    if [ -f "$HOME/.cargo/env" ]; then
-      . "$HOME/.cargo/env"
-    elif [ -f /usr/local/cargo/env ]; then
-      . /usr/local/cargo/env
-    fi
-
-    cd "${REACTORCIDE_CODE_DIR:-/job/src}"
-    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/ichoi-target}"
-
-    # Stand on the REAL main tip before running the release script. The runner
-    # prepares the source at the pull_request_merged ref (an off-main merge
-    # commit); a version bump made there can never fast-forward main, and
-    # semver-tags may miss tags/history. Reset onto origin/main with full history
-    # + tags HERE — before invoking release.sh — so the script runs entirely from
-    # main and never rewrites its own file mid-run. SKIP_GITHUB local runs skip
-    # this and use the working tree as-is.
-    if [ "${SKIP_GITHUB:-false}" != "true" ]; then
-      git config user.name "Catalyst Community (automation)"
-      git config user.email "automation@catalystcommunity.dev"
-      git remote set-url origin "https://x-access-token:${GITHUB_PAT}@github.com/${REACTORCIDE_REPO}.git"
-      git fetch --tags --prune --force origin "+refs/heads/main:refs/remotes/origin/main"
-      git fetch --unshallow origin 2>/dev/null || true
-      git checkout -B main origin/main
-    fi
-
-    sh .reactorcide/jobs/scripts/release.sh
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  command: "runnerlib run --job-command true"
   timeout: 3600
   priority: 15
+  working_dir: /job
+  # The only job that stays off run-local: it pushes to main and publishes releases. The job
+  # code still honours SKIP_GITHUB=true (stamp the version files and build the archives, push
+  # and publish nothing), so this flag can be lifted for a local dry run.
   disable_run_local: true
   run_as:
     user: runner
 environment:
+  REACTORCIDE_ICHOI_RELEASE_JOB: release
   GITHUB_PAT: "${secret:catalystcommunity/ci:githubpat}"

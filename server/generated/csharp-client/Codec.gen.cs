@@ -1486,6 +1486,10 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("device_id"), new CborValue.Text(csilV5)));
         }
+        if (value.AudioBlocked is { } csilV6)
+        {
+            csilEntries.Add((new CborValue.Text("audio_blocked"), new CborValue.Bool(csilV6)));
+        }
         return new CborValue.Map(csilEntries);
     }
 
@@ -1498,6 +1502,7 @@ public static class Codec
         NodeId? csilField3 = Cbor.MapGet(value, "node_id") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
         DeviceId? csilField4 = Cbor.MapGet(value, "device_id") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
         AccountId? csilField5 = Cbor.MapGet(value, "owner") is { } csilRaw5 ? Cbor.AsText(csilRaw5) : null;
+        bool? csilField6 = Cbor.MapGet(value, "audio_blocked") is { } csilRaw6 ? Cbor.AsBool(csilRaw6) : null;
         return new Player
         {
             Id = csilField0,
@@ -1506,6 +1511,7 @@ public static class Codec
             NodeId = csilField3,
             DeviceId = csilField4,
             Owner = csilField5,
+            AudioBlocked = csilField6,
         };
     }
 
@@ -2496,6 +2502,10 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV2)));
         }
+        if (value.AudioBlocked is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("audio_blocked"), new CborValue.Bool(csilV3)));
+        }
         return new CborValue.Map(csilEntries);
     }
 
@@ -2505,11 +2515,13 @@ public static class Codec
         var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
         var csilField1 = PlayerStatusFromCborValue(Cbor.Require(value, "status"));
         ulong? csilField2 = Cbor.MapGet(value, "position_ms") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
+        bool? csilField3 = Cbor.MapGet(value, "audio_blocked") is { } csilRaw3 ? Cbor.AsBool(csilRaw3) : null;
         return new NodeReport
         {
             PlayerId = csilField0,
             Status = csilField1,
             PositionMs = csilField2,
+            AudioBlocked = csilField3,
         };
     }
 

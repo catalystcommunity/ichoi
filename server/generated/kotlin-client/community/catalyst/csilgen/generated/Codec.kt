@@ -1082,6 +1082,7 @@ fun Player.toCborValue(): CborValue {
     this.owner?.let { csilV -> csilEntries.add(CborValue.CText("owner") to CborValue.CText(csilV)) }
     this.nodeId?.let { csilV -> csilEntries.add(CborValue.CText("node_id") to CborValue.CText(csilV)) }
     this.deviceId?.let { csilV -> csilEntries.add(CborValue.CText("device_id") to CborValue.CText(csilV)) }
+    this.audioBlocked?.let { csilV -> csilEntries.add(CborValue.CText("audio_blocked") to CborValue.CBool(csilV)) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -1096,7 +1097,8 @@ fun playerFromCborValue(cbor: CborValue): Player {
     val nodeId = CsilCbor.mapGet(cbor, "node_id")?.let { csilV -> CsilCbor.asText(csilV) }
     val deviceId = CsilCbor.mapGet(cbor, "device_id")?.let { csilV -> CsilCbor.asText(csilV) }
     val owner = CsilCbor.mapGet(cbor, "owner")?.let { csilV -> CsilCbor.asText(csilV) }
-    return Player(id = id, kind = kind, name = name, nodeId = nodeId, deviceId = deviceId, owner = owner)
+    val audioBlocked = CsilCbor.mapGet(cbor, "audio_blocked")?.let { csilV -> CsilCbor.asBoolean(csilV) }
+    return Player(id = id, kind = kind, name = name, nodeId = nodeId, deviceId = deviceId, owner = owner, audioBlocked = audioBlocked)
 }
 
 /** Decode CSIL CBOR bytes into a Player. */
@@ -2007,6 +2009,7 @@ fun NodeReport.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("status") to this.status.toCborValue())
     csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
     this.positionMs?.let { csilV -> csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(csilV)) }
+    this.audioBlocked?.let { csilV -> csilEntries.add(CborValue.CText("audio_blocked") to CborValue.CBool(csilV)) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -2018,7 +2021,8 @@ fun nodeReportFromCborValue(cbor: CborValue): NodeReport {
     val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
     val status = playerStatusFromCborValue(CsilCbor.require(cbor, "status"))
     val positionMs = CsilCbor.mapGet(cbor, "position_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
-    return NodeReport(playerId = playerId, status = status, positionMs = positionMs)
+    val audioBlocked = CsilCbor.mapGet(cbor, "audio_blocked")?.let { csilV -> CsilCbor.asBoolean(csilV) }
+    return NodeReport(playerId = playerId, status = status, positionMs = positionMs, audioBlocked = audioBlocked)
 }
 
 /** Decode CSIL CBOR bytes into a NodeReport. */

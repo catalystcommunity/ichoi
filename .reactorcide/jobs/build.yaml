@@ -1,54 +1,25 @@
 name: ichoi-build
 description: "Build the ichoi workspace for amd64 and arm64 (static musl targets)"
+# Compatibility trigger: an eval image that predates workflow support reads job files only
+# and ignores .reactorcide/workflows/. Remove these once every project runs a runnerbase
+# that logs "Loaded N workflow definition(s)".
+triggers:
+  events:
+    - pull_request_opened
+    - pull_request_updated
+  branches:
+    - main
+depends_on:
+  - ichoi-conventional-commits
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:dev
-  command: |
-    set -e
-    # Ichoi is a single static binary with zero system-library link deps
-    # (DESIGN Sec.1): SQLite is compiled in via the diesel bundled libsqlite3-sys,
-    # ffmpeg and libasound are never linked. So we build the musl targets, which
-    # produce fully static binaries that run in a scratch container. musl-tools
-    # gives the amd64 musl gcc; the aarch64 musl cross toolchain is installed below.
-    # No libpq (SQLite-only, DESIGN Sec.2).
-    sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-      pkg-config build-essential musl-tools
-
-    export HOME=/home/runner
-    export PATH="/usr/local/cargo/bin:$HOME/.cargo/bin:$PATH"
-
-    if ! command -v cargo >/dev/null 2>&1; then
-      curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-    fi
-
-    if [ -f "$HOME/.cargo/env" ]; then
-      . "$HOME/.cargo/env"
-    elif [ -f /usr/local/cargo/env ]; then
-      . /usr/local/cargo/env
-    fi
-
-    cd "${REACTORCIDE_CODE_DIR:-/job/src}/server"
-    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/tmp/ichoi-target}"
-
-    # Compile + link the bundled SQLite C and ring asm for aarch64-musl with a REAL
-    # musl cross toolchain. A glibc cross gcc mis-links here: musl has no *64 LFS symbols
-    # (open64/stat64/mmap64), so sqlite fails to link. This native cross-compiler also
-    # avoids QEMU, under which ring arm64 asm SIGSEGVs.
-    curl -fsSL https://musl.cc/aarch64-linux-musl-cross.tgz -o /tmp/aarch64-musl.tgz
-    tar -xzf /tmp/aarch64-musl.tgz -C "$HOME"
-    export PATH="$HOME/aarch64-linux-musl-cross/bin:$PATH"
-    export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc
-    export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
-
-    for T in x86_64-unknown-linux-musl aarch64-unknown-linux-musl; do
-      echo "=== Building workspace for ${T} ==="
-      rustup target add "${T}"
-      cargo build --workspace --target "${T}" 2>&1
-    done
-
-    echo "=== Build succeeded (amd64 + arm64) ==="
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  command: "runnerlib run --job-command true"
   timeout: 2400
   priority: 10
+  working_dir: /job
   run_as:
     user: runner
+environment:
+  REACTORCIDE_ICHOI_CI_JOB: build
 run_local:
   as_runner: true

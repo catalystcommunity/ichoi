@@ -1206,6 +1206,9 @@ def _encode_player_value(v: "Player") -> Dict[Any, Any]:
     csil_x = v.device_id
     if csil_x is not None:
         csil_m["device_id"] = csil_x
+    csil_x = v.audio_blocked
+    if csil_x is not None:
+        csil_m["audio_blocked"] = csil_x
     return csil_m
 
 def _decode_player_value(tree: Any) -> "Player":
@@ -1217,6 +1220,7 @@ def _decode_player_value(tree: Any) -> "Player":
         node_id=(None if tree.get("node_id") is None else _csil_expect_text(tree["node_id"])),
         device_id=(None if tree.get("device_id") is None else _csil_expect_text(tree["device_id"])),
         owner=(None if tree.get("owner") is None else _csil_expect_text(tree["owner"])),
+        audio_blocked=(None if tree.get("audio_blocked") is None else _csil_expect_bool(tree["audio_blocked"])),
     )
 
 
@@ -2200,6 +2204,9 @@ def _encode_node_report_value(v: "NodeReport") -> Dict[Any, Any]:
     csil_x = v.position_ms
     if csil_x is not None:
         csil_m["position_ms"] = csil_x
+    csil_x = v.audio_blocked
+    if csil_x is not None:
+        csil_m["audio_blocked"] = csil_x
     return csil_m
 
 def _decode_node_report_value(tree: Any) -> "NodeReport":
@@ -2208,6 +2215,7 @@ def _decode_node_report_value(tree: Any) -> "NodeReport":
         player_id=_csil_expect_text(tree["player_id"]),
         status=_decode_player_status_value(tree["status"]),
         position_ms=(None if tree.get("position_ms") is None else _csil_expect_uint(tree["position_ms"])),
+        audio_blocked=(None if tree.get("audio_blocked") is None else _csil_expect_bool(tree["audio_blocked"])),
     )
 
 

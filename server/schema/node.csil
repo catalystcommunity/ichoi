@@ -26,8 +26,15 @@ DirStop   = { op: "stop", player_id: PlayerId }
 DirVolume = { op: "volume", player_id: PlayerId, volume: uint .le 100 }
 NodeDirective = DirLoad / DirPause / DirResume / DirStop / DirVolume
 
-;; Node -> server authoritative status/position.
-NodeReport = { player_id: PlayerId, status: PlayerStatus, ? position_ms: uint }
+;; Node -> server authoritative status/position. `audio_blocked` is true while the node
+;; cannot make sound without a person at it (a browser satellite whose autoplay policy is
+;; not yet satisfied). A native node never sets it. §6.4.
+NodeReport = {
+    player_id: PlayerId,
+    status: PlayerStatus,
+    ? position_ms: uint,
+    ? audio_blocked: bool .default false
+}
 
 service NodeService {
     register: RegisterNodeRequest -> RegisterNodeResponse / ServiceError,

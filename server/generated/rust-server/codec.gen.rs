@@ -1840,7 +1840,7 @@ pub fn decode_cover_art(csil_data: &[u8]) -> Result<CoverArt, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a Player.
 fn csil_enc_player(csil_v: &Player) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(7);
     csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
     csil_entries.push((cbor_text("kind"), csil_enc_player_kind(&csil_v.kind)));
     csil_entries.push((cbor_text("name"), cbor_text(&csil_v.name)));
@@ -1852,6 +1852,9 @@ fn csil_enc_player(csil_v: &Player) -> CsilCborValue {
     }
     if let Some(csil_inner) = &csil_v.device_id {
         csil_entries.push((cbor_text("device_id"), cbor_text(csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.audio_blocked {
+        csil_entries.push((cbor_text("audio_blocked"), cbor_bool(*csil_inner)));
     }
     CsilCborValue::Map(csil_entries)
 }
@@ -1894,6 +1897,13 @@ fn csil_dec_player(csil_root: &CsilCborValue) -> Result<Player, CsilCborError> {
         }
         None => None,
     };
+    let audio_blocked = match cbor_map_get(csil_root, "audio_blocked") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bool;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     Ok(Player {
         id,
         kind,
@@ -1901,6 +1911,7 @@ fn csil_dec_player(csil_root: &CsilCborValue) -> Result<Player, CsilCborError> {
         node_id,
         device_id,
         owner,
+        audio_blocked,
     })
 }
 
@@ -3477,11 +3488,14 @@ pub fn decode_dir_volume(csil_data: &[u8]) -> Result<DirVolume, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a NodeReport.
 fn csil_enc_node_report(csil_v: &NodeReport) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
     csil_entries.push((cbor_text("status"), csil_enc_player_status(&csil_v.status)));
     csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
     if let Some(csil_inner) = &csil_v.position_ms {
         csil_entries.push((cbor_text("position_ms"), cbor_uint(*csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.audio_blocked {
+        csil_entries.push((cbor_text("audio_blocked"), cbor_bool(*csil_inner)));
     }
     CsilCborValue::Map(csil_entries)
 }
@@ -3505,10 +3519,18 @@ fn csil_dec_node_report(csil_root: &CsilCborValue) -> Result<NodeReport, CsilCbo
         }
         None => None,
     };
+    let audio_blocked = match cbor_map_get(csil_root, "audio_blocked") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bool;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     Ok(NodeReport {
         player_id,
         status,
         position_ms,
+        audio_blocked,
     })
 }
 

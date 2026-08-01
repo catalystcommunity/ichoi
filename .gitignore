@@ -29,6 +29,11 @@ web/**/dist
 .agents/
 .playwright-mcp/
 
+# Python bytecode. Importing a Reactorcide plugin for a local test writes it into
+# .reactorcide/plugins/.
+__pycache__/
+*.pyc
+
 # OS cruft
 .DS_Store
 Thumbs.db
