@@ -139,6 +139,7 @@ and player = {
   node_id : node_id option;
   device_id : device_id option;
   owner : account_id option;
+  audio_blocked : bool option;
 }
 
 and queue_item = {
@@ -284,6 +285,7 @@ and node_report = {
   player_id : player_id;
   status : player_status;
   position_ms : int64 option;
+  audio_blocked : bool option;
 }
 
 and account = {

@@ -667,6 +667,7 @@ pub const Player = struct {
     node_id: ?NodeId = null,
     device_id: ?DeviceId = null,
     owner: ?AccountId = null,
+    audio_blocked: ?bool = null,
 };
 
 /// QueueItem is a structured data type.
@@ -838,6 +839,7 @@ pub const NodeReport = struct {
     player_id: PlayerId,
     status: PlayerStatus,
     position_ms: ?u64 = null,
+    audio_blocked: ?bool = null,
 };
 
 /// Account is a structured data type.

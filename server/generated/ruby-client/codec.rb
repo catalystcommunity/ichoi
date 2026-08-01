@@ -1223,6 +1223,7 @@ class Player
     csil_map["owner"] = owner unless owner.nil?
     csil_map["node_id"] = node_id unless node_id.nil?
     csil_map["device_id"] = device_id unless device_id.nil?
+    csil_map["audio_blocked"] = audio_blocked unless audio_blocked.nil?
     csil_map
   end
 
@@ -1242,7 +1243,8 @@ end),
       name: node["name"],
       node_id: (node.key?("node_id") ? node["node_id"] : nil),
       device_id: (node.key?("device_id") ? node["device_id"] : nil),
-      owner: (node.key?("owner") ? node["owner"] : nil)
+      owner: (node.key?("owner") ? node["owner"] : nil),
+      audio_blocked: (node.key?("audio_blocked") ? node["audio_blocked"] : nil)
     )
   end
 end
@@ -2257,6 +2259,7 @@ class NodeReport
     csil_map["status"] = (status)
     csil_map["player_id"] = player_id
     csil_map["position_ms"] = position_ms unless position_ms.nil?
+    csil_map["audio_blocked"] = audio_blocked unless audio_blocked.nil?
     csil_map
   end
 
@@ -2274,7 +2277,8 @@ when "paused" then "paused"
 else
   raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
 end),
-      position_ms: (node.key?("position_ms") ? node["position_ms"] : nil)
+      position_ms: (node.key?("position_ms") ? node["position_ms"] : nil),
+      audio_blocked: (node.key?("audio_blocked") ? node["audio_blocked"] : nil)
     )
   end
 end

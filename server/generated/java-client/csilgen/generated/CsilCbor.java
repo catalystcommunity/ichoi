@@ -1256,7 +1256,7 @@ public final class CsilCbor {
     }
 
     static CborValue encPlayer(Player v) {
-        List<CborEntry> csilEntries = new ArrayList<>(6);
+        List<CborEntry> csilEntries = new ArrayList<>(7);
         csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));
         csilEntries.add(new CborEntry(new CborText("kind"), encPlayerKind(v.kind())));
         csilEntries.add(new CborEntry(new CborText("name"), new CborText(v.name())));
@@ -1268,6 +1268,9 @@ public final class CsilCbor {
         }
         if (v.deviceId() != null) {
             csilEntries.add(new CborEntry(new CborText("device_id"), new CborText((v.deviceId()).value())));
+        }
+        if (v.audioBlocked() != null) {
+            csilEntries.add(new CborEntry(new CborText("audio_blocked"), new CborBool(v.audioBlocked())));
         }
         return new CborMap(csilEntries);
     }
@@ -1291,7 +1294,12 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "owner");
             owner = csilField != null ? new AccountId(asText(csilField)) : null;
         }
-        return new Player(id, kind, name, nodeId, deviceId, owner);
+        Boolean audioBlocked;
+        {
+            CborValue csilField = mapGet(csilRoot, "audio_blocked");
+            audioBlocked = csilField != null ? asBool(csilField) : null;
+        }
+        return new Player(id, kind, name, nodeId, deviceId, owner, audioBlocked);
     }
 
     public static byte[] encodePlayer(Player v) {
@@ -2185,11 +2193,14 @@ public final class CsilCbor {
     }
 
     static CborValue encNodeReport(NodeReport v) {
-        List<CborEntry> csilEntries = new ArrayList<>(3);
+        List<CborEntry> csilEntries = new ArrayList<>(4);
         csilEntries.add(new CborEntry(new CborText("status"), encPlayerStatus(v.status())));
         csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
         if (v.positionMs() != null) {
             csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
+        }
+        if (v.audioBlocked() != null) {
+            csilEntries.add(new CborEntry(new CborText("audio_blocked"), new CborBool(v.audioBlocked())));
         }
         return new CborMap(csilEntries);
     }
@@ -2202,7 +2213,12 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "position_ms");
             positionMs = csilField != null ? asU64(csilField) : null;
         }
-        return new NodeReport(playerId, status, positionMs);
+        Boolean audioBlocked;
+        {
+            CborValue csilField = mapGet(csilRoot, "audio_blocked");
+            audioBlocked = csilField != null ? asBool(csilField) : null;
+        }
+        return new NodeReport(playerId, status, positionMs, audioBlocked);
     }
 
     public static byte[] encodeNodeReport(NodeReport v) {

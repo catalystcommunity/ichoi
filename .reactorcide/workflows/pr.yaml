@@ -1,0 +1,33 @@
+name: Ichoi PR
+description: "Validate commits, then build, test, and check the schema for pull requests."
+
+# One event can match several workflows, so each workflow shows as its own named check on
+# the pull request.
+on:
+  events:
+    - pull_request_opened
+    - pull_request_updated
+  branches:
+    - main
+
+# Each node references a reusable definition in .reactorcide/jobs/ and adds the order. The
+# node key is the job name the coordinator records, so it must match the names in
+# plugins/plugin_ichoi_jobs.py and in secret-grants.yaml.
+jobs:
+  ichoi-conventional-commits:
+    job_file: conventional-commits.yaml
+
+  ichoi-build:
+    job_file: build.yaml
+    depends_on:
+      - ichoi-conventional-commits
+
+  ichoi-test-sqlite:
+    job_file: test-sqlite.yaml
+    depends_on:
+      - ichoi-conventional-commits
+
+  ichoi-csil:
+    job_file: csil.yaml
+    depends_on:
+      - ichoi-conventional-commits

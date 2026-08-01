@@ -432,6 +432,7 @@ typedef struct Player {
     NodeId *node_id;
     DeviceId *device_id;
     AccountId *owner;
+    bool *audio_blocked;
 } Player;
 
 /* QueueItem is a structured data type. */
@@ -764,6 +765,7 @@ typedef struct NodeReport {
     PlayerId player_id;
     PlayerStatus status;
     uint64_t *position_ms;
+    bool *audio_blocked;
 } NodeReport;
 
 /* Account is a structured data type. */

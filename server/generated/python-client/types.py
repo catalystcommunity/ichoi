@@ -973,6 +973,7 @@ class Player:
     node_id: Optional[NodeId] = None
     device_id: Optional[DeviceId] = None
     owner: Optional[AccountId] = None
+    audio_blocked: Optional[bool] = False
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -988,12 +989,14 @@ class Player:
             result['device_id'] = self.device_id
         if hasattr(self, 'owner') and self.owner is not None:
             result['owner'] = self.owner
+        if hasattr(self, 'audio_blocked') and self.audio_blocked is not None:
+            result['audio_blocked'] = self.audio_blocked
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Player':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), kind=data.get('kind'), name=data.get('name'), node_id=data.get('node_id'), device_id=data.get('device_id'), owner=data.get('owner'))
+        return cls(id=data.get('id'), kind=data.get('kind'), name=data.get('name'), node_id=data.get('node_id'), device_id=data.get('device_id'), owner=data.get('owner'), audio_blocked=data.get('audio_blocked'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2115,6 +2118,7 @@ class NodeReport:
     player_id: PlayerId
     status: PlayerStatus
     position_ms: Optional[int] = None
+    audio_blocked: Optional[bool] = False
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -2124,12 +2128,14 @@ class NodeReport:
             result['status'] = self.status
         if hasattr(self, 'position_ms') and self.position_ms is not None:
             result['position_ms'] = self.position_ms
+        if hasattr(self, 'audio_blocked') and self.audio_blocked is not None:
+            result['audio_blocked'] = self.audio_blocked
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'NodeReport':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), status=data.get('status'), position_ms=data.get('position_ms'))
+        return cls(player_id=data.get('player_id'), status=data.get('status'), position_ms=data.get('position_ms'), audio_blocked=data.get('audio_blocked'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""

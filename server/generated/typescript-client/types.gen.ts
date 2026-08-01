@@ -214,6 +214,7 @@ export interface Player {
   nodeId?: NodeId;
   deviceId?: DeviceId;
   owner?: AccountId;
+  audioBlocked?: boolean;
 }
 
 export interface QueueItem {
@@ -425,6 +426,7 @@ export interface NodeReport {
   playerId: PlayerId;
   status: PlayerStatus;
   positionMs?: number;
+  audioBlocked?: boolean;
 }
 
 export interface Account {

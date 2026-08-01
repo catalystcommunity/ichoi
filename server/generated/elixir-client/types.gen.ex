@@ -1974,7 +1974,7 @@ defmodule Csilgen.Generated.Player do
   @moduledoc "Generated struct for the Player type."
 
   @enforce_keys [:id, :kind, :name]
-  defstruct [:id, :kind, :name, :node_id, :device_id, :owner]
+  defstruct [:id, :kind, :name, :node_id, :device_id, :owner, audio_blocked: false]
 
   @type t :: %__MODULE__{
           id: Csilgen.Generated.PlayerId.t(),
@@ -1982,7 +1982,8 @@ defmodule Csilgen.Generated.Player do
           name: String.t(),
           node_id: Csilgen.Generated.NodeId.t() | nil,
           device_id: Csilgen.Generated.DeviceId.t() | nil,
-          owner: Csilgen.Generated.AccountId.t() | nil
+          owner: Csilgen.Generated.AccountId.t() | nil,
+          audio_blocked: boolean() | nil
         }
 
   @wire_keys [
@@ -1991,7 +1992,8 @@ defmodule Csilgen.Generated.Player do
     name: "name",
     node_id: "node_id",
     device_id: "device_id",
-    owner: "owner"
+    owner: "owner",
+    audio_blocked: "audio_blocked"
   ]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
@@ -2008,7 +2010,11 @@ defmodule Csilgen.Generated.Player do
          {{:text, "name"}, {:text, v.name}},
          if(is_nil(v.owner), do: nil, else: {{:text, "owner"}, {:text, v.owner}}),
          if(is_nil(v.node_id), do: nil, else: {{:text, "node_id"}, {:text, v.node_id}}),
-         if(is_nil(v.device_id), do: nil, else: {{:text, "device_id"}, {:text, v.device_id}})
+         if(is_nil(v.device_id), do: nil, else: {{:text, "device_id"}, {:text, v.device_id}}),
+         if(is_nil(v.audio_blocked),
+           do: nil,
+           else: {{:text, "audio_blocked"}, {:bool, v.audio_blocked}}
+         )
        ],
        &is_nil/1
      )}
@@ -2042,6 +2048,11 @@ defmodule Csilgen.Generated.Player do
         case Map.get(csil_fields, {:text, "device_id"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
+        end,
+      audio_blocked:
+        case Map.get(csil_fields, {:text, "audio_blocked"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_bool(csil_v)
         end
     }
   end
@@ -4135,15 +4146,21 @@ defmodule Csilgen.Generated.NodeReport do
   @moduledoc "Generated struct for the NodeReport type."
 
   @enforce_keys [:player_id, :status]
-  defstruct [:player_id, :status, :position_ms]
+  defstruct [:player_id, :status, :position_ms, audio_blocked: false]
 
   @type t :: %__MODULE__{
           player_id: Csilgen.Generated.PlayerId.t(),
           status: Csilgen.Generated.PlayerStatus.t(),
-          position_ms: integer() | nil
+          position_ms: integer() | nil,
+          audio_blocked: boolean() | nil
         }
 
-  @wire_keys [player_id: "player_id", status: "status", position_ms: "position_ms"]
+  @wire_keys [
+    player_id: "player_id",
+    status: "status",
+    position_ms: "position_ms",
+    audio_blocked: "audio_blocked"
+  ]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -4156,7 +4173,14 @@ defmodule Csilgen.Generated.NodeReport do
        [
          {{:text, "status"}, {:text, v.status}},
          {{:text, "player_id"}, {:text, v.player_id}},
-         if(is_nil(v.position_ms), do: nil, else: {{:text, "position_ms"}, {:int, v.position_ms}})
+         if(is_nil(v.position_ms),
+           do: nil,
+           else: {{:text, "position_ms"}, {:int, v.position_ms}}
+         ),
+         if(is_nil(v.audio_blocked),
+           do: nil,
+           else: {{:text, "audio_blocked"}, {:bool, v.audio_blocked}}
+         )
        ],
        &is_nil/1
      )}
@@ -4180,6 +4204,11 @@ defmodule Csilgen.Generated.NodeReport do
         case Map.get(csil_fields, {:text, "position_ms"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end,
+      audio_blocked:
+        case Map.get(csil_fields, {:text, "audio_blocked"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_bool(csil_v)
         end
     }
   end

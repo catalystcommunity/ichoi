@@ -1509,6 +1509,7 @@ fn enc_Player(out: *std.ArrayList(u8), v: *const types.Player) CodecError!void {
     if (v.owner != null) csil_n += 1;
     if (v.node_id != null) csil_n += 1;
     if (v.device_id != null) csil_n += 1;
+    if (v.audio_blocked != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "id");
     try w_text(out, v.id);
@@ -1527,6 +1528,10 @@ fn enc_Player(out: *std.ArrayList(u8), v: *const types.Player) CodecError!void {
     if (v.device_id) |csil_x| {
         try w_text(out, "device_id");
         try w_text(out, csil_x);
+    }
+    if (v.audio_blocked) |csil_x| {
+        try w_text(out, "audio_blocked");
+        try w_bool(out, csil_x);
     }
 }
 
@@ -1563,6 +1568,13 @@ fn dec_Player(alloc: std.mem.Allocator, m: Value, out: *types.Player) CodecError
             out.device_id = try as_text(csil_fv);
         } else {
             out.device_id = null;
+        }
+    }
+    {
+        if (mget(m, "audio_blocked")) |csil_fv| {
+            out.audio_blocked = try as_bool(csil_fv);
+        } else {
+            out.audio_blocked = null;
         }
     }
 }
@@ -2942,6 +2954,7 @@ fn dec_NodeDirective(alloc: std.mem.Allocator, src: Value, out: *types.NodeDirec
 fn enc_NodeReport(out: *std.ArrayList(u8), v: *const types.NodeReport) CodecError!void {
     var csil_n: usize = 2;
     if (v.position_ms != null) csil_n += 1;
+    if (v.audio_blocked != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "status");
     try enc_PlayerStatus(out, &(v.status));
@@ -2950,6 +2963,10 @@ fn enc_NodeReport(out: *std.ArrayList(u8), v: *const types.NodeReport) CodecErro
     if (v.position_ms) |csil_x| {
         try w_text(out, "position_ms");
         try w_uint(out, csil_x);
+    }
+    if (v.audio_blocked) |csil_x| {
+        try w_text(out, "audio_blocked");
+        try w_bool(out, csil_x);
     }
 }
 
@@ -2968,6 +2985,13 @@ fn dec_NodeReport(alloc: std.mem.Allocator, m: Value, out: *types.NodeReport) Co
             out.position_ms = try as_u64(csil_fv);
         } else {
             out.position_ms = null;
+        }
+    }
+    {
+        if (mget(m, "audio_blocked")) |csil_fv| {
+            out.audio_blocked = try as_bool(csil_fv);
+        } else {
+            out.audio_blocked = null;
         }
     }
 }

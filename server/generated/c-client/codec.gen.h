@@ -2098,6 +2098,7 @@ static inline int csilc_enc_Player(csilc_buf *b, const Player *v) {
     if (v->owner) csilc_n++;
     if (v->node_id) csilc_n++;
     if (v->device_id) csilc_n++;
+    if (v->audio_blocked) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "id", 2)) return -1;
     if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
@@ -2116,6 +2117,10 @@ static inline int csilc_enc_Player(csilc_buf *b, const Player *v) {
     if (v->device_id) {
         if (csilc_w_text(b, "device_id", 9)) return -1;
         if (csilc_w_text(b, ((*v->device_id)), ((*v->device_id)) ? strlen((*v->device_id)) : 0)) return -1;
+    }
+    if (v->audio_blocked) {
+        if (csilc_w_text(b, "audio_blocked", 13)) return -1;
+        if (csilc_w_bool(b, ((*v->audio_blocked)))) return -1;
     }
     return 0;
 }
@@ -2154,6 +2159,14 @@ static inline int csilc_dec_Player(const csilc_value *m, CsilCodecArena *a, Play
         if (!csilc_p) return -1;
         if (!csilc_get_text(csilc_f, &((*csilc_p)))) return -1;
         out->device_id = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "audio_blocked");
+    out->audio_blocked = NULL;
+    if (csilc_f) {
+        bool *csilc_p = (bool *)csilc_arena_alloc(a, sizeof(bool));
+        if (!csilc_p) return -1;
+        if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
+        out->audio_blocked = csilc_p;
     }
     return 0;
 }
@@ -3538,6 +3551,7 @@ static inline int csilc_dec_NodeDirective(const csilc_value *m, CsilCodecArena *
 static inline int csilc_enc_NodeReport(csilc_buf *b, const NodeReport *v) {
     size_t csilc_n = 2;
     if (v->position_ms) csilc_n++;
+    if (v->audio_blocked) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "status", 6)) return -1;
     if (csilc_enc_PlayerStatus(b, &(v->status))) return -1;
@@ -3546,6 +3560,10 @@ static inline int csilc_enc_NodeReport(csilc_buf *b, const NodeReport *v) {
     if (v->position_ms) {
         if (csilc_w_text(b, "position_ms", 11)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->position_ms)))) return -1;
+    }
+    if (v->audio_blocked) {
+        if (csilc_w_text(b, "audio_blocked", 13)) return -1;
+        if (csilc_w_bool(b, ((*v->audio_blocked)))) return -1;
     }
     return 0;
 }
@@ -3566,6 +3584,14 @@ static inline int csilc_dec_NodeReport(const csilc_value *m, CsilCodecArena *a, 
         if (!csilc_p) return -1;
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->position_ms = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "audio_blocked");
+    out->audio_blocked = NULL;
+    if (csilc_f) {
+        bool *csilc_p = (bool *)csilc_arena_alloc(a, sizeof(bool));
+        if (!csilc_p) return -1;
+        if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
+        out->audio_blocked = csilc_p;
     }
     return 0;
 }

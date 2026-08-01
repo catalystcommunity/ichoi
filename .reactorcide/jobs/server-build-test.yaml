@@ -1,5 +1,6 @@
 name: ichoi-server-build-test
-description: "Verify the ichoi server Docker image builds successfully on PR"
+description: "Verify the ichoi server Docker image builds on a pull request"
+# Compatibility trigger; see build.yaml. The workflow carries the same paths filter.
 triggers:
   events:
     - pull_request_opened
@@ -9,10 +10,13 @@ triggers:
 paths:
   include: ["server/crates/**", "server/Cargo.toml", "server/Cargo.lock", "server/web/**", "server/schema/**", "server/generated/**", "server/Dockerfile", "server/.dockerignore"]
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:dev
-  command: "bash ${REACTORCIDE_CODE_DIR:-/job/src}/.reactorcide/jobs/scripts/server-build-test.sh"
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  command: "runnerlib run --job-command true"
   timeout: 3600
+  working_dir: /job
   capabilities:
     - builder
   run_as:
     user: runner
+environment:
+  REACTORCIDE_ICHOI_IMAGE_JOB: build-test

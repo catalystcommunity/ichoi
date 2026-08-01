@@ -712,14 +712,17 @@ public struct Player: Equatable, Sendable {
     /// wire key: device_id
     public let deviceId: DeviceId?
     public let owner: AccountId?
+    /// wire key: audio_blocked
+    public let audioBlocked: Bool?
 
-    public init(id: PlayerId, kind: PlayerKind, name: String, nodeId: NodeId? = nil, deviceId: DeviceId? = nil, owner: AccountId? = nil) {
+    public init(id: PlayerId, kind: PlayerKind, name: String, nodeId: NodeId? = nil, deviceId: DeviceId? = nil, owner: AccountId? = nil, audioBlocked: Bool? = false) {
         self.id = id
         self.kind = kind
         self.name = name
         self.nodeId = nodeId
         self.deviceId = deviceId
         self.owner = owner
+        self.audioBlocked = audioBlocked
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
@@ -729,7 +732,8 @@ public struct Player: Equatable, Sendable {
         "name": "name",
         "nodeId": "node_id",
         "deviceId": "device_id",
-        "owner": "owner"
+        "owner": "owner",
+        "audioBlocked": "audio_blocked"
     ]
 }
 
@@ -1507,18 +1511,22 @@ public struct NodeReport: Equatable, Sendable {
     public let status: PlayerStatus
     /// wire key: position_ms
     public let positionMs: UInt64?
+    /// wire key: audio_blocked
+    public let audioBlocked: Bool?
 
-    public init(playerId: PlayerId, status: PlayerStatus, positionMs: UInt64? = nil) {
+    public init(playerId: PlayerId, status: PlayerStatus, positionMs: UInt64? = nil, audioBlocked: Bool? = false) {
         self.playerId = playerId
         self.status = status
         self.positionMs = positionMs
+        self.audioBlocked = audioBlocked
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "playerId": "player_id",
         "status": "status",
-        "positionMs": "position_ms"
+        "positionMs": "position_ms",
+        "audioBlocked": "audio_blocked"
     ]
 }
 

@@ -77,6 +77,14 @@ func NewUpdateAudiobookProgressRequest() *UpdateAudiobookProgressRequest {
 	}
 }
 
+// NewPlayer creates a Player with default values:
+//   - audio_blocked: false
+func NewPlayer() *Player {
+	return &Player{
+		AudioBlocked: func() *bool { v := bool(false); return &v }(),
+	}
+}
+
 // NewPlayerState creates a PlayerState with default values:
 //   - volume: 100
 func NewPlayerState() *PlayerState {
@@ -108,6 +116,14 @@ func NewMediaHeader() *MediaHeader {
 func NewAudioOutput() *AudioOutput {
 	return &AudioOutput{
 		IsDefault: false,
+	}
+}
+
+// NewNodeReport creates a NodeReport with default values:
+//   - audio_blocked: false
+func NewNodeReport() *NodeReport {
+	return &NodeReport{
+		AudioBlocked: func() *bool { v := bool(false); return &v }(),
 	}
 }
 

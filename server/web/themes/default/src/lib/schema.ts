@@ -194,6 +194,8 @@ export interface Player {
   node_id?: string;
   device_id?: string;
   owner?: string;
+  /** Reachable, but silent until somebody acts at the device itself. */
+  audio_blocked?: boolean;
 }
 
 export interface QueueItem {
@@ -313,6 +315,7 @@ export interface NodeReport {
   player_id: string;
   status: PlayerStatus;
   position_ms?: number;
+  audio_blocked?: boolean;
 }
 
 // --- admin.csil ----------------------------------------------------------

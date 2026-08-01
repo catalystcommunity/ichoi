@@ -131,7 +131,10 @@
     "stopSharingThisDevice": "Stop sharing this device",
     "playHere": "Play here",
     "outputHere": "Playing here",
-    "noQueue": "Queue is empty."
+    "noQueue": "Queue is empty.",
+    "blocked": "Needs attention",
+    "targetBlockedTitle": "{{name}} cannot play yet",
+    "targetBlockedBody": "That output is a browser satellite that nobody has used since it started, so the browser keeps it silent. Go to the device and touch its screen, or refresh its page, to let it play. You can queue music now; it starts when somebody does."
   },
   "nowPlaying": {
     "title": "Now Playing",
@@ -183,7 +186,12 @@
     "nothingPlaying": "Nothing playing",
     "playHere": "Play on this device",
     "target": "Output target",
-    "thisDevice": "This device"
+    "thisDevice": "This device",
+    "enableAudio": "Enable audio",
+    "audioEnabled": "Audio enabled",
+    "audioBlockedTitle": "This satellite cannot play yet",
+    "audioBlockedBody": "The browser keeps this page silent until somebody uses it. Touch the screen or press a key to let the queue play here.",
+    "audioBlockedDismiss": "Not now"
   },
   "codecBadge": {
     "transcoded": "transcoded",
@@ -197,6 +205,7 @@
   },
   "common": {
     "close": "Close",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "ok": "OK"
   }
 }

@@ -8,6 +8,7 @@ public record Player(
     String name /* wire: "name" */,
     NodeId nodeId /* wire: "node_id" */,
     DeviceId deviceId /* wire: "device_id" */,
-    AccountId owner /* wire: "owner" */
+    AccountId owner /* wire: "owner" */,
+    Boolean audioBlocked /* wire: "audio_blocked" */
 ) {
 }

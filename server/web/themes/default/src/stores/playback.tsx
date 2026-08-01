@@ -30,6 +30,7 @@ import { useServers } from "./servers.tsx";
 import { useToast } from "./toasts.tsx";
 import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 import { finishUpdateReload, updateReloadInProgress } from "../lib/app-update.ts";
+import { onFirstGesture, probeAutoplay } from "../lib/audio-unlock.ts";
 
 export const LOCAL_TARGET = "local";
 export type RepeatMode = "off" | "all" | "one";
@@ -128,6 +129,9 @@ interface PlaybackContextValue {
   /** Satisfy browser autoplay policy and bind the selected satellite audio sink. */
   enableOutputAudio: () => Promise<void>;
   outputAudioReady: Accessor<boolean>;
+  /** Satellite mode: this browser is connected but cannot make sound until somebody touches
+   * it. Reported to the server so controllers can say so before sending music here. */
+  audioBlocked: Accessor<boolean>;
   repeatMode: Accessor<RepeatMode>;
   cycleRepeatMode: () => void;
   shuffle: Accessor<boolean>;
@@ -153,6 +157,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     satelliteMode ? "satellite-pending" : LOCAL_TARGET,
   );
   const [outputAudioReady, setOutputAudioReady] = createSignal(false);
+  const [audioBlocked, setAudioBlocked] = createSignal(false);
   const [repeatMode, setRepeatMode] = createSignal<RepeatMode>(loadRepeatMode());
   const [shuffle, setShuffle] = createSignal(loadShuffle());
   let lastProgressTrack = "";
@@ -165,7 +170,30 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     const playerId = satellitePlayerId();
     const api = servers.api();
     if (!satelliteMode || !playerId || !api) return;
-    api.node.report({ player_id: playerId, status, position_ms: positionMs });
+    // Every report carries the current sound state, so the server's view stays right without
+    // a separate channel — and a satellite that was blocked corrects itself the moment it
+    // plays anything.
+    api.node.report({
+      player_id: playerId,
+      status,
+      position_ms: positionMs,
+      audio_blocked: audioBlocked(),
+    });
+  }
+
+  /** Push the blocked flag out of band, when it changed without playback changing. */
+  function reportAudioBlocked(): void {
+    const status = snapshot().status;
+    reportSatellite(
+      status === "playing" ? "playing" : status === "paused" ? "paused" : "stopped",
+      Math.round(snapshot().positionMs),
+    );
+  }
+
+  function setBlocked(blocked: boolean): void {
+    if (audioBlocked() === blocked) return;
+    setAudioBlocked(blocked);
+    reportAudioBlocked();
   }
 
   function reportAudiobookProgress(completed = false): void {
@@ -362,13 +390,16 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
           }
           void applySatelliteSink()
             .then(() => audio.play())
-            .catch((e) =>
+            .catch(async (e) => {
+              // The server told this output to play and the browser refused. Say why on the
+              // satellite, and tell the server so other people see it too.
+              setBlocked(!(await probeAutoplay()));
               setSnapshot((snapshot): PlaybackSnapshot => ({
                 ...snapshot,
                 status: "error",
                 error: `Enable browser audio and try again: ${String(e)}`,
-              })),
-            );
+              }));
+            });
         }
       } else if (audio.paused) {
         const requestedSeconds = (state.position_ms ?? 0) / 1000;
@@ -621,15 +652,53 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   async function enableOutputAudio(): Promise<void> {
     if (!audio) throw new Error("Browser audio is unavailable");
-    await applySatelliteSink();
-    const AudioContextClass = globalThis.AudioContext;
-    if (AudioContextClass) {
-      const context = new AudioContextClass();
-      await context.resume();
-      await context.close();
+    try {
+      await applySatelliteSink();
+      const AudioContextClass = globalThis.AudioContext;
+      if (AudioContextClass) {
+        const context = new AudioContextClass();
+        await context.resume();
+        await context.close();
+      }
+      setOutputAudioReady(true);
+      setBlocked(false);
+      // Start whatever the server asked for while the page was still blocked.
+      if (audio.currentSrc && audio.paused) await audio.play();
+    } catch (cause) {
+      // Ask the browser what the real state is rather than reading it out of the failure:
+      // a rejected play() can also mean a bad sink or a media error.
+      setBlocked(!(await probeAutoplay()));
+      throw cause;
     }
-    setOutputAudioReady(true);
-    if (audio.currentSrc && audio.paused) await audio.play();
+  }
+
+  // --- Satellite autoplay unlock (§6.4) --------------------------------------
+  // A satellite plays what somebody else queued, so the browser must already trust this page
+  // by the time a directive arrives. Probe once on load, take the FIRST gesture anywhere on
+  // the page as the unlock (no particular button needed), and keep the server informed so
+  // controllers can warn instead of playing into silence.
+  if (satelliteMode) {
+    void probeAutoplay().then((allowed) => {
+      if (allowed) setOutputAudioReady(true);
+      setBlocked(!allowed);
+    });
+    onCleanup(
+      onFirstGesture(() => {
+        void enableOutputAudio().catch((error) => console.warn("[playback] unlock failed", error));
+      }),
+    );
+    // The first report can only leave once the socket is up and the satellite knows its own
+    // player id. This also re-reports after a reconnect, where registration clears the
+    // server's previous view. `on` keeps the effect off the position/status signals that
+    // reportAudioBlocked reads, which would otherwise re-fire it every second.
+    createEffect(
+      on(
+        () => [Boolean(servers.api()), satellitePlayerId()] as const,
+        ([hasApi, playerId]) => {
+          if (hasApi && playerId) reportAudioBlocked();
+        },
+      ),
+    );
   }
 
   async function playNow(tracks: Track[], startIndex = 0, startMs = 0): Promise<void> {
@@ -847,6 +916,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     releaseDevice,
     enableOutputAudio,
     outputAudioReady,
+    audioBlocked,
     repeatMode,
     cycleRepeatMode,
     shuffle,

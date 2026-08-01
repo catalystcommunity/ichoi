@@ -240,8 +240,9 @@ CoverArt = Data.define(:content_type, :data)
 # node_id [NodeId]
 # device_id [DeviceId]
 # owner [AccountId]
-Player = Data.define(:id, :kind, :name, :node_id, :device_id, :owner) do
-  def initialize(id:, kind:, name:, node_id: nil, device_id: nil, owner: nil)
+# audio_blocked [Boolean]
+Player = Data.define(:id, :kind, :name, :node_id, :device_id, :owner, :audio_blocked) do
+  def initialize(id:, kind:, name:, node_id: nil, device_id: nil, owner: nil, audio_blocked: false)
     super
   end
 end
@@ -487,8 +488,9 @@ end
 # player_id [PlayerId]
 # status [PlayerStatus]
 # position_ms [Integer]
-NodeReport = Data.define(:player_id, :status, :position_ms) do
-  def initialize(player_id:, status:, position_ms: nil)
+# audio_blocked [Boolean]
+NodeReport = Data.define(:player_id, :status, :position_ms, :audio_blocked) do
+  def initialize(player_id:, status:, position_ms: nil, audio_blocked: false)
     super
   end
 end

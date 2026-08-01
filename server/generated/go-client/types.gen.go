@@ -259,12 +259,13 @@ type PlayerKind string
 
 // Player represents a structured data type
 type Player struct {
-	Id       PlayerId   `json:"id" yaml:"id"`
-	Kind     PlayerKind `json:"kind" yaml:"kind"`
-	Name     string     `json:"name" yaml:"name"`
-	NodeId   *NodeId    `json:"node_id,omitempty" yaml:"node_id,omitempty"`
-	DeviceId *DeviceId  `json:"device_id,omitempty" yaml:"device_id,omitempty"`
-	Owner    *AccountId `json:"owner,omitempty" yaml:"owner,omitempty"`
+	Id           PlayerId   `json:"id" yaml:"id"`
+	Kind         PlayerKind `json:"kind" yaml:"kind"`
+	Name         string     `json:"name" yaml:"name"`
+	NodeId       *NodeId    `json:"node_id,omitempty" yaml:"node_id,omitempty"`
+	DeviceId     *DeviceId  `json:"device_id,omitempty" yaml:"device_id,omitempty"`
+	Owner        *AccountId `json:"owner,omitempty" yaml:"owner,omitempty"`
+	AudioBlocked *bool      `json:"audio_blocked,omitempty" yaml:"audio_blocked,omitempty"`
 }
 
 // QueueItem represents a structured data type
@@ -515,9 +516,10 @@ type NodeDirective interface{}
 
 // NodeReport represents a structured data type
 type NodeReport struct {
-	PlayerId   PlayerId     `json:"player_id" yaml:"player_id"`
-	Status     PlayerStatus `json:"status" yaml:"status"`
-	PositionMs *uint64      `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
+	PlayerId     PlayerId     `json:"player_id" yaml:"player_id"`
+	Status       PlayerStatus `json:"status" yaml:"status"`
+	PositionMs   *uint64      `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
+	AudioBlocked *bool        `json:"audio_blocked,omitempty" yaml:"audio_blocked,omitempty"`
 }
 
 // Account represents a structured data type

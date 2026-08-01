@@ -8,7 +8,11 @@ Player = {
     name: text,                      ;; "Kitchen · Main Speakers" or "Ann's Device"
     ? node_id: NodeId,
     ? device_id: DeviceId,
-    ? owner: AccountId
+    ? owner: AccountId,
+    ;; True while the output is reachable but silent until a person acts at it. Browser
+    ;; satellites report this when the autoplay policy blocks them. Controllers show it so
+    ;; a listener knows the target will not make sound yet.
+    ? audio_blocked: bool .default false
 }
 
 QueueItem = {

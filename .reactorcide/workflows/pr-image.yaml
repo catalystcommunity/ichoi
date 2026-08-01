@@ -1,0 +1,27 @@
+name: Ichoi PR Image
+description: "Prove the server container image still builds, for pull requests that touch it."
+
+# A separate workflow, because it is the only pull-request work with a paths filter: a
+# documentation-only change should not spend an hour on a multi-arch image build. A paths
+# filter belongs to the whole workflow, not to one node.
+on:
+  events:
+    - pull_request_opened
+    - pull_request_updated
+  branches:
+    - main
+
+paths:
+  include:
+    - "server/crates/**"
+    - "server/Cargo.toml"
+    - "server/Cargo.lock"
+    - "server/web/**"
+    - "server/schema/**"
+    - "server/generated/**"
+    - "server/Dockerfile"
+    - "server/.dockerignore"
+
+jobs:
+  ichoi-server-build-test:
+    job_file: server-build-test.yaml

@@ -1,0 +1,18 @@
+name: Ichoi Server Deploy
+description: "Build the multi-arch server image and push it when the version file changes."
+
+# The release workflow pushes the version bump to main; this workflow watches that one file,
+# so an image is built exactly once per release and never for an ordinary commit.
+on:
+  events:
+    - push
+  branches:
+    - main
+
+paths:
+  include:
+    - "server/version/VERSION.txt"
+
+jobs:
+  ichoi-server-build-and-deploy:
+    job_file: server-build-and-deploy.yaml

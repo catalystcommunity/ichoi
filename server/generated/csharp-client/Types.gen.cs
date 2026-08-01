@@ -396,6 +396,8 @@ public sealed record Player
     public DeviceId? DeviceId { get; init; }
     // CBOR key: owner
     public AccountId? Owner { get; init; }
+    // CBOR key: audio_blocked
+    public bool? AudioBlocked { get; init; }
 }
 
 public sealed record QueueItem
@@ -835,6 +837,8 @@ public sealed record NodeReport
     public required PlayerStatus Status { get; init; }
     // CBOR key: position_ms
     public ulong? PositionMs { get; init; }
+    // CBOR key: audio_blocked
+    public bool? AudioBlocked { get; init; }
 }
 
 public sealed record Account

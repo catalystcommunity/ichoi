@@ -1123,6 +1123,7 @@ public extension Player {
         if let csilV = self.owner { csilEntries.append(("owner", .text(csilV))) }
         if let csilV = self.nodeId { csilEntries.append(("node_id", .text(csilV))) }
         if let csilV = self.deviceId { csilEntries.append(("device_id", .text(csilV))) }
+        if let csilV = self.audioBlocked { csilEntries.append(("audio_blocked", .bool(csilV))) }
         return .map(csilEntries)
     }
 
@@ -1134,7 +1135,8 @@ public extension Player {
         let nodeId: NodeId? = if let csilV = CsilCbor.mapGet(cborValue, "node_id") { try CsilCbor.asText(csilV) } else { nil }
         let deviceId: DeviceId? = if let csilV = CsilCbor.mapGet(cborValue, "device_id") { try CsilCbor.asText(csilV) } else { nil }
         let owner: AccountId? = if let csilV = CsilCbor.mapGet(cborValue, "owner") { try CsilCbor.asText(csilV) } else { nil }
-        self.init(id: id, kind: kind, name: name, nodeId: nodeId, deviceId: deviceId, owner: owner)
+        let audioBlocked: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "audio_blocked") { try CsilCbor.asBool(csilV) } else { nil }
+        self.init(id: id, kind: kind, name: name, nodeId: nodeId, deviceId: deviceId, owner: owner, audioBlocked: audioBlocked)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2204,6 +2206,7 @@ public extension NodeReport {
         csilEntries.append(("status", self.status.toCborValue()))
         csilEntries.append(("player_id", .text(self.playerId)))
         if let csilV = self.positionMs { csilEntries.append(("position_ms", .uint(csilV))) }
+        if let csilV = self.audioBlocked { csilEntries.append(("audio_blocked", .bool(csilV))) }
         return .map(csilEntries)
     }
 
@@ -2212,7 +2215,8 @@ public extension NodeReport {
         let playerId = try CsilCbor.asText((try CsilCbor.require(cborValue, "player_id")))
         let status = try PlayerStatus(cborValue: (try CsilCbor.require(cborValue, "status")))
         let positionMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "position_ms") { try CsilCbor.asU64(csilV) } else { nil }
-        self.init(playerId: playerId, status: status, positionMs: positionMs)
+        let audioBlocked: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "audio_blocked") { try CsilCbor.asBool(csilV) } else { nil }
+        self.init(playerId: playerId, status: status, positionMs: positionMs, audioBlocked: audioBlocked)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.

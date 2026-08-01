@@ -1048,6 +1048,7 @@ export function toPlayerCborValue(v: Player): CborValue {
   if (v.owner !== undefined) csilMap.set("owner", v.owner);
   if (v.nodeId !== undefined) csilMap.set("node_id", v.nodeId);
   if (v.deviceId !== undefined) csilMap.set("device_id", v.deviceId);
+  if (v.audioBlocked !== undefined) csilMap.set("audio_blocked", v.audioBlocked);
   return csilMap;
 }
 
@@ -1059,6 +1060,7 @@ export function fromPlayerCborValue(value: CborValue): Player {
     nodeId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "node_id")),
     deviceId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "device_id")),
     owner: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "owner")),
+    audioBlocked: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBool(csilV))(mapGet(value, "audio_blocked")),
   };
 }
 
@@ -2029,6 +2031,7 @@ export function toNodeReportCborValue(v: NodeReport): CborValue {
   csilMap.set("status", v.status);
   csilMap.set("player_id", v.playerId);
   if (v.positionMs !== undefined) csilMap.set("position_ms", v.positionMs);
+  if (v.audioBlocked !== undefined) csilMap.set("audio_blocked", v.audioBlocked);
   return csilMap;
 }
 
@@ -2037,6 +2040,7 @@ export function fromNodeReportCborValue(value: CborValue): NodeReport {
     playerId: asString(requireKey(value, "player_id")),
     status: (asEnumMember(asString(requireKey(value, "status")), ["stopped", "playing", "paused"]) as "stopped" | "playing" | "paused"),
     positionMs: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "position_ms")),
+    audioBlocked: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBool(csilV))(mapGet(value, "audio_blocked")),
   };
 }
 

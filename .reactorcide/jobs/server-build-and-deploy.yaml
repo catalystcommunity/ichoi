@@ -1,5 +1,6 @@
 name: ichoi-server-build-and-deploy
-description: "Build the multi-arch ichoi server image (amd64 + arm64) and push to registries"
+description: "Build the multi-arch ichoi server image (amd64 + arm64) and push it to the registries"
+# Compatibility trigger; see build.yaml. The workflow carries the same paths filter.
 triggers:
   events:
     - push
@@ -8,14 +9,16 @@ triggers:
 paths:
   include: ["server/version/VERSION.txt"]
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:dev
-  command: "bash ${REACTORCIDE_CODE_DIR:-/job/src}/.reactorcide/jobs/scripts/server-build-and-deploy.sh"
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  command: "runnerlib run --job-command true"
   timeout: 3600
+  working_dir: /job
   capabilities:
     - builder
   run_as:
     user: runner
 environment:
+  REACTORCIDE_ICHOI_IMAGE_JOB: build-and-deploy
   REGISTRY_INTERNAL: "containers.catalystsquad.com"
   REGISTRY_INTERNAL_PATH: "public/catalystcommunity/ichoi"
   REGISTRY_EXTERNAL: "containers.catalystsquad.com"

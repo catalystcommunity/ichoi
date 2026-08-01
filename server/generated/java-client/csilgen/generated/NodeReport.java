@@ -5,6 +5,7 @@ package csilgen.generated;
 public record NodeReport(
     PlayerId playerId /* wire: "player_id" */,
     PlayerStatus status /* wire: "status" */,
-    Long positionMs /* wire: "position_ms" */
+    Long positionMs /* wire: "position_ms" */,
+    Boolean audioBlocked /* wire: "audio_blocked" */
 ) {
 }
