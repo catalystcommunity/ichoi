@@ -21,7 +21,10 @@ environment:
   REACTORCIDE_ICHOI_IMAGE_JOB: build-and-deploy
   REGISTRY_INTERNAL: "containers.catalystsquad.com"
   REGISTRY_INTERNAL_PATH: "public/catalystcommunity/ichoi"
-  REGISTRY_EXTERNAL: "containers.catalystsquad.com"
-  REGISTRY_EXTERNAL_PATH: "public/catalystcommunity/ichoi"
+  # REGISTRY_EXTERNAL / REGISTRY_EXTERNAL_PATH are optional: set them to publish the same
+  # image to a SECOND registry, best effort, after the push above has landed. They used to
+  # repeat the internal values, which cost a second buildctl invocation and reported an
+  # "external push succeeded" for a push to the image that already existed. The job now
+  # skips an external registry that resolves to the internal one.
   REGISTRY_USER: "${secret:catalystcommunity/registry:user}"
   REGISTRY_PASSWORD: "${secret:catalystcommunity/registry:password}"

@@ -31,6 +31,9 @@ CONVENTIONAL_COMMIT_PATTERN = re.compile(
 # satellites run it. Static musl binaries link no system library at all (DESIGN Sec.1), so
 # they run in the scratch container the server ships as.
 RUST_TARGETS = ("x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl")
+# musl-tools carries the musl C compiler that cc-rs needs to build the bundled SQLite for the
+# amd64 musl target. The image does not ship one. The release job needs the same package.
+BUILD_PACKAGES = ("musl-tools",)
 AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
 CSILGEN_REPOSITORY = "https://github.com/catalystcommunity/csilgen.git"
 RUSTUP_URL = "https://sh.rustup.rs"
@@ -214,7 +217,7 @@ def conventional_commits(code_dir: Path) -> None:
 
 def build(code_dir: Path) -> None:
     """Build the workspace for both release architectures as static musl binaries."""
-    _apt_install(["musl-tools"], code_dir)
+    _apt_install(list(BUILD_PACKAGES), code_dir)
     environment = _rust_environment()
     _ensure_cargo(environment, code_dir)
     _install_aarch64_musl_cross(environment, code_dir)
