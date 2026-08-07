@@ -56,6 +56,43 @@ struct AlbumSubfolderOptions<'a> {
     words: &'a [String],
 }
 
+/// Index one file that an authorized federation import wrote into a library.
+///
+/// This uses the same metadata and stable ID rules as a full library scan. It does not run
+/// the full-library reconciliation passes because an import must return its local track now.
+pub fn index_imported_file(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+    root: &Path,
+    path: &Path,
+    album_subfolder_flat: bool,
+    album_subfolder_words: &[String],
+) -> anyhow::Result<models::Track> {
+    let ext = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
+    if !AUDIO_EXTS.contains(&ext.as_str()) {
+        anyhow::bail!("unsupported audio file extension");
+    }
+    index_file(
+        conn,
+        library_id,
+        root,
+        path,
+        &ext,
+        resolve_ffprobe().as_deref(),
+        AlbumSubfolderOptions {
+            flat: album_subfolder_flat,
+            words: album_subfolder_words,
+        },
+    )?;
+    let relative = relative_path(root, path);
+    store::track_by_library_root_path(conn, library_id, &relative)?
+        .ok_or_else(|| anyhow::anyhow!("imported track was not indexed"))
+}
+
 /// Scan every audio file under `root`, indexing into `library_id`.
 pub fn scan_library(
     conn: &mut SqliteConnection,

@@ -261,6 +261,8 @@ public sealed record ArtistRequest
 {
     // CBOR key: artist_id
     public required ArtistId ArtistId { get; init; }
+    // CBOR key: library
+    public Library? Library { get; init; }
 }
 
 public sealed record ArtistDetail
@@ -302,6 +304,66 @@ public sealed record SearchResponse
     public required System.Collections.Generic.List<Album> Albums { get; init; }
     // CBOR key: tracks
     public required System.Collections.Generic.List<Track> Tracks { get; init; }
+}
+
+public sealed record TransferChunk
+{
+    // CBOR key: index
+    public required ulong Index { get; init; }
+    // CBOR key: offset
+    public required ulong Offset { get; init; }
+    // CBOR key: size
+    public required ulong Size { get; init; }
+    // CBOR key: sha256
+    public required string Sha256 { get; init; }
+}
+
+public sealed record TransferFile
+{
+    // CBOR key: root_relative_path
+    public required string RootRelativePath { get; init; }
+    // CBOR key: content_type
+    public required string ContentType { get; init; }
+    // CBOR key: size_bytes
+    public required ulong SizeBytes { get; init; }
+    // CBOR key: sha256
+    public required string Sha256 { get; init; }
+    // CBOR key: chunks
+    public required System.Collections.Generic.List<TransferChunk> Chunks { get; init; }
+}
+
+public sealed record ExportManifestRequest
+{
+    // CBOR key: track_id
+    public required TrackId TrackId { get; init; }
+}
+
+public sealed record ExportManifest
+{
+    // CBOR key: track
+    public required Track Track { get; init; }
+    // CBOR key: files
+    public required System.Collections.Generic.List<TransferFile> Files { get; init; }
+}
+
+public sealed record ExportChunkRequest
+{
+    // CBOR key: track_id
+    public required TrackId TrackId { get; init; }
+    // CBOR key: root_relative_path
+    public required string RootRelativePath { get; init; }
+    // CBOR key: chunk_index
+    public required ulong ChunkIndex { get; init; }
+}
+
+public sealed record ExportChunk
+{
+    // CBOR key: root_relative_path
+    public required string RootRelativePath { get; init; }
+    // CBOR key: chunk_index
+    public required ulong ChunkIndex { get; init; }
+    // CBOR key: data
+    public required byte[] Data { get; init; }
 }
 
 public sealed record AudiobookProgress
@@ -1122,6 +1184,8 @@ public sealed record RevokeSatelliteTokenRequest
 
 public sealed record ImportTrackRequest
 {
+    // CBOR key: library
+    public Library? Library { get; init; }
     // CBOR key: root_relative_path
     public required string RootRelativePath { get; init; }
     // CBOR key: content_type
@@ -1138,8 +1202,60 @@ public sealed record ImportResult
     public required bool Imported { get; init; }
     // CBOR key: track_id
     public TrackId? TrackId { get; init; }
+    // CBOR key: track
+    public Track? Track { get; init; }
     // CBOR key: skipped_existing
     public required bool SkippedExisting { get; init; }
+}
+
+public sealed record MissingChunk
+{
+    // CBOR key: file_index
+    public required ulong FileIndex { get; init; }
+    // CBOR key: chunk_index
+    public required ulong ChunkIndex { get; init; }
+}
+
+public sealed record BeginImportRequest
+{
+    // CBOR key: library
+    public Library? Library { get; init; }
+    // CBOR key: track_file_index
+    public required ulong TrackFileIndex { get; init; }
+    // CBOR key: files
+    public required System.Collections.Generic.List<TransferFile> Files { get; init; }
+}
+
+public sealed record BeginImportResult
+{
+    // CBOR key: transfer_id
+    public required string TransferId { get; init; }
+    // CBOR key: missing_chunks
+    public required System.Collections.Generic.List<MissingChunk> MissingChunks { get; init; }
+}
+
+public sealed record ImportChunkRequest
+{
+    // CBOR key: transfer_id
+    public required string TransferId { get; init; }
+    // CBOR key: file_index
+    public required ulong FileIndex { get; init; }
+    // CBOR key: chunk_index
+    public required ulong ChunkIndex { get; init; }
+    // CBOR key: data
+    public required byte[] Data { get; init; }
+}
+
+public sealed record FinishImportRequest
+{
+    // CBOR key: transfer_id
+    public required string TransferId { get; init; }
+}
+
+public sealed record CancelImportRequest
+{
+    // CBOR key: transfer_id
+    public required string TransferId { get; init; }
 }
 
 public sealed record Settings

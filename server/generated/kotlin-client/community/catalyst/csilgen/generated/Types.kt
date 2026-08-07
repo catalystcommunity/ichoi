@@ -218,7 +218,8 @@ data class AlbumDetail(
 /** ArtistRequest record. */
 data class ArtistRequest(
     // wire key: artist_id
-    val artistId: ArtistId
+    val artistId: ArtistId,
+    val library: Library? = Library.Music
 )
 
 /** ArtistDetail record. */
@@ -240,6 +241,73 @@ data class SearchResponse(
     val albums: List<Album>,
     val tracks: List<Track>
 )
+
+/** TransferChunk record. */
+data class TransferChunk(
+    val index: ULong,
+    val offset: ULong,
+    val size: ULong,
+    val sha256: String
+)
+
+/** TransferFile record. */
+data class TransferFile(
+    // wire key: root_relative_path
+    val rootRelativePath: String,
+    // wire key: content_type
+    val contentType: String,
+    // wire key: size_bytes
+    val sizeBytes: ULong,
+    val sha256: String,
+    val chunks: List<TransferChunk>
+)
+
+/** ExportManifestRequest record. */
+data class ExportManifestRequest(
+    // wire key: track_id
+    val trackId: TrackId
+)
+
+/** ExportManifest record. */
+data class ExportManifest(
+    val track: Track,
+    val files: List<TransferFile>
+)
+
+/** ExportChunkRequest record. */
+data class ExportChunkRequest(
+    // wire key: track_id
+    val trackId: TrackId,
+    // wire key: root_relative_path
+    val rootRelativePath: String,
+    // wire key: chunk_index
+    val chunkIndex: ULong
+)
+
+/** ExportChunk record. */
+data class ExportChunk(
+    // wire key: root_relative_path
+    val rootRelativePath: String,
+    // wire key: chunk_index
+    val chunkIndex: ULong,
+    val data: ByteArray
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ExportChunk) return false
+        if (rootRelativePath != other.rootRelativePath) return false
+        if (chunkIndex != other.chunkIndex) return false
+        if (!data.contentEquals(other.data)) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = rootRelativePath.hashCode()
+        result = 31 * result + chunkIndex.hashCode()
+        result = 31 * result + data.contentHashCode()
+        return result
+    }
+}
 
 /** AudiobookProgress record. */
 data class AudiobookProgress(
@@ -891,6 +959,7 @@ data class RevokeSatelliteTokenRequest(
 
 /** ImportTrackRequest record. */
 data class ImportTrackRequest(
+    val library: Library? = Library.Music,
     // wire key: root_relative_path
     val rootRelativePath: String,
     // wire key: content_type
@@ -902,6 +971,7 @@ data class ImportTrackRequest(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ImportTrackRequest) return false
+        if (library != other.library) return false
         if (rootRelativePath != other.rootRelativePath) return false
         if (contentType != other.contentType) return false
         if (contentHash != other.contentHash) return false
@@ -910,7 +980,8 @@ data class ImportTrackRequest(
     }
 
     override fun hashCode(): Int {
-        var result = rootRelativePath.hashCode()
+        var result = library.hashCode()
+        result = 31 * result + rootRelativePath.hashCode()
         result = 31 * result + contentType.hashCode()
         result = 31 * result + contentHash.hashCode()
         result = 31 * result + data.contentHashCode()
@@ -923,8 +994,74 @@ data class ImportResult(
     val imported: Boolean,
     // wire key: track_id
     val trackId: TrackId? = null,
+    val track: Track? = null,
     // wire key: skipped_existing
     val skippedExisting: Boolean = false
+)
+
+/** MissingChunk record. */
+data class MissingChunk(
+    // wire key: file_index
+    val fileIndex: ULong,
+    // wire key: chunk_index
+    val chunkIndex: ULong
+)
+
+/** BeginImportRequest record. */
+data class BeginImportRequest(
+    val library: Library? = Library.Music,
+    // wire key: track_file_index
+    val trackFileIndex: ULong,
+    val files: List<TransferFile>
+)
+
+/** BeginImportResult record. */
+data class BeginImportResult(
+    // wire key: transfer_id
+    val transferId: String,
+    // wire key: missing_chunks
+    val missingChunks: List<MissingChunk>
+)
+
+/** ImportChunkRequest record. */
+data class ImportChunkRequest(
+    // wire key: transfer_id
+    val transferId: String,
+    // wire key: file_index
+    val fileIndex: ULong,
+    // wire key: chunk_index
+    val chunkIndex: ULong,
+    val data: ByteArray
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ImportChunkRequest) return false
+        if (transferId != other.transferId) return false
+        if (fileIndex != other.fileIndex) return false
+        if (chunkIndex != other.chunkIndex) return false
+        if (!data.contentEquals(other.data)) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = transferId.hashCode()
+        result = 31 * result + fileIndex.hashCode()
+        result = 31 * result + chunkIndex.hashCode()
+        result = 31 * result + data.contentHashCode()
+        return result
+    }
+}
+
+/** FinishImportRequest record. */
+data class FinishImportRequest(
+    // wire key: transfer_id
+    val transferId: String
+)
+
+/** CancelImportRequest record. */
+data class CancelImportRequest(
+    // wire key: transfer_id
+    val transferId: String
 )
 
 /** Settings record. */

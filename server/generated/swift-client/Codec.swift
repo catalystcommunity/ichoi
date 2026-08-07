@@ -799,6 +799,7 @@ public extension ArtistRequest {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        if let csilV = self.library { csilEntries.append(("library", csilV.toCborValue())) }
         csilEntries.append(("artist_id", .text(self.artistId)))
         return .map(csilEntries)
     }
@@ -806,7 +807,8 @@ public extension ArtistRequest {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let artistId = try CsilCbor.asText((try CsilCbor.require(cborValue, "artist_id")))
-        self.init(artistId: artistId)
+        let library: Library? = if let csilV = CsilCbor.mapGet(cborValue, "library") { try Library(cborValue: csilV) } else { nil }
+        self.init(artistId: artistId, library: library)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -887,6 +889,156 @@ public extension SearchResponse {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> SearchResponse { try SearchResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension TransferChunk {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("size", .uint(self.size)))
+        csilEntries.append(("index", .uint(self.index)))
+        csilEntries.append(("offset", .uint(self.offset)))
+        csilEntries.append(("sha256", .text(self.sha256)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let index = try CsilCbor.asU64((try CsilCbor.require(cborValue, "index")))
+        let offset = try CsilCbor.asU64((try CsilCbor.require(cborValue, "offset")))
+        let size = try CsilCbor.asU64((try CsilCbor.require(cborValue, "size")))
+        let sha256 = try CsilCbor.asText((try CsilCbor.require(cborValue, "sha256")))
+        self.init(index: index, offset: offset, size: size, sha256: sha256)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> TransferChunk { try TransferChunk(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension TransferFile {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("chunks", CsilCborValue.array(self.chunks.map { $0.toCborValue() })))
+        csilEntries.append(("sha256", .text(self.sha256)))
+        csilEntries.append(("size_bytes", .uint(self.sizeBytes)))
+        csilEntries.append(("content_type", .text(self.contentType)))
+        csilEntries.append(("root_relative_path", .text(self.rootRelativePath)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let rootRelativePath = try CsilCbor.asText((try CsilCbor.require(cborValue, "root_relative_path")))
+        let contentType = try CsilCbor.asText((try CsilCbor.require(cborValue, "content_type")))
+        let sizeBytes = try CsilCbor.asU64((try CsilCbor.require(cborValue, "size_bytes")))
+        let sha256 = try CsilCbor.asText((try CsilCbor.require(cborValue, "sha256")))
+        let chunks = try CsilCbor.asArray((try CsilCbor.require(cborValue, "chunks"))).map { try TransferChunk(cborValue: $0) }
+        self.init(rootRelativePath: rootRelativePath, contentType: contentType, sizeBytes: sizeBytes, sha256: sha256, chunks: chunks)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> TransferFile { try TransferFile(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ExportManifestRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("track_id", .text(self.trackId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
+        self.init(trackId: trackId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ExportManifestRequest { try ExportManifestRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ExportManifest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("files", CsilCborValue.array(self.files.map { $0.toCborValue() })))
+        csilEntries.append(("track", self.track.toCborValue()))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let track = try Track(cborValue: (try CsilCbor.require(cborValue, "track")))
+        let files = try CsilCbor.asArray((try CsilCbor.require(cborValue, "files"))).map { try TransferFile(cborValue: $0) }
+        self.init(track: track, files: files)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ExportManifest { try ExportManifest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ExportChunkRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("track_id", .text(self.trackId)))
+        csilEntries.append(("chunk_index", .uint(self.chunkIndex)))
+        csilEntries.append(("root_relative_path", .text(self.rootRelativePath)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
+        let rootRelativePath = try CsilCbor.asText((try CsilCbor.require(cborValue, "root_relative_path")))
+        let chunkIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "chunk_index")))
+        self.init(trackId: trackId, rootRelativePath: rootRelativePath, chunkIndex: chunkIndex)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ExportChunkRequest { try ExportChunkRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ExportChunk {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("data", .bytes(self.data)))
+        csilEntries.append(("chunk_index", .uint(self.chunkIndex)))
+        csilEntries.append(("root_relative_path", .text(self.rootRelativePath)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let rootRelativePath = try CsilCbor.asText((try CsilCbor.require(cborValue, "root_relative_path")))
+        let chunkIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "chunk_index")))
+        let data = try CsilCbor.asBytes((try CsilCbor.require(cborValue, "data")))
+        self.init(rootRelativePath: rootRelativePath, chunkIndex: chunkIndex, data: data)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ExportChunk { try ExportChunk(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension AudiobookProgress {
@@ -2866,6 +3018,7 @@ public extension ImportTrackRequest {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("data", .bytes(self.data)))
+        if let csilV = self.library { csilEntries.append(("library", csilV.toCborValue())) }
         if let csilV = self.contentHash { csilEntries.append(("content_hash", .text(csilV))) }
         csilEntries.append(("content_type", .text(self.contentType)))
         csilEntries.append(("root_relative_path", .text(self.rootRelativePath)))
@@ -2874,11 +3027,12 @@ public extension ImportTrackRequest {
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
+        let library: Library? = if let csilV = CsilCbor.mapGet(cborValue, "library") { try Library(cborValue: csilV) } else { nil }
         let rootRelativePath = try CsilCbor.asText((try CsilCbor.require(cborValue, "root_relative_path")))
         let contentType = try CsilCbor.asText((try CsilCbor.require(cborValue, "content_type")))
         let contentHash: String? = if let csilV = CsilCbor.mapGet(cborValue, "content_hash") { try CsilCbor.asText(csilV) } else { nil }
         let data = try CsilCbor.asBytes((try CsilCbor.require(cborValue, "data")))
-        self.init(rootRelativePath: rootRelativePath, contentType: contentType, contentHash: contentHash, data: data)
+        self.init(library: library, rootRelativePath: rootRelativePath, contentType: contentType, contentHash: contentHash, data: data)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2892,6 +3046,7 @@ public extension ImportResult {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        if let csilV = self.track { csilEntries.append(("track", csilV.toCborValue())) }
         csilEntries.append(("imported", .bool(self.imported)))
         if let csilV = self.trackId { csilEntries.append(("track_id", .text(csilV))) }
         csilEntries.append(("skipped_existing", .bool(self.skippedExisting)))
@@ -2902,8 +3057,9 @@ public extension ImportResult {
     init(cborValue: CsilCborValue) throws {
         let imported = try CsilCbor.asBool((try CsilCbor.require(cborValue, "imported")))
         let trackId: TrackId? = if let csilV = CsilCbor.mapGet(cborValue, "track_id") { try CsilCbor.asText(csilV) } else { nil }
+        let track: Track? = if let csilV = CsilCbor.mapGet(cborValue, "track") { try Track(cborValue: csilV) } else { nil }
         let skippedExisting = try CsilCbor.asBool((try CsilCbor.require(cborValue, "skipped_existing")))
-        self.init(imported: imported, trackId: trackId, skippedExisting: skippedExisting)
+        self.init(imported: imported, trackId: trackId, track: track, skippedExisting: skippedExisting)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2911,6 +3067,146 @@ public extension ImportResult {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> ImportResult { try ImportResult(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension MissingChunk {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("file_index", .uint(self.fileIndex)))
+        csilEntries.append(("chunk_index", .uint(self.chunkIndex)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let fileIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "file_index")))
+        let chunkIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "chunk_index")))
+        self.init(fileIndex: fileIndex, chunkIndex: chunkIndex)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> MissingChunk { try MissingChunk(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension BeginImportRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("files", CsilCborValue.array(self.files.map { $0.toCborValue() })))
+        if let csilV = self.library { csilEntries.append(("library", csilV.toCborValue())) }
+        csilEntries.append(("track_file_index", .uint(self.trackFileIndex)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let library: Library? = if let csilV = CsilCbor.mapGet(cborValue, "library") { try Library(cborValue: csilV) } else { nil }
+        let trackFileIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "track_file_index")))
+        let files = try CsilCbor.asArray((try CsilCbor.require(cborValue, "files"))).map { try TransferFile(cborValue: $0) }
+        self.init(library: library, trackFileIndex: trackFileIndex, files: files)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> BeginImportRequest { try BeginImportRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension BeginImportResult {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("transfer_id", .text(self.transferId)))
+        csilEntries.append(("missing_chunks", CsilCborValue.array(self.missingChunks.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let transferId = try CsilCbor.asText((try CsilCbor.require(cborValue, "transfer_id")))
+        let missingChunks = try CsilCbor.asArray((try CsilCbor.require(cborValue, "missing_chunks"))).map { try MissingChunk(cborValue: $0) }
+        self.init(transferId: transferId, missingChunks: missingChunks)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> BeginImportResult { try BeginImportResult(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ImportChunkRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("data", .bytes(self.data)))
+        csilEntries.append(("file_index", .uint(self.fileIndex)))
+        csilEntries.append(("chunk_index", .uint(self.chunkIndex)))
+        csilEntries.append(("transfer_id", .text(self.transferId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let transferId = try CsilCbor.asText((try CsilCbor.require(cborValue, "transfer_id")))
+        let fileIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "file_index")))
+        let chunkIndex = try CsilCbor.asU64((try CsilCbor.require(cborValue, "chunk_index")))
+        let data = try CsilCbor.asBytes((try CsilCbor.require(cborValue, "data")))
+        self.init(transferId: transferId, fileIndex: fileIndex, chunkIndex: chunkIndex, data: data)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ImportChunkRequest { try ImportChunkRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension FinishImportRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("transfer_id", .text(self.transferId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let transferId = try CsilCbor.asText((try CsilCbor.require(cborValue, "transfer_id")))
+        self.init(transferId: transferId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> FinishImportRequest { try FinishImportRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CancelImportRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("transfer_id", .text(self.transferId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let transferId = try CsilCbor.asText((try CsilCbor.require(cborValue, "transfer_id")))
+        self.init(transferId: transferId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CancelImportRequest { try CancelImportRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension Settings {

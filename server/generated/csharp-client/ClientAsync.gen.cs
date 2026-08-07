@@ -42,6 +42,10 @@ public sealed class LibraryAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<ArtistDetail>(await transport.Call("LibraryService", "get-artist", Codec.Encode(artistRequest)));
     public async System.Threading.Tasks.Task<SearchResponse> SearchAsync(SearchRequest searchRequest) =>
         Codec.Decode<SearchResponse>(await transport.Call("LibraryService", "search", Codec.Encode(searchRequest)));
+    public async System.Threading.Tasks.Task<ExportManifest> ExportManifestAsync(ExportManifestRequest exportManifestRequest) =>
+        Codec.Decode<ExportManifest>(await transport.Call("LibraryService", "export-manifest", Codec.Encode(exportManifestRequest)));
+    public async System.Threading.Tasks.Task<ExportChunk> ExportChunkAsync(ExportChunkRequest exportChunkRequest) =>
+        Codec.Decode<ExportChunk>(await transport.Call("LibraryService", "export-chunk", Codec.Encode(exportChunkRequest)));
     public async System.Threading.Tasks.Task<PlaylistsResponse> ListPlaylistsAsync(BrowseRequest browseRequest) =>
         Codec.Decode<PlaylistsResponse>(await transport.Call("LibraryService", "list-playlists", Codec.Encode(browseRequest)));
     public async System.Threading.Tasks.Task<PlaylistDetail> GetPlaylistAsync(PlaylistRequest playlistRequest) =>
@@ -124,6 +128,14 @@ public sealed class AdminAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<Ok>(await transport.Call("AdminService", "revoke-satellite-token", Codec.Encode(revokeSatelliteTokenRequest)));
     public async System.Threading.Tasks.Task<ImportResult> ImportTrackAsync(ImportTrackRequest importTrackRequest) =>
         Codec.Decode<ImportResult>(await transport.Call("AdminService", "import-track", Codec.Encode(importTrackRequest)));
+    public async System.Threading.Tasks.Task<BeginImportResult> BeginImportAsync(BeginImportRequest beginImportRequest) =>
+        Codec.Decode<BeginImportResult>(await transport.Call("AdminService", "begin-import", Codec.Encode(beginImportRequest)));
+    public async System.Threading.Tasks.Task<Ok> ImportChunkAsync(ImportChunkRequest importChunkRequest) =>
+        Codec.Decode<Ok>(await transport.Call("AdminService", "import-chunk", Codec.Encode(importChunkRequest)));
+    public async System.Threading.Tasks.Task<ImportResult> FinishImportAsync(FinishImportRequest finishImportRequest) =>
+        Codec.Decode<ImportResult>(await transport.Call("AdminService", "finish-import", Codec.Encode(finishImportRequest)));
+    public async System.Threading.Tasks.Task<Ok> CancelImportAsync(CancelImportRequest cancelImportRequest) =>
+        Codec.Decode<Ok>(await transport.Call("AdminService", "cancel-import", Codec.Encode(cancelImportRequest)));
     public async System.Threading.Tasks.Task<Settings> GetSettingsAsync(Page page) =>
         Codec.Decode<Settings>(await transport.Call("AdminService", "get-settings", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<Settings> SetSettingAsync(SetSettingRequest setSettingRequest) =>

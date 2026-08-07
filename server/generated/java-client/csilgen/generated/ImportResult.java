@@ -5,6 +5,7 @@ package csilgen.generated;
 public record ImportResult(
     boolean imported /* wire: "imported" */,
     TrackId trackId /* wire: "track_id" */,
+    Track track /* wire: "track" */,
     boolean skippedExisting /* wire: "skipped_existing" */
 ) {
 }

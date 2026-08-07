@@ -863,6 +863,9 @@ AlbumDetail.from_cbor = staticmethod(_album_detail_from_cbor)
 
 def _encode_artist_request_value(v: "ArtistRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
+    csil_x = v.library
+    if csil_x is not None:
+        csil_m["library"] = csil_x
     csil_m["artist_id"] = v.artist_id
     return csil_m
 
@@ -870,6 +873,7 @@ def _decode_artist_request_value(tree: Any) -> "ArtistRequest":
     tree = _csil_expect_map(tree)
     return ArtistRequest(
         artist_id=_csil_expect_text(tree["artist_id"]),
+        library=(None if tree.get("library") is None else _decode_library_value(tree["library"])),
     )
 
 
@@ -966,6 +970,168 @@ def _search_response_from_cbor(data: bytes) -> "SearchResponse":
 
 SearchResponse.to_cbor = _search_response_to_cbor
 SearchResponse.from_cbor = staticmethod(_search_response_from_cbor)
+
+def _encode_transfer_chunk_value(v: "TransferChunk") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["size"] = v.size
+    csil_m["index"] = v.index
+    csil_m["offset"] = v.offset
+    csil_m["sha256"] = v.sha_256
+    return csil_m
+
+def _decode_transfer_chunk_value(tree: Any) -> "TransferChunk":
+    tree = _csil_expect_map(tree)
+    return TransferChunk(
+        index=_csil_expect_uint(tree["index"]),
+        offset=_csil_expect_uint(tree["offset"]),
+        size=_csil_expect_uint(tree["size"]),
+        sha_256=_csil_expect_text(tree["sha256"]),
+    )
+
+
+def _transfer_chunk_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_transfer_chunk_value(self))
+
+
+def _transfer_chunk_from_cbor(data: bytes) -> "TransferChunk":
+    return _decode_transfer_chunk_value(cbor_decode(data))
+
+
+TransferChunk.to_cbor = _transfer_chunk_to_cbor
+TransferChunk.from_cbor = staticmethod(_transfer_chunk_from_cbor)
+
+def _encode_transfer_file_value(v: "TransferFile") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["chunks"] = [_encode_transfer_chunk_value(csil_e) for csil_e in v.chunks]
+    csil_m["sha256"] = v.sha_256
+    csil_m["size_bytes"] = v.size_bytes
+    csil_m["content_type"] = v.content_type
+    csil_m["root_relative_path"] = v.root_relative_path
+    return csil_m
+
+def _decode_transfer_file_value(tree: Any) -> "TransferFile":
+    tree = _csil_expect_map(tree)
+    return TransferFile(
+        root_relative_path=_csil_expect_text(tree["root_relative_path"]),
+        content_type=_csil_expect_text(tree["content_type"]),
+        size_bytes=_csil_expect_uint(tree["size_bytes"]),
+        sha_256=_csil_expect_text(tree["sha256"]),
+        chunks=[_decode_transfer_chunk_value(csil_e) for csil_e in _csil_expect_array(tree["chunks"])],
+    )
+
+
+def _transfer_file_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_transfer_file_value(self))
+
+
+def _transfer_file_from_cbor(data: bytes) -> "TransferFile":
+    return _decode_transfer_file_value(cbor_decode(data))
+
+
+TransferFile.to_cbor = _transfer_file_to_cbor
+TransferFile.from_cbor = staticmethod(_transfer_file_from_cbor)
+
+def _encode_export_manifest_request_value(v: "ExportManifestRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["track_id"] = v.track_id
+    return csil_m
+
+def _decode_export_manifest_request_value(tree: Any) -> "ExportManifestRequest":
+    tree = _csil_expect_map(tree)
+    return ExportManifestRequest(
+        track_id=_csil_expect_text(tree["track_id"]),
+    )
+
+
+def _export_manifest_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_export_manifest_request_value(self))
+
+
+def _export_manifest_request_from_cbor(data: bytes) -> "ExportManifestRequest":
+    return _decode_export_manifest_request_value(cbor_decode(data))
+
+
+ExportManifestRequest.to_cbor = _export_manifest_request_to_cbor
+ExportManifestRequest.from_cbor = staticmethod(_export_manifest_request_from_cbor)
+
+def _encode_export_manifest_value(v: "ExportManifest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["files"] = [_encode_transfer_file_value(csil_e) for csil_e in v.files]
+    csil_m["track"] = _encode_track_value(v.track)
+    return csil_m
+
+def _decode_export_manifest_value(tree: Any) -> "ExportManifest":
+    tree = _csil_expect_map(tree)
+    return ExportManifest(
+        track=_decode_track_value(tree["track"]),
+        files=[_decode_transfer_file_value(csil_e) for csil_e in _csil_expect_array(tree["files"])],
+    )
+
+
+def _export_manifest_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_export_manifest_value(self))
+
+
+def _export_manifest_from_cbor(data: bytes) -> "ExportManifest":
+    return _decode_export_manifest_value(cbor_decode(data))
+
+
+ExportManifest.to_cbor = _export_manifest_to_cbor
+ExportManifest.from_cbor = staticmethod(_export_manifest_from_cbor)
+
+def _encode_export_chunk_request_value(v: "ExportChunkRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["track_id"] = v.track_id
+    csil_m["chunk_index"] = v.chunk_index
+    csil_m["root_relative_path"] = v.root_relative_path
+    return csil_m
+
+def _decode_export_chunk_request_value(tree: Any) -> "ExportChunkRequest":
+    tree = _csil_expect_map(tree)
+    return ExportChunkRequest(
+        track_id=_csil_expect_text(tree["track_id"]),
+        root_relative_path=_csil_expect_text(tree["root_relative_path"]),
+        chunk_index=_csil_expect_uint(tree["chunk_index"]),
+    )
+
+
+def _export_chunk_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_export_chunk_request_value(self))
+
+
+def _export_chunk_request_from_cbor(data: bytes) -> "ExportChunkRequest":
+    return _decode_export_chunk_request_value(cbor_decode(data))
+
+
+ExportChunkRequest.to_cbor = _export_chunk_request_to_cbor
+ExportChunkRequest.from_cbor = staticmethod(_export_chunk_request_from_cbor)
+
+def _encode_export_chunk_value(v: "ExportChunk") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["data"] = v.data
+    csil_m["chunk_index"] = v.chunk_index
+    csil_m["root_relative_path"] = v.root_relative_path
+    return csil_m
+
+def _decode_export_chunk_value(tree: Any) -> "ExportChunk":
+    tree = _csil_expect_map(tree)
+    return ExportChunk(
+        root_relative_path=_csil_expect_text(tree["root_relative_path"]),
+        chunk_index=_csil_expect_uint(tree["chunk_index"]),
+        data=_csil_expect_bytes(tree["data"]),
+    )
+
+
+def _export_chunk_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_export_chunk_value(self))
+
+
+def _export_chunk_from_cbor(data: bytes) -> "ExportChunk":
+    return _decode_export_chunk_value(cbor_decode(data))
+
+
+ExportChunk.to_cbor = _export_chunk_to_cbor
+ExportChunk.from_cbor = staticmethod(_export_chunk_from_cbor)
 
 def _encode_audiobook_progress_value(v: "AudiobookProgress") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -2888,6 +3054,9 @@ RevokeSatelliteTokenRequest.from_cbor = staticmethod(_revoke_satellite_token_req
 def _encode_import_track_request_value(v: "ImportTrackRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["data"] = v.data
+    csil_x = v.library
+    if csil_x is not None:
+        csil_m["library"] = csil_x
     csil_x = v.content_hash
     if csil_x is not None:
         csil_m["content_hash"] = csil_x
@@ -2898,6 +3067,7 @@ def _encode_import_track_request_value(v: "ImportTrackRequest") -> Dict[Any, Any
 def _decode_import_track_request_value(tree: Any) -> "ImportTrackRequest":
     tree = _csil_expect_map(tree)
     return ImportTrackRequest(
+        library=(None if tree.get("library") is None else _decode_library_value(tree["library"])),
         root_relative_path=_csil_expect_text(tree["root_relative_path"]),
         content_type=_csil_expect_text(tree["content_type"]),
         content_hash=(None if tree.get("content_hash") is None else _csil_expect_text(tree["content_hash"])),
@@ -2918,6 +3088,9 @@ ImportTrackRequest.from_cbor = staticmethod(_import_track_request_from_cbor)
 
 def _encode_import_result_value(v: "ImportResult") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
+    csil_x = v.track
+    if csil_x is not None:
+        csil_m["track"] = _encode_track_value(csil_x)
     csil_m["imported"] = v.imported
     csil_x = v.track_id
     if csil_x is not None:
@@ -2930,6 +3103,7 @@ def _decode_import_result_value(tree: Any) -> "ImportResult":
     return ImportResult(
         imported=_csil_expect_bool(tree["imported"]),
         track_id=(None if tree.get("track_id") is None else _csil_expect_text(tree["track_id"])),
+        track=(None if tree.get("track") is None else _decode_track_value(tree["track"])),
         skipped_existing=_csil_expect_bool(tree["skipped_existing"]),
     )
 
@@ -2944,6 +3118,160 @@ def _import_result_from_cbor(data: bytes) -> "ImportResult":
 
 ImportResult.to_cbor = _import_result_to_cbor
 ImportResult.from_cbor = staticmethod(_import_result_from_cbor)
+
+def _encode_missing_chunk_value(v: "MissingChunk") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["file_index"] = v.file_index
+    csil_m["chunk_index"] = v.chunk_index
+    return csil_m
+
+def _decode_missing_chunk_value(tree: Any) -> "MissingChunk":
+    tree = _csil_expect_map(tree)
+    return MissingChunk(
+        file_index=_csil_expect_uint(tree["file_index"]),
+        chunk_index=_csil_expect_uint(tree["chunk_index"]),
+    )
+
+
+def _missing_chunk_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_missing_chunk_value(self))
+
+
+def _missing_chunk_from_cbor(data: bytes) -> "MissingChunk":
+    return _decode_missing_chunk_value(cbor_decode(data))
+
+
+MissingChunk.to_cbor = _missing_chunk_to_cbor
+MissingChunk.from_cbor = staticmethod(_missing_chunk_from_cbor)
+
+def _encode_begin_import_request_value(v: "BeginImportRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["files"] = [_encode_transfer_file_value(csil_e) for csil_e in v.files]
+    csil_x = v.library
+    if csil_x is not None:
+        csil_m["library"] = csil_x
+    csil_m["track_file_index"] = v.track_file_index
+    return csil_m
+
+def _decode_begin_import_request_value(tree: Any) -> "BeginImportRequest":
+    tree = _csil_expect_map(tree)
+    return BeginImportRequest(
+        library=(None if tree.get("library") is None else _decode_library_value(tree["library"])),
+        track_file_index=_csil_expect_uint(tree["track_file_index"]),
+        files=[_decode_transfer_file_value(csil_e) for csil_e in _csil_expect_array(tree["files"])],
+    )
+
+
+def _begin_import_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_begin_import_request_value(self))
+
+
+def _begin_import_request_from_cbor(data: bytes) -> "BeginImportRequest":
+    return _decode_begin_import_request_value(cbor_decode(data))
+
+
+BeginImportRequest.to_cbor = _begin_import_request_to_cbor
+BeginImportRequest.from_cbor = staticmethod(_begin_import_request_from_cbor)
+
+def _encode_begin_import_result_value(v: "BeginImportResult") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["transfer_id"] = v.transfer_id
+    csil_m["missing_chunks"] = [_encode_missing_chunk_value(csil_e) for csil_e in v.missing_chunks]
+    return csil_m
+
+def _decode_begin_import_result_value(tree: Any) -> "BeginImportResult":
+    tree = _csil_expect_map(tree)
+    return BeginImportResult(
+        transfer_id=_csil_expect_text(tree["transfer_id"]),
+        missing_chunks=[_decode_missing_chunk_value(csil_e) for csil_e in _csil_expect_array(tree["missing_chunks"])],
+    )
+
+
+def _begin_import_result_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_begin_import_result_value(self))
+
+
+def _begin_import_result_from_cbor(data: bytes) -> "BeginImportResult":
+    return _decode_begin_import_result_value(cbor_decode(data))
+
+
+BeginImportResult.to_cbor = _begin_import_result_to_cbor
+BeginImportResult.from_cbor = staticmethod(_begin_import_result_from_cbor)
+
+def _encode_import_chunk_request_value(v: "ImportChunkRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["data"] = v.data
+    csil_m["file_index"] = v.file_index
+    csil_m["chunk_index"] = v.chunk_index
+    csil_m["transfer_id"] = v.transfer_id
+    return csil_m
+
+def _decode_import_chunk_request_value(tree: Any) -> "ImportChunkRequest":
+    tree = _csil_expect_map(tree)
+    return ImportChunkRequest(
+        transfer_id=_csil_expect_text(tree["transfer_id"]),
+        file_index=_csil_expect_uint(tree["file_index"]),
+        chunk_index=_csil_expect_uint(tree["chunk_index"]),
+        data=_csil_expect_bytes(tree["data"]),
+    )
+
+
+def _import_chunk_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_import_chunk_request_value(self))
+
+
+def _import_chunk_request_from_cbor(data: bytes) -> "ImportChunkRequest":
+    return _decode_import_chunk_request_value(cbor_decode(data))
+
+
+ImportChunkRequest.to_cbor = _import_chunk_request_to_cbor
+ImportChunkRequest.from_cbor = staticmethod(_import_chunk_request_from_cbor)
+
+def _encode_finish_import_request_value(v: "FinishImportRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["transfer_id"] = v.transfer_id
+    return csil_m
+
+def _decode_finish_import_request_value(tree: Any) -> "FinishImportRequest":
+    tree = _csil_expect_map(tree)
+    return FinishImportRequest(
+        transfer_id=_csil_expect_text(tree["transfer_id"]),
+    )
+
+
+def _finish_import_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_finish_import_request_value(self))
+
+
+def _finish_import_request_from_cbor(data: bytes) -> "FinishImportRequest":
+    return _decode_finish_import_request_value(cbor_decode(data))
+
+
+FinishImportRequest.to_cbor = _finish_import_request_to_cbor
+FinishImportRequest.from_cbor = staticmethod(_finish_import_request_from_cbor)
+
+def _encode_cancel_import_request_value(v: "CancelImportRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["transfer_id"] = v.transfer_id
+    return csil_m
+
+def _decode_cancel_import_request_value(tree: Any) -> "CancelImportRequest":
+    tree = _csil_expect_map(tree)
+    return CancelImportRequest(
+        transfer_id=_csil_expect_text(tree["transfer_id"]),
+    )
+
+
+def _cancel_import_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cancel_import_request_value(self))
+
+
+def _cancel_import_request_from_cbor(data: bytes) -> "CancelImportRequest":
+    return _decode_cancel_import_request_value(cbor_decode(data))
+
+
+CancelImportRequest.to_cbor = _cancel_import_request_to_cbor
+CancelImportRequest.from_cbor = staticmethod(_cancel_import_request_from_cbor)
 
 def _encode_settings_value(v: "Settings") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}

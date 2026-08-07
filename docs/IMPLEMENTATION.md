@@ -46,6 +46,16 @@ enable/disable with the `"<Handle>'s <suffix>"` naming), AdminService, and
 NodeService.register are wired to the store and reachable over both the WS and TCP paths.
 `player.Subscribe` gets an initial snapshot and live pushes when player state changes.
 
+## Instance federation
+
+The browser searches the music and audiobook catalogs on all connected instances. The
+selected instance is the destination for queue and playlist changes. A remote queue action
+gets a file and chunk hash manifest from `LibraryService.export-manifest`. The browser gets
+missing 16 MiB chunks from `LibraryService.export-chunk` and sends them to the destination
+import session. The destination verifies artwork, lyrics, and audio files. It indexes the
+audio file and returns a local track ID before the queue changes. See
+[FEDERATION.md](FEDERATION.md).
+
 ## Stubbed / TODO (honest gaps)
 
 - **Browser playback is still native HTTP audio.** Satellites no longer need a WASM decoder:

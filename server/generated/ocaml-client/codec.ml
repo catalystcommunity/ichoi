@@ -205,6 +205,7 @@ and encode_artist_request (v : artist_request) : Cbor.t =
     (List.filter_map
        (fun x -> x)
        [
+         (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
          Some (Cbor.Text "artist_id", (Cbor.Text v.artist_id));
        ])
 
@@ -235,6 +236,66 @@ and encode_search_response (v : search_response) : Cbor.t =
          Some (Cbor.Text "albums", (Cbor.Array (List.map (fun csil_e -> (encode_album csil_e)) v.albums)));
          Some (Cbor.Text "tracks", (Cbor.Array (List.map (fun csil_e -> (encode_track csil_e)) v.tracks)));
          Some (Cbor.Text "artists", (Cbor.Array (List.map (fun csil_e -> (encode_artist csil_e)) v.artists)));
+       ])
+
+and encode_transfer_chunk (v : transfer_chunk) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "size", (Cbor.int64 v.size));
+         Some (Cbor.Text "index", (Cbor.int64 v.index));
+         Some (Cbor.Text "offset", (Cbor.int64 v.offset));
+         Some (Cbor.Text "sha256", (Cbor.Text v.sha_256));
+       ])
+
+and encode_transfer_file (v : transfer_file) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "chunks", (Cbor.Array (List.map (fun csil_e -> (encode_transfer_chunk csil_e)) v.chunks)));
+         Some (Cbor.Text "sha256", (Cbor.Text v.sha_256));
+         Some (Cbor.Text "size_bytes", (Cbor.int64 v.size_bytes));
+         Some (Cbor.Text "content_type", (Cbor.Text v.content_type));
+         Some (Cbor.Text "root_relative_path", (Cbor.Text v.root_relative_path));
+       ])
+
+and encode_export_manifest_request (v : export_manifest_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
+       ])
+
+and encode_export_manifest (v : export_manifest) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "files", (Cbor.Array (List.map (fun csil_e -> (encode_transfer_file csil_e)) v.files)));
+         Some (Cbor.Text "track", (encode_track v.track));
+       ])
+
+and encode_export_chunk_request (v : export_chunk_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
+         Some (Cbor.Text "chunk_index", (Cbor.int64 v.chunk_index));
+         Some (Cbor.Text "root_relative_path", (Cbor.Text v.root_relative_path));
+       ])
+
+and encode_export_chunk (v : export_chunk) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "data", (Cbor.Bytes v.data));
+         Some (Cbor.Text "chunk_index", (Cbor.int64 v.chunk_index));
+         Some (Cbor.Text "root_relative_path", (Cbor.Text v.root_relative_path));
        ])
 
 and encode_audiobook_progress (v : audiobook_progress) : Cbor.t =
@@ -947,6 +1008,7 @@ and encode_import_track_request (v : import_track_request) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "data", (Cbor.Bytes v.data));
+         (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
          (match v.content_hash with Some csil_x -> Some (Cbor.Text "content_hash", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "content_type", (Cbor.Text v.content_type));
          Some (Cbor.Text "root_relative_path", (Cbor.Text v.root_relative_path));
@@ -957,9 +1019,65 @@ and encode_import_result (v : import_result) : Cbor.t =
     (List.filter_map
        (fun x -> x)
        [
+         (match v.track with Some csil_x -> Some (Cbor.Text "track", (encode_track csil_x)) | None -> None);
          Some (Cbor.Text "imported", (Cbor.Bool v.imported));
          (match v.track_id with Some csil_x -> Some (Cbor.Text "track_id", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "skipped_existing", (Cbor.Bool v.skipped_existing));
+       ])
+
+and encode_missing_chunk (v : missing_chunk) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "file_index", (Cbor.int64 v.file_index));
+         Some (Cbor.Text "chunk_index", (Cbor.int64 v.chunk_index));
+       ])
+
+and encode_begin_import_request (v : begin_import_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "files", (Cbor.Array (List.map (fun csil_e -> (encode_transfer_file csil_e)) v.files)));
+         (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
+         Some (Cbor.Text "track_file_index", (Cbor.int64 v.track_file_index));
+       ])
+
+and encode_begin_import_result (v : begin_import_result) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "transfer_id", (Cbor.Text v.transfer_id));
+         Some (Cbor.Text "missing_chunks", (Cbor.Array (List.map (fun csil_e -> (encode_missing_chunk csil_e)) v.missing_chunks)));
+       ])
+
+and encode_import_chunk_request (v : import_chunk_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "data", (Cbor.Bytes v.data));
+         Some (Cbor.Text "file_index", (Cbor.int64 v.file_index));
+         Some (Cbor.Text "chunk_index", (Cbor.int64 v.chunk_index));
+         Some (Cbor.Text "transfer_id", (Cbor.Text v.transfer_id));
+       ])
+
+and encode_finish_import_request (v : finish_import_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "transfer_id", (Cbor.Text v.transfer_id));
+       ])
+
+and encode_cancel_import_request (v : cancel_import_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "transfer_id", (Cbor.Text v.transfer_id));
        ])
 
 and encode_settings (v : settings) : Cbor.t =
@@ -1275,6 +1393,7 @@ and decode_artist_request (csil_c : Cbor.t) : artist_request =
       in
       ignore csil_req;
       {
+        library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
         artist_id = (Cbor.to_text (csil_req "artist_id"));
       }
   | _ -> failwith "csilgen: expected map for artist_request"
@@ -1322,6 +1441,96 @@ and decode_search_response (csil_c : Cbor.t) : search_response =
         artists = (match (csil_req "artists") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_artist csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
       }
   | _ -> failwith "csilgen: expected map for search_response"
+
+and decode_transfer_chunk (csil_c : Cbor.t) : transfer_chunk =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        size = (Cbor.to_i64 (csil_req "size"));
+        index = (Cbor.to_i64 (csil_req "index"));
+        offset = (Cbor.to_i64 (csil_req "offset"));
+        sha_256 = (Cbor.to_text (csil_req "sha256"));
+      }
+  | _ -> failwith "csilgen: expected map for transfer_chunk"
+
+and decode_transfer_file (csil_c : Cbor.t) : transfer_file =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        chunks = (match (csil_req "chunks") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_transfer_chunk csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+        sha_256 = (Cbor.to_text (csil_req "sha256"));
+        size_bytes = (Cbor.to_i64 (csil_req "size_bytes"));
+        content_type = (Cbor.to_text (csil_req "content_type"));
+        root_relative_path = (Cbor.to_text (csil_req "root_relative_path"));
+      }
+  | _ -> failwith "csilgen: expected map for transfer_file"
+
+and decode_export_manifest_request (csil_c : Cbor.t) : export_manifest_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        track_id = (Cbor.to_text (csil_req "track_id"));
+      }
+  | _ -> failwith "csilgen: expected map for export_manifest_request"
+
+and decode_export_manifest (csil_c : Cbor.t) : export_manifest =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        files = (match (csil_req "files") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_transfer_file csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+        track = (decode_track (csil_req "track"));
+      }
+  | _ -> failwith "csilgen: expected map for export_manifest"
+
+and decode_export_chunk_request (csil_c : Cbor.t) : export_chunk_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        track_id = (Cbor.to_text (csil_req "track_id"));
+        chunk_index = (Cbor.to_i64 (csil_req "chunk_index"));
+        root_relative_path = (Cbor.to_text (csil_req "root_relative_path"));
+      }
+  | _ -> failwith "csilgen: expected map for export_chunk_request"
+
+and decode_export_chunk (csil_c : Cbor.t) : export_chunk =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        data = (Cbor.to_bytes (csil_req "data"));
+        chunk_index = (Cbor.to_i64 (csil_req "chunk_index"));
+        root_relative_path = (Cbor.to_text (csil_req "root_relative_path"));
+      }
+  | _ -> failwith "csilgen: expected map for export_chunk"
 
 and decode_audiobook_progress (csil_c : Cbor.t) : audiobook_progress =
   match csil_c with
@@ -2405,6 +2614,7 @@ and decode_import_track_request (csil_c : Cbor.t) : import_track_request =
       ignore csil_req;
       {
         data = (Cbor.to_bytes (csil_req "data"));
+        library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
         content_hash = (match csil_field "content_hash" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         content_type = (Cbor.to_text (csil_req "content_type"));
         root_relative_path = (Cbor.to_text (csil_req "root_relative_path"));
@@ -2420,11 +2630,97 @@ and decode_import_result (csil_c : Cbor.t) : import_result =
       in
       ignore csil_req;
       {
+        track = (match csil_field "track" with Some csil_v -> Some (decode_track csil_v) | None -> None);
         imported = (Cbor.to_bool (csil_req "imported"));
         track_id = (match csil_field "track_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         skipped_existing = (Cbor.to_bool (csil_req "skipped_existing"));
       }
   | _ -> failwith "csilgen: expected map for import_result"
+
+and decode_missing_chunk (csil_c : Cbor.t) : missing_chunk =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        file_index = (Cbor.to_i64 (csil_req "file_index"));
+        chunk_index = (Cbor.to_i64 (csil_req "chunk_index"));
+      }
+  | _ -> failwith "csilgen: expected map for missing_chunk"
+
+and decode_begin_import_request (csil_c : Cbor.t) : begin_import_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        files = (match (csil_req "files") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_transfer_file csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+        library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
+        track_file_index = (Cbor.to_i64 (csil_req "track_file_index"));
+      }
+  | _ -> failwith "csilgen: expected map for begin_import_request"
+
+and decode_begin_import_result (csil_c : Cbor.t) : begin_import_result =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        transfer_id = (Cbor.to_text (csil_req "transfer_id"));
+        missing_chunks = (match (csil_req "missing_chunks") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_missing_chunk csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for begin_import_result"
+
+and decode_import_chunk_request (csil_c : Cbor.t) : import_chunk_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        data = (Cbor.to_bytes (csil_req "data"));
+        file_index = (Cbor.to_i64 (csil_req "file_index"));
+        chunk_index = (Cbor.to_i64 (csil_req "chunk_index"));
+        transfer_id = (Cbor.to_text (csil_req "transfer_id"));
+      }
+  | _ -> failwith "csilgen: expected map for import_chunk_request"
+
+and decode_finish_import_request (csil_c : Cbor.t) : finish_import_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        transfer_id = (Cbor.to_text (csil_req "transfer_id"));
+      }
+  | _ -> failwith "csilgen: expected map for finish_import_request"
+
+and decode_cancel_import_request (csil_c : Cbor.t) : cancel_import_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        transfer_id = (Cbor.to_text (csil_req "transfer_id"));
+      }
+  | _ -> failwith "csilgen: expected map for cancel_import_request"
 
 and decode_settings (csil_c : Cbor.t) : settings =
   match csil_c with
@@ -2570,6 +2866,30 @@ let decode_search_request_bytes (b : bytes) : search_request =
 let encode_search_response_bytes (v : search_response) : bytes = Cbor.encode (encode_search_response v)
 let decode_search_response_bytes (b : bytes) : search_response =
   match Cbor.decode b with Ok c -> decode_search_response c | Error e -> failwith e
+
+let encode_transfer_chunk_bytes (v : transfer_chunk) : bytes = Cbor.encode (encode_transfer_chunk v)
+let decode_transfer_chunk_bytes (b : bytes) : transfer_chunk =
+  match Cbor.decode b with Ok c -> decode_transfer_chunk c | Error e -> failwith e
+
+let encode_transfer_file_bytes (v : transfer_file) : bytes = Cbor.encode (encode_transfer_file v)
+let decode_transfer_file_bytes (b : bytes) : transfer_file =
+  match Cbor.decode b with Ok c -> decode_transfer_file c | Error e -> failwith e
+
+let encode_export_manifest_request_bytes (v : export_manifest_request) : bytes = Cbor.encode (encode_export_manifest_request v)
+let decode_export_manifest_request_bytes (b : bytes) : export_manifest_request =
+  match Cbor.decode b with Ok c -> decode_export_manifest_request c | Error e -> failwith e
+
+let encode_export_manifest_bytes (v : export_manifest) : bytes = Cbor.encode (encode_export_manifest v)
+let decode_export_manifest_bytes (b : bytes) : export_manifest =
+  match Cbor.decode b with Ok c -> decode_export_manifest c | Error e -> failwith e
+
+let encode_export_chunk_request_bytes (v : export_chunk_request) : bytes = Cbor.encode (encode_export_chunk_request v)
+let decode_export_chunk_request_bytes (b : bytes) : export_chunk_request =
+  match Cbor.decode b with Ok c -> decode_export_chunk_request c | Error e -> failwith e
+
+let encode_export_chunk_bytes (v : export_chunk) : bytes = Cbor.encode (encode_export_chunk v)
+let decode_export_chunk_bytes (b : bytes) : export_chunk =
+  match Cbor.decode b with Ok c -> decode_export_chunk c | Error e -> failwith e
 
 let encode_audiobook_progress_bytes (v : audiobook_progress) : bytes = Cbor.encode (encode_audiobook_progress v)
 let decode_audiobook_progress_bytes (b : bytes) : audiobook_progress =
@@ -2898,6 +3218,30 @@ let decode_import_track_request_bytes (b : bytes) : import_track_request =
 let encode_import_result_bytes (v : import_result) : bytes = Cbor.encode (encode_import_result v)
 let decode_import_result_bytes (b : bytes) : import_result =
   match Cbor.decode b with Ok c -> decode_import_result c | Error e -> failwith e
+
+let encode_missing_chunk_bytes (v : missing_chunk) : bytes = Cbor.encode (encode_missing_chunk v)
+let decode_missing_chunk_bytes (b : bytes) : missing_chunk =
+  match Cbor.decode b with Ok c -> decode_missing_chunk c | Error e -> failwith e
+
+let encode_begin_import_request_bytes (v : begin_import_request) : bytes = Cbor.encode (encode_begin_import_request v)
+let decode_begin_import_request_bytes (b : bytes) : begin_import_request =
+  match Cbor.decode b with Ok c -> decode_begin_import_request c | Error e -> failwith e
+
+let encode_begin_import_result_bytes (v : begin_import_result) : bytes = Cbor.encode (encode_begin_import_result v)
+let decode_begin_import_result_bytes (b : bytes) : begin_import_result =
+  match Cbor.decode b with Ok c -> decode_begin_import_result c | Error e -> failwith e
+
+let encode_import_chunk_request_bytes (v : import_chunk_request) : bytes = Cbor.encode (encode_import_chunk_request v)
+let decode_import_chunk_request_bytes (b : bytes) : import_chunk_request =
+  match Cbor.decode b with Ok c -> decode_import_chunk_request c | Error e -> failwith e
+
+let encode_finish_import_request_bytes (v : finish_import_request) : bytes = Cbor.encode (encode_finish_import_request v)
+let decode_finish_import_request_bytes (b : bytes) : finish_import_request =
+  match Cbor.decode b with Ok c -> decode_finish_import_request c | Error e -> failwith e
+
+let encode_cancel_import_request_bytes (v : cancel_import_request) : bytes = Cbor.encode (encode_cancel_import_request v)
+let decode_cancel_import_request_bytes (b : bytes) : cancel_import_request =
+  match Cbor.decode b with Ok c -> decode_cancel_import_request c | Error e -> failwith e
 
 let encode_settings_bytes (v : settings) : bytes = Cbor.encode (encode_settings v)
 let decode_settings_bytes (b : bytes) : settings =

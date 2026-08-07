@@ -1,19 +1,26 @@
 import { createResource, createSignal, For, Show, type JSX } from "solid-js";
-import { useNavigate } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { usePlayback } from "../stores/playback.tsx";
-import { AlbumTile } from "../components/AlbumTile.tsx";
+import { useToast } from "../stores/toasts.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { EmptyState, Spinner } from "../components/common.tsx";
+import {
+  copyTracksToInstance,
+  searchAllInstances,
+  type FederatedSearchResult,
+  type FederationServer,
+} from "../lib/federation.ts";
+import type { Track } from "../lib/schema.ts";
 
 export function SearchPage(): JSX.Element {
   const servers = useServers();
-  const pb = usePlayback();
+  const playback = usePlayback();
+  const toast = useToast();
   const { t } = useI18n();
-  const navigate = useNavigate();
   const [query, setQuery] = createSignal("");
   const [debounced, setDebounced] = createSignal("");
+  const [busy, setBusy] = createSignal<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const onInput = (value: string) => {
@@ -22,25 +29,83 @@ export function SearchPage(): JSX.Element {
     timer = setTimeout(() => setDebounced(value.trim()), 220);
   };
 
+  const connectedInstances = (): FederationServer[] =>
+    servers.servers.flatMap((server) => {
+      const api = server.state === "ready" ? servers.apiFor(server.id) : undefined;
+      return api ? [{ id: server.id, name: server.name, api }] : [];
+    });
+
+  const destination = (): FederationServer | undefined => {
+    const record = servers.active();
+    const api = record && servers.apiFor(record.id);
+    return record && api ? { id: record.id, name: record.name, api } : undefined;
+  };
+
   const [results] = createResource(
     () => {
-      const api = servers.api();
       const q = debounced();
-      return api && q.length >= 1 ? { api, q } : undefined;
+      const instances = connectedInstances();
+      return q && instances.length ? { q, instances } : undefined;
     },
-    (input) => input.api.library.search({ query: input.q, limit: 50 }),
+    (input) => searchAllInstances(input.instances, input.q),
   );
 
-  const hasResults = () => {
-    const r = results();
-    return !!r && (r.artists.length > 0 || r.albums.length > 0 || r.tracks.length > 0);
-  };
+  const visibleResults = () =>
+    (results() ?? []).filter((result) => {
+      const response = result.response;
+      return response && (response.artists.length || response.albums.length || response.tracks.length);
+    });
+
+  async function addTracks(source: FederationServer, tracks: Track[], play = false): Promise<void> {
+    const target = destination();
+    if (!target) throw new Error(t("errors.connectFirst"));
+    if (source.id !== target.id && servers.active()?.session?.can_admin !== true) {
+      throw new Error(t("search.importAdminRequired", { name: target.name }));
+    }
+    const localTracks = await copyTracksToInstance(source, target, tracks);
+    if (play && localTracks[0]) await playback.enqueueAndPlay(localTracks[0]);
+    else playback.enqueue(localTracks);
+    toast.show(t("search.added", { count: localTracks.length, name: target.name }));
+  }
+
+  async function runAction(key: string, action: () => Promise<void>): Promise<void> {
+    if (busy()) return;
+    setBusy(key);
+    try {
+      await action();
+    } catch (error) {
+      toast.show(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
+  async function addAlbum(result: FederatedSearchResult, albumId: string): Promise<void> {
+    const detail = await result.server.api.library.getAlbum({ album_id: albumId });
+    await addTracks(result.server, detail.tracks);
+  }
+
+  async function addArtist(result: FederatedSearchResult, artistId: string): Promise<void> {
+    const artist = await result.server.api.library.getArtist({
+      artist_id: artistId,
+      library: result.library,
+    });
+    const tracks: Track[] = [];
+    for (const album of artist.albums) {
+      const detail = await result.server.api.library.getAlbum({ album_id: album.id });
+      tracks.push(...detail.tracks);
+    }
+    await addTracks(result.server, tracks);
+  }
 
   return (
     <div class="page">
       <header class="page-head">
         <div class="eyebrow">{t("nav.search")}</div>
         <h1 class="page-title">{t("search.title")}</h1>
+        <Show when={servers.active()}>
+          {(server) => <p class="page-sub">{t("search.destination", { name: server().name })}</p>}
+        </Show>
       </header>
 
       <input
@@ -50,71 +115,90 @@ export function SearchPage(): JSX.Element {
         aria-label={t("search.placeholder")}
         placeholder={t("search.placeholder")}
         value={query()}
-        onInput={(e) => onInput(e.currentTarget.value)}
+        onInput={(event) => onInput(event.currentTarget.value)}
       />
 
       <div style={{ "margin-top": "22px" }}>
-        <Show
-          when={debounced().length >= 1}
-          fallback={<EmptyState title={t("search.prompt")} />}
-        >
+        <Show when={debounced()} fallback={<EmptyState title={t("search.prompt")} />}>
           <Show when={!results.loading} fallback={<Spinner label={t("common.loading")} />}>
             <Show
-              when={hasResults()}
+              when={visibleResults().length}
               fallback={<EmptyState title={t("search.noResults", { query: debounced() })} />}
             >
-              <Show when={results()!.artists.length}>
-                <section aria-labelledby="s-artists">
-                  <div class="section-head">
-                    <h2 id="s-artists">{t("search.artists")}</h2>
-                    <span class="count">{results()!.artists.length}</span>
-                  </div>
-                  <div class="grid">
-                    <For each={results()!.artists}>
-                      {(artist) => (
-                        <button
-                          type="button"
-                          class="tile"
-                          onClick={() => navigate(`/artist/${encodeURIComponent(artist.id)}`)}
-                        >
-                          <span class="cover">
-                            <span class="cover-fallback">{artist.name.charAt(0).toUpperCase()}</span>
-                          </span>
-                          <span class="tile-title">{artist.name}</span>
-                        </button>
-                      )}
-                    </For>
-                  </div>
-                </section>
-              </Show>
+              <For each={visibleResults()}>
+                {(result) => (
+                  <section class="federated-results" aria-label={`${result.server.name} ${result.library}`}>
+                    <div class="section-head">
+                      <h2>{result.server.name}</h2>
+                      <span class="badge">{t(`search.${result.library}`)}</span>
+                    </div>
 
-              <Show when={results()!.albums.length}>
-                <section aria-labelledby="s-albums">
-                  <div class="section-head">
-                    <h2 id="s-albums">{t("search.albums")}</h2>
-                    <span class="count">{results()!.albums.length}</span>
-                  </div>
-                  <div class="grid">
-                    <For each={results()!.albums}>{(album) => <AlbumTile album={album} />}</For>
-                  </div>
-                </section>
-              </Show>
+                    <Show when={result.response!.artists.length}>
+                      <h3>{t("search.artists")}</h3>
+                      <div class="grid">
+                        <For each={result.response!.artists}>
+                          {(artist) => (
+                            <button
+                              type="button"
+                              class="tile"
+                              disabled={Boolean(busy())}
+                              onClick={() => void runAction(
+                                `${result.server.id}:artist:${artist.id}`,
+                                () => addArtist(result, artist.id),
+                              )}
+                            >
+                              <span class="cover"><span class="cover-fallback">{artist.name[0]?.toUpperCase()}</span></span>
+                              <span class="tile-title">{artist.name}</span>
+                              <span class="tile-sub">{t("search.queueArtist")}</span>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
 
-              <Show when={results()!.tracks.length}>
-                <section aria-labelledby="s-tracks">
-                  <div class="section-head">
-                    <h2 id="s-tracks">{t("search.tracks")}</h2>
-                    <span class="count">{results()!.tracks.length}</span>
-                  </div>
-                  <TrackList
-                    tracks={results()!.tracks}
-                    currentTrackId={pb.current()?.id}
-                    playing={pb.snapshot().status === "playing"}
-                    onPlay={(i) => void pb.enqueueAndPlay(results()!.tracks[i]!)}
-                    onQueue={(i) => pb.enqueue([results()!.tracks[i]!])}
-                  />
-                </section>
-              </Show>
+                    <Show when={result.response!.albums.length}>
+                      <h3>{result.library === "audiobook" ? t("search.audiobooks") : t("search.albums")}</h3>
+                      <div class="grid">
+                        <For each={result.response!.albums}>
+                          {(album) => (
+                            <button
+                              type="button"
+                              class="tile"
+                              disabled={Boolean(busy())}
+                              onClick={() => void runAction(
+                                `${result.server.id}:album:${album.id}`,
+                                () => addAlbum(result, album.id),
+                              )}
+                            >
+                              <span class="cover"><span class="cover-fallback">{album.title[0]?.toUpperCase()}</span></span>
+                              <span class="tile-title">{album.title}</span>
+                              <Show when={album.artist_name}><span class="tile-sub">{album.artist_name}</span></Show>
+                              <span class="tile-sub">{t("search.queueAlbum")}</span>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    </Show>
+
+                    <Show when={result.response!.tracks.length}>
+                      <h3>{t("search.tracks")}</h3>
+                      <TrackList
+                        tracks={result.response!.tracks}
+                        currentTrackId={playback.current()?.id}
+                        playing={playback.snapshot().status === "playing"}
+                        onPlay={(index) => void runAction(
+                          `${result.server.id}:play:${result.response!.tracks[index]!.id}`,
+                          () => addTracks(result.server, [result.response!.tracks[index]!], true),
+                        )}
+                        onQueue={(index) => void runAction(
+                          `${result.server.id}:track:${result.response!.tracks[index]!.id}`,
+                          () => addTracks(result.server, [result.response!.tracks[index]!]),
+                        )}
+                      />
+                    </Show>
+                  </section>
+                )}
+              </For>
             </Show>
           </Show>
         </Show>

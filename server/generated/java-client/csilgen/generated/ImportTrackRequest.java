@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 public record ImportTrackRequest(
+    Library library /* wire: "library" */,
     String rootRelativePath /* wire: "root_relative_path" */,
     String contentType /* wire: "content_type" */,
     String contentHash /* wire: "content_hash" */,
@@ -16,6 +17,7 @@ public record ImportTrackRequest(
         if (this == obj) return true;
         if (!(obj instanceof ImportTrackRequest o)) return false;
         return true
+            && Objects.equals(library, o.library)
             && Objects.equals(rootRelativePath, o.rootRelativePath)
             && Objects.equals(contentType, o.contentType)
             && Objects.equals(contentHash, o.contentHash)
@@ -24,10 +26,10 @@ public record ImportTrackRequest(
     }
     @Override
     public int hashCode() {
-        return Objects.hash(rootRelativePath, contentType, contentHash, Arrays.hashCode(data));
+        return Objects.hash(library, rootRelativePath, contentType, contentHash, Arrays.hashCode(data));
     }
     @Override
     public String toString() {
-        return "ImportTrackRequest[" + "rootRelativePath=" + rootRelativePath + ", " + "contentType=" + contentType + ", " + "contentHash=" + contentHash + ", " + "data=" + Arrays.toString(data) + "]";
+        return "ImportTrackRequest[" + "library=" + library + ", " + "rootRelativePath=" + rootRelativePath + ", " + "contentType=" + contentType + ", " + "contentHash=" + contentHash + ", " + "data=" + Arrays.toString(data) + "]";
     }
 }

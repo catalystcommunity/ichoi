@@ -140,6 +140,16 @@ pub fn dispatch(
         ("library", "get-album") => rr!(decode_album_request, get_album, encode_album_detail),
         ("library", "get-artist") => rr!(decode_artist_request, get_artist, encode_artist_detail),
         ("library", "search") => rr!(decode_search_request, search, encode_search_response),
+        ("library", "export-manifest") => rr!(
+            decode_export_manifest_request,
+            export_manifest,
+            encode_export_manifest
+        ),
+        ("library", "export-chunk") => rr!(
+            decode_export_chunk_request,
+            export_chunk,
+            encode_export_chunk
+        ),
         ("library", "list-playlists") => {
             rr!(
                 decode_browse_request,
@@ -280,6 +290,22 @@ pub fn dispatch(
                 import_track,
                 encode_import_result
             )
+        }
+        ("admin", "begin-import") => rr!(
+            decode_begin_import_request,
+            begin_import,
+            encode_begin_import_result
+        ),
+        ("admin", "import-chunk") => {
+            rr!(decode_import_chunk_request, import_chunk, encode_ok)
+        }
+        ("admin", "finish-import") => rr!(
+            decode_finish_import_request,
+            finish_import,
+            encode_import_result
+        ),
+        ("admin", "cancel-import") => {
+            rr!(decode_cancel_import_request, cancel_import, encode_ok)
         }
         ("admin", "get-settings") => rr!(decode_page, get_settings, encode_settings),
         ("admin", "set-setting") => rr!(decode_set_setting_request, set_setting, encode_settings),

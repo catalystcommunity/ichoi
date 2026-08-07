@@ -8,6 +8,7 @@ pub mod auth;
 pub mod cli;
 pub mod config;
 pub mod db;
+pub mod federation;
 pub mod handlers;
 pub mod install;
 pub mod media;

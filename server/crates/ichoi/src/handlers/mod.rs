@@ -5,12 +5,14 @@
 //! are pre-alpha stubs (§16) — the media/jukebox loops are the next implementation frontier.
 
 use std::collections::{HashMap, HashSet};
+use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
 use libichoi::csil::services::*;
 use libichoi::csil::types::*;
+use sha2::{Digest, Sha256};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::config::Config;
@@ -222,6 +224,7 @@ pub struct App {
     pub nodes: NodeHub,
     pub output_health: OutputHealth,
     pub scan_running: Arc<AtomicBool>,
+    pub imports: crate::federation::ImportHub,
     pub local_rp: Option<crate::auth::local_rp::DynBackend>,
     pub regular_rp: Option<crate::auth::regular_rp::DynBackend>,
 }
@@ -252,6 +255,7 @@ impl App {
             nodes: NodeHub::new(),
             output_health: OutputHealth::new(),
             scan_running: Arc::new(AtomicBool::new(false)),
+            imports: crate::federation::ImportHub::default(),
             local_rp,
             regular_rp,
         }
@@ -297,6 +301,37 @@ fn require_admin_or_guest_instance(
         Identity::Anonymous => Err(err(401, "admin authentication required")),
         _ => Err(err(403, "admin role required")),
     }
+}
+
+fn require_export_or_guest_instance(
+    ctx: &Ctx,
+    conn: &mut diesel::sqlite::SqliteConnection,
+) -> Result<(), ServiceError> {
+    match &ctx.identity {
+        Identity::User { role, .. } if role == "admin" || role == "member" => Ok(()),
+        Identity::Anonymous if db(store::count_accounts(conn))? == 0 => Ok(()),
+        Identity::Anonymous => Err(err(401, "authentication required to copy media")),
+        _ => Err(err(403, "this account cannot copy media")),
+    }
+}
+
+fn content_hash(data: &[u8]) -> String {
+    hex::encode(Sha256::digest(data))
+}
+
+fn safe_import_path(value: &str) -> Result<PathBuf, ServiceError> {
+    if value.is_empty() || value.len() > 1024 || value.contains('\\') || value.contains('\0') {
+        return Err(err(400, "invalid import path"));
+    }
+    let path = Path::new(value);
+    if path.is_absolute()
+        || path
+            .components()
+            .any(|part| !matches!(part, Component::Normal(_)))
+    {
+        return Err(err(400, "import path must stay inside the library"));
+    }
+    Ok(path.to_path_buf())
 }
 
 fn setting_enabled(
@@ -378,7 +413,7 @@ fn map_trusted_identity(row: models::LinkkeysTrustedIdentity) -> TrustedIdentity
     }
 }
 
-fn map_track(t: &models::Track) -> Track {
+pub(crate) fn track_from_model(t: &models::Track) -> Track {
     Track {
         id: t.id.clone(),
         library: if t.library_id == "lib:audiobook" {
@@ -399,6 +434,18 @@ fn map_track(t: &models::Track) -> Track {
         bit_depth: t.bit_depth.map(|n| n as u64),
         root_relative_path: t.root_relative_path.clone(),
         content_hash: t.content_hash.clone(),
+    }
+}
+
+fn map_track(t: &models::Track) -> Track {
+    track_from_model(t)
+}
+
+fn transfer_owner(ctx: &Ctx) -> String {
+    match &ctx.identity {
+        Identity::User { account_id, .. } => format!("user:{account_id}"),
+        Identity::Node { node_id } => format!("node:{node_id}"),
+        Identity::Anonymous => "anonymous".to_string(),
     }
 }
 
@@ -693,7 +740,7 @@ impl LibraryService for App {
         let mut conn = self.conn()?;
         let a = db(store::get_artist(&mut conn, &input.artist_id))?
             .ok_or_else(|| err(404, "artist not found"))?;
-        let library_id = "lib:music";
+        let library_id = library_id(input.library);
         let artist = map_artist(&mut conn, library_id, &a)?;
         let album_rows = db(store::albums_for_artist(
             &mut conn,
@@ -745,6 +792,26 @@ impl LibraryService for App {
             albums,
             tracks,
         })
+    }
+
+    fn export_manifest(
+        &self,
+        ctx: &Ctx,
+        input: ExportManifestRequest,
+    ) -> Result<ExportManifest, ServiceError> {
+        let mut conn = self.conn()?;
+        require_export_or_guest_instance(ctx, &mut conn)?;
+        crate::federation::export_manifest(&mut conn, &input.track_id)
+    }
+
+    fn export_chunk(
+        &self,
+        ctx: &Ctx,
+        input: ExportChunkRequest,
+    ) -> Result<ExportChunk, ServiceError> {
+        let mut conn = self.conn()?;
+        require_export_or_guest_instance(ctx, &mut conn)?;
+        crate::federation::export_chunk(&mut conn, &input)
     }
 
     fn list_playlists(
@@ -1908,30 +1975,142 @@ impl AdminService for App {
     ) -> Result<ImportResult, ServiceError> {
         let mut conn = self.conn()?;
         require_admin_or_guest_instance(ctx, &mut conn)?;
-        // Cross-server copy destination (§7): write the file under the music root, let the
-        // scanner index it. Admin-only by policy (enforced at the transport for pre-alpha).
-        let root = self
-            .config
-            .music_dir
+        let relative = safe_import_path(&input.root_relative_path)?;
+        let library_kind = input.library.clone().unwrap_or(Library::Music);
+        let library_id = library_id(Some(library_kind.clone()));
+        let root = match library_kind {
+            Library::Music => self.config.music_dir.as_ref(),
+            Library::Audiobook => self.config.audiobook_dir.as_ref(),
+        }
+        .ok_or_else(|| err(503, "destination library is not configured"))?;
+        let actual_hash = content_hash(&input.data);
+        if input
+            .content_hash
             .as_ref()
-            .ok_or_else(|| err(503, "no music directory configured"))?;
-        let dest = root.join(&input.root_relative_path);
-        if dest.exists() {
-            return std::result::Result::Ok(ImportResult {
+            .is_some_and(|expected| actual_hash != expected.to_ascii_lowercase())
+        {
+            return Err(err(400, "content hash does not match import data"));
+        }
+        if let Some(existing) = db(store::track_by_library_content_hash(
+            &mut conn,
+            library_id,
+            &actual_hash,
+        ))? {
+            let track = map_track(&existing);
+            return Ok(ImportResult {
                 imported: false,
-                track_id: None,
+                track_id: Some(track.id.clone()),
+                track: Some(track),
                 skipped_existing: true,
             });
+        }
+        let dest = crate::federation::destination_path(root, &relative)?;
+        if dest.exists() {
+            let existing_data = std::fs::read(&dest).map_err(internal)?;
+            if content_hash(&existing_data) != actual_hash {
+                return Err(err(409, "a different file already uses the import path"));
+            }
         }
         if let Some(parent) = dest.parent() {
             std::fs::create_dir_all(parent).map_err(internal)?;
         }
-        std::fs::write(&dest, &input.data).map_err(internal)?;
-        std::result::Result::Ok(ImportResult {
-            imported: true,
-            track_id: None,
-            skipped_existing: false,
+        let imported = !dest.exists();
+        if imported {
+            let temporary = dest.with_extension(format!(
+                "{}.ichoi-import-{}",
+                dest.extension()
+                    .and_then(|value| value.to_str())
+                    .unwrap_or("tmp"),
+                uuid::Uuid::now_v7()
+            ));
+            std::fs::write(&temporary, &input.data).map_err(internal)?;
+            if let Err(error) = std::fs::hard_link(&temporary, &dest) {
+                let _ = std::fs::remove_file(&temporary);
+                return Err(internal(error));
+            }
+            let _ = std::fs::remove_file(&temporary);
+        }
+        db(store::upsert_library(
+            &mut conn,
+            &models::Library {
+                id: library_id.to_string(),
+                kind: match library_kind {
+                    Library::Music => "music".to_string(),
+                    Library::Audiobook => "audiobook".to_string(),
+                },
+                path: root.to_string_lossy().into_owned(),
+            },
+        ))?;
+        let indexed = match crate::scan::index_imported_file(
+            &mut conn,
+            library_id,
+            root,
+            &dest,
+            self.config.album_subfolder_flat,
+            &self.config.album_subfolder_words,
+        ) {
+            Ok(track) => track,
+            Err(error) => {
+                if imported {
+                    let _ = std::fs::remove_file(&dest);
+                }
+                return Err(internal(error));
+            }
+        };
+        db(store::set_track_content_hash(
+            &mut conn,
+            &indexed.id,
+            &actual_hash,
+        ))?;
+        let mut indexed = indexed;
+        indexed.content_hash = Some(actual_hash);
+        let track = map_track(&indexed);
+        Ok(ImportResult {
+            imported,
+            track_id: Some(track.id.clone()),
+            track: Some(track),
+            skipped_existing: !imported,
         })
+    }
+
+    fn begin_import(
+        &self,
+        ctx: &Ctx,
+        input: BeginImportRequest,
+    ) -> Result<BeginImportResult, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        self.imports
+            .begin(&self.config, &mut conn, transfer_owner(ctx), input)
+    }
+
+    fn import_chunk(&self, ctx: &Ctx, input: ImportChunkRequest) -> Result<Ok, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        drop(conn);
+        self.imports.chunk(&transfer_owner(ctx), input)
+    }
+
+    fn finish_import(
+        &self,
+        ctx: &Ctx,
+        input: FinishImportRequest,
+    ) -> Result<ImportResult, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        self.imports
+            .finish(&self.config, &mut conn, &transfer_owner(ctx), input)
+    }
+
+    fn cancel_import(
+        &self,
+        ctx: &Ctx,
+        input: CancelImportRequest,
+    ) -> Result<Ok, ServiceError> {
+        let mut conn = self.conn()?;
+        require_admin_or_guest_instance(ctx, &mut conn)?;
+        drop(conn);
+        self.imports.cancel(&transfer_owner(ctx), input)
     }
 
     fn get_settings(&self, _ctx: &Ctx, _input: Page) -> Result<Settings, ServiceError> {

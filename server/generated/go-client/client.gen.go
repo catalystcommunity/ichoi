@@ -134,6 +134,24 @@ func (c *LibraryClient) Search(ctx context.Context, req SearchRequest) (SearchRe
 	return DecodeSearchResponse(csilResp)
 }
 
+func (c *LibraryClient) ExportManifest(ctx context.Context, req ExportManifestRequest) (ExportManifest, error) {
+	var csilZero ExportManifest
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "export-manifest", EncodeExportManifestRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeExportManifest(csilResp)
+}
+
+func (c *LibraryClient) ExportChunk(ctx context.Context, req ExportChunkRequest) (ExportChunk, error) {
+	var csilZero ExportChunk
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "export-chunk", EncodeExportChunkRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeExportChunk(csilResp)
+}
+
 func (c *LibraryClient) ListPlaylists(ctx context.Context, req BrowseRequest) (PlaylistsResponse, error) {
 	var csilZero PlaylistsResponse
 	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "list-playlists", EncodeBrowseRequest(req))
@@ -439,6 +457,42 @@ func (c *AdminClient) ImportTrack(ctx context.Context, req ImportTrackRequest) (
 		return csilZero, csilErr
 	}
 	return DecodeImportResult(csilResp)
+}
+
+func (c *AdminClient) BeginImport(ctx context.Context, req BeginImportRequest) (BeginImportResult, error) {
+	var csilZero BeginImportResult
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "begin-import", EncodeBeginImportRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeBeginImportResult(csilResp)
+}
+
+func (c *AdminClient) ImportChunk(ctx context.Context, req ImportChunkRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "import-chunk", EncodeImportChunkRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
+func (c *AdminClient) FinishImport(ctx context.Context, req FinishImportRequest) (ImportResult, error) {
+	var csilZero ImportResult
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "finish-import", EncodeFinishImportRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeImportResult(csilResp)
+}
+
+func (c *AdminClient) CancelImport(ctx context.Context, req CancelImportRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "cancel-import", EncodeCancelImportRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
 }
 
 func (c *AdminClient) GetSettings(ctx context.Context, req Page) (Settings, error) {

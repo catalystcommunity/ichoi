@@ -109,6 +109,24 @@ final class LibraryAsyncClient {
     return SearchResponse.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<ExportManifest> exportManifest(ExportManifestRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'export-manifest',
+      request.toCbor(),
+    );
+    return ExportManifest.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ExportChunk> exportChunk(ExportChunkRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'export-chunk',
+      request.toCbor(),
+    );
+    return ExportChunk.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<PlaylistsResponse> listPlaylists(BrowseRequest request) async {
     final csilResp = await transport.call(
       'LibraryService',
@@ -409,6 +427,42 @@ final class AdminAsyncClient {
       request.toCbor(),
     );
     return ImportResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<BeginImportResult> beginImport(BeginImportRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'begin-import',
+      request.toCbor(),
+    );
+    return BeginImportResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> importChunk(ImportChunkRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'import-chunk',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ImportResult> finishImport(FinishImportRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'finish-import',
+      request.toCbor(),
+    );
+    return ImportResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> cancelImport(CancelImportRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'cancel-import',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   Future<Settings> getSettings(Page request) async {

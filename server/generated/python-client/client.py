@@ -73,6 +73,14 @@ class LibraryClient:
         """search"""
         return SearchResponse.from_cbor(self._transport.call("LibraryService", "search", req.to_cbor()))
 
+    def export_manifest(self, req: ExportManifestRequest) -> ExportManifest:
+        """export-manifest"""
+        return ExportManifest.from_cbor(self._transport.call("LibraryService", "export-manifest", req.to_cbor()))
+
+    def export_chunk(self, req: ExportChunkRequest) -> ExportChunk:
+        """export-chunk"""
+        return ExportChunk.from_cbor(self._transport.call("LibraryService", "export-chunk", req.to_cbor()))
+
     def list_playlists(self, req: BrowseRequest) -> PlaylistsResponse:
         """list-playlists"""
         return PlaylistsResponse.from_cbor(self._transport.call("LibraryService", "list-playlists", req.to_cbor()))
@@ -214,6 +222,22 @@ class AdminClient:
     def import_track(self, req: ImportTrackRequest) -> ImportResult:
         """import-track"""
         return ImportResult.from_cbor(self._transport.call("AdminService", "import-track", req.to_cbor()))
+
+    def begin_import(self, req: BeginImportRequest) -> BeginImportResult:
+        """begin-import"""
+        return BeginImportResult.from_cbor(self._transport.call("AdminService", "begin-import", req.to_cbor()))
+
+    def import_chunk(self, req: ImportChunkRequest) -> Ok:
+        """import-chunk"""
+        return Ok.from_cbor(self._transport.call("AdminService", "import-chunk", req.to_cbor()))
+
+    def finish_import(self, req: FinishImportRequest) -> ImportResult:
+        """finish-import"""
+        return ImportResult.from_cbor(self._transport.call("AdminService", "finish-import", req.to_cbor()))
+
+    def cancel_import(self, req: CancelImportRequest) -> Ok:
+        """cancel-import"""
+        return Ok.from_cbor(self._transport.call("AdminService", "cancel-import", req.to_cbor()))
 
     def get_settings(self, req: Page) -> Settings:
         """get-settings"""

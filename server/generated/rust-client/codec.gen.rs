@@ -1322,7 +1322,10 @@ pub fn decode_album_detail(csil_data: &[u8]) -> Result<AlbumDetail, CsilCborErro
 
 /// Build the canonical CBOR value tree for a ArtistRequest.
 fn csil_enc_artist_request(csil_v: &ArtistRequest) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    if let Some(csil_inner) = &csil_v.library {
+        csil_entries.push((cbor_text("library"), csil_enc_library(csil_inner)));
+    }
     csil_entries.push((cbor_text("artist_id"), cbor_text(&csil_v.artist_id)));
     CsilCborValue::Map(csil_entries)
 }
@@ -1334,7 +1337,14 @@ fn csil_dec_artist_request(csil_root: &CsilCborValue) -> Result<ArtistRequest, C
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
-    Ok(ArtistRequest { artist_id })
+    let library = match cbor_map_get(csil_root, "library") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_library;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(ArtistRequest { artist_id, library })
 }
 
 /// Encode a ArtistRequest to canonical CSIL CBOR bytes.
@@ -1488,6 +1498,286 @@ pub fn encode_search_response(csil_v: &SearchResponse) -> Vec<u8> {
 pub fn decode_search_response(csil_data: &[u8]) -> Result<SearchResponse, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_search_response(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a TransferChunk.
+fn csil_enc_transfer_chunk(csil_v: &TransferChunk) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("size"), cbor_uint(csil_v.size)));
+    csil_entries.push((cbor_text("index"), cbor_uint(csil_v.index)));
+    csil_entries.push((cbor_text("offset"), cbor_uint(csil_v.offset)));
+    csil_entries.push((cbor_text("sha256"), cbor_text(&csil_v.sha256)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a TransferChunk from a decoded CBOR value tree.
+fn csil_dec_transfer_chunk(csil_root: &CsilCborValue) -> Result<TransferChunk, CsilCborError> {
+    let index = {
+        let csil_field = cbor_require(csil_root, "index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let offset = {
+        let csil_field = cbor_require(csil_root, "offset")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let size = {
+        let csil_field = cbor_require(csil_root, "size")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let sha256 = {
+        let csil_field = cbor_require(csil_root, "sha256")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(TransferChunk {
+        index,
+        offset,
+        size,
+        sha256,
+    })
+}
+
+/// Encode a TransferChunk to canonical CSIL CBOR bytes.
+pub fn encode_transfer_chunk(csil_v: &TransferChunk) -> Vec<u8> {
+    cbor_encode(&csil_enc_transfer_chunk(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a TransferChunk.
+pub fn decode_transfer_chunk(csil_data: &[u8]) -> Result<TransferChunk, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_transfer_chunk(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a TransferFile.
+fn csil_enc_transfer_file(csil_v: &TransferFile) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
+    csil_entries.push((
+        cbor_text("chunks"),
+        cbor_enc_array(&csil_v.chunks, csil_enc_transfer_chunk),
+    ));
+    csil_entries.push((cbor_text("sha256"), cbor_text(&csil_v.sha256)));
+    csil_entries.push((cbor_text("size_bytes"), cbor_uint(csil_v.size_bytes)));
+    csil_entries.push((cbor_text("content_type"), cbor_text(&csil_v.content_type)));
+    csil_entries.push((
+        cbor_text("root_relative_path"),
+        cbor_text(&csil_v.root_relative_path),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a TransferFile from a decoded CBOR value tree.
+fn csil_dec_transfer_file(csil_root: &CsilCborValue) -> Result<TransferFile, CsilCborError> {
+    let root_relative_path = {
+        let csil_field = cbor_require(csil_root, "root_relative_path")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let content_type = {
+        let csil_field = cbor_require(csil_root, "content_type")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let size_bytes = {
+        let csil_field = cbor_require(csil_root, "size_bytes")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let sha256 = {
+        let csil_field = cbor_require(csil_root, "sha256")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let chunks = {
+        let csil_field = cbor_require(csil_root, "chunks")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_transfer_chunk);
+        csil_decode(csil_field)?
+    };
+    Ok(TransferFile {
+        root_relative_path,
+        content_type,
+        size_bytes,
+        sha256,
+        chunks,
+    })
+}
+
+/// Encode a TransferFile to canonical CSIL CBOR bytes.
+pub fn encode_transfer_file(csil_v: &TransferFile) -> Vec<u8> {
+    cbor_encode(&csil_enc_transfer_file(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a TransferFile.
+pub fn decode_transfer_file(csil_data: &[u8]) -> Result<TransferFile, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_transfer_file(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ExportManifestRequest.
+fn csil_enc_export_manifest_request(csil_v: &ExportManifestRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ExportManifestRequest from a decoded CBOR value tree.
+fn csil_dec_export_manifest_request(
+    csil_root: &CsilCborValue,
+) -> Result<ExportManifestRequest, CsilCborError> {
+    let track_id = {
+        let csil_field = cbor_require(csil_root, "track_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(ExportManifestRequest { track_id })
+}
+
+/// Encode a ExportManifestRequest to canonical CSIL CBOR bytes.
+pub fn encode_export_manifest_request(csil_v: &ExportManifestRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_export_manifest_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ExportManifestRequest.
+pub fn decode_export_manifest_request(
+    csil_data: &[u8],
+) -> Result<ExportManifestRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_export_manifest_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ExportManifest.
+fn csil_enc_export_manifest(csil_v: &ExportManifest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((
+        cbor_text("files"),
+        cbor_enc_array(&csil_v.files, csil_enc_transfer_file),
+    ));
+    csil_entries.push((cbor_text("track"), csil_enc_track(&csil_v.track)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ExportManifest from a decoded CBOR value tree.
+fn csil_dec_export_manifest(csil_root: &CsilCborValue) -> Result<ExportManifest, CsilCborError> {
+    let track = {
+        let csil_field = cbor_require(csil_root, "track")?;
+        let csil_decode = csil_dec_track;
+        csil_decode(csil_field)?
+    };
+    let files = {
+        let csil_field = cbor_require(csil_root, "files")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_transfer_file);
+        csil_decode(csil_field)?
+    };
+    Ok(ExportManifest { track, files })
+}
+
+/// Encode a ExportManifest to canonical CSIL CBOR bytes.
+pub fn encode_export_manifest(csil_v: &ExportManifest) -> Vec<u8> {
+    cbor_encode(&csil_enc_export_manifest(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ExportManifest.
+pub fn decode_export_manifest(csil_data: &[u8]) -> Result<ExportManifest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_export_manifest(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ExportChunkRequest.
+fn csil_enc_export_chunk_request(csil_v: &ExportChunkRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
+    csil_entries.push((cbor_text("chunk_index"), cbor_uint(csil_v.chunk_index)));
+    csil_entries.push((
+        cbor_text("root_relative_path"),
+        cbor_text(&csil_v.root_relative_path),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ExportChunkRequest from a decoded CBOR value tree.
+fn csil_dec_export_chunk_request(
+    csil_root: &CsilCborValue,
+) -> Result<ExportChunkRequest, CsilCborError> {
+    let track_id = {
+        let csil_field = cbor_require(csil_root, "track_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let root_relative_path = {
+        let csil_field = cbor_require(csil_root, "root_relative_path")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let chunk_index = {
+        let csil_field = cbor_require(csil_root, "chunk_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(ExportChunkRequest {
+        track_id,
+        root_relative_path,
+        chunk_index,
+    })
+}
+
+/// Encode a ExportChunkRequest to canonical CSIL CBOR bytes.
+pub fn encode_export_chunk_request(csil_v: &ExportChunkRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_export_chunk_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ExportChunkRequest.
+pub fn decode_export_chunk_request(csil_data: &[u8]) -> Result<ExportChunkRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_export_chunk_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ExportChunk.
+fn csil_enc_export_chunk(csil_v: &ExportChunk) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("data"), cbor_bytes(&csil_v.data)));
+    csil_entries.push((cbor_text("chunk_index"), cbor_uint(csil_v.chunk_index)));
+    csil_entries.push((
+        cbor_text("root_relative_path"),
+        cbor_text(&csil_v.root_relative_path),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ExportChunk from a decoded CBOR value tree.
+fn csil_dec_export_chunk(csil_root: &CsilCborValue) -> Result<ExportChunk, CsilCborError> {
+    let root_relative_path = {
+        let csil_field = cbor_require(csil_root, "root_relative_path")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let chunk_index = {
+        let csil_field = cbor_require(csil_root, "chunk_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let data = {
+        let csil_field = cbor_require(csil_root, "data")?;
+        let csil_decode = cbor_as_bytes;
+        csil_decode(csil_field)?
+    };
+    Ok(ExportChunk {
+        root_relative_path,
+        chunk_index,
+        data,
+    })
+}
+
+/// Encode a ExportChunk to canonical CSIL CBOR bytes.
+pub fn encode_export_chunk(csil_v: &ExportChunk) -> Vec<u8> {
+    cbor_encode(&csil_enc_export_chunk(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ExportChunk.
+pub fn decode_export_chunk(csil_data: &[u8]) -> Result<ExportChunk, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_export_chunk(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a AudiobookProgress.
@@ -4655,8 +4945,11 @@ pub fn decode_revoke_satellite_token_request(
 
 /// Build the canonical CBOR value tree for a ImportTrackRequest.
 fn csil_enc_import_track_request(csil_v: &ImportTrackRequest) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
     csil_entries.push((cbor_text("data"), cbor_bytes(&csil_v.data)));
+    if let Some(csil_inner) = &csil_v.library {
+        csil_entries.push((cbor_text("library"), csil_enc_library(csil_inner)));
+    }
     if let Some(csil_inner) = &csil_v.content_hash {
         csil_entries.push((cbor_text("content_hash"), cbor_text(csil_inner)));
     }
@@ -4672,6 +4965,13 @@ fn csil_enc_import_track_request(csil_v: &ImportTrackRequest) -> CsilCborValue {
 fn csil_dec_import_track_request(
     csil_root: &CsilCborValue,
 ) -> Result<ImportTrackRequest, CsilCborError> {
+    let library = match cbor_map_get(csil_root, "library") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_library;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let root_relative_path = {
         let csil_field = cbor_require(csil_root, "root_relative_path")?;
         let csil_decode = cbor_as_text;
@@ -4695,6 +4995,7 @@ fn csil_dec_import_track_request(
         csil_decode(csil_field)?
     };
     Ok(ImportTrackRequest {
+        library,
         root_relative_path,
         content_type,
         content_hash,
@@ -4715,7 +5016,10 @@ pub fn decode_import_track_request(csil_data: &[u8]) -> Result<ImportTrackReques
 
 /// Build the canonical CBOR value tree for a ImportResult.
 fn csil_enc_import_result(csil_v: &ImportResult) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    if let Some(csil_inner) = &csil_v.track {
+        csil_entries.push((cbor_text("track"), csil_enc_track(csil_inner)));
+    }
     csil_entries.push((cbor_text("imported"), cbor_bool(csil_v.imported)));
     if let Some(csil_inner) = &csil_v.track_id {
         csil_entries.push((cbor_text("track_id"), cbor_text(csil_inner)));
@@ -4741,6 +5045,13 @@ fn csil_dec_import_result(csil_root: &CsilCborValue) -> Result<ImportResult, Csi
         }
         None => None,
     };
+    let track = match cbor_map_get(csil_root, "track") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_track;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let skipped_existing = {
         let csil_field = cbor_require(csil_root, "skipped_existing")?;
         let csil_decode = cbor_as_bool;
@@ -4749,6 +5060,7 @@ fn csil_dec_import_result(csil_root: &CsilCborValue) -> Result<ImportResult, Csi
     Ok(ImportResult {
         imported,
         track_id,
+        track,
         skipped_existing,
     })
 }
@@ -4762,6 +5074,258 @@ pub fn encode_import_result(csil_v: &ImportResult) -> Vec<u8> {
 pub fn decode_import_result(csil_data: &[u8]) -> Result<ImportResult, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_import_result(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a MissingChunk.
+fn csil_enc_missing_chunk(csil_v: &MissingChunk) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("file_index"), cbor_uint(csil_v.file_index)));
+    csil_entries.push((cbor_text("chunk_index"), cbor_uint(csil_v.chunk_index)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a MissingChunk from a decoded CBOR value tree.
+fn csil_dec_missing_chunk(csil_root: &CsilCborValue) -> Result<MissingChunk, CsilCborError> {
+    let file_index = {
+        let csil_field = cbor_require(csil_root, "file_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let chunk_index = {
+        let csil_field = cbor_require(csil_root, "chunk_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(MissingChunk {
+        file_index,
+        chunk_index,
+    })
+}
+
+/// Encode a MissingChunk to canonical CSIL CBOR bytes.
+pub fn encode_missing_chunk(csil_v: &MissingChunk) -> Vec<u8> {
+    cbor_encode(&csil_enc_missing_chunk(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a MissingChunk.
+pub fn decode_missing_chunk(csil_data: &[u8]) -> Result<MissingChunk, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_missing_chunk(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a BeginImportRequest.
+fn csil_enc_begin_import_request(csil_v: &BeginImportRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((
+        cbor_text("files"),
+        cbor_enc_array(&csil_v.files, csil_enc_transfer_file),
+    ));
+    if let Some(csil_inner) = &csil_v.library {
+        csil_entries.push((cbor_text("library"), csil_enc_library(csil_inner)));
+    }
+    csil_entries.push((
+        cbor_text("track_file_index"),
+        cbor_uint(csil_v.track_file_index),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a BeginImportRequest from a decoded CBOR value tree.
+fn csil_dec_begin_import_request(
+    csil_root: &CsilCborValue,
+) -> Result<BeginImportRequest, CsilCborError> {
+    let library = match cbor_map_get(csil_root, "library") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_library;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let track_file_index = {
+        let csil_field = cbor_require(csil_root, "track_file_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let files = {
+        let csil_field = cbor_require(csil_root, "files")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_transfer_file);
+        csil_decode(csil_field)?
+    };
+    Ok(BeginImportRequest {
+        library,
+        track_file_index,
+        files,
+    })
+}
+
+/// Encode a BeginImportRequest to canonical CSIL CBOR bytes.
+pub fn encode_begin_import_request(csil_v: &BeginImportRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_begin_import_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a BeginImportRequest.
+pub fn decode_begin_import_request(csil_data: &[u8]) -> Result<BeginImportRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_begin_import_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a BeginImportResult.
+fn csil_enc_begin_import_result(csil_v: &BeginImportResult) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("transfer_id"), cbor_text(&csil_v.transfer_id)));
+    csil_entries.push((
+        cbor_text("missing_chunks"),
+        cbor_enc_array(&csil_v.missing_chunks, csil_enc_missing_chunk),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a BeginImportResult from a decoded CBOR value tree.
+fn csil_dec_begin_import_result(
+    csil_root: &CsilCborValue,
+) -> Result<BeginImportResult, CsilCborError> {
+    let transfer_id = {
+        let csil_field = cbor_require(csil_root, "transfer_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let missing_chunks = {
+        let csil_field = cbor_require(csil_root, "missing_chunks")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_missing_chunk);
+        csil_decode(csil_field)?
+    };
+    Ok(BeginImportResult {
+        transfer_id,
+        missing_chunks,
+    })
+}
+
+/// Encode a BeginImportResult to canonical CSIL CBOR bytes.
+pub fn encode_begin_import_result(csil_v: &BeginImportResult) -> Vec<u8> {
+    cbor_encode(&csil_enc_begin_import_result(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a BeginImportResult.
+pub fn decode_begin_import_result(csil_data: &[u8]) -> Result<BeginImportResult, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_begin_import_result(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ImportChunkRequest.
+fn csil_enc_import_chunk_request(csil_v: &ImportChunkRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("data"), cbor_bytes(&csil_v.data)));
+    csil_entries.push((cbor_text("file_index"), cbor_uint(csil_v.file_index)));
+    csil_entries.push((cbor_text("chunk_index"), cbor_uint(csil_v.chunk_index)));
+    csil_entries.push((cbor_text("transfer_id"), cbor_text(&csil_v.transfer_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ImportChunkRequest from a decoded CBOR value tree.
+fn csil_dec_import_chunk_request(
+    csil_root: &CsilCborValue,
+) -> Result<ImportChunkRequest, CsilCborError> {
+    let transfer_id = {
+        let csil_field = cbor_require(csil_root, "transfer_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let file_index = {
+        let csil_field = cbor_require(csil_root, "file_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let chunk_index = {
+        let csil_field = cbor_require(csil_root, "chunk_index")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let data = {
+        let csil_field = cbor_require(csil_root, "data")?;
+        let csil_decode = cbor_as_bytes;
+        csil_decode(csil_field)?
+    };
+    Ok(ImportChunkRequest {
+        transfer_id,
+        file_index,
+        chunk_index,
+        data,
+    })
+}
+
+/// Encode a ImportChunkRequest to canonical CSIL CBOR bytes.
+pub fn encode_import_chunk_request(csil_v: &ImportChunkRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_import_chunk_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ImportChunkRequest.
+pub fn decode_import_chunk_request(csil_data: &[u8]) -> Result<ImportChunkRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_import_chunk_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a FinishImportRequest.
+fn csil_enc_finish_import_request(csil_v: &FinishImportRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("transfer_id"), cbor_text(&csil_v.transfer_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a FinishImportRequest from a decoded CBOR value tree.
+fn csil_dec_finish_import_request(
+    csil_root: &CsilCborValue,
+) -> Result<FinishImportRequest, CsilCborError> {
+    let transfer_id = {
+        let csil_field = cbor_require(csil_root, "transfer_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(FinishImportRequest { transfer_id })
+}
+
+/// Encode a FinishImportRequest to canonical CSIL CBOR bytes.
+pub fn encode_finish_import_request(csil_v: &FinishImportRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_finish_import_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a FinishImportRequest.
+pub fn decode_finish_import_request(
+    csil_data: &[u8],
+) -> Result<FinishImportRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_finish_import_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CancelImportRequest.
+fn csil_enc_cancel_import_request(csil_v: &CancelImportRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("transfer_id"), cbor_text(&csil_v.transfer_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CancelImportRequest from a decoded CBOR value tree.
+fn csil_dec_cancel_import_request(
+    csil_root: &CsilCborValue,
+) -> Result<CancelImportRequest, CsilCborError> {
+    let transfer_id = {
+        let csil_field = cbor_require(csil_root, "transfer_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(CancelImportRequest { transfer_id })
+}
+
+/// Encode a CancelImportRequest to canonical CSIL CBOR bytes.
+pub fn encode_cancel_import_request(csil_v: &CancelImportRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_cancel_import_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CancelImportRequest.
+pub fn decode_cancel_import_request(
+    csil_data: &[u8],
+) -> Result<CancelImportRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cancel_import_request(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a Settings.

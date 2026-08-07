@@ -234,6 +234,7 @@ export class CsilConnection {
     operation: string,
     requestBytes: Uint8Array,
     decodeResponse: (bytes: Uint8Array) => Res,
+    timeoutMs = this.opts.callTimeoutMs,
   ): Promise<Res> {
     await this.ensureReady();
     const id = this.nextId++;
@@ -242,7 +243,7 @@ export class CsilConnection {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`csil: call ${service}.${operation} timed out`));
-      }, this.opts.callTimeoutMs);
+      }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
       this.rawSend({ service, event, id, payload: requestBytes });
     });

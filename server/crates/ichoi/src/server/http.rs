@@ -741,7 +741,10 @@ async fn ws_upgrade(
         .app
         .config
         .guest_allowed_from(client_address(&s.app, &headers, connect));
-    ws.on_upgrade(move |socket| ws_conn(socket, s.app, allow_guest))
+    // Federation uses 16 MiB chunks. Leave room for the CSIL and CBOR envelopes.
+    ws.max_message_size(20 * 1024 * 1024)
+        .max_frame_size(20 * 1024 * 1024)
+        .on_upgrade(move |socket| ws_conn(socket, s.app, allow_guest))
 }
 
 async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {

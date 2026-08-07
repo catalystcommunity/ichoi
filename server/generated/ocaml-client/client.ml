@@ -60,6 +60,16 @@ module Library_service = struct
     | Ok payload -> Ok (Codec.decode_search_response_bytes payload)
     | Error _ as e -> e
 
+  let export_manifest (c : client) (req : export_manifest_request) : (export_manifest, string) result =
+    match c.call ~service:"LibraryService" ~op:"export-manifest" ~payload:(Codec.encode_export_manifest_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_export_manifest_bytes payload)
+    | Error _ as e -> e
+
+  let export_chunk (c : client) (req : export_chunk_request) : (export_chunk, string) result =
+    match c.call ~service:"LibraryService" ~op:"export-chunk" ~payload:(Codec.encode_export_chunk_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_export_chunk_bytes payload)
+    | Error _ as e -> e
+
   let list_playlists (c : client) (req : browse_request) : (playlists_response, string) result =
     match c.call ~service:"LibraryService" ~op:"list-playlists" ~payload:(Codec.encode_browse_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_playlists_response_bytes payload)
@@ -216,6 +226,26 @@ module Admin_service = struct
   let import_track (c : client) (req : import_track_request) : (import_result, string) result =
     match c.call ~service:"AdminService" ~op:"import-track" ~payload:(Codec.encode_import_track_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_import_result_bytes payload)
+    | Error _ as e -> e
+
+  let begin_import (c : client) (req : begin_import_request) : (begin_import_result, string) result =
+    match c.call ~service:"AdminService" ~op:"begin-import" ~payload:(Codec.encode_begin_import_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_begin_import_result_bytes payload)
+    | Error _ as e -> e
+
+  let import_chunk (c : client) (req : import_chunk_request) : (ok, string) result =
+    match c.call ~service:"AdminService" ~op:"import-chunk" ~payload:(Codec.encode_import_chunk_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
+  let finish_import (c : client) (req : finish_import_request) : (import_result, string) result =
+    match c.call ~service:"AdminService" ~op:"finish-import" ~payload:(Codec.encode_finish_import_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_import_result_bytes payload)
+    | Error _ as e -> e
+
+  let cancel_import (c : client) (req : cancel_import_request) : (ok, string) result =
+    match c.call ~service:"AdminService" ~op:"cancel-import" ~payload:(Codec.encode_cancel_import_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
     | Error _ as e -> e
 
   let get_settings (c : client) (req : page) : (settings, string) result =

@@ -89,6 +89,22 @@ public final class AdminClient {
         return CsilCbor.decodeImportResult(transport.call("AdminService", "import-track", CsilCbor.encodeImportTrackRequest(req)));
     }
 
+    public BeginImportResult beginImport(BeginImportRequest req) throws ClientException {
+        return CsilCbor.decodeBeginImportResult(transport.call("AdminService", "begin-import", CsilCbor.encodeBeginImportRequest(req)));
+    }
+
+    public Ok importChunk(ImportChunkRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("AdminService", "import-chunk", CsilCbor.encodeImportChunkRequest(req)));
+    }
+
+    public ImportResult finishImport(FinishImportRequest req) throws ClientException {
+        return CsilCbor.decodeImportResult(transport.call("AdminService", "finish-import", CsilCbor.encodeFinishImportRequest(req)));
+    }
+
+    public Ok cancelImport(CancelImportRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("AdminService", "cancel-import", CsilCbor.encodeCancelImportRequest(req)));
+    }
+
     public Settings getSettings(Page req) throws ClientException {
         return CsilCbor.decodeSettings(transport.call("AdminService", "get-settings", CsilCbor.encodePage(req)));
     }

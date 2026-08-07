@@ -222,6 +222,8 @@ pub struct AlbumDetail {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ArtistRequest {
     pub artist_id: ArtistId,
+    /// default: "music"
+    pub library: Option<Library>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -261,6 +263,48 @@ pub struct SearchResponse {
     pub artists: Vec<Artist>,
     pub albums: Vec<Album>,
     pub tracks: Vec<Track>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TransferChunk {
+    pub index: u64,
+    pub offset: u64,
+    pub size: u64,
+    pub sha256: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TransferFile {
+    pub root_relative_path: String,
+    pub content_type: String,
+    pub size_bytes: u64,
+    pub sha256: String,
+    pub chunks: Vec<TransferChunk>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExportManifestRequest {
+    pub track_id: TrackId,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExportManifest {
+    pub track: Track,
+    pub files: Vec<TransferFile>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExportChunkRequest {
+    pub track_id: TrackId,
+    pub root_relative_path: String,
+    pub chunk_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ExportChunk {
+    pub root_relative_path: String,
+    pub chunk_index: u64,
+    pub data: Vec<u8>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -933,6 +977,8 @@ pub struct RevokeSatelliteTokenRequest {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportTrackRequest {
+    /// default: "music"
+    pub library: Option<Library>,
     pub root_relative_path: String,
     pub content_type: String,
     pub content_hash: Option<String>,
@@ -943,8 +989,47 @@ pub struct ImportTrackRequest {
 pub struct ImportResult {
     pub imported: bool,
     pub track_id: Option<TrackId>,
+    pub track: Option<Track>,
     /// default: false
     pub skipped_existing: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MissingChunk {
+    pub file_index: u64,
+    pub chunk_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BeginImportRequest {
+    /// default: "music"
+    pub library: Option<Library>,
+    pub track_file_index: u64,
+    pub files: Vec<TransferFile>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BeginImportResult {
+    pub transfer_id: String,
+    pub missing_chunks: Vec<MissingChunk>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportChunkRequest {
+    pub transfer_id: String,
+    pub file_index: u64,
+    pub chunk_index: u64,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FinishImportRequest {
+    pub transfer_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CancelImportRequest {
+    pub transfer_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]

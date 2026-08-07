@@ -48,11 +48,25 @@ ArtistsResponse = { artists: [* Artist], total: uint }
 
 AlbumRequest  = { album_id: AlbumId }
 AlbumDetail   = { album: Album, tracks: [* Track] }
-ArtistRequest = { artist_id: ArtistId }
+ArtistRequest = { artist_id: ArtistId, ? library: Library .default "music" }
 ArtistDetail  = { artist: Artist, albums: [* Album] }
 
 SearchRequest  = { query: text .size (1..256), ? library: Library .default "music", ? limit: uint .default 50 }
 SearchResponse = { artists: [* Artist], albums: [* Album], tracks: [* Track] }
+
+;; Cross-server copy source (§7). The client moves this file to an instance where it can import.
+TransferChunk = { index: uint, offset: uint, size: uint, sha256: text }
+TransferFile = {
+    root_relative_path: text,
+    content_type: text,
+    size_bytes: uint,
+    sha256: text,
+    chunks: [* TransferChunk]
+}
+ExportManifestRequest = { track_id: TrackId }
+ExportManifest = { track: Track, files: [+ TransferFile] }
+ExportChunkRequest = { track_id: TrackId, root_relative_path: text, chunk_index: uint }
+ExportChunk = { root_relative_path: text, chunk_index: uint, data: bytes }
 
 AudiobookProgress = {
     track_id: TrackId,
@@ -82,6 +96,8 @@ service LibraryService {
     get-album: AlbumRequest -> AlbumDetail / ServiceError,
     get-artist: ArtistRequest -> ArtistDetail / ServiceError,
     search: SearchRequest -> SearchResponse / ServiceError,
+    export-manifest: ExportManifestRequest -> ExportManifest / ServiceError,
+    export-chunk: ExportChunkRequest -> ExportChunk / ServiceError,
     list-playlists: BrowseRequest -> PlaylistsResponse / ServiceError,
     get-playlist: PlaylistRequest -> PlaylistDetail / ServiceError,
     get-cover-art: CoverArtRequest -> CoverArt / ServiceError,

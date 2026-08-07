@@ -632,6 +632,29 @@ pub fn track_by_library_root_path(
         .optional()
 }
 
+pub fn track_by_library_content_hash(
+    conn: &mut SqliteConnection,
+    library_id: &str,
+    content_hash: &str,
+) -> QueryResult<Option<Track>> {
+    tracks::table
+        .filter(tracks::library_id.eq(library_id))
+        .filter(tracks::content_hash.eq(content_hash))
+        .select(Track::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn set_track_content_hash(
+    conn: &mut SqliteConnection,
+    track_id: &str,
+    content_hash: &str,
+) -> QueryResult<usize> {
+    diesel::update(tracks::table.find(track_id))
+        .set(tracks::content_hash.eq(content_hash))
+        .execute(conn)
+}
+
 pub fn tracks_for_library(
     conn: &mut SqliteConnection,
     library_id: &str,

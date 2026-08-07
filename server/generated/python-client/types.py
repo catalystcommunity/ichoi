@@ -590,17 +590,20 @@ class AlbumDetail:
 @dataclass
 class ArtistRequest:
     artist_id: ArtistId
+    library: Optional[Library] = "music"
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'artist_id') and self.artist_id is not None:
             result['artist_id'] = self.artist_id
+        if hasattr(self, 'library') and self.library is not None:
+            result['library'] = self.library
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ArtistRequest':
         """Create instance from dictionary."""
-        return cls(artist_id=data.get('artist_id'))
+        return cls(artist_id=data.get('artist_id'), library=data.get('library'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -710,6 +713,192 @@ class SearchResponse:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'SearchResponse':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class TransferChunk:
+    index: int
+    offset: int
+    size: int
+    sha_256: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'index') and self.index is not None:
+            result['index'] = self.index
+        if hasattr(self, 'offset') and self.offset is not None:
+            result['offset'] = self.offset
+        if hasattr(self, 'size') and self.size is not None:
+            result['size'] = self.size
+        if hasattr(self, 'sha_256') and self.sha_256 is not None:
+            result['sha_256'] = self.sha_256
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TransferChunk':
+        """Create instance from dictionary."""
+        return cls(index=data.get('index'), offset=data.get('offset'), size=data.get('size'), sha_256=data.get('sha_256'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'TransferChunk':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class TransferFile:
+    root_relative_path: str
+    content_type: str
+    size_bytes: int
+    sha_256: str
+    chunks: List[TransferChunk]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'root_relative_path') and self.root_relative_path is not None:
+            result['root_relative_path'] = self.root_relative_path
+        if hasattr(self, 'content_type') and self.content_type is not None:
+            result['content_type'] = self.content_type
+        if hasattr(self, 'size_bytes') and self.size_bytes is not None:
+            result['size_bytes'] = self.size_bytes
+        if hasattr(self, 'sha_256') and self.sha_256 is not None:
+            result['sha_256'] = self.sha_256
+        if hasattr(self, 'chunks') and self.chunks is not None:
+            result['chunks'] = self.chunks
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TransferFile':
+        """Create instance from dictionary."""
+        return cls(root_relative_path=data.get('root_relative_path'), content_type=data.get('content_type'), size_bytes=data.get('size_bytes'), sha_256=data.get('sha_256'), chunks=data.get('chunks'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'TransferFile':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ExportManifestRequest:
+    track_id: TrackId
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'track_id') and self.track_id is not None:
+            result['track_id'] = self.track_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ExportManifestRequest':
+        """Create instance from dictionary."""
+        return cls(track_id=data.get('track_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ExportManifestRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ExportManifest:
+    track: Track
+    files: List[TransferFile]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'track') and self.track is not None:
+            result['track'] = self.track
+        if hasattr(self, 'files') and self.files is not None:
+            result['files'] = self.files
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ExportManifest':
+        """Create instance from dictionary."""
+        return cls(track=data.get('track'), files=data.get('files'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ExportManifest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ExportChunkRequest:
+    track_id: TrackId
+    root_relative_path: str
+    chunk_index: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'track_id') and self.track_id is not None:
+            result['track_id'] = self.track_id
+        if hasattr(self, 'root_relative_path') and self.root_relative_path is not None:
+            result['root_relative_path'] = self.root_relative_path
+        if hasattr(self, 'chunk_index') and self.chunk_index is not None:
+            result['chunk_index'] = self.chunk_index
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ExportChunkRequest':
+        """Create instance from dictionary."""
+        return cls(track_id=data.get('track_id'), root_relative_path=data.get('root_relative_path'), chunk_index=data.get('chunk_index'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ExportChunkRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ExportChunk:
+    root_relative_path: str
+    chunk_index: int
+    data: bytes
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'root_relative_path') and self.root_relative_path is not None:
+            result['root_relative_path'] = self.root_relative_path
+        if hasattr(self, 'chunk_index') and self.chunk_index is not None:
+            result['chunk_index'] = self.chunk_index
+        if hasattr(self, 'data') and self.data is not None:
+            result['data'] = self.data
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ExportChunk':
+        """Create instance from dictionary."""
+        return cls(root_relative_path=data.get('root_relative_path'), chunk_index=data.get('chunk_index'), data=data.get('data'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ExportChunk':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -2925,10 +3114,13 @@ class ImportTrackRequest:
     root_relative_path: str
     content_type: str
     data: bytes
+    library: Optional[Library] = "music"
     content_hash: Optional[str] = None
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
+        if hasattr(self, 'library') and self.library is not None:
+            result['library'] = self.library
         if hasattr(self, 'root_relative_path') and self.root_relative_path is not None:
             result['root_relative_path'] = self.root_relative_path
         if hasattr(self, 'content_type') and self.content_type is not None:
@@ -2942,7 +3134,7 @@ class ImportTrackRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ImportTrackRequest':
         """Create instance from dictionary."""
-        return cls(root_relative_path=data.get('root_relative_path'), content_type=data.get('content_type'), content_hash=data.get('content_hash'), data=data.get('data'))
+        return cls(library=data.get('library'), root_relative_path=data.get('root_relative_path'), content_type=data.get('content_type'), content_hash=data.get('content_hash'), data=data.get('data'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2958,6 +3150,7 @@ class ImportTrackRequest:
 class ImportResult:
     imported: bool
     track_id: Optional[TrackId] = None
+    track: Optional[Track] = None
     skipped_existing: bool = False
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -2966,6 +3159,8 @@ class ImportResult:
             result['imported'] = self.imported
         if hasattr(self, 'track_id') and self.track_id is not None:
             result['track_id'] = self.track_id
+        if hasattr(self, 'track') and self.track is not None:
+            result['track'] = self.track
         if hasattr(self, 'skipped_existing') and self.skipped_existing is not None:
             result['skipped_existing'] = self.skipped_existing
         return result
@@ -2973,7 +3168,7 @@ class ImportResult:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ImportResult':
         """Create instance from dictionary."""
-        return cls(imported=data.get('imported'), track_id=data.get('track_id'), skipped_existing=data.get('skipped_existing'))
+        return cls(imported=data.get('imported'), track_id=data.get('track_id'), track=data.get('track'), skipped_existing=data.get('skipped_existing'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2981,6 +3176,177 @@ class ImportResult:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'ImportResult':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class MissingChunk:
+    file_index: int
+    chunk_index: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'file_index') and self.file_index is not None:
+            result['file_index'] = self.file_index
+        if hasattr(self, 'chunk_index') and self.chunk_index is not None:
+            result['chunk_index'] = self.chunk_index
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'MissingChunk':
+        """Create instance from dictionary."""
+        return cls(file_index=data.get('file_index'), chunk_index=data.get('chunk_index'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'MissingChunk':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class BeginImportRequest:
+    track_file_index: int
+    files: List[TransferFile]
+    library: Optional[Library] = "music"
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'library') and self.library is not None:
+            result['library'] = self.library
+        if hasattr(self, 'track_file_index') and self.track_file_index is not None:
+            result['track_file_index'] = self.track_file_index
+        if hasattr(self, 'files') and self.files is not None:
+            result['files'] = self.files
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BeginImportRequest':
+        """Create instance from dictionary."""
+        return cls(library=data.get('library'), track_file_index=data.get('track_file_index'), files=data.get('files'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BeginImportRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class BeginImportResult:
+    transfer_id: str
+    missing_chunks: List[MissingChunk]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'transfer_id') and self.transfer_id is not None:
+            result['transfer_id'] = self.transfer_id
+        if hasattr(self, 'missing_chunks') and self.missing_chunks is not None:
+            result['missing_chunks'] = self.missing_chunks
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BeginImportResult':
+        """Create instance from dictionary."""
+        return cls(transfer_id=data.get('transfer_id'), missing_chunks=data.get('missing_chunks'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BeginImportResult':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ImportChunkRequest:
+    transfer_id: str
+    file_index: int
+    chunk_index: int
+    data: bytes
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'transfer_id') and self.transfer_id is not None:
+            result['transfer_id'] = self.transfer_id
+        if hasattr(self, 'file_index') and self.file_index is not None:
+            result['file_index'] = self.file_index
+        if hasattr(self, 'chunk_index') and self.chunk_index is not None:
+            result['chunk_index'] = self.chunk_index
+        if hasattr(self, 'data') and self.data is not None:
+            result['data'] = self.data
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ImportChunkRequest':
+        """Create instance from dictionary."""
+        return cls(transfer_id=data.get('transfer_id'), file_index=data.get('file_index'), chunk_index=data.get('chunk_index'), data=data.get('data'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ImportChunkRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class FinishImportRequest:
+    transfer_id: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'transfer_id') and self.transfer_id is not None:
+            result['transfer_id'] = self.transfer_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'FinishImportRequest':
+        """Create instance from dictionary."""
+        return cls(transfer_id=data.get('transfer_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'FinishImportRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CancelImportRequest:
+    transfer_id: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'transfer_id') and self.transfer_id is not None:
+            result['transfer_id'] = self.transfer_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CancelImportRequest':
+        """Create instance from dictionary."""
+        return cls(transfer_id=data.get('transfer_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CancelImportRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 

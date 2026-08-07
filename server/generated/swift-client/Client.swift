@@ -83,6 +83,16 @@ public struct LibraryClient {
         return try SearchResponse.fromCbor(csilResp)
     }
 
+    public func exportManifest(_ request: ExportManifestRequest) throws -> ExportManifest {
+        let csilResp = try transport.call(service: "LibraryService", op: "export-manifest", request: request.toCbor())
+        return try ExportManifest.fromCbor(csilResp)
+    }
+
+    public func exportChunk(_ request: ExportChunkRequest) throws -> ExportChunk {
+        let csilResp = try transport.call(service: "LibraryService", op: "export-chunk", request: request.toCbor())
+        return try ExportChunk.fromCbor(csilResp)
+    }
+
     public func listPlaylists(_ request: BrowseRequest) throws -> PlaylistsResponse {
         let csilResp = try transport.call(service: "LibraryService", op: "list-playlists", request: request.toCbor())
         return try PlaylistsResponse.fromCbor(csilResp)
@@ -269,6 +279,26 @@ public struct AdminClient {
     public func importTrack(_ request: ImportTrackRequest) throws -> ImportResult {
         let csilResp = try transport.call(service: "AdminService", op: "import-track", request: request.toCbor())
         return try ImportResult.fromCbor(csilResp)
+    }
+
+    public func beginImport(_ request: BeginImportRequest) throws -> BeginImportResult {
+        let csilResp = try transport.call(service: "AdminService", op: "begin-import", request: request.toCbor())
+        return try BeginImportResult.fromCbor(csilResp)
+    }
+
+    public func importChunk(_ request: ImportChunkRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "AdminService", op: "import-chunk", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
+    public func finishImport(_ request: FinishImportRequest) throws -> ImportResult {
+        let csilResp = try transport.call(service: "AdminService", op: "finish-import", request: request.toCbor())
+        return try ImportResult.fromCbor(csilResp)
+    }
+
+    public func cancelImport(_ request: CancelImportRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "AdminService", op: "cancel-import", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
     }
 
     public func getSettings(_ request: Page) throws -> Settings {

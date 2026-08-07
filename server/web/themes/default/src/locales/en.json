@@ -93,12 +93,20 @@
   },
   "search": {
     "title": "Search",
-    "placeholder": "Search artists, albums, tracks",
-    "prompt": "Type to search your library.",
+    "placeholder": "Search artists, albums, tracks, and audiobooks",
+    "prompt": "Type to search all connected instances.",
     "noResults": "Nothing matched “{{query}}”.",
     "artists": "Artists",
     "albums": "Albums",
-    "tracks": "Tracks"
+    "tracks": "Tracks",
+    "audiobooks": "Audiobooks",
+    "music": "Music",
+    "audiobook": "Audiobooks",
+    "queueArtist": "Add all albums to the queue",
+    "queueAlbum": "Add to the queue",
+    "destination": "New items go to {{name}}.",
+    "added": "Added {{count}} item(s) to {{name}}.",
+    "importAdminRequired": "An administrator on {{name}} must allow this import."
   },
   "playlists": {
     "title": "Playlists",

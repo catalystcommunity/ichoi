@@ -95,6 +95,39 @@ fn browse_and_search_are_library_scoped() {
 }
 
 #[test]
+fn audiobook_artist_detail_is_library_scoped() {
+    let (app, pool) = common::test_app();
+    let mut conn = pool.get().unwrap();
+    common::create_artist(&mut conn, &DataMap::new());
+    common::create_album(&mut conn, &DataMap::new());
+    common::create_track(&mut conn, &DataMap::new());
+    let mut book_album = DataMap::new();
+    book_album.insert("id".into(), "book-1".into());
+    book_album.insert("title".into(), "Spoken Book".into());
+    common::create_album(&mut conn, &book_album);
+    let mut chapter = DataMap::new();
+    chapter.insert("id".into(), "chapter-1".into());
+    chapter.insert("library_id".into(), "lib:audiobook".into());
+    chapter.insert("album_id".into(), "book-1".into());
+    chapter.insert("root_relative_path".into(), "Spoken Book/01.mp3".into());
+    common::create_track(&mut conn, &chapter);
+    drop(conn);
+
+    let detail = app
+        .get_artist(
+            &common::ctx_anon(),
+            ArtistRequest {
+                artist_id: "artist-1".into(),
+                library: Some(Library::Audiobook),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(detail.albums.len(), 1);
+    assert_eq!(detail.albums[0].id, "book-1");
+}
+
+#[test]
 fn progress_is_isolated_by_user_and_restricted_to_audiobooks() {
     let (app, pool) = common::test_app();
     let mut conn = pool.get().unwrap();

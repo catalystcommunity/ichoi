@@ -1734,7 +1734,10 @@ func DecodeAlbumDetail(csilData []byte) (AlbumDetail, error) {
 
 // csilEncArtistRequest builds the canonical CBOR value tree for a ArtistRequest.
 func csilEncArtistRequest(csilV ArtistRequest) cborValue {
-	csilEntries := make(cborMap, 0, 1)
+	csilEntries := make(cborMap, 0, 2)
+	if csilV.Library != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("library"), cborText((*csilV.Library))})
+	}
 	csilEntries = append(csilEntries, cborEntry{cborText("artist_id"), cborText(csilV.ArtistId)})
 	return csilEntries
 }
@@ -1755,6 +1758,27 @@ func csilDecArtistRequest(csilRoot cborValue) (ArtistRequest, error) {
 			return csilOut, csilErr
 		}
 		csilOut.ArtistId = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "library"); csilOk {
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Library = &csilVal
 	}
 	return csilOut, nil
 }
@@ -1959,6 +1983,390 @@ func DecodeSearchResponse(csilData []byte) (SearchResponse, error) {
 		return csilZero, csilErr
 	}
 	return csilDecSearchResponse(csilRoot)
+}
+
+// csilEncTransferChunk builds the canonical CBOR value tree for a TransferChunk.
+func csilEncTransferChunk(csilV TransferChunk) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("size"), cborUint(csilV.Size)})
+	csilEntries = append(csilEntries, cborEntry{cborText("index"), cborUint(csilV.Index)})
+	csilEntries = append(csilEntries, cborEntry{cborText("offset"), cborUint(csilV.Offset)})
+	csilEntries = append(csilEntries, cborEntry{cborText("sha256"), cborText(csilV.Sha256)})
+	return csilEntries
+}
+
+// csilDecTransferChunk reconstructs a TransferChunk from a decoded CBOR value tree.
+func csilDecTransferChunk(csilRoot cborValue) (TransferChunk, error) {
+	var csilOut TransferChunk
+	{
+		csilField, csilErr := cborRequire(csilRoot, "index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Index = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "offset")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Offset = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "size")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Size = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "sha256")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Sha256 = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeTransferChunk encodes a TransferChunk to canonical CSIL CBOR bytes.
+func EncodeTransferChunk(csilV TransferChunk) []byte {
+	return cborEncode(csilEncTransferChunk(csilV))
+}
+
+// DecodeTransferChunk decodes canonical CSIL CBOR bytes into a TransferChunk.
+func DecodeTransferChunk(csilData []byte) (TransferChunk, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero TransferChunk
+		return csilZero, csilErr
+	}
+	return csilDecTransferChunk(csilRoot)
+}
+
+// csilEncTransferFile builds the canonical CBOR value tree for a TransferFile.
+func csilEncTransferFile(csilV TransferFile) cborValue {
+	csilEntries := make(cborMap, 0, 5)
+	csilEntries = append(csilEntries, cborEntry{cborText("chunks"), cborEncArray(csilV.Chunks, func(csilElem TransferChunk) cborValue { return csilEncTransferChunk(csilElem) })})
+	csilEntries = append(csilEntries, cborEntry{cborText("sha256"), cborText(csilV.Sha256)})
+	csilEntries = append(csilEntries, cborEntry{cborText("size_bytes"), cborUint(csilV.SizeBytes)})
+	csilEntries = append(csilEntries, cborEntry{cborText("content_type"), cborText(csilV.ContentType)})
+	csilEntries = append(csilEntries, cborEntry{cborText("root_relative_path"), cborText(csilV.RootRelativePath)})
+	return csilEntries
+}
+
+// csilDecTransferFile reconstructs a TransferFile from a decoded CBOR value tree.
+func csilDecTransferFile(csilRoot cborValue) (TransferFile, error) {
+	var csilOut TransferFile
+	{
+		csilField, csilErr := cborRequire(csilRoot, "root_relative_path")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.RootRelativePath = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "content_type")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ContentType = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "size_bytes")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.SizeBytes = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "sha256")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Sha256 = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "chunks")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TransferChunk, error) { return cborDecArray(csilV, csilDecTransferChunk) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Chunks = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeTransferFile encodes a TransferFile to canonical CSIL CBOR bytes.
+func EncodeTransferFile(csilV TransferFile) []byte {
+	return cborEncode(csilEncTransferFile(csilV))
+}
+
+// DecodeTransferFile decodes canonical CSIL CBOR bytes into a TransferFile.
+func DecodeTransferFile(csilData []byte) (TransferFile, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero TransferFile
+		return csilZero, csilErr
+	}
+	return csilDecTransferFile(csilRoot)
+}
+
+// csilEncExportManifestRequest builds the canonical CBOR value tree for a ExportManifestRequest.
+func csilEncExportManifestRequest(csilV ExportManifestRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
+	return csilEntries
+}
+
+// csilDecExportManifestRequest reconstructs a ExportManifestRequest from a decoded CBOR value tree.
+func csilDecExportManifestRequest(csilRoot cborValue) (ExportManifestRequest, error) {
+	var csilOut ExportManifestRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (TrackId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return TrackId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeExportManifestRequest encodes a ExportManifestRequest to canonical CSIL CBOR bytes.
+func EncodeExportManifestRequest(csilV ExportManifestRequest) []byte {
+	return cborEncode(csilEncExportManifestRequest(csilV))
+}
+
+// DecodeExportManifestRequest decodes canonical CSIL CBOR bytes into a ExportManifestRequest.
+func DecodeExportManifestRequest(csilData []byte) (ExportManifestRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ExportManifestRequest
+		return csilZero, csilErr
+	}
+	return csilDecExportManifestRequest(csilRoot)
+}
+
+// csilEncExportManifest builds the canonical CBOR value tree for a ExportManifest.
+func csilEncExportManifest(csilV ExportManifest) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("files"), cborEncArray(csilV.Files, func(csilElem TransferFile) cborValue { return csilEncTransferFile(csilElem) })})
+	csilEntries = append(csilEntries, cborEntry{cborText("track"), csilEncTrack(csilV.Track)})
+	return csilEntries
+}
+
+// csilDecExportManifest reconstructs a ExportManifest from a decoded CBOR value tree.
+func csilDecExportManifest(csilRoot cborValue) (ExportManifest, error) {
+	var csilOut ExportManifest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (csilDecTrack)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Track = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "files")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TransferFile, error) { return cborDecArray(csilV, csilDecTransferFile) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Files = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeExportManifest encodes a ExportManifest to canonical CSIL CBOR bytes.
+func EncodeExportManifest(csilV ExportManifest) []byte {
+	return cborEncode(csilEncExportManifest(csilV))
+}
+
+// DecodeExportManifest decodes canonical CSIL CBOR bytes into a ExportManifest.
+func DecodeExportManifest(csilData []byte) (ExportManifest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ExportManifest
+		return csilZero, csilErr
+	}
+	return csilDecExportManifest(csilRoot)
+}
+
+// csilEncExportChunkRequest builds the canonical CBOR value tree for a ExportChunkRequest.
+func csilEncExportChunkRequest(csilV ExportChunkRequest) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("chunk_index"), cborUint(csilV.ChunkIndex)})
+	csilEntries = append(csilEntries, cborEntry{cborText("root_relative_path"), cborText(csilV.RootRelativePath)})
+	return csilEntries
+}
+
+// csilDecExportChunkRequest reconstructs a ExportChunkRequest from a decoded CBOR value tree.
+func csilDecExportChunkRequest(csilRoot cborValue) (ExportChunkRequest, error) {
+	var csilOut ExportChunkRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (TrackId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return TrackId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "root_relative_path")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.RootRelativePath = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "chunk_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ChunkIndex = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeExportChunkRequest encodes a ExportChunkRequest to canonical CSIL CBOR bytes.
+func EncodeExportChunkRequest(csilV ExportChunkRequest) []byte {
+	return cborEncode(csilEncExportChunkRequest(csilV))
+}
+
+// DecodeExportChunkRequest decodes canonical CSIL CBOR bytes into a ExportChunkRequest.
+func DecodeExportChunkRequest(csilData []byte) (ExportChunkRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ExportChunkRequest
+		return csilZero, csilErr
+	}
+	return csilDecExportChunkRequest(csilRoot)
+}
+
+// csilEncExportChunk builds the canonical CBOR value tree for a ExportChunk.
+func csilEncExportChunk(csilV ExportChunk) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("data"), cborBytes(csilV.Data)})
+	csilEntries = append(csilEntries, cborEntry{cborText("chunk_index"), cborUint(csilV.ChunkIndex)})
+	csilEntries = append(csilEntries, cborEntry{cborText("root_relative_path"), cborText(csilV.RootRelativePath)})
+	return csilEntries
+}
+
+// csilDecExportChunk reconstructs a ExportChunk from a decoded CBOR value tree.
+func csilDecExportChunk(csilRoot cborValue) (ExportChunk, error) {
+	var csilOut ExportChunk
+	{
+		csilField, csilErr := cborRequire(csilRoot, "root_relative_path")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.RootRelativePath = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "chunk_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ChunkIndex = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "data")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBytes)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Data = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeExportChunk encodes a ExportChunk to canonical CSIL CBOR bytes.
+func EncodeExportChunk(csilV ExportChunk) []byte {
+	return cborEncode(csilEncExportChunk(csilV))
+}
+
+// DecodeExportChunk decodes canonical CSIL CBOR bytes into a ExportChunk.
+func DecodeExportChunk(csilData []byte) (ExportChunk, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ExportChunk
+		return csilZero, csilErr
+	}
+	return csilDecExportChunk(csilRoot)
 }
 
 // csilEncAudiobookProgress builds the canonical CBOR value tree for a AudiobookProgress.
@@ -6380,8 +6788,11 @@ func DecodeRevokeSatelliteTokenRequest(csilData []byte) (RevokeSatelliteTokenReq
 
 // csilEncImportTrackRequest builds the canonical CBOR value tree for a ImportTrackRequest.
 func csilEncImportTrackRequest(csilV ImportTrackRequest) cborValue {
-	csilEntries := make(cborMap, 0, 4)
+	csilEntries := make(cborMap, 0, 5)
 	csilEntries = append(csilEntries, cborEntry{cborText("data"), cborBytes(csilV.Data)})
+	if csilV.Library != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("library"), cborText((*csilV.Library))})
+	}
 	if csilV.ContentHash != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("content_hash"), cborText((*csilV.ContentHash))})
 	}
@@ -6393,6 +6804,27 @@ func csilEncImportTrackRequest(csilV ImportTrackRequest) cborValue {
 // csilDecImportTrackRequest reconstructs a ImportTrackRequest from a decoded CBOR value tree.
 func csilDecImportTrackRequest(csilRoot cborValue) (ImportTrackRequest, error) {
 	var csilOut ImportTrackRequest
+	if csilField, csilOk := cborMapGet(csilRoot, "library"); csilOk {
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Library = &csilVal
+	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "root_relative_path")
 		if csilErr != nil {
@@ -6453,7 +6885,10 @@ func DecodeImportTrackRequest(csilData []byte) (ImportTrackRequest, error) {
 
 // csilEncImportResult builds the canonical CBOR value tree for a ImportResult.
 func csilEncImportResult(csilV ImportResult) cborValue {
-	csilEntries := make(cborMap, 0, 3)
+	csilEntries := make(cborMap, 0, 4)
+	if csilV.Track != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("track"), csilEncTrack((*csilV.Track))})
+	}
 	csilEntries = append(csilEntries, cborEntry{cborText("imported"), cborBool(csilV.Imported)})
 	if csilV.TrackId != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText((*csilV.TrackId))})
@@ -6486,6 +6921,13 @@ func csilDecImportResult(csilRoot cborValue) (ImportResult, error) {
 		}
 		csilOut.TrackId = &csilVal
 	}
+	if csilField, csilOk := cborMapGet(csilRoot, "track"); csilOk {
+		csilVal, csilErr := (csilDecTrack)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Track = &csilVal
+	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "skipped_existing")
 		if csilErr != nil {
@@ -6513,6 +6955,336 @@ func DecodeImportResult(csilData []byte) (ImportResult, error) {
 		return csilZero, csilErr
 	}
 	return csilDecImportResult(csilRoot)
+}
+
+// csilEncMissingChunk builds the canonical CBOR value tree for a MissingChunk.
+func csilEncMissingChunk(csilV MissingChunk) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("file_index"), cborUint(csilV.FileIndex)})
+	csilEntries = append(csilEntries, cborEntry{cborText("chunk_index"), cborUint(csilV.ChunkIndex)})
+	return csilEntries
+}
+
+// csilDecMissingChunk reconstructs a MissingChunk from a decoded CBOR value tree.
+func csilDecMissingChunk(csilRoot cborValue) (MissingChunk, error) {
+	var csilOut MissingChunk
+	{
+		csilField, csilErr := cborRequire(csilRoot, "file_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.FileIndex = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "chunk_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ChunkIndex = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeMissingChunk encodes a MissingChunk to canonical CSIL CBOR bytes.
+func EncodeMissingChunk(csilV MissingChunk) []byte {
+	return cborEncode(csilEncMissingChunk(csilV))
+}
+
+// DecodeMissingChunk decodes canonical CSIL CBOR bytes into a MissingChunk.
+func DecodeMissingChunk(csilData []byte) (MissingChunk, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero MissingChunk
+		return csilZero, csilErr
+	}
+	return csilDecMissingChunk(csilRoot)
+}
+
+// csilEncBeginImportRequest builds the canonical CBOR value tree for a BeginImportRequest.
+func csilEncBeginImportRequest(csilV BeginImportRequest) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("files"), cborEncArray(csilV.Files, func(csilElem TransferFile) cborValue { return csilEncTransferFile(csilElem) })})
+	if csilV.Library != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("library"), cborText((*csilV.Library))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("track_file_index"), cborUint(csilV.TrackFileIndex)})
+	return csilEntries
+}
+
+// csilDecBeginImportRequest reconstructs a BeginImportRequest from a decoded CBOR value tree.
+func csilDecBeginImportRequest(csilRoot cborValue) (BeginImportRequest, error) {
+	var csilOut BeginImportRequest
+	if csilField, csilOk := cborMapGet(csilRoot, "library"); csilOk {
+		csilVal, csilErr := (func(csilV cborValue) (Library, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "music" || csilInner == "audiobook") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return Library(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Library = &csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_file_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackFileIndex = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "files")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TransferFile, error) { return cborDecArray(csilV, csilDecTransferFile) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Files = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeBeginImportRequest encodes a BeginImportRequest to canonical CSIL CBOR bytes.
+func EncodeBeginImportRequest(csilV BeginImportRequest) []byte {
+	return cborEncode(csilEncBeginImportRequest(csilV))
+}
+
+// DecodeBeginImportRequest decodes canonical CSIL CBOR bytes into a BeginImportRequest.
+func DecodeBeginImportRequest(csilData []byte) (BeginImportRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero BeginImportRequest
+		return csilZero, csilErr
+	}
+	return csilDecBeginImportRequest(csilRoot)
+}
+
+// csilEncBeginImportResult builds the canonical CBOR value tree for a BeginImportResult.
+func csilEncBeginImportResult(csilV BeginImportResult) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("transfer_id"), cborText(csilV.TransferId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("missing_chunks"), cborEncArray(csilV.MissingChunks, func(csilElem MissingChunk) cborValue { return csilEncMissingChunk(csilElem) })})
+	return csilEntries
+}
+
+// csilDecBeginImportResult reconstructs a BeginImportResult from a decoded CBOR value tree.
+func csilDecBeginImportResult(csilRoot cborValue) (BeginImportResult, error) {
+	var csilOut BeginImportResult
+	{
+		csilField, csilErr := cborRequire(csilRoot, "transfer_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TransferId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "missing_chunks")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]MissingChunk, error) { return cborDecArray(csilV, csilDecMissingChunk) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.MissingChunks = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeBeginImportResult encodes a BeginImportResult to canonical CSIL CBOR bytes.
+func EncodeBeginImportResult(csilV BeginImportResult) []byte {
+	return cborEncode(csilEncBeginImportResult(csilV))
+}
+
+// DecodeBeginImportResult decodes canonical CSIL CBOR bytes into a BeginImportResult.
+func DecodeBeginImportResult(csilData []byte) (BeginImportResult, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero BeginImportResult
+		return csilZero, csilErr
+	}
+	return csilDecBeginImportResult(csilRoot)
+}
+
+// csilEncImportChunkRequest builds the canonical CBOR value tree for a ImportChunkRequest.
+func csilEncImportChunkRequest(csilV ImportChunkRequest) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("data"), cborBytes(csilV.Data)})
+	csilEntries = append(csilEntries, cborEntry{cborText("file_index"), cborUint(csilV.FileIndex)})
+	csilEntries = append(csilEntries, cborEntry{cborText("chunk_index"), cborUint(csilV.ChunkIndex)})
+	csilEntries = append(csilEntries, cborEntry{cborText("transfer_id"), cborText(csilV.TransferId)})
+	return csilEntries
+}
+
+// csilDecImportChunkRequest reconstructs a ImportChunkRequest from a decoded CBOR value tree.
+func csilDecImportChunkRequest(csilRoot cborValue) (ImportChunkRequest, error) {
+	var csilOut ImportChunkRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "transfer_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TransferId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "file_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.FileIndex = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "chunk_index")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ChunkIndex = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "data")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBytes)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Data = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeImportChunkRequest encodes a ImportChunkRequest to canonical CSIL CBOR bytes.
+func EncodeImportChunkRequest(csilV ImportChunkRequest) []byte {
+	return cborEncode(csilEncImportChunkRequest(csilV))
+}
+
+// DecodeImportChunkRequest decodes canonical CSIL CBOR bytes into a ImportChunkRequest.
+func DecodeImportChunkRequest(csilData []byte) (ImportChunkRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ImportChunkRequest
+		return csilZero, csilErr
+	}
+	return csilDecImportChunkRequest(csilRoot)
+}
+
+// csilEncFinishImportRequest builds the canonical CBOR value tree for a FinishImportRequest.
+func csilEncFinishImportRequest(csilV FinishImportRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("transfer_id"), cborText(csilV.TransferId)})
+	return csilEntries
+}
+
+// csilDecFinishImportRequest reconstructs a FinishImportRequest from a decoded CBOR value tree.
+func csilDecFinishImportRequest(csilRoot cborValue) (FinishImportRequest, error) {
+	var csilOut FinishImportRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "transfer_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TransferId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeFinishImportRequest encodes a FinishImportRequest to canonical CSIL CBOR bytes.
+func EncodeFinishImportRequest(csilV FinishImportRequest) []byte {
+	return cborEncode(csilEncFinishImportRequest(csilV))
+}
+
+// DecodeFinishImportRequest decodes canonical CSIL CBOR bytes into a FinishImportRequest.
+func DecodeFinishImportRequest(csilData []byte) (FinishImportRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero FinishImportRequest
+		return csilZero, csilErr
+	}
+	return csilDecFinishImportRequest(csilRoot)
+}
+
+// csilEncCancelImportRequest builds the canonical CBOR value tree for a CancelImportRequest.
+func csilEncCancelImportRequest(csilV CancelImportRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("transfer_id"), cborText(csilV.TransferId)})
+	return csilEntries
+}
+
+// csilDecCancelImportRequest reconstructs a CancelImportRequest from a decoded CBOR value tree.
+func csilDecCancelImportRequest(csilRoot cborValue) (CancelImportRequest, error) {
+	var csilOut CancelImportRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "transfer_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TransferId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCancelImportRequest encodes a CancelImportRequest to canonical CSIL CBOR bytes.
+func EncodeCancelImportRequest(csilV CancelImportRequest) []byte {
+	return cborEncode(csilEncCancelImportRequest(csilV))
+}
+
+// DecodeCancelImportRequest decodes canonical CSIL CBOR bytes into a CancelImportRequest.
+func DecodeCancelImportRequest(csilData []byte) (CancelImportRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CancelImportRequest
+		return csilZero, csilErr
+	}
+	return csilDecCancelImportRequest(csilRoot)
 }
 
 // csilEncSettings builds the canonical CBOR value tree for a Settings.

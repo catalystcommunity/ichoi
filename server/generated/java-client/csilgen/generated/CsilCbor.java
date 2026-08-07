@@ -965,14 +965,22 @@ public final class CsilCbor {
     }
 
     static CborValue encArtistRequest(ArtistRequest v) {
-        List<CborEntry> csilEntries = new ArrayList<>(1);
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        if (v.library() != null) {
+            csilEntries.add(new CborEntry(new CborText("library"), encLibrary(v.library())));
+        }
         csilEntries.add(new CborEntry(new CborText("artist_id"), new CborText((v.artistId()).value())));
         return new CborMap(csilEntries);
     }
 
     static ArtistRequest decArtistRequest(CborValue csilRoot) {
         ArtistId artistId = new ArtistId(asText(require(csilRoot, "artist_id")));
-        return new ArtistRequest(artistId);
+        Library library;
+        {
+            CborValue csilField = mapGet(csilRoot, "library");
+            library = csilField != null ? decLibrary(csilField) : null;
+        }
+        return new ArtistRequest(artistId, library);
     }
 
     public static byte[] encodeArtistRequest(ArtistRequest v) {
@@ -1060,6 +1068,144 @@ public final class CsilCbor {
 
     public static SearchResponse decodeSearchResponse(byte[] data) {
         return decSearchResponse(decode(data));
+    }
+
+    static CborValue encTransferChunk(TransferChunk v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("size"), new CborUint(v.size())));
+        csilEntries.add(new CborEntry(new CborText("index"), new CborUint(v.index())));
+        csilEntries.add(new CborEntry(new CborText("offset"), new CborUint(v.offset())));
+        csilEntries.add(new CborEntry(new CborText("sha256"), new CborText(v.sha256())));
+        return new CborMap(csilEntries);
+    }
+
+    static TransferChunk decTransferChunk(CborValue csilRoot) {
+        long index = asU64(require(csilRoot, "index"));
+        long offset = asU64(require(csilRoot, "offset"));
+        long size = asU64(require(csilRoot, "size"));
+        String sha256 = asText(require(csilRoot, "sha256"));
+        return new TransferChunk(index, offset, size, sha256);
+    }
+
+    public static byte[] encodeTransferChunk(TransferChunk v) {
+        return encode(encTransferChunk(v));
+    }
+
+    public static TransferChunk decodeTransferChunk(byte[] data) {
+        return decTransferChunk(decode(data));
+    }
+
+    static CborValue encTransferFile(TransferFile v) {
+        List<CborEntry> csilEntries = new ArrayList<>(5);
+        csilEntries.add(new CborEntry(new CborText("chunks"), encArray(v.chunks(), csilElem0 -> encTransferChunk(csilElem0))));
+        csilEntries.add(new CborEntry(new CborText("sha256"), new CborText(v.sha256())));
+        csilEntries.add(new CborEntry(new CborText("size_bytes"), new CborUint(v.sizeBytes())));
+        csilEntries.add(new CborEntry(new CborText("content_type"), new CborText(v.contentType())));
+        csilEntries.add(new CborEntry(new CborText("root_relative_path"), new CborText(v.rootRelativePath())));
+        return new CborMap(csilEntries);
+    }
+
+    static TransferFile decTransferFile(CborValue csilRoot) {
+        String rootRelativePath = asText(require(csilRoot, "root_relative_path"));
+        String contentType = asText(require(csilRoot, "content_type"));
+        long sizeBytes = asU64(require(csilRoot, "size_bytes"));
+        String sha256 = asText(require(csilRoot, "sha256"));
+        List<TransferChunk> chunks = decArray(require(csilRoot, "chunks"), csilE0 -> decTransferChunk(csilE0));
+        return new TransferFile(rootRelativePath, contentType, sizeBytes, sha256, chunks);
+    }
+
+    public static byte[] encodeTransferFile(TransferFile v) {
+        return encode(encTransferFile(v));
+    }
+
+    public static TransferFile decodeTransferFile(byte[] data) {
+        return decTransferFile(decode(data));
+    }
+
+    static CborValue encExportManifestRequest(ExportManifestRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static ExportManifestRequest decExportManifestRequest(CborValue csilRoot) {
+        TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
+        return new ExportManifestRequest(trackId);
+    }
+
+    public static byte[] encodeExportManifestRequest(ExportManifestRequest v) {
+        return encode(encExportManifestRequest(v));
+    }
+
+    public static ExportManifestRequest decodeExportManifestRequest(byte[] data) {
+        return decExportManifestRequest(decode(data));
+    }
+
+    static CborValue encExportManifest(ExportManifest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("files"), encArray(v.files(), csilElem0 -> encTransferFile(csilElem0))));
+        csilEntries.add(new CborEntry(new CborText("track"), encTrack(v.track())));
+        return new CborMap(csilEntries);
+    }
+
+    static ExportManifest decExportManifest(CborValue csilRoot) {
+        Track track = decTrack(require(csilRoot, "track"));
+        List<TransferFile> files = decArray(require(csilRoot, "files"), csilE0 -> decTransferFile(csilE0));
+        return new ExportManifest(track, files);
+    }
+
+    public static byte[] encodeExportManifest(ExportManifest v) {
+        return encode(encExportManifest(v));
+    }
+
+    public static ExportManifest decodeExportManifest(byte[] data) {
+        return decExportManifest(decode(data));
+    }
+
+    static CborValue encExportChunkRequest(ExportChunkRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
+        csilEntries.add(new CborEntry(new CborText("chunk_index"), new CborUint(v.chunkIndex())));
+        csilEntries.add(new CborEntry(new CborText("root_relative_path"), new CborText(v.rootRelativePath())));
+        return new CborMap(csilEntries);
+    }
+
+    static ExportChunkRequest decExportChunkRequest(CborValue csilRoot) {
+        TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
+        String rootRelativePath = asText(require(csilRoot, "root_relative_path"));
+        long chunkIndex = asU64(require(csilRoot, "chunk_index"));
+        return new ExportChunkRequest(trackId, rootRelativePath, chunkIndex);
+    }
+
+    public static byte[] encodeExportChunkRequest(ExportChunkRequest v) {
+        return encode(encExportChunkRequest(v));
+    }
+
+    public static ExportChunkRequest decodeExportChunkRequest(byte[] data) {
+        return decExportChunkRequest(decode(data));
+    }
+
+    static CborValue encExportChunk(ExportChunk v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("data"), new CborBytes(v.data())));
+        csilEntries.add(new CborEntry(new CborText("chunk_index"), new CborUint(v.chunkIndex())));
+        csilEntries.add(new CborEntry(new CborText("root_relative_path"), new CborText(v.rootRelativePath())));
+        return new CborMap(csilEntries);
+    }
+
+    static ExportChunk decExportChunk(CborValue csilRoot) {
+        String rootRelativePath = asText(require(csilRoot, "root_relative_path"));
+        long chunkIndex = asU64(require(csilRoot, "chunk_index"));
+        byte[] data = asBytes(require(csilRoot, "data"));
+        return new ExportChunk(rootRelativePath, chunkIndex, data);
+    }
+
+    public static byte[] encodeExportChunk(ExportChunk v) {
+        return encode(encExportChunk(v));
+    }
+
+    public static ExportChunk decodeExportChunk(byte[] data) {
+        return decExportChunk(decode(data));
     }
 
     static CborValue encAudiobookProgress(AudiobookProgress v) {
@@ -2801,8 +2947,11 @@ public final class CsilCbor {
     }
 
     static CborValue encImportTrackRequest(ImportTrackRequest v) {
-        List<CborEntry> csilEntries = new ArrayList<>(4);
+        List<CborEntry> csilEntries = new ArrayList<>(5);
         csilEntries.add(new CborEntry(new CborText("data"), new CborBytes(v.data())));
+        if (v.library() != null) {
+            csilEntries.add(new CborEntry(new CborText("library"), encLibrary(v.library())));
+        }
         if (v.contentHash() != null) {
             csilEntries.add(new CborEntry(new CborText("content_hash"), new CborText(v.contentHash())));
         }
@@ -2812,6 +2961,11 @@ public final class CsilCbor {
     }
 
     static ImportTrackRequest decImportTrackRequest(CborValue csilRoot) {
+        Library library;
+        {
+            CborValue csilField = mapGet(csilRoot, "library");
+            library = csilField != null ? decLibrary(csilField) : null;
+        }
         String rootRelativePath = asText(require(csilRoot, "root_relative_path"));
         String contentType = asText(require(csilRoot, "content_type"));
         String contentHash;
@@ -2820,7 +2974,7 @@ public final class CsilCbor {
             contentHash = csilField != null ? asText(csilField) : null;
         }
         byte[] data = asBytes(require(csilRoot, "data"));
-        return new ImportTrackRequest(rootRelativePath, contentType, contentHash, data);
+        return new ImportTrackRequest(library, rootRelativePath, contentType, contentHash, data);
     }
 
     public static byte[] encodeImportTrackRequest(ImportTrackRequest v) {
@@ -2832,7 +2986,10 @@ public final class CsilCbor {
     }
 
     static CborValue encImportResult(ImportResult v) {
-        List<CborEntry> csilEntries = new ArrayList<>(3);
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        if (v.track() != null) {
+            csilEntries.add(new CborEntry(new CborText("track"), encTrack(v.track())));
+        }
         csilEntries.add(new CborEntry(new CborText("imported"), new CborBool(v.imported())));
         if (v.trackId() != null) {
             csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
@@ -2848,8 +3005,13 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "track_id");
             trackId = csilField != null ? new TrackId(asText(csilField)) : null;
         }
+        Track track;
+        {
+            CborValue csilField = mapGet(csilRoot, "track");
+            track = csilField != null ? decTrack(csilField) : null;
+        }
         boolean skippedExisting = asBool(require(csilRoot, "skipped_existing"));
-        return new ImportResult(imported, trackId, skippedExisting);
+        return new ImportResult(imported, trackId, track, skippedExisting);
     }
 
     public static byte[] encodeImportResult(ImportResult v) {
@@ -2858,6 +3020,140 @@ public final class CsilCbor {
 
     public static ImportResult decodeImportResult(byte[] data) {
         return decImportResult(decode(data));
+    }
+
+    static CborValue encMissingChunk(MissingChunk v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("file_index"), new CborUint(v.fileIndex())));
+        csilEntries.add(new CborEntry(new CborText("chunk_index"), new CborUint(v.chunkIndex())));
+        return new CborMap(csilEntries);
+    }
+
+    static MissingChunk decMissingChunk(CborValue csilRoot) {
+        long fileIndex = asU64(require(csilRoot, "file_index"));
+        long chunkIndex = asU64(require(csilRoot, "chunk_index"));
+        return new MissingChunk(fileIndex, chunkIndex);
+    }
+
+    public static byte[] encodeMissingChunk(MissingChunk v) {
+        return encode(encMissingChunk(v));
+    }
+
+    public static MissingChunk decodeMissingChunk(byte[] data) {
+        return decMissingChunk(decode(data));
+    }
+
+    static CborValue encBeginImportRequest(BeginImportRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("files"), encArray(v.files(), csilElem0 -> encTransferFile(csilElem0))));
+        if (v.library() != null) {
+            csilEntries.add(new CborEntry(new CborText("library"), encLibrary(v.library())));
+        }
+        csilEntries.add(new CborEntry(new CborText("track_file_index"), new CborUint(v.trackFileIndex())));
+        return new CborMap(csilEntries);
+    }
+
+    static BeginImportRequest decBeginImportRequest(CborValue csilRoot) {
+        Library library;
+        {
+            CborValue csilField = mapGet(csilRoot, "library");
+            library = csilField != null ? decLibrary(csilField) : null;
+        }
+        long trackFileIndex = asU64(require(csilRoot, "track_file_index"));
+        List<TransferFile> files = decArray(require(csilRoot, "files"), csilE0 -> decTransferFile(csilE0));
+        return new BeginImportRequest(library, trackFileIndex, files);
+    }
+
+    public static byte[] encodeBeginImportRequest(BeginImportRequest v) {
+        return encode(encBeginImportRequest(v));
+    }
+
+    public static BeginImportRequest decodeBeginImportRequest(byte[] data) {
+        return decBeginImportRequest(decode(data));
+    }
+
+    static CborValue encBeginImportResult(BeginImportResult v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("transfer_id"), new CborText(v.transferId())));
+        csilEntries.add(new CborEntry(new CborText("missing_chunks"), encArray(v.missingChunks(), csilElem0 -> encMissingChunk(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static BeginImportResult decBeginImportResult(CborValue csilRoot) {
+        String transferId = asText(require(csilRoot, "transfer_id"));
+        List<MissingChunk> missingChunks = decArray(require(csilRoot, "missing_chunks"), csilE0 -> decMissingChunk(csilE0));
+        return new BeginImportResult(transferId, missingChunks);
+    }
+
+    public static byte[] encodeBeginImportResult(BeginImportResult v) {
+        return encode(encBeginImportResult(v));
+    }
+
+    public static BeginImportResult decodeBeginImportResult(byte[] data) {
+        return decBeginImportResult(decode(data));
+    }
+
+    static CborValue encImportChunkRequest(ImportChunkRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("data"), new CborBytes(v.data())));
+        csilEntries.add(new CborEntry(new CborText("file_index"), new CborUint(v.fileIndex())));
+        csilEntries.add(new CborEntry(new CborText("chunk_index"), new CborUint(v.chunkIndex())));
+        csilEntries.add(new CborEntry(new CborText("transfer_id"), new CborText(v.transferId())));
+        return new CborMap(csilEntries);
+    }
+
+    static ImportChunkRequest decImportChunkRequest(CborValue csilRoot) {
+        String transferId = asText(require(csilRoot, "transfer_id"));
+        long fileIndex = asU64(require(csilRoot, "file_index"));
+        long chunkIndex = asU64(require(csilRoot, "chunk_index"));
+        byte[] data = asBytes(require(csilRoot, "data"));
+        return new ImportChunkRequest(transferId, fileIndex, chunkIndex, data);
+    }
+
+    public static byte[] encodeImportChunkRequest(ImportChunkRequest v) {
+        return encode(encImportChunkRequest(v));
+    }
+
+    public static ImportChunkRequest decodeImportChunkRequest(byte[] data) {
+        return decImportChunkRequest(decode(data));
+    }
+
+    static CborValue encFinishImportRequest(FinishImportRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("transfer_id"), new CborText(v.transferId())));
+        return new CborMap(csilEntries);
+    }
+
+    static FinishImportRequest decFinishImportRequest(CborValue csilRoot) {
+        String transferId = asText(require(csilRoot, "transfer_id"));
+        return new FinishImportRequest(transferId);
+    }
+
+    public static byte[] encodeFinishImportRequest(FinishImportRequest v) {
+        return encode(encFinishImportRequest(v));
+    }
+
+    public static FinishImportRequest decodeFinishImportRequest(byte[] data) {
+        return decFinishImportRequest(decode(data));
+    }
+
+    static CborValue encCancelImportRequest(CancelImportRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("transfer_id"), new CborText(v.transferId())));
+        return new CborMap(csilEntries);
+    }
+
+    static CancelImportRequest decCancelImportRequest(CborValue csilRoot) {
+        String transferId = asText(require(csilRoot, "transfer_id"));
+        return new CancelImportRequest(transferId);
+    }
+
+    public static byte[] encodeCancelImportRequest(CancelImportRequest v) {
+        return encode(encCancelImportRequest(v));
+    }
+
+    public static CancelImportRequest decodeCancelImportRequest(byte[] data) {
+        return decCancelImportRequest(decode(data));
     }
 
     static CborValue encSettings(Settings v) {

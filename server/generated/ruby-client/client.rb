@@ -67,6 +67,16 @@ class LibraryClient
     SearchResponse.from_cbor(@transport.call("LibraryService", "search", req.to_cbor))
   end
 
+  # export-manifest: -> ExportManifest
+  def export_manifest(req)
+    ExportManifest.from_cbor(@transport.call("LibraryService", "export-manifest", req.to_cbor))
+  end
+
+  # export-chunk: -> ExportChunk
+  def export_chunk(req)
+    ExportChunk.from_cbor(@transport.call("LibraryService", "export-chunk", req.to_cbor))
+  end
+
   # list-playlists: -> PlaylistsResponse
   def list_playlists(req)
     PlaylistsResponse.from_cbor(@transport.call("LibraryService", "list-playlists", req.to_cbor))
@@ -244,6 +254,26 @@ class AdminClient
   # import-track: -> ImportResult
   def import_track(req)
     ImportResult.from_cbor(@transport.call("AdminService", "import-track", req.to_cbor))
+  end
+
+  # begin-import: -> BeginImportResult
+  def begin_import(req)
+    BeginImportResult.from_cbor(@transport.call("AdminService", "begin-import", req.to_cbor))
+  end
+
+  # import-chunk: -> Ok
+  def import_chunk(req)
+    Ok.from_cbor(@transport.call("AdminService", "import-chunk", req.to_cbor))
+  end
+
+  # finish-import: -> ImportResult
+  def finish_import(req)
+    ImportResult.from_cbor(@transport.call("AdminService", "finish-import", req.to_cbor))
+  end
+
+  # cancel-import: -> Ok
+  def cancel_import(req)
+    Ok.from_cbor(@transport.call("AdminService", "cancel-import", req.to_cbor))
   end
 
   # get-settings: -> Settings

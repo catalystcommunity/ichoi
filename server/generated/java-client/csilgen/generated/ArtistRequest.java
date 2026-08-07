@@ -3,6 +3,7 @@
 package csilgen.generated;
 
 public record ArtistRequest(
-    ArtistId artistId /* wire: "artist_id" */
+    ArtistId artistId /* wire: "artist_id" */,
+    Library library /* wire: "library" */
 ) {
 }

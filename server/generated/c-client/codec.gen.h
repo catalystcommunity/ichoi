@@ -626,6 +626,18 @@ static inline int csilc_enc_SearchRequest(csilc_buf *b, const SearchRequest *v);
 static inline int csilc_dec_SearchRequest(const csilc_value *m, CsilCodecArena *a, SearchRequest *out);
 static inline int csilc_enc_SearchResponse(csilc_buf *b, const SearchResponse *v);
 static inline int csilc_dec_SearchResponse(const csilc_value *m, CsilCodecArena *a, SearchResponse *out);
+static inline int csilc_enc_TransferChunk(csilc_buf *b, const TransferChunk *v);
+static inline int csilc_dec_TransferChunk(const csilc_value *m, CsilCodecArena *a, TransferChunk *out);
+static inline int csilc_enc_TransferFile(csilc_buf *b, const TransferFile *v);
+static inline int csilc_dec_TransferFile(const csilc_value *m, CsilCodecArena *a, TransferFile *out);
+static inline int csilc_enc_ExportManifestRequest(csilc_buf *b, const ExportManifestRequest *v);
+static inline int csilc_dec_ExportManifestRequest(const csilc_value *m, CsilCodecArena *a, ExportManifestRequest *out);
+static inline int csilc_enc_ExportManifest(csilc_buf *b, const ExportManifest *v);
+static inline int csilc_dec_ExportManifest(const csilc_value *m, CsilCodecArena *a, ExportManifest *out);
+static inline int csilc_enc_ExportChunkRequest(csilc_buf *b, const ExportChunkRequest *v);
+static inline int csilc_dec_ExportChunkRequest(const csilc_value *m, CsilCodecArena *a, ExportChunkRequest *out);
+static inline int csilc_enc_ExportChunk(csilc_buf *b, const ExportChunk *v);
+static inline int csilc_dec_ExportChunk(const csilc_value *m, CsilCodecArena *a, ExportChunk *out);
 static inline int csilc_enc_AudiobookProgress(csilc_buf *b, const AudiobookProgress *v);
 static inline int csilc_dec_AudiobookProgress(const csilc_value *m, CsilCodecArena *a, AudiobookProgress *out);
 static inline int csilc_enc_AudiobookProgressRequest(csilc_buf *b, const AudiobookProgressRequest *v);
@@ -790,6 +802,18 @@ static inline int csilc_enc_ImportTrackRequest(csilc_buf *b, const ImportTrackRe
 static inline int csilc_dec_ImportTrackRequest(const csilc_value *m, CsilCodecArena *a, ImportTrackRequest *out);
 static inline int csilc_enc_ImportResult(csilc_buf *b, const ImportResult *v);
 static inline int csilc_dec_ImportResult(const csilc_value *m, CsilCodecArena *a, ImportResult *out);
+static inline int csilc_enc_MissingChunk(csilc_buf *b, const MissingChunk *v);
+static inline int csilc_dec_MissingChunk(const csilc_value *m, CsilCodecArena *a, MissingChunk *out);
+static inline int csilc_enc_BeginImportRequest(csilc_buf *b, const BeginImportRequest *v);
+static inline int csilc_dec_BeginImportRequest(const csilc_value *m, CsilCodecArena *a, BeginImportRequest *out);
+static inline int csilc_enc_BeginImportResult(csilc_buf *b, const BeginImportResult *v);
+static inline int csilc_dec_BeginImportResult(const csilc_value *m, CsilCodecArena *a, BeginImportResult *out);
+static inline int csilc_enc_ImportChunkRequest(csilc_buf *b, const ImportChunkRequest *v);
+static inline int csilc_dec_ImportChunkRequest(const csilc_value *m, CsilCodecArena *a, ImportChunkRequest *out);
+static inline int csilc_enc_FinishImportRequest(csilc_buf *b, const FinishImportRequest *v);
+static inline int csilc_dec_FinishImportRequest(const csilc_value *m, CsilCodecArena *a, FinishImportRequest *out);
+static inline int csilc_enc_CancelImportRequest(csilc_buf *b, const CancelImportRequest *v);
+static inline int csilc_dec_CancelImportRequest(const csilc_value *m, CsilCodecArena *a, CancelImportRequest *out);
 static inline int csilc_enc_Settings(csilc_buf *b, const Settings *v);
 static inline int csilc_dec_Settings(const csilc_value *m, CsilCodecArena *a, Settings *out);
 static inline int csilc_enc_SetSettingRequest(csilc_buf *b, const SetSettingRequest *v);
@@ -1647,7 +1671,12 @@ static inline int csilc_dec_AlbumDetail(const csilc_value *m, CsilCodecArena *a,
 /* csilc_enc_ArtistRequest writes ArtistRequest as a canonical CBOR map. */
 static inline int csilc_enc_ArtistRequest(csilc_buf *b, const ArtistRequest *v) {
     size_t csilc_n = 1;
+    if (v->library) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (v->library) {
+        if (csilc_w_text(b, "library", 7)) return -1;
+        if (csilc_enc_Library(b, &((*v->library)))) return -1;
+    }
     if (csilc_w_text(b, "artist_id", 9)) return -1;
     if (csilc_w_text(b, (v->artist_id), (v->artist_id) ? strlen(v->artist_id) : 0)) return -1;
     return 0;
@@ -1658,6 +1687,14 @@ static inline int csilc_dec_ArtistRequest(const csilc_value *m, CsilCodecArena *
     (void)a;
     const csilc_value *csilc_f;
     if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "library");
+    out->library = NULL;
+    if (csilc_f) {
+        Library *csilc_p = (Library *)csilc_arena_alloc(a, sizeof(Library));
+        if (!csilc_p) return -1;
+        if (csilc_dec_Library(csilc_f, a, &((*csilc_p)))) return -1;
+        out->library = csilc_p;
+    }
     csilc_f = csilc_map_get(m, "artist_id");
     if (!csilc_get_text(csilc_f, &(out->artist_id))) return -1;
     return 0;
@@ -1803,6 +1840,192 @@ static inline int csilc_dec_SearchResponse(const csilc_value *m, CsilCodecArena 
             if (csilc_dec_Artist(&csilc_f->as.array.items[csilc_i], a, &(out->artists[csilc_i]))) return -1;
         }
     }
+    return 0;
+}
+
+/* csilc_enc_TransferChunk writes TransferChunk as a canonical CBOR map. */
+static inline int csilc_enc_TransferChunk(csilc_buf *b, const TransferChunk *v) {
+    size_t csilc_n = 4;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "size", 4)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->size))) return -1;
+    if (csilc_w_text(b, "index", 5)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->index))) return -1;
+    if (csilc_w_text(b, "offset", 6)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->offset))) return -1;
+    if (csilc_w_text(b, "sha256", 6)) return -1;
+    if (csilc_w_text(b, (v->sha256), (v->sha256) ? strlen(v->sha256) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_TransferChunk reads TransferChunk from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_TransferChunk(const csilc_value *m, CsilCodecArena *a, TransferChunk *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "size");
+    if (!csilc_as_u64(csilc_f, &(out->size))) return -1;
+    csilc_f = csilc_map_get(m, "index");
+    if (!csilc_as_u64(csilc_f, &(out->index))) return -1;
+    csilc_f = csilc_map_get(m, "offset");
+    if (!csilc_as_u64(csilc_f, &(out->offset))) return -1;
+    csilc_f = csilc_map_get(m, "sha256");
+    if (!csilc_get_text(csilc_f, &(out->sha256))) return -1;
+    return 0;
+}
+
+/* csilc_enc_TransferFile writes TransferFile as a canonical CBOR map. */
+static inline int csilc_enc_TransferFile(csilc_buf *b, const TransferFile *v) {
+    size_t csilc_n = 5;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "chunks", 6)) return -1;
+    if (csilc_w_array_head(b, v->chunks_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->chunks_count; csilc_i++) {
+        if (csilc_enc_TransferChunk(b, &(v->chunks[csilc_i]))) return -1;
+    }
+    if (csilc_w_text(b, "sha256", 6)) return -1;
+    if (csilc_w_text(b, (v->sha256), (v->sha256) ? strlen(v->sha256) : 0)) return -1;
+    if (csilc_w_text(b, "size_bytes", 10)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->size_bytes))) return -1;
+    if (csilc_w_text(b, "content_type", 12)) return -1;
+    if (csilc_w_text(b, (v->content_type), (v->content_type) ? strlen(v->content_type) : 0)) return -1;
+    if (csilc_w_text(b, "root_relative_path", 18)) return -1;
+    if (csilc_w_text(b, (v->root_relative_path), (v->root_relative_path) ? strlen(v->root_relative_path) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_TransferFile reads TransferFile from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_TransferFile(const csilc_value *m, CsilCodecArena *a, TransferFile *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "chunks");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->chunks_count = csilc_f->as.array.count;
+    out->chunks = NULL;
+    if (out->chunks_count) {
+        out->chunks = (TransferChunk *)csilc_arena_alloc(a, out->chunks_count * sizeof(TransferChunk));
+        if (!out->chunks) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->chunks_count; csilc_i++) {
+            if (csilc_dec_TransferChunk(&csilc_f->as.array.items[csilc_i], a, &(out->chunks[csilc_i]))) return -1;
+        }
+    }
+    csilc_f = csilc_map_get(m, "sha256");
+    if (!csilc_get_text(csilc_f, &(out->sha256))) return -1;
+    csilc_f = csilc_map_get(m, "size_bytes");
+    if (!csilc_as_u64(csilc_f, &(out->size_bytes))) return -1;
+    csilc_f = csilc_map_get(m, "content_type");
+    if (!csilc_get_text(csilc_f, &(out->content_type))) return -1;
+    csilc_f = csilc_map_get(m, "root_relative_path");
+    if (!csilc_get_text(csilc_f, &(out->root_relative_path))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ExportManifestRequest writes ExportManifestRequest as a canonical CBOR map. */
+static inline int csilc_enc_ExportManifestRequest(csilc_buf *b, const ExportManifestRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "track_id", 8)) return -1;
+    if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ExportManifestRequest reads ExportManifestRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ExportManifestRequest(const csilc_value *m, CsilCodecArena *a, ExportManifestRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "track_id");
+    if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ExportManifest writes ExportManifest as a canonical CBOR map. */
+static inline int csilc_enc_ExportManifest(csilc_buf *b, const ExportManifest *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "files", 5)) return -1;
+    if (csilc_w_array_head(b, v->files_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->files_count; csilc_i++) {
+        if (csilc_enc_TransferFile(b, &(v->files[csilc_i]))) return -1;
+    }
+    if (csilc_w_text(b, "track", 5)) return -1;
+    if (csilc_enc_Track(b, &(v->track))) return -1;
+    return 0;
+}
+
+/* csilc_dec_ExportManifest reads ExportManifest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ExportManifest(const csilc_value *m, CsilCodecArena *a, ExportManifest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "files");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->files_count = csilc_f->as.array.count;
+    out->files = NULL;
+    if (out->files_count) {
+        out->files = (TransferFile *)csilc_arena_alloc(a, out->files_count * sizeof(TransferFile));
+        if (!out->files) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->files_count; csilc_i++) {
+            if (csilc_dec_TransferFile(&csilc_f->as.array.items[csilc_i], a, &(out->files[csilc_i]))) return -1;
+        }
+    }
+    csilc_f = csilc_map_get(m, "track");
+    if (csilc_dec_Track(csilc_f, a, &(out->track))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ExportChunkRequest writes ExportChunkRequest as a canonical CBOR map. */
+static inline int csilc_enc_ExportChunkRequest(csilc_buf *b, const ExportChunkRequest *v) {
+    size_t csilc_n = 3;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "track_id", 8)) return -1;
+    if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
+    if (csilc_w_text(b, "chunk_index", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->chunk_index))) return -1;
+    if (csilc_w_text(b, "root_relative_path", 18)) return -1;
+    if (csilc_w_text(b, (v->root_relative_path), (v->root_relative_path) ? strlen(v->root_relative_path) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ExportChunkRequest reads ExportChunkRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ExportChunkRequest(const csilc_value *m, CsilCodecArena *a, ExportChunkRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "track_id");
+    if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
+    csilc_f = csilc_map_get(m, "chunk_index");
+    if (!csilc_as_u64(csilc_f, &(out->chunk_index))) return -1;
+    csilc_f = csilc_map_get(m, "root_relative_path");
+    if (!csilc_get_text(csilc_f, &(out->root_relative_path))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ExportChunk writes ExportChunk as a canonical CBOR map. */
+static inline int csilc_enc_ExportChunk(csilc_buf *b, const ExportChunk *v) {
+    size_t csilc_n = 3;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "data", 4)) return -1;
+    if (csilc_w_bytes(b, (v->data).data, (v->data).len)) return -1;
+    if (csilc_w_text(b, "chunk_index", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->chunk_index))) return -1;
+    if (csilc_w_text(b, "root_relative_path", 18)) return -1;
+    if (csilc_w_text(b, (v->root_relative_path), (v->root_relative_path) ? strlen(v->root_relative_path) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ExportChunk reads ExportChunk from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ExportChunk(const csilc_value *m, CsilCodecArena *a, ExportChunk *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "data");
+    if (!csilc_get_bytes(csilc_f, &(out->data).data, &(out->data).len)) return -1;
+    csilc_f = csilc_map_get(m, "chunk_index");
+    if (!csilc_as_u64(csilc_f, &(out->chunk_index))) return -1;
+    csilc_f = csilc_map_get(m, "root_relative_path");
+    if (!csilc_get_text(csilc_f, &(out->root_relative_path))) return -1;
     return 0;
 }
 
@@ -4461,10 +4684,15 @@ static inline int csilc_dec_RevokeSatelliteTokenRequest(const csilc_value *m, Cs
 /* csilc_enc_ImportTrackRequest writes ImportTrackRequest as a canonical CBOR map. */
 static inline int csilc_enc_ImportTrackRequest(csilc_buf *b, const ImportTrackRequest *v) {
     size_t csilc_n = 3;
+    if (v->library) csilc_n++;
     if (v->content_hash) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "data", 4)) return -1;
     if (csilc_w_bytes(b, (v->data).data, (v->data).len)) return -1;
+    if (v->library) {
+        if (csilc_w_text(b, "library", 7)) return -1;
+        if (csilc_enc_Library(b, &((*v->library)))) return -1;
+    }
     if (v->content_hash) {
         if (csilc_w_text(b, "content_hash", 12)) return -1;
         if (csilc_w_text(b, (v->content_hash), (v->content_hash) ? strlen(v->content_hash) : 0)) return -1;
@@ -4483,6 +4711,14 @@ static inline int csilc_dec_ImportTrackRequest(const csilc_value *m, CsilCodecAr
     if (!m || m->kind != CSILC_MAP) return -1;
     csilc_f = csilc_map_get(m, "data");
     if (!csilc_get_bytes(csilc_f, &(out->data).data, &(out->data).len)) return -1;
+    csilc_f = csilc_map_get(m, "library");
+    out->library = NULL;
+    if (csilc_f) {
+        Library *csilc_p = (Library *)csilc_arena_alloc(a, sizeof(Library));
+        if (!csilc_p) return -1;
+        if (csilc_dec_Library(csilc_f, a, &((*csilc_p)))) return -1;
+        out->library = csilc_p;
+    }
     csilc_f = csilc_map_get(m, "content_hash");
     out->content_hash = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
     csilc_f = csilc_map_get(m, "content_type");
@@ -4495,8 +4731,13 @@ static inline int csilc_dec_ImportTrackRequest(const csilc_value *m, CsilCodecAr
 /* csilc_enc_ImportResult writes ImportResult as a canonical CBOR map. */
 static inline int csilc_enc_ImportResult(csilc_buf *b, const ImportResult *v) {
     size_t csilc_n = 2;
+    if (v->track) csilc_n++;
     if (v->track_id) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (v->track) {
+        if (csilc_w_text(b, "track", 5)) return -1;
+        if (csilc_enc_Track(b, &((*v->track)))) return -1;
+    }
     if (csilc_w_text(b, "imported", 8)) return -1;
     if (csilc_w_bool(b, (v->imported))) return -1;
     if (v->track_id) {
@@ -4513,6 +4754,14 @@ static inline int csilc_dec_ImportResult(const csilc_value *m, CsilCodecArena *a
     (void)a;
     const csilc_value *csilc_f;
     if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "track");
+    out->track = NULL;
+    if (csilc_f) {
+        Track *csilc_p = (Track *)csilc_arena_alloc(a, sizeof(Track));
+        if (!csilc_p) return -1;
+        if (csilc_dec_Track(csilc_f, a, &((*csilc_p)))) return -1;
+        out->track = csilc_p;
+    }
     csilc_f = csilc_map_get(m, "imported");
     if (!csilc_as_bool(csilc_f, &(out->imported))) return -1;
     csilc_f = csilc_map_get(m, "track_id");
@@ -4525,6 +4774,181 @@ static inline int csilc_dec_ImportResult(const csilc_value *m, CsilCodecArena *a
     }
     csilc_f = csilc_map_get(m, "skipped_existing");
     if (!csilc_as_bool(csilc_f, &(out->skipped_existing))) return -1;
+    return 0;
+}
+
+/* csilc_enc_MissingChunk writes MissingChunk as a canonical CBOR map. */
+static inline int csilc_enc_MissingChunk(csilc_buf *b, const MissingChunk *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "file_index", 10)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->file_index))) return -1;
+    if (csilc_w_text(b, "chunk_index", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->chunk_index))) return -1;
+    return 0;
+}
+
+/* csilc_dec_MissingChunk reads MissingChunk from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_MissingChunk(const csilc_value *m, CsilCodecArena *a, MissingChunk *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "file_index");
+    if (!csilc_as_u64(csilc_f, &(out->file_index))) return -1;
+    csilc_f = csilc_map_get(m, "chunk_index");
+    if (!csilc_as_u64(csilc_f, &(out->chunk_index))) return -1;
+    return 0;
+}
+
+/* csilc_enc_BeginImportRequest writes BeginImportRequest as a canonical CBOR map. */
+static inline int csilc_enc_BeginImportRequest(csilc_buf *b, const BeginImportRequest *v) {
+    size_t csilc_n = 2;
+    if (v->library) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "files", 5)) return -1;
+    if (csilc_w_array_head(b, v->files_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->files_count; csilc_i++) {
+        if (csilc_enc_TransferFile(b, &(v->files[csilc_i]))) return -1;
+    }
+    if (v->library) {
+        if (csilc_w_text(b, "library", 7)) return -1;
+        if (csilc_enc_Library(b, &((*v->library)))) return -1;
+    }
+    if (csilc_w_text(b, "track_file_index", 16)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->track_file_index))) return -1;
+    return 0;
+}
+
+/* csilc_dec_BeginImportRequest reads BeginImportRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_BeginImportRequest(const csilc_value *m, CsilCodecArena *a, BeginImportRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "files");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->files_count = csilc_f->as.array.count;
+    out->files = NULL;
+    if (out->files_count) {
+        out->files = (TransferFile *)csilc_arena_alloc(a, out->files_count * sizeof(TransferFile));
+        if (!out->files) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->files_count; csilc_i++) {
+            if (csilc_dec_TransferFile(&csilc_f->as.array.items[csilc_i], a, &(out->files[csilc_i]))) return -1;
+        }
+    }
+    csilc_f = csilc_map_get(m, "library");
+    out->library = NULL;
+    if (csilc_f) {
+        Library *csilc_p = (Library *)csilc_arena_alloc(a, sizeof(Library));
+        if (!csilc_p) return -1;
+        if (csilc_dec_Library(csilc_f, a, &((*csilc_p)))) return -1;
+        out->library = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "track_file_index");
+    if (!csilc_as_u64(csilc_f, &(out->track_file_index))) return -1;
+    return 0;
+}
+
+/* csilc_enc_BeginImportResult writes BeginImportResult as a canonical CBOR map. */
+static inline int csilc_enc_BeginImportResult(csilc_buf *b, const BeginImportResult *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "transfer_id", 11)) return -1;
+    if (csilc_w_text(b, (v->transfer_id), (v->transfer_id) ? strlen(v->transfer_id) : 0)) return -1;
+    if (csilc_w_text(b, "missing_chunks", 14)) return -1;
+    if (csilc_w_array_head(b, v->missing_chunks_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->missing_chunks_count; csilc_i++) {
+        if (csilc_enc_MissingChunk(b, &(v->missing_chunks[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_BeginImportResult reads BeginImportResult from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_BeginImportResult(const csilc_value *m, CsilCodecArena *a, BeginImportResult *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "transfer_id");
+    if (!csilc_get_text(csilc_f, &(out->transfer_id))) return -1;
+    csilc_f = csilc_map_get(m, "missing_chunks");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->missing_chunks_count = csilc_f->as.array.count;
+    out->missing_chunks = NULL;
+    if (out->missing_chunks_count) {
+        out->missing_chunks = (MissingChunk *)csilc_arena_alloc(a, out->missing_chunks_count * sizeof(MissingChunk));
+        if (!out->missing_chunks) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->missing_chunks_count; csilc_i++) {
+            if (csilc_dec_MissingChunk(&csilc_f->as.array.items[csilc_i], a, &(out->missing_chunks[csilc_i]))) return -1;
+        }
+    }
+    return 0;
+}
+
+/* csilc_enc_ImportChunkRequest writes ImportChunkRequest as a canonical CBOR map. */
+static inline int csilc_enc_ImportChunkRequest(csilc_buf *b, const ImportChunkRequest *v) {
+    size_t csilc_n = 4;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "data", 4)) return -1;
+    if (csilc_w_bytes(b, (v->data).data, (v->data).len)) return -1;
+    if (csilc_w_text(b, "file_index", 10)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->file_index))) return -1;
+    if (csilc_w_text(b, "chunk_index", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->chunk_index))) return -1;
+    if (csilc_w_text(b, "transfer_id", 11)) return -1;
+    if (csilc_w_text(b, (v->transfer_id), (v->transfer_id) ? strlen(v->transfer_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ImportChunkRequest reads ImportChunkRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ImportChunkRequest(const csilc_value *m, CsilCodecArena *a, ImportChunkRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "data");
+    if (!csilc_get_bytes(csilc_f, &(out->data).data, &(out->data).len)) return -1;
+    csilc_f = csilc_map_get(m, "file_index");
+    if (!csilc_as_u64(csilc_f, &(out->file_index))) return -1;
+    csilc_f = csilc_map_get(m, "chunk_index");
+    if (!csilc_as_u64(csilc_f, &(out->chunk_index))) return -1;
+    csilc_f = csilc_map_get(m, "transfer_id");
+    if (!csilc_get_text(csilc_f, &(out->transfer_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_FinishImportRequest writes FinishImportRequest as a canonical CBOR map. */
+static inline int csilc_enc_FinishImportRequest(csilc_buf *b, const FinishImportRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "transfer_id", 11)) return -1;
+    if (csilc_w_text(b, (v->transfer_id), (v->transfer_id) ? strlen(v->transfer_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_FinishImportRequest reads FinishImportRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_FinishImportRequest(const csilc_value *m, CsilCodecArena *a, FinishImportRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "transfer_id");
+    if (!csilc_get_text(csilc_f, &(out->transfer_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_CancelImportRequest writes CancelImportRequest as a canonical CBOR map. */
+static inline int csilc_enc_CancelImportRequest(csilc_buf *b, const CancelImportRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "transfer_id", 11)) return -1;
+    if (csilc_w_text(b, (v->transfer_id), (v->transfer_id) ? strlen(v->transfer_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_CancelImportRequest reads CancelImportRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CancelImportRequest(const csilc_value *m, CsilCodecArena *a, CancelImportRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "transfer_id");
+    if (!csilc_get_text(csilc_f, &(out->transfer_id))) return -1;
     return 0;
 }
 
@@ -5203,6 +5627,144 @@ static inline int csil_decode_SearchResponse(const uint8_t *in, size_t len, Sear
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_SearchResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a TransferChunk to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_TransferChunk(const TransferChunk *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_TransferChunk(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a TransferChunk. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_TransferChunk(const uint8_t *in, size_t len, TransferChunk *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_TransferChunk(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a TransferFile to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_TransferFile(const TransferFile *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_TransferFile(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a TransferFile. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_TransferFile(const uint8_t *in, size_t len, TransferFile *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_TransferFile(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ExportManifestRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ExportManifestRequest(const ExportManifestRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ExportManifestRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ExportManifestRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ExportManifestRequest(const uint8_t *in, size_t len, ExportManifestRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ExportManifestRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ExportManifest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ExportManifest(const ExportManifest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ExportManifest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ExportManifest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ExportManifest(const uint8_t *in, size_t len, ExportManifest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ExportManifest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ExportChunkRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ExportChunkRequest(const ExportChunkRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ExportChunkRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ExportChunkRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ExportChunkRequest(const uint8_t *in, size_t len, ExportChunkRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ExportChunkRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ExportChunk to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ExportChunk(const ExportChunk *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ExportChunk(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ExportChunk. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ExportChunk(const uint8_t *in, size_t len, ExportChunk *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ExportChunk(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }
@@ -7089,6 +7651,144 @@ static inline int csil_decode_ImportResult(const uint8_t *in, size_t len, Import
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_ImportResult(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a MissingChunk to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_MissingChunk(const MissingChunk *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_MissingChunk(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a MissingChunk. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_MissingChunk(const uint8_t *in, size_t len, MissingChunk *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_MissingChunk(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a BeginImportRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_BeginImportRequest(const BeginImportRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_BeginImportRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a BeginImportRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_BeginImportRequest(const uint8_t *in, size_t len, BeginImportRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_BeginImportRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a BeginImportResult to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_BeginImportResult(const BeginImportResult *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_BeginImportResult(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a BeginImportResult. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_BeginImportResult(const uint8_t *in, size_t len, BeginImportResult *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_BeginImportResult(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ImportChunkRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ImportChunkRequest(const ImportChunkRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ImportChunkRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ImportChunkRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ImportChunkRequest(const uint8_t *in, size_t len, ImportChunkRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ImportChunkRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a FinishImportRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_FinishImportRequest(const FinishImportRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_FinishImportRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a FinishImportRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_FinishImportRequest(const uint8_t *in, size_t len, FinishImportRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_FinishImportRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CancelImportRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CancelImportRequest(const CancelImportRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CancelImportRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CancelImportRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CancelImportRequest(const uint8_t *in, size_t len, CancelImportRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CancelImportRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

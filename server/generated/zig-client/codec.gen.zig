@@ -1142,14 +1142,28 @@ fn dec_AlbumDetail(alloc: std.mem.Allocator, m: Value, out: *types.AlbumDetail) 
 }
 
 fn enc_ArtistRequest(out: *std.ArrayList(u8), v: *const types.ArtistRequest) CodecError!void {
-    try w_map_head(out, 1);
+    var csil_n: usize = 1;
+    if (v.library != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    if (v.library) |csil_x| {
+        try w_text(out, "library");
+        try enc_Library(out, &(csil_x));
+    }
     try w_text(out, "artist_id");
     try w_text(out, v.artist_id);
 }
 
 fn dec_ArtistRequest(alloc: std.mem.Allocator, m: Value, out: *types.ArtistRequest) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
+    {
+        if (mget(m, "library")) |csil_fv| {
+            var csil_tmp: types.Library = undefined;
+            try dec_Library(alloc, csil_fv, &csil_tmp);
+            out.library = csil_tmp;
+        } else {
+            out.library = null;
+        }
+    }
     {
         const csil_fv = try req(m, "artist_id");
         out.artist_id = try as_text(csil_fv);
@@ -1268,6 +1282,180 @@ fn dec_SearchResponse(alloc: std.mem.Allocator, m: Value, out: *types.SearchResp
         for (csil_fv.array, 0..) |csil_it, csil_i| {
             try dec_Artist(alloc, csil_it, &(out.artists[csil_i]));
         }
+    }
+}
+
+fn enc_TransferChunk(out: *std.ArrayList(u8), v: *const types.TransferChunk) CodecError!void {
+    try w_map_head(out, 4);
+    try w_text(out, "size");
+    try w_uint(out, v.size);
+    try w_text(out, "index");
+    try w_uint(out, v.index);
+    try w_text(out, "offset");
+    try w_uint(out, v.offset);
+    try w_text(out, "sha256");
+    try w_text(out, v.sha256);
+}
+
+fn dec_TransferChunk(alloc: std.mem.Allocator, m: Value, out: *types.TransferChunk) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "size");
+        out.size = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "index");
+        out.index = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "offset");
+        out.offset = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "sha256");
+        out.sha256 = try as_text(csil_fv);
+    }
+}
+
+fn enc_TransferFile(out: *std.ArrayList(u8), v: *const types.TransferFile) CodecError!void {
+    try w_map_head(out, 5);
+    try w_text(out, "chunks");
+    try w_array_head(out, v.chunks.len);
+    for (v.chunks) |csil_it| {
+        try enc_TransferChunk(out, &(csil_it));
+    }
+    try w_text(out, "sha256");
+    try w_text(out, v.sha256);
+    try w_text(out, "size_bytes");
+    try w_uint(out, v.size_bytes);
+    try w_text(out, "content_type");
+    try w_text(out, v.content_type);
+    try w_text(out, "root_relative_path");
+    try w_text(out, v.root_relative_path);
+}
+
+fn dec_TransferFile(alloc: std.mem.Allocator, m: Value, out: *types.TransferFile) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "chunks");
+        if (csil_fv != .array) return error.WrongType;
+        out.chunks = try alloc.alloc(types.TransferChunk, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_TransferChunk(alloc, csil_it, &(out.chunks[csil_i]));
+        }
+    }
+    {
+        const csil_fv = try req(m, "sha256");
+        out.sha256 = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "size_bytes");
+        out.size_bytes = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "content_type");
+        out.content_type = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "root_relative_path");
+        out.root_relative_path = try as_text(csil_fv);
+    }
+}
+
+fn enc_ExportManifestRequest(out: *std.ArrayList(u8), v: *const types.ExportManifestRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "track_id");
+    try w_text(out, v.track_id);
+}
+
+fn dec_ExportManifestRequest(alloc: std.mem.Allocator, m: Value, out: *types.ExportManifestRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "track_id");
+        out.track_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_ExportManifest(out: *std.ArrayList(u8), v: *const types.ExportManifest) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "files");
+    try w_array_head(out, v.files.len);
+    for (v.files) |csil_it| {
+        try enc_TransferFile(out, &(csil_it));
+    }
+    try w_text(out, "track");
+    try enc_Track(out, &(v.track));
+}
+
+fn dec_ExportManifest(alloc: std.mem.Allocator, m: Value, out: *types.ExportManifest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "files");
+        if (csil_fv != .array) return error.WrongType;
+        out.files = try alloc.alloc(types.TransferFile, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_TransferFile(alloc, csil_it, &(out.files[csil_i]));
+        }
+    }
+    {
+        const csil_fv = try req(m, "track");
+        try dec_Track(alloc, csil_fv, &(out.track));
+    }
+}
+
+fn enc_ExportChunkRequest(out: *std.ArrayList(u8), v: *const types.ExportChunkRequest) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "track_id");
+    try w_text(out, v.track_id);
+    try w_text(out, "chunk_index");
+    try w_uint(out, v.chunk_index);
+    try w_text(out, "root_relative_path");
+    try w_text(out, v.root_relative_path);
+}
+
+fn dec_ExportChunkRequest(alloc: std.mem.Allocator, m: Value, out: *types.ExportChunkRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "track_id");
+        out.track_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "chunk_index");
+        out.chunk_index = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "root_relative_path");
+        out.root_relative_path = try as_text(csil_fv);
+    }
+}
+
+fn enc_ExportChunk(out: *std.ArrayList(u8), v: *const types.ExportChunk) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "data");
+    try w_bytes(out, v.data);
+    try w_text(out, "chunk_index");
+    try w_uint(out, v.chunk_index);
+    try w_text(out, "root_relative_path");
+    try w_text(out, v.root_relative_path);
+}
+
+fn dec_ExportChunk(alloc: std.mem.Allocator, m: Value, out: *types.ExportChunk) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "data");
+        out.data = try as_bytes(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "chunk_index");
+        out.chunk_index = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "root_relative_path");
+        out.root_relative_path = try as_text(csil_fv);
     }
 }
 
@@ -3743,10 +3931,15 @@ fn dec_RevokeSatelliteTokenRequest(alloc: std.mem.Allocator, m: Value, out: *typ
 
 fn enc_ImportTrackRequest(out: *std.ArrayList(u8), v: *const types.ImportTrackRequest) CodecError!void {
     var csil_n: usize = 3;
+    if (v.library != null) csil_n += 1;
     if (v.content_hash != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "data");
     try w_bytes(out, v.data);
+    if (v.library) |csil_x| {
+        try w_text(out, "library");
+        try enc_Library(out, &(csil_x));
+    }
     if (v.content_hash) |csil_x| {
         try w_text(out, "content_hash");
         try w_text(out, csil_x);
@@ -3758,11 +3951,19 @@ fn enc_ImportTrackRequest(out: *std.ArrayList(u8), v: *const types.ImportTrackRe
 }
 
 fn dec_ImportTrackRequest(alloc: std.mem.Allocator, m: Value, out: *types.ImportTrackRequest) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
     {
         const csil_fv = try req(m, "data");
         out.data = try as_bytes(csil_fv);
+    }
+    {
+        if (mget(m, "library")) |csil_fv| {
+            var csil_tmp: types.Library = undefined;
+            try dec_Library(alloc, csil_fv, &csil_tmp);
+            out.library = csil_tmp;
+        } else {
+            out.library = null;
+        }
     }
     {
         if (mget(m, "content_hash")) |csil_fv| {
@@ -3783,8 +3984,13 @@ fn dec_ImportTrackRequest(alloc: std.mem.Allocator, m: Value, out: *types.Import
 
 fn enc_ImportResult(out: *std.ArrayList(u8), v: *const types.ImportResult) CodecError!void {
     var csil_n: usize = 2;
+    if (v.track != null) csil_n += 1;
     if (v.track_id != null) csil_n += 1;
     try w_map_head(out, csil_n);
+    if (v.track) |csil_x| {
+        try w_text(out, "track");
+        try enc_Track(out, &(csil_x));
+    }
     try w_text(out, "imported");
     try w_bool(out, v.imported);
     if (v.track_id) |csil_x| {
@@ -3796,8 +4002,16 @@ fn enc_ImportResult(out: *std.ArrayList(u8), v: *const types.ImportResult) Codec
 }
 
 fn dec_ImportResult(alloc: std.mem.Allocator, m: Value, out: *types.ImportResult) CodecError!void {
-    _ = alloc;
     if (m != .map) return error.WrongType;
+    {
+        if (mget(m, "track")) |csil_fv| {
+            var csil_tmp: types.Track = undefined;
+            try dec_Track(alloc, csil_fv, &csil_tmp);
+            out.track = csil_tmp;
+        } else {
+            out.track = null;
+        }
+    }
     {
         const csil_fv = try req(m, "imported");
         out.imported = try as_bool(csil_fv);
@@ -3812,6 +4026,159 @@ fn dec_ImportResult(alloc: std.mem.Allocator, m: Value, out: *types.ImportResult
     {
         const csil_fv = try req(m, "skipped_existing");
         out.skipped_existing = try as_bool(csil_fv);
+    }
+}
+
+fn enc_MissingChunk(out: *std.ArrayList(u8), v: *const types.MissingChunk) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "file_index");
+    try w_uint(out, v.file_index);
+    try w_text(out, "chunk_index");
+    try w_uint(out, v.chunk_index);
+}
+
+fn dec_MissingChunk(alloc: std.mem.Allocator, m: Value, out: *types.MissingChunk) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "file_index");
+        out.file_index = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "chunk_index");
+        out.chunk_index = try as_u64(csil_fv);
+    }
+}
+
+fn enc_BeginImportRequest(out: *std.ArrayList(u8), v: *const types.BeginImportRequest) CodecError!void {
+    var csil_n: usize = 2;
+    if (v.library != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "files");
+    try w_array_head(out, v.files.len);
+    for (v.files) |csil_it| {
+        try enc_TransferFile(out, &(csil_it));
+    }
+    if (v.library) |csil_x| {
+        try w_text(out, "library");
+        try enc_Library(out, &(csil_x));
+    }
+    try w_text(out, "track_file_index");
+    try w_uint(out, v.track_file_index);
+}
+
+fn dec_BeginImportRequest(alloc: std.mem.Allocator, m: Value, out: *types.BeginImportRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "files");
+        if (csil_fv != .array) return error.WrongType;
+        out.files = try alloc.alloc(types.TransferFile, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_TransferFile(alloc, csil_it, &(out.files[csil_i]));
+        }
+    }
+    {
+        if (mget(m, "library")) |csil_fv| {
+            var csil_tmp: types.Library = undefined;
+            try dec_Library(alloc, csil_fv, &csil_tmp);
+            out.library = csil_tmp;
+        } else {
+            out.library = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "track_file_index");
+        out.track_file_index = try as_u64(csil_fv);
+    }
+}
+
+fn enc_BeginImportResult(out: *std.ArrayList(u8), v: *const types.BeginImportResult) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "transfer_id");
+    try w_text(out, v.transfer_id);
+    try w_text(out, "missing_chunks");
+    try w_array_head(out, v.missing_chunks.len);
+    for (v.missing_chunks) |csil_it| {
+        try enc_MissingChunk(out, &(csil_it));
+    }
+}
+
+fn dec_BeginImportResult(alloc: std.mem.Allocator, m: Value, out: *types.BeginImportResult) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "transfer_id");
+        out.transfer_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "missing_chunks");
+        if (csil_fv != .array) return error.WrongType;
+        out.missing_chunks = try alloc.alloc(types.MissingChunk, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_MissingChunk(alloc, csil_it, &(out.missing_chunks[csil_i]));
+        }
+    }
+}
+
+fn enc_ImportChunkRequest(out: *std.ArrayList(u8), v: *const types.ImportChunkRequest) CodecError!void {
+    try w_map_head(out, 4);
+    try w_text(out, "data");
+    try w_bytes(out, v.data);
+    try w_text(out, "file_index");
+    try w_uint(out, v.file_index);
+    try w_text(out, "chunk_index");
+    try w_uint(out, v.chunk_index);
+    try w_text(out, "transfer_id");
+    try w_text(out, v.transfer_id);
+}
+
+fn dec_ImportChunkRequest(alloc: std.mem.Allocator, m: Value, out: *types.ImportChunkRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "data");
+        out.data = try as_bytes(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "file_index");
+        out.file_index = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "chunk_index");
+        out.chunk_index = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "transfer_id");
+        out.transfer_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_FinishImportRequest(out: *std.ArrayList(u8), v: *const types.FinishImportRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "transfer_id");
+    try w_text(out, v.transfer_id);
+}
+
+fn dec_FinishImportRequest(alloc: std.mem.Allocator, m: Value, out: *types.FinishImportRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "transfer_id");
+        out.transfer_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_CancelImportRequest(out: *std.ArrayList(u8), v: *const types.CancelImportRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "transfer_id");
+    try w_text(out, v.transfer_id);
+}
+
+fn dec_CancelImportRequest(alloc: std.mem.Allocator, m: Value, out: *types.CancelImportRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "transfer_id");
+        out.transfer_id = try as_text(csil_fv);
     }
 }
 
@@ -4299,6 +4666,102 @@ pub fn encode_SearchResponse(alloc: std.mem.Allocator, v: *const types.SearchRes
 pub fn decode_SearchResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SearchResponse) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_SearchResponse(alloc, root, out);
+}
+
+/// Encode a TransferChunk to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_TransferChunk(alloc: std.mem.Allocator, v: *const types.TransferChunk) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_TransferChunk(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a TransferChunk. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_TransferChunk(alloc: std.mem.Allocator, bytes: []const u8, out: *types.TransferChunk) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_TransferChunk(alloc, root, out);
+}
+
+/// Encode a TransferFile to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_TransferFile(alloc: std.mem.Allocator, v: *const types.TransferFile) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_TransferFile(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a TransferFile. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_TransferFile(alloc: std.mem.Allocator, bytes: []const u8, out: *types.TransferFile) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_TransferFile(alloc, root, out);
+}
+
+/// Encode a ExportManifestRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ExportManifestRequest(alloc: std.mem.Allocator, v: *const types.ExportManifestRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ExportManifestRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ExportManifestRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ExportManifestRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ExportManifestRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ExportManifestRequest(alloc, root, out);
+}
+
+/// Encode a ExportManifest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ExportManifest(alloc: std.mem.Allocator, v: *const types.ExportManifest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ExportManifest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ExportManifest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ExportManifest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ExportManifest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ExportManifest(alloc, root, out);
+}
+
+/// Encode a ExportChunkRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ExportChunkRequest(alloc: std.mem.Allocator, v: *const types.ExportChunkRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ExportChunkRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ExportChunkRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ExportChunkRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ExportChunkRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ExportChunkRequest(alloc, root, out);
+}
+
+/// Encode a ExportChunk to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ExportChunk(alloc: std.mem.Allocator, v: *const types.ExportChunk) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ExportChunk(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ExportChunk. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ExportChunk(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ExportChunk) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ExportChunk(alloc, root, out);
 }
 
 /// Encode a AudiobookProgress to CBOR. The returned slice is owned by the caller
@@ -5611,6 +6074,102 @@ pub fn encode_ImportResult(alloc: std.mem.Allocator, v: *const types.ImportResul
 pub fn decode_ImportResult(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ImportResult) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_ImportResult(alloc, root, out);
+}
+
+/// Encode a MissingChunk to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_MissingChunk(alloc: std.mem.Allocator, v: *const types.MissingChunk) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_MissingChunk(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a MissingChunk. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_MissingChunk(alloc: std.mem.Allocator, bytes: []const u8, out: *types.MissingChunk) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_MissingChunk(alloc, root, out);
+}
+
+/// Encode a BeginImportRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_BeginImportRequest(alloc: std.mem.Allocator, v: *const types.BeginImportRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_BeginImportRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a BeginImportRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_BeginImportRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.BeginImportRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_BeginImportRequest(alloc, root, out);
+}
+
+/// Encode a BeginImportResult to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_BeginImportResult(alloc: std.mem.Allocator, v: *const types.BeginImportResult) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_BeginImportResult(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a BeginImportResult. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_BeginImportResult(alloc: std.mem.Allocator, bytes: []const u8, out: *types.BeginImportResult) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_BeginImportResult(alloc, root, out);
+}
+
+/// Encode a ImportChunkRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ImportChunkRequest(alloc: std.mem.Allocator, v: *const types.ImportChunkRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ImportChunkRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ImportChunkRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ImportChunkRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ImportChunkRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ImportChunkRequest(alloc, root, out);
+}
+
+/// Encode a FinishImportRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_FinishImportRequest(alloc: std.mem.Allocator, v: *const types.FinishImportRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_FinishImportRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a FinishImportRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_FinishImportRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.FinishImportRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_FinishImportRequest(alloc, root, out);
+}
+
+/// Encode a CancelImportRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CancelImportRequest(alloc: std.mem.Allocator, v: *const types.CancelImportRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CancelImportRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CancelImportRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CancelImportRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CancelImportRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CancelImportRequest(alloc, root, out);
 }
 
 /// Encode a Settings to CBOR. The returned slice is owned by the caller

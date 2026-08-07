@@ -98,6 +98,12 @@ typedef struct ArtistRequest ArtistRequest;
 typedef struct ArtistDetail ArtistDetail;
 typedef struct SearchRequest SearchRequest;
 typedef struct SearchResponse SearchResponse;
+typedef struct TransferChunk TransferChunk;
+typedef struct TransferFile TransferFile;
+typedef struct ExportManifestRequest ExportManifestRequest;
+typedef struct ExportManifest ExportManifest;
+typedef struct ExportChunkRequest ExportChunkRequest;
+typedef struct ExportChunk ExportChunk;
 typedef struct AudiobookProgress AudiobookProgress;
 typedef struct AudiobookProgressRequest AudiobookProgressRequest;
 typedef struct AudiobookProgressResponse AudiobookProgressResponse;
@@ -176,6 +182,12 @@ typedef struct NodeTokenResult NodeTokenResult;
 typedef struct RevokeSatelliteTokenRequest RevokeSatelliteTokenRequest;
 typedef struct ImportTrackRequest ImportTrackRequest;
 typedef struct ImportResult ImportResult;
+typedef struct MissingChunk MissingChunk;
+typedef struct BeginImportRequest BeginImportRequest;
+typedef struct BeginImportResult BeginImportResult;
+typedef struct ImportChunkRequest ImportChunkRequest;
+typedef struct FinishImportRequest FinishImportRequest;
+typedef struct CancelImportRequest CancelImportRequest;
 typedef struct Settings Settings;
 typedef struct SetSettingRequest SetSettingRequest;
 typedef struct LibraryResyncStatus LibraryResyncStatus;
@@ -341,6 +353,7 @@ typedef struct AlbumDetail {
 /* ArtistRequest is a structured data type. */
 typedef struct ArtistRequest {
     ArtistId artist_id;
+    Library *library;
 } ArtistRequest;
 
 /* ArtistDetail is a structured data type. */
@@ -366,6 +379,50 @@ typedef struct SearchResponse {
     Track *tracks;
     size_t tracks_count;
 } SearchResponse;
+
+/* TransferChunk is a structured data type. */
+typedef struct TransferChunk {
+    uint64_t index;
+    uint64_t offset;
+    uint64_t size;
+    char *sha256;
+} TransferChunk;
+
+/* TransferFile is a structured data type. */
+typedef struct TransferFile {
+    char *root_relative_path;
+    char *content_type;
+    uint64_t size_bytes;
+    char *sha256;
+    TransferChunk *chunks;
+    size_t chunks_count;
+} TransferFile;
+
+/* ExportManifestRequest is a structured data type. */
+typedef struct ExportManifestRequest {
+    TrackId track_id;
+} ExportManifestRequest;
+
+/* ExportManifest is a structured data type. */
+typedef struct ExportManifest {
+    Track track;
+    TransferFile *files;
+    size_t files_count;
+} ExportManifest;
+
+/* ExportChunkRequest is a structured data type. */
+typedef struct ExportChunkRequest {
+    TrackId track_id;
+    char *root_relative_path;
+    uint64_t chunk_index;
+} ExportChunkRequest;
+
+/* ExportChunk is a structured data type. */
+typedef struct ExportChunk {
+    char *root_relative_path;
+    uint64_t chunk_index;
+    CsilBytes data;
+} ExportChunk;
 
 /* AudiobookProgress is a structured data type. */
 typedef struct AudiobookProgress {
@@ -945,6 +1002,7 @@ typedef struct RevokeSatelliteTokenRequest {
 
 /* ImportTrackRequest is a structured data type. */
 typedef struct ImportTrackRequest {
+    Library *library;
     char *root_relative_path;
     char *content_type;
     char *content_hash;
@@ -955,8 +1013,48 @@ typedef struct ImportTrackRequest {
 typedef struct ImportResult {
     bool imported;
     TrackId *track_id;
+    Track *track;
     bool skipped_existing;
 } ImportResult;
+
+/* MissingChunk is a structured data type. */
+typedef struct MissingChunk {
+    uint64_t file_index;
+    uint64_t chunk_index;
+} MissingChunk;
+
+/* BeginImportRequest is a structured data type. */
+typedef struct BeginImportRequest {
+    Library *library;
+    uint64_t track_file_index;
+    TransferFile *files;
+    size_t files_count;
+} BeginImportRequest;
+
+/* BeginImportResult is a structured data type. */
+typedef struct BeginImportResult {
+    char *transfer_id;
+    MissingChunk *missing_chunks;
+    size_t missing_chunks_count;
+} BeginImportResult;
+
+/* ImportChunkRequest is a structured data type. */
+typedef struct ImportChunkRequest {
+    char *transfer_id;
+    uint64_t file_index;
+    uint64_t chunk_index;
+    CsilBytes data;
+} ImportChunkRequest;
+
+/* FinishImportRequest is a structured data type. */
+typedef struct FinishImportRequest {
+    char *transfer_id;
+} FinishImportRequest;
+
+/* CancelImportRequest is a structured data type. */
+typedef struct CancelImportRequest {
+    char *transfer_id;
+} CancelImportRequest;
 
 /* Settings is a structured data type. */
 typedef struct Settings {

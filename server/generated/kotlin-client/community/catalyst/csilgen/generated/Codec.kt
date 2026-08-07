@@ -790,6 +790,7 @@ fun albumDetailFromCbor(bytes: ByteArray): AlbumDetail = albumDetailFromCborValu
 /** The CBOR value tree for a ArtistRequest (deep, canonical key order). */
 fun ArtistRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    this.library?.let { csilV -> csilEntries.add(CborValue.CText("library") to csilV.toCborValue()) }
     csilEntries.add(CborValue.CText("artist_id") to CborValue.CText(this.artistId))
     return CborValue.CMap(csilEntries)
 }
@@ -800,7 +801,8 @@ fun ArtistRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a ArtistRequest from a decoded CBOR value tree. */
 fun artistRequestFromCborValue(cbor: CborValue): ArtistRequest {
     val artistId = CsilCbor.asText(CsilCbor.require(cbor, "artist_id"))
-    return ArtistRequest(artistId = artistId)
+    val library = CsilCbor.mapGet(cbor, "library")?.let { csilV -> libraryFromCborValue(csilV) }
+    return ArtistRequest(artistId = artistId, library = library)
 }
 
 /** Decode CSIL CBOR bytes into a ArtistRequest. */
@@ -872,6 +874,144 @@ fun searchResponseFromCborValue(cbor: CborValue): SearchResponse {
 
 /** Decode CSIL CBOR bytes into a SearchResponse. */
 fun searchResponseFromCbor(bytes: ByteArray): SearchResponse = searchResponseFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a TransferChunk (deep, canonical key order). */
+fun TransferChunk.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("size") to CborValue.CUint(this.size))
+    csilEntries.add(CborValue.CText("index") to CborValue.CUint(this.index))
+    csilEntries.add(CborValue.CText("offset") to CborValue.CUint(this.offset))
+    csilEntries.add(CborValue.CText("sha256") to CborValue.CText(this.sha256))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a TransferChunk to canonical CSIL CBOR bytes. */
+fun TransferChunk.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a TransferChunk from a decoded CBOR value tree. */
+fun transferChunkFromCborValue(cbor: CborValue): TransferChunk {
+    val index = CsilCbor.asULong(CsilCbor.require(cbor, "index"))
+    val offset = CsilCbor.asULong(CsilCbor.require(cbor, "offset"))
+    val size = CsilCbor.asULong(CsilCbor.require(cbor, "size"))
+    val sha256 = CsilCbor.asText(CsilCbor.require(cbor, "sha256"))
+    return TransferChunk(index = index, offset = offset, size = size, sha256 = sha256)
+}
+
+/** Decode CSIL CBOR bytes into a TransferChunk. */
+fun transferChunkFromCbor(bytes: ByteArray): TransferChunk = transferChunkFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a TransferFile (deep, canonical key order). */
+fun TransferFile.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("chunks") to CborValue.CArray((this.chunks).map { csilE -> csilE.toCborValue() }))
+    csilEntries.add(CborValue.CText("sha256") to CborValue.CText(this.sha256))
+    csilEntries.add(CborValue.CText("size_bytes") to CborValue.CUint(this.sizeBytes))
+    csilEntries.add(CborValue.CText("content_type") to CborValue.CText(this.contentType))
+    csilEntries.add(CborValue.CText("root_relative_path") to CborValue.CText(this.rootRelativePath))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a TransferFile to canonical CSIL CBOR bytes. */
+fun TransferFile.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a TransferFile from a decoded CBOR value tree. */
+fun transferFileFromCborValue(cbor: CborValue): TransferFile {
+    val rootRelativePath = CsilCbor.asText(CsilCbor.require(cbor, "root_relative_path"))
+    val contentType = CsilCbor.asText(CsilCbor.require(cbor, "content_type"))
+    val sizeBytes = CsilCbor.asULong(CsilCbor.require(cbor, "size_bytes"))
+    val sha256 = CsilCbor.asText(CsilCbor.require(cbor, "sha256"))
+    val chunks = CsilCbor.asArray(CsilCbor.require(cbor, "chunks")).map { csilE -> transferChunkFromCborValue(csilE) }
+    return TransferFile(rootRelativePath = rootRelativePath, contentType = contentType, sizeBytes = sizeBytes, sha256 = sha256, chunks = chunks)
+}
+
+/** Decode CSIL CBOR bytes into a TransferFile. */
+fun transferFileFromCbor(bytes: ByteArray): TransferFile = transferFileFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ExportManifestRequest (deep, canonical key order). */
+fun ExportManifestRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ExportManifestRequest to canonical CSIL CBOR bytes. */
+fun ExportManifestRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ExportManifestRequest from a decoded CBOR value tree. */
+fun exportManifestRequestFromCborValue(cbor: CborValue): ExportManifestRequest {
+    val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
+    return ExportManifestRequest(trackId = trackId)
+}
+
+/** Decode CSIL CBOR bytes into a ExportManifestRequest. */
+fun exportManifestRequestFromCbor(bytes: ByteArray): ExportManifestRequest = exportManifestRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ExportManifest (deep, canonical key order). */
+fun ExportManifest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("files") to CborValue.CArray((this.files).map { csilE -> csilE.toCborValue() }))
+    csilEntries.add(CborValue.CText("track") to this.track.toCborValue())
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ExportManifest to canonical CSIL CBOR bytes. */
+fun ExportManifest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ExportManifest from a decoded CBOR value tree. */
+fun exportManifestFromCborValue(cbor: CborValue): ExportManifest {
+    val track = trackFromCborValue(CsilCbor.require(cbor, "track"))
+    val files = CsilCbor.asArray(CsilCbor.require(cbor, "files")).map { csilE -> transferFileFromCborValue(csilE) }
+    return ExportManifest(track = track, files = files)
+}
+
+/** Decode CSIL CBOR bytes into a ExportManifest. */
+fun exportManifestFromCbor(bytes: ByteArray): ExportManifest = exportManifestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ExportChunkRequest (deep, canonical key order). */
+fun ExportChunkRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
+    csilEntries.add(CborValue.CText("chunk_index") to CborValue.CUint(this.chunkIndex))
+    csilEntries.add(CborValue.CText("root_relative_path") to CborValue.CText(this.rootRelativePath))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ExportChunkRequest to canonical CSIL CBOR bytes. */
+fun ExportChunkRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ExportChunkRequest from a decoded CBOR value tree. */
+fun exportChunkRequestFromCborValue(cbor: CborValue): ExportChunkRequest {
+    val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
+    val rootRelativePath = CsilCbor.asText(CsilCbor.require(cbor, "root_relative_path"))
+    val chunkIndex = CsilCbor.asULong(CsilCbor.require(cbor, "chunk_index"))
+    return ExportChunkRequest(trackId = trackId, rootRelativePath = rootRelativePath, chunkIndex = chunkIndex)
+}
+
+/** Decode CSIL CBOR bytes into a ExportChunkRequest. */
+fun exportChunkRequestFromCbor(bytes: ByteArray): ExportChunkRequest = exportChunkRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ExportChunk (deep, canonical key order). */
+fun ExportChunk.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("data") to CborValue.CBytes(this.data))
+    csilEntries.add(CborValue.CText("chunk_index") to CborValue.CUint(this.chunkIndex))
+    csilEntries.add(CborValue.CText("root_relative_path") to CborValue.CText(this.rootRelativePath))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ExportChunk to canonical CSIL CBOR bytes. */
+fun ExportChunk.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ExportChunk from a decoded CBOR value tree. */
+fun exportChunkFromCborValue(cbor: CborValue): ExportChunk {
+    val rootRelativePath = CsilCbor.asText(CsilCbor.require(cbor, "root_relative_path"))
+    val chunkIndex = CsilCbor.asULong(CsilCbor.require(cbor, "chunk_index"))
+    val data = CsilCbor.asBytes(CsilCbor.require(cbor, "data"))
+    return ExportChunk(rootRelativePath = rootRelativePath, chunkIndex = chunkIndex, data = data)
+}
+
+/** Decode CSIL CBOR bytes into a ExportChunk. */
+fun exportChunkFromCbor(bytes: ByteArray): ExportChunk = exportChunkFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a AudiobookProgress (deep, canonical key order). */
 fun AudiobookProgress.toCborValue(): CborValue {
@@ -2607,6 +2747,7 @@ fun revokeSatelliteTokenRequestFromCbor(bytes: ByteArray): RevokeSatelliteTokenR
 fun ImportTrackRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("data") to CborValue.CBytes(this.data))
+    this.library?.let { csilV -> csilEntries.add(CborValue.CText("library") to csilV.toCborValue()) }
     this.contentHash?.let { csilV -> csilEntries.add(CborValue.CText("content_hash") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("content_type") to CborValue.CText(this.contentType))
     csilEntries.add(CborValue.CText("root_relative_path") to CborValue.CText(this.rootRelativePath))
@@ -2618,11 +2759,12 @@ fun ImportTrackRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 
 /** Reconstruct a ImportTrackRequest from a decoded CBOR value tree. */
 fun importTrackRequestFromCborValue(cbor: CborValue): ImportTrackRequest {
+    val library = CsilCbor.mapGet(cbor, "library")?.let { csilV -> libraryFromCborValue(csilV) }
     val rootRelativePath = CsilCbor.asText(CsilCbor.require(cbor, "root_relative_path"))
     val contentType = CsilCbor.asText(CsilCbor.require(cbor, "content_type"))
     val contentHash = CsilCbor.mapGet(cbor, "content_hash")?.let { csilV -> CsilCbor.asText(csilV) }
     val data = CsilCbor.asBytes(CsilCbor.require(cbor, "data"))
-    return ImportTrackRequest(rootRelativePath = rootRelativePath, contentType = contentType, contentHash = contentHash, data = data)
+    return ImportTrackRequest(library = library, rootRelativePath = rootRelativePath, contentType = contentType, contentHash = contentHash, data = data)
 }
 
 /** Decode CSIL CBOR bytes into a ImportTrackRequest. */
@@ -2631,6 +2773,7 @@ fun importTrackRequestFromCbor(bytes: ByteArray): ImportTrackRequest = importTra
 /** The CBOR value tree for a ImportResult (deep, canonical key order). */
 fun ImportResult.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    this.track?.let { csilV -> csilEntries.add(CborValue.CText("track") to csilV.toCborValue()) }
     csilEntries.add(CborValue.CText("imported") to CborValue.CBool(this.imported))
     this.trackId?.let { csilV -> csilEntries.add(CborValue.CText("track_id") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("skipped_existing") to CborValue.CBool(this.skippedExisting))
@@ -2644,12 +2787,141 @@ fun ImportResult.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 fun importResultFromCborValue(cbor: CborValue): ImportResult {
     val imported = CsilCbor.asBoolean(CsilCbor.require(cbor, "imported"))
     val trackId = CsilCbor.mapGet(cbor, "track_id")?.let { csilV -> CsilCbor.asText(csilV) }
+    val track = CsilCbor.mapGet(cbor, "track")?.let { csilV -> trackFromCborValue(csilV) }
     val skippedExisting = CsilCbor.asBoolean(CsilCbor.require(cbor, "skipped_existing"))
-    return ImportResult(imported = imported, trackId = trackId, skippedExisting = skippedExisting)
+    return ImportResult(imported = imported, trackId = trackId, track = track, skippedExisting = skippedExisting)
 }
 
 /** Decode CSIL CBOR bytes into a ImportResult. */
 fun importResultFromCbor(bytes: ByteArray): ImportResult = importResultFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a MissingChunk (deep, canonical key order). */
+fun MissingChunk.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("file_index") to CborValue.CUint(this.fileIndex))
+    csilEntries.add(CborValue.CText("chunk_index") to CborValue.CUint(this.chunkIndex))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a MissingChunk to canonical CSIL CBOR bytes. */
+fun MissingChunk.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a MissingChunk from a decoded CBOR value tree. */
+fun missingChunkFromCborValue(cbor: CborValue): MissingChunk {
+    val fileIndex = CsilCbor.asULong(CsilCbor.require(cbor, "file_index"))
+    val chunkIndex = CsilCbor.asULong(CsilCbor.require(cbor, "chunk_index"))
+    return MissingChunk(fileIndex = fileIndex, chunkIndex = chunkIndex)
+}
+
+/** Decode CSIL CBOR bytes into a MissingChunk. */
+fun missingChunkFromCbor(bytes: ByteArray): MissingChunk = missingChunkFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a BeginImportRequest (deep, canonical key order). */
+fun BeginImportRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("files") to CborValue.CArray((this.files).map { csilE -> csilE.toCborValue() }))
+    this.library?.let { csilV -> csilEntries.add(CborValue.CText("library") to csilV.toCborValue()) }
+    csilEntries.add(CborValue.CText("track_file_index") to CborValue.CUint(this.trackFileIndex))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a BeginImportRequest to canonical CSIL CBOR bytes. */
+fun BeginImportRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a BeginImportRequest from a decoded CBOR value tree. */
+fun beginImportRequestFromCborValue(cbor: CborValue): BeginImportRequest {
+    val library = CsilCbor.mapGet(cbor, "library")?.let { csilV -> libraryFromCborValue(csilV) }
+    val trackFileIndex = CsilCbor.asULong(CsilCbor.require(cbor, "track_file_index"))
+    val files = CsilCbor.asArray(CsilCbor.require(cbor, "files")).map { csilE -> transferFileFromCborValue(csilE) }
+    return BeginImportRequest(library = library, trackFileIndex = trackFileIndex, files = files)
+}
+
+/** Decode CSIL CBOR bytes into a BeginImportRequest. */
+fun beginImportRequestFromCbor(bytes: ByteArray): BeginImportRequest = beginImportRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a BeginImportResult (deep, canonical key order). */
+fun BeginImportResult.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("transfer_id") to CborValue.CText(this.transferId))
+    csilEntries.add(CborValue.CText("missing_chunks") to CborValue.CArray((this.missingChunks).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a BeginImportResult to canonical CSIL CBOR bytes. */
+fun BeginImportResult.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a BeginImportResult from a decoded CBOR value tree. */
+fun beginImportResultFromCborValue(cbor: CborValue): BeginImportResult {
+    val transferId = CsilCbor.asText(CsilCbor.require(cbor, "transfer_id"))
+    val missingChunks = CsilCbor.asArray(CsilCbor.require(cbor, "missing_chunks")).map { csilE -> missingChunkFromCborValue(csilE) }
+    return BeginImportResult(transferId = transferId, missingChunks = missingChunks)
+}
+
+/** Decode CSIL CBOR bytes into a BeginImportResult. */
+fun beginImportResultFromCbor(bytes: ByteArray): BeginImportResult = beginImportResultFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ImportChunkRequest (deep, canonical key order). */
+fun ImportChunkRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("data") to CborValue.CBytes(this.data))
+    csilEntries.add(CborValue.CText("file_index") to CborValue.CUint(this.fileIndex))
+    csilEntries.add(CborValue.CText("chunk_index") to CborValue.CUint(this.chunkIndex))
+    csilEntries.add(CborValue.CText("transfer_id") to CborValue.CText(this.transferId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ImportChunkRequest to canonical CSIL CBOR bytes. */
+fun ImportChunkRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ImportChunkRequest from a decoded CBOR value tree. */
+fun importChunkRequestFromCborValue(cbor: CborValue): ImportChunkRequest {
+    val transferId = CsilCbor.asText(CsilCbor.require(cbor, "transfer_id"))
+    val fileIndex = CsilCbor.asULong(CsilCbor.require(cbor, "file_index"))
+    val chunkIndex = CsilCbor.asULong(CsilCbor.require(cbor, "chunk_index"))
+    val data = CsilCbor.asBytes(CsilCbor.require(cbor, "data"))
+    return ImportChunkRequest(transferId = transferId, fileIndex = fileIndex, chunkIndex = chunkIndex, data = data)
+}
+
+/** Decode CSIL CBOR bytes into a ImportChunkRequest. */
+fun importChunkRequestFromCbor(bytes: ByteArray): ImportChunkRequest = importChunkRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a FinishImportRequest (deep, canonical key order). */
+fun FinishImportRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("transfer_id") to CborValue.CText(this.transferId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a FinishImportRequest to canonical CSIL CBOR bytes. */
+fun FinishImportRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a FinishImportRequest from a decoded CBOR value tree. */
+fun finishImportRequestFromCborValue(cbor: CborValue): FinishImportRequest {
+    val transferId = CsilCbor.asText(CsilCbor.require(cbor, "transfer_id"))
+    return FinishImportRequest(transferId = transferId)
+}
+
+/** Decode CSIL CBOR bytes into a FinishImportRequest. */
+fun finishImportRequestFromCbor(bytes: ByteArray): FinishImportRequest = finishImportRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CancelImportRequest (deep, canonical key order). */
+fun CancelImportRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("transfer_id") to CborValue.CText(this.transferId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CancelImportRequest to canonical CSIL CBOR bytes. */
+fun CancelImportRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CancelImportRequest from a decoded CBOR value tree. */
+fun cancelImportRequestFromCborValue(cbor: CborValue): CancelImportRequest {
+    val transferId = CsilCbor.asText(CsilCbor.require(cbor, "transfer_id"))
+    return CancelImportRequest(transferId = transferId)
+}
+
+/** Decode CSIL CBOR bytes into a CancelImportRequest. */
+fun cancelImportRequestFromCbor(bytes: ByteArray): CancelImportRequest = cancelImportRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a Settings (deep, canonical key order). */
 fun Settings.toCborValue(): CborValue {
@@ -2738,6 +3010,12 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is ArtistDetail -> value.toCborValue()
     is SearchRequest -> value.toCborValue()
     is SearchResponse -> value.toCborValue()
+    is TransferChunk -> value.toCborValue()
+    is TransferFile -> value.toCborValue()
+    is ExportManifestRequest -> value.toCborValue()
+    is ExportManifest -> value.toCborValue()
+    is ExportChunkRequest -> value.toCborValue()
+    is ExportChunk -> value.toCborValue()
     is AudiobookProgress -> value.toCborValue()
     is AudiobookProgressRequest -> value.toCborValue()
     is AudiobookProgressResponse -> value.toCborValue()
@@ -2812,6 +3090,12 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is RevokeSatelliteTokenRequest -> value.toCborValue()
     is ImportTrackRequest -> value.toCborValue()
     is ImportResult -> value.toCborValue()
+    is MissingChunk -> value.toCborValue()
+    is BeginImportRequest -> value.toCborValue()
+    is BeginImportResult -> value.toCborValue()
+    is ImportChunkRequest -> value.toCborValue()
+    is FinishImportRequest -> value.toCborValue()
+    is CancelImportRequest -> value.toCborValue()
     is Settings -> value.toCborValue()
     is SetSettingRequest -> value.toCborValue()
     is LibraryResyncStatus -> value.toCborValue()
@@ -2844,6 +3128,12 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     ArtistDetail::class -> artistDetailFromCborValue(cbor)
     SearchRequest::class -> searchRequestFromCborValue(cbor)
     SearchResponse::class -> searchResponseFromCborValue(cbor)
+    TransferChunk::class -> transferChunkFromCborValue(cbor)
+    TransferFile::class -> transferFileFromCborValue(cbor)
+    ExportManifestRequest::class -> exportManifestRequestFromCborValue(cbor)
+    ExportManifest::class -> exportManifestFromCborValue(cbor)
+    ExportChunkRequest::class -> exportChunkRequestFromCborValue(cbor)
+    ExportChunk::class -> exportChunkFromCborValue(cbor)
     AudiobookProgress::class -> audiobookProgressFromCborValue(cbor)
     AudiobookProgressRequest::class -> audiobookProgressRequestFromCborValue(cbor)
     AudiobookProgressResponse::class -> audiobookProgressResponseFromCborValue(cbor)
@@ -2918,6 +3208,12 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     RevokeSatelliteTokenRequest::class -> revokeSatelliteTokenRequestFromCborValue(cbor)
     ImportTrackRequest::class -> importTrackRequestFromCborValue(cbor)
     ImportResult::class -> importResultFromCborValue(cbor)
+    MissingChunk::class -> missingChunkFromCborValue(cbor)
+    BeginImportRequest::class -> beginImportRequestFromCborValue(cbor)
+    BeginImportResult::class -> beginImportResultFromCborValue(cbor)
+    ImportChunkRequest::class -> importChunkRequestFromCborValue(cbor)
+    FinishImportRequest::class -> finishImportRequestFromCborValue(cbor)
+    CancelImportRequest::class -> cancelImportRequestFromCborValue(cbor)
     Settings::class -> settingsFromCborValue(cbor)
     SetSettingRequest::class -> setSettingRequestFromCborValue(cbor)
     LibraryResyncStatus::class -> libraryResyncStatusFromCborValue(cbor)
