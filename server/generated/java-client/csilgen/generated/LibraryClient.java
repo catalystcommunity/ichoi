@@ -37,6 +37,14 @@ public final class LibraryClient {
         return CsilCbor.decodeSearchResponse(transport.call("LibraryService", "search", CsilCbor.encodeSearchRequest(req)));
     }
 
+    public ExportManifest exportManifest(ExportManifestRequest req) throws ClientException {
+        return CsilCbor.decodeExportManifest(transport.call("LibraryService", "export-manifest", CsilCbor.encodeExportManifestRequest(req)));
+    }
+
+    public ExportChunk exportChunk(ExportChunkRequest req) throws ClientException {
+        return CsilCbor.decodeExportChunk(transport.call("LibraryService", "export-chunk", CsilCbor.encodeExportChunkRequest(req)));
+    }
+
     public PlaylistsResponse listPlaylists(BrowseRequest req) throws ClientException {
         return CsilCbor.decodePlaylistsResponse(transport.call("LibraryService", "list-playlists", CsilCbor.encodeBrowseRequest(req)));
     }

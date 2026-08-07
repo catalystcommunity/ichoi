@@ -58,6 +58,12 @@ class LibraryClient(private val transport: Transport) {
     fun search(request: SearchRequest): SearchResponse {
         return decode<SearchResponse>(transport.call("LibraryService", "search", encode(request)))
     }
+    fun exportManifest(request: ExportManifestRequest): ExportManifest {
+        return decode<ExportManifest>(transport.call("LibraryService", "export-manifest", encode(request)))
+    }
+    fun exportChunk(request: ExportChunkRequest): ExportChunk {
+        return decode<ExportChunk>(transport.call("LibraryService", "export-chunk", encode(request)))
+    }
     fun listPlaylists(request: BrowseRequest): PlaylistsResponse {
         return decode<PlaylistsResponse>(transport.call("LibraryService", "list-playlists", encode(request)))
     }
@@ -167,6 +173,18 @@ class AdminClient(private val transport: Transport) {
     }
     fun importTrack(request: ImportTrackRequest): ImportResult {
         return decode<ImportResult>(transport.call("AdminService", "import-track", encode(request)))
+    }
+    fun beginImport(request: BeginImportRequest): BeginImportResult {
+        return decode<BeginImportResult>(transport.call("AdminService", "begin-import", encode(request)))
+    }
+    fun importChunk(request: ImportChunkRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "import-chunk", encode(request)))
+    }
+    fun finishImport(request: FinishImportRequest): ImportResult {
+        return decode<ImportResult>(transport.call("AdminService", "finish-import", encode(request)))
+    }
+    fun cancelImport(request: CancelImportRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "cancel-import", encode(request)))
     }
     fun getSettings(request: Page): Settings {
         return decode<Settings>(transport.call("AdminService", "get-settings", encode(request)))

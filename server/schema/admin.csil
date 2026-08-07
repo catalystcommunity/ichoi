@@ -72,12 +72,31 @@ RevokeSatelliteTokenRequest = { satellite_id: text }
 
 ;; Cross-server copy destination (§7): client-mediated import of one file + its metadata.
 ImportTrackRequest = {
+    ? library: Library .default "music",
     root_relative_path: text,
     content_type: text,
-    ? content_hash: text,            ;; skip if already present
+    ? content_hash: text,            ;; destination verifies when the client supplies it
     data: bytes
 }
-ImportResult = { imported: bool, ? track_id: TrackId, skipped_existing: bool .default false }
+ImportResult = {
+    imported: bool,
+    ? track_id: TrackId,
+    ? track: Track,
+    skipped_existing: bool .default false
+}
+MissingChunk = { file_index: uint, chunk_index: uint }
+BeginImportRequest = {
+    ? library: Library .default "music",
+    track_file_index: uint,
+    files: [+ TransferFile]
+}
+BeginImportResult = {
+    transfer_id: text,
+    missing_chunks: [* MissingChunk]
+}
+ImportChunkRequest = { transfer_id: text, file_index: uint, chunk_index: uint, data: bytes }
+FinishImportRequest = { transfer_id: text }
+CancelImportRequest = { transfer_id: text }
 
 Settings          = { entries: {text => text} }
 SetSettingRequest = { key: text, value: text }
@@ -103,6 +122,10 @@ service AdminService {
     create-node-token: CreateNodeTokenRequest -> NodeTokenResult / ServiceError,
     revoke-satellite-token: RevokeSatelliteTokenRequest -> Ok / ServiceError,
     import-track: ImportTrackRequest -> ImportResult / ServiceError,
+    begin-import: BeginImportRequest -> BeginImportResult / ServiceError,
+    import-chunk: ImportChunkRequest -> Ok / ServiceError,
+    finish-import: FinishImportRequest -> ImportResult / ServiceError,
+    cancel-import: CancelImportRequest -> Ok / ServiceError,
     get-settings: Page -> Settings / ServiceError,
     set-setting: SetSettingRequest -> Settings / ServiceError,
     resync-library: Page -> LibraryResyncStatus / ServiceError,

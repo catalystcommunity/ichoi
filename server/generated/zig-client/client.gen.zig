@@ -130,6 +130,28 @@ pub const LibraryClient = struct {
         try codec.decode_SearchResponse(alloc, csil_respb, out);
     }
 
+    /// Invoke LibraryService/export-manifest with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn export_manifest(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.ExportManifestRequest, out: *types.ExportManifest) anyerror!void {
+        const csil_reqb = try codec.encode_ExportManifestRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "export-manifest", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ExportManifest(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/export-chunk with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn export_chunk(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.ExportChunkRequest, out: *types.ExportChunk) anyerror!void {
+        const csil_reqb = try codec.encode_ExportChunkRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "export-chunk", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ExportChunk(alloc, csil_respb, out);
+    }
+
     /// Invoke LibraryService/list-playlists with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.
@@ -489,6 +511,50 @@ pub const AdminClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "import-track", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_ImportResult(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/begin-import with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn begin_import(self: AdminClient, alloc: std.mem.Allocator, req: *const types.BeginImportRequest, out: *types.BeginImportResult) anyerror!void {
+        const csil_reqb = try codec.encode_BeginImportRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "begin-import", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_BeginImportResult(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/import-chunk with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn import_chunk(self: AdminClient, alloc: std.mem.Allocator, req: *const types.ImportChunkRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_ImportChunkRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "import-chunk", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/finish-import with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn finish_import(self: AdminClient, alloc: std.mem.Allocator, req: *const types.FinishImportRequest, out: *types.ImportResult) anyerror!void {
+        const csil_reqb = try codec.encode_FinishImportRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "finish-import", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ImportResult(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/cancel-import with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn cancel_import(self: AdminClient, alloc: std.mem.Allocator, req: *const types.CancelImportRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_CancelImportRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "cancel-import", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
     }
 
     /// Invoke AdminService/get-settings with a typed request, returning the decoded

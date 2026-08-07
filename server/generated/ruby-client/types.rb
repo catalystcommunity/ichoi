@@ -158,7 +158,12 @@ AlbumRequest = Data.define(:album_id)
 AlbumDetail = Data.define(:album, :tracks)
 
 # artist_id [ArtistId]
-ArtistRequest = Data.define(:artist_id)
+# library [Library]
+ArtistRequest = Data.define(:artist_id, :library) do
+  def initialize(artist_id:, library: "music")
+    super
+  end
+end
 
 # artist [Artist]
 # albums [Array<Album>]
@@ -184,6 +189,36 @@ end
 # albums [Array<Album>]
 # tracks [Array<Track>]
 SearchResponse = Data.define(:artists, :albums, :tracks)
+
+# index [Integer]
+# offset [Integer]
+# size [Integer]
+# sha256 [String]
+TransferChunk = Data.define(:index, :offset, :size, :sha256)
+
+# root_relative_path [String]
+# content_type [String]
+# size_bytes [Integer]
+# sha256 [String]
+# chunks [Array<TransferChunk>]
+TransferFile = Data.define(:root_relative_path, :content_type, :size_bytes, :sha256, :chunks)
+
+# track_id [TrackId]
+ExportManifestRequest = Data.define(:track_id)
+
+# track [Track]
+# files [Array<TransferFile>]
+ExportManifest = Data.define(:track, :files)
+
+# track_id [TrackId]
+# root_relative_path [String]
+# chunk_index [Integer]
+ExportChunkRequest = Data.define(:track_id, :root_relative_path, :chunk_index)
+
+# root_relative_path [String]
+# chunk_index [Integer]
+# data [String]
+ExportChunk = Data.define(:root_relative_path, :chunk_index, :data)
 
 # track_id [TrackId]
 # position_ms [Integer]
@@ -655,24 +690,55 @@ NodeTokenResult = Data.define(:token, :fingerprints, :satellite)
 # satellite_id [String]
 RevokeSatelliteTokenRequest = Data.define(:satellite_id)
 
+# library [Library]
 # root_relative_path [String]
 # content_type [String]
 # content_hash [String]
 # data [String]
-ImportTrackRequest = Data.define(:root_relative_path, :content_type, :content_hash, :data) do
-  def initialize(root_relative_path:, content_type:, data:, content_hash: nil)
+ImportTrackRequest = Data.define(:library, :root_relative_path, :content_type, :content_hash, :data) do
+  def initialize(root_relative_path:, content_type:, data:, library: "music", content_hash: nil)
     super
   end
 end
 
 # imported [Boolean]
 # track_id [TrackId]
+# track [Track]
 # skipped_existing [Boolean]
-ImportResult = Data.define(:imported, :track_id, :skipped_existing) do
-  def initialize(imported:, track_id: nil, skipped_existing: false)
+ImportResult = Data.define(:imported, :track_id, :track, :skipped_existing) do
+  def initialize(imported:, track_id: nil, track: nil, skipped_existing: false)
     super
   end
 end
+
+# file_index [Integer]
+# chunk_index [Integer]
+MissingChunk = Data.define(:file_index, :chunk_index)
+
+# library [Library]
+# track_file_index [Integer]
+# files [Array<TransferFile>]
+BeginImportRequest = Data.define(:library, :track_file_index, :files) do
+  def initialize(track_file_index:, files:, library: "music")
+    super
+  end
+end
+
+# transfer_id [String]
+# missing_chunks [Array<MissingChunk>]
+BeginImportResult = Data.define(:transfer_id, :missing_chunks)
+
+# transfer_id [String]
+# file_index [Integer]
+# chunk_index [Integer]
+# data [String]
+ImportChunkRequest = Data.define(:transfer_id, :file_index, :chunk_index, :data)
+
+# transfer_id [String]
+FinishImportRequest = Data.define(:transfer_id)
+
+# transfer_id [String]
+CancelImportRequest = Data.define(:transfer_id)
 
 # entries [Hash<String, String>]
 Settings = Data.define(:entries)

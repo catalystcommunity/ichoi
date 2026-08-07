@@ -30,8 +30,17 @@ import type {
   DeviceInfo,
   DisableShareRequest,
   EnableShareRequest,
+  ExportChunk,
+  ExportChunkRequest,
+  ExportManifest,
+  ExportManifestRequest,
   ImportResult,
+  ImportChunkRequest,
   ImportTrackRequest,
+  BeginImportRequest,
+  BeginImportResult,
+  FinishImportRequest,
+  CancelImportRequest,
   ListAccountsResponse,
   ListGroupsResponse,
   LibrariesResponse,
@@ -149,6 +158,24 @@ export class LibraryService {
   }
   search(req: SearchRequest): Promise<SearchResponse> {
     return this.conn.call(LIBRARY, "search", encodeRecord(req), decodeRecord<SearchResponse>);
+  }
+  exportManifest(req: ExportManifestRequest): Promise<ExportManifest> {
+    return this.conn.call(
+      LIBRARY,
+      "export-manifest",
+      encodeRecord(req),
+      decodeRecord<ExportManifest>,
+      300_000,
+    );
+  }
+  exportChunk(req: ExportChunkRequest): Promise<ExportChunk> {
+    return this.conn.call(
+      LIBRARY,
+      "export-chunk",
+      encodeRecord(req),
+      decodeRecord<ExportChunk>,
+      120_000,
+    );
   }
   listPlaylists(req: BrowseRequest = {}): Promise<PlaylistsResponse> {
     return this.conn.call(
@@ -269,7 +296,31 @@ export class AdminService {
     return this.conn.call(ADMIN, "revoke-satellite-token", encodeRecord({ satellite_id }), decodeRecord<Ok>);
   }
   importTrack(req: ImportTrackRequest): Promise<ImportResult> {
-    return this.conn.call(ADMIN, "import-track", encodeRecord(req), decodeRecord<ImportResult>);
+    return this.conn.call(ADMIN, "import-track", encodeRecord(req), decodeRecord<ImportResult>, 300_000);
+  }
+  beginImport(req: BeginImportRequest): Promise<BeginImportResult> {
+    return this.conn.call(
+      ADMIN,
+      "begin-import",
+      encodeRecord(req),
+      decodeRecord<BeginImportResult>,
+      300_000,
+    );
+  }
+  importChunk(req: ImportChunkRequest): Promise<Ok> {
+    return this.conn.call(ADMIN, "import-chunk", encodeRecord(req), decodeRecord<Ok>, 120_000);
+  }
+  finishImport(req: FinishImportRequest): Promise<ImportResult> {
+    return this.conn.call(
+      ADMIN,
+      "finish-import",
+      encodeRecord(req),
+      decodeRecord<ImportResult>,
+      300_000,
+    );
+  }
+  cancelImport(req: CancelImportRequest): Promise<Ok> {
+    return this.conn.call(ADMIN, "cancel-import", encodeRecord(req), decodeRecord<Ok>);
   }
   getSettings(page: Page = {}): Promise<Settings> {
     return this.conn.call(ADMIN, "get-settings", encodeRecord(page), decodeRecord<Settings>);

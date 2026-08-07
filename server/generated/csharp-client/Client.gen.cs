@@ -53,6 +53,10 @@ public sealed class LibraryClient(ICsilTransport transport)
         Codec.Decode<ArtistDetail>(transport.Call("LibraryService", "get-artist", Codec.Encode(artistRequest)));
     public SearchResponse Search(SearchRequest searchRequest) =>
         Codec.Decode<SearchResponse>(transport.Call("LibraryService", "search", Codec.Encode(searchRequest)));
+    public ExportManifest ExportManifest(ExportManifestRequest exportManifestRequest) =>
+        Codec.Decode<ExportManifest>(transport.Call("LibraryService", "export-manifest", Codec.Encode(exportManifestRequest)));
+    public ExportChunk ExportChunk(ExportChunkRequest exportChunkRequest) =>
+        Codec.Decode<ExportChunk>(transport.Call("LibraryService", "export-chunk", Codec.Encode(exportChunkRequest)));
     public PlaylistsResponse ListPlaylists(BrowseRequest browseRequest) =>
         Codec.Decode<PlaylistsResponse>(transport.Call("LibraryService", "list-playlists", Codec.Encode(browseRequest)));
     public PlaylistDetail GetPlaylist(PlaylistRequest playlistRequest) =>
@@ -135,6 +139,14 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<Ok>(transport.Call("AdminService", "revoke-satellite-token", Codec.Encode(revokeSatelliteTokenRequest)));
     public ImportResult ImportTrack(ImportTrackRequest importTrackRequest) =>
         Codec.Decode<ImportResult>(transport.Call("AdminService", "import-track", Codec.Encode(importTrackRequest)));
+    public BeginImportResult BeginImport(BeginImportRequest beginImportRequest) =>
+        Codec.Decode<BeginImportResult>(transport.Call("AdminService", "begin-import", Codec.Encode(beginImportRequest)));
+    public Ok ImportChunk(ImportChunkRequest importChunkRequest) =>
+        Codec.Decode<Ok>(transport.Call("AdminService", "import-chunk", Codec.Encode(importChunkRequest)));
+    public ImportResult FinishImport(FinishImportRequest finishImportRequest) =>
+        Codec.Decode<ImportResult>(transport.Call("AdminService", "finish-import", Codec.Encode(finishImportRequest)));
+    public Ok CancelImport(CancelImportRequest cancelImportRequest) =>
+        Codec.Decode<Ok>(transport.Call("AdminService", "cancel-import", Codec.Encode(cancelImportRequest)));
     public Settings GetSettings(Page page) =>
         Codec.Decode<Settings>(transport.Call("AdminService", "get-settings", Codec.Encode(page)));
     public Settings SetSetting(SetSettingRequest setSettingRequest) =>

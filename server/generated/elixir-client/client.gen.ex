@@ -160,6 +160,34 @@ defmodule Csilgen.Generated.LibraryClient do
     Csilgen.Generated.SearchResponse.from_cbor(resp)
   end
 
+  @spec export_manifest(t(), Csilgen.Generated.ExportManifestRequest.t()) ::
+          Csilgen.Generated.ExportManifest.t()
+  def export_manifest(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "export-manifest",
+        Csilgen.Generated.ExportManifestRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ExportManifest.from_cbor(resp)
+  end
+
+  @spec export_chunk(t(), Csilgen.Generated.ExportChunkRequest.t()) ::
+          Csilgen.Generated.ExportChunk.t()
+  def export_chunk(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "export-chunk",
+        Csilgen.Generated.ExportChunkRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ExportChunk.from_cbor(resp)
+  end
+
   @spec list_playlists(t(), Csilgen.Generated.BrowseRequest.t()) ::
           Csilgen.Generated.PlaylistsResponse.t()
   def list_playlists(%__MODULE__{transport: transport}, req) do
@@ -608,6 +636,60 @@ defmodule Csilgen.Generated.AdminClient do
       )
 
     Csilgen.Generated.ImportResult.from_cbor(resp)
+  end
+
+  @spec begin_import(t(), Csilgen.Generated.BeginImportRequest.t()) ::
+          Csilgen.Generated.BeginImportResult.t()
+  def begin_import(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "begin-import",
+        Csilgen.Generated.BeginImportRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.BeginImportResult.from_cbor(resp)
+  end
+
+  @spec import_chunk(t(), Csilgen.Generated.ImportChunkRequest.t()) :: Csilgen.Generated.Ok.t()
+  def import_chunk(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "import-chunk",
+        Csilgen.Generated.ImportChunkRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
+  @spec finish_import(t(), Csilgen.Generated.FinishImportRequest.t()) ::
+          Csilgen.Generated.ImportResult.t()
+  def finish_import(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "finish-import",
+        Csilgen.Generated.FinishImportRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ImportResult.from_cbor(resp)
+  end
+
+  @spec cancel_import(t(), Csilgen.Generated.CancelImportRequest.t()) :: Csilgen.Generated.Ok.t()
+  def cancel_import(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "cancel-import",
+        Csilgen.Generated.CancelImportRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
   end
 
   @spec get_settings(t(), Csilgen.Generated.Page.t()) :: Csilgen.Generated.Settings.t()

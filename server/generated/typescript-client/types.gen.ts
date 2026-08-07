@@ -142,6 +142,7 @@ export interface AlbumDetail {
 
 export interface ArtistRequest {
   artistId: ArtistId;
+  library?: Library;
 }
 
 export interface ArtistDetail {
@@ -159,6 +160,42 @@ export interface SearchResponse {
   artists: Artist[];
   albums: Album[];
   tracks: Track[];
+}
+
+export interface TransferChunk {
+  index: number;
+  offset: number;
+  size: number;
+  sha256: string;
+}
+
+export interface TransferFile {
+  rootRelativePath: string;
+  contentType: string;
+  sizeBytes: number;
+  sha256: string;
+  chunks: TransferChunk[];
+}
+
+export interface ExportManifestRequest {
+  trackId: TrackId;
+}
+
+export interface ExportManifest {
+  track: Track;
+  files: TransferFile[];
+}
+
+export interface ExportChunkRequest {
+  trackId: TrackId;
+  rootRelativePath: string;
+  chunkIndex: number;
+}
+
+export interface ExportChunk {
+  rootRelativePath: string;
+  chunkIndex: number;
+  data: Uint8Array;
 }
 
 export interface AudiobookProgress {
@@ -570,6 +607,7 @@ export interface RevokeSatelliteTokenRequest {
 }
 
 export interface ImportTrackRequest {
+  library?: Library;
   rootRelativePath: string;
   contentType: string;
   contentHash?: string;
@@ -579,7 +617,39 @@ export interface ImportTrackRequest {
 export interface ImportResult {
   imported: boolean;
   trackId?: TrackId;
+  track?: Track;
   skippedExisting: boolean;
+}
+
+export interface MissingChunk {
+  fileIndex: number;
+  chunkIndex: number;
+}
+
+export interface BeginImportRequest {
+  library?: Library;
+  trackFileIndex: number;
+  files: TransferFile[];
+}
+
+export interface BeginImportResult {
+  transferId: string;
+  missingChunks: MissingChunk[];
+}
+
+export interface ImportChunkRequest {
+  transferId: string;
+  fileIndex: number;
+  chunkIndex: number;
+  data: Uint8Array;
+}
+
+export interface FinishImportRequest {
+  transferId: string;
+}
+
+export interface CancelImportRequest {
+  transferId: string;
 }
 
 export interface Settings {

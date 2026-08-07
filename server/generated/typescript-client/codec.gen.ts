@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BrowseRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, GroupInfo, Handle, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -756,6 +756,7 @@ export function fromAlbumDetailCbor(bytes: Uint8Array): AlbumDetail {
 
 export function toArtistRequestCborValue(v: ArtistRequest): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
+  if (v.library !== undefined) csilMap.set("library", v.library);
   csilMap.set("artist_id", v.artistId);
   return csilMap;
 }
@@ -763,6 +764,7 @@ export function toArtistRequestCborValue(v: ArtistRequest): CborValue {
 export function fromArtistRequestCborValue(value: CborValue): ArtistRequest {
   return {
     artistId: asString(requireKey(value, "artist_id")),
+    library: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : (asEnumMember(asString(csilV), ["music", "audiobook"]) as "music" | "audiobook"))(mapGet(value, "library")),
   };
 }
 
@@ -842,6 +844,150 @@ export function toSearchResponseCbor(v: SearchResponse): Uint8Array {
 
 export function fromSearchResponseCbor(bytes: Uint8Array): SearchResponse {
   return fromSearchResponseCborValue(decode(bytes));
+}
+
+export function toTransferChunkCborValue(v: TransferChunk): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("size", v.size);
+  csilMap.set("index", v.index);
+  csilMap.set("offset", v.offset);
+  csilMap.set("sha256", v.sha256);
+  return csilMap;
+}
+
+export function fromTransferChunkCborValue(value: CborValue): TransferChunk {
+  return {
+    index: asNumber(requireKey(value, "index")),
+    offset: asNumber(requireKey(value, "offset")),
+    size: asNumber(requireKey(value, "size")),
+    sha256: asString(requireKey(value, "sha256")),
+  };
+}
+
+export function toTransferChunkCbor(v: TransferChunk): Uint8Array {
+  return encodeValue(toTransferChunkCborValue(v));
+}
+
+export function fromTransferChunkCbor(bytes: Uint8Array): TransferChunk {
+  return fromTransferChunkCborValue(decode(bytes));
+}
+
+export function toTransferFileCborValue(v: TransferFile): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("chunks", v.chunks.map((csilE): CborValue => toTransferChunkCborValue(csilE)));
+  csilMap.set("sha256", v.sha256);
+  csilMap.set("size_bytes", v.sizeBytes);
+  csilMap.set("content_type", v.contentType);
+  csilMap.set("root_relative_path", v.rootRelativePath);
+  return csilMap;
+}
+
+export function fromTransferFileCborValue(value: CborValue): TransferFile {
+  return {
+    rootRelativePath: asString(requireKey(value, "root_relative_path")),
+    contentType: asString(requireKey(value, "content_type")),
+    sizeBytes: asNumber(requireKey(value, "size_bytes")),
+    sha256: asString(requireKey(value, "sha256")),
+    chunks: asArray(requireKey(value, "chunks")).map((csilE) => fromTransferChunkCborValue(csilE)),
+  };
+}
+
+export function toTransferFileCbor(v: TransferFile): Uint8Array {
+  return encodeValue(toTransferFileCborValue(v));
+}
+
+export function fromTransferFileCbor(bytes: Uint8Array): TransferFile {
+  return fromTransferFileCborValue(decode(bytes));
+}
+
+export function toExportManifestRequestCborValue(v: ExportManifestRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("track_id", v.trackId);
+  return csilMap;
+}
+
+export function fromExportManifestRequestCborValue(value: CborValue): ExportManifestRequest {
+  return {
+    trackId: asString(requireKey(value, "track_id")),
+  };
+}
+
+export function toExportManifestRequestCbor(v: ExportManifestRequest): Uint8Array {
+  return encodeValue(toExportManifestRequestCborValue(v));
+}
+
+export function fromExportManifestRequestCbor(bytes: Uint8Array): ExportManifestRequest {
+  return fromExportManifestRequestCborValue(decode(bytes));
+}
+
+export function toExportManifestCborValue(v: ExportManifest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("files", v.files.map((csilE): CborValue => toTransferFileCborValue(csilE)));
+  csilMap.set("track", toTrackCborValue(v.track));
+  return csilMap;
+}
+
+export function fromExportManifestCborValue(value: CborValue): ExportManifest {
+  return {
+    track: fromTrackCborValue(requireKey(value, "track")),
+    files: asArray(requireKey(value, "files")).map((csilE) => fromTransferFileCborValue(csilE)),
+  };
+}
+
+export function toExportManifestCbor(v: ExportManifest): Uint8Array {
+  return encodeValue(toExportManifestCborValue(v));
+}
+
+export function fromExportManifestCbor(bytes: Uint8Array): ExportManifest {
+  return fromExportManifestCborValue(decode(bytes));
+}
+
+export function toExportChunkRequestCborValue(v: ExportChunkRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("track_id", v.trackId);
+  csilMap.set("chunk_index", v.chunkIndex);
+  csilMap.set("root_relative_path", v.rootRelativePath);
+  return csilMap;
+}
+
+export function fromExportChunkRequestCborValue(value: CborValue): ExportChunkRequest {
+  return {
+    trackId: asString(requireKey(value, "track_id")),
+    rootRelativePath: asString(requireKey(value, "root_relative_path")),
+    chunkIndex: asNumber(requireKey(value, "chunk_index")),
+  };
+}
+
+export function toExportChunkRequestCbor(v: ExportChunkRequest): Uint8Array {
+  return encodeValue(toExportChunkRequestCborValue(v));
+}
+
+export function fromExportChunkRequestCbor(bytes: Uint8Array): ExportChunkRequest {
+  return fromExportChunkRequestCborValue(decode(bytes));
+}
+
+export function toExportChunkCborValue(v: ExportChunk): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("data", v.data);
+  csilMap.set("chunk_index", v.chunkIndex);
+  csilMap.set("root_relative_path", v.rootRelativePath);
+  return csilMap;
+}
+
+export function fromExportChunkCborValue(value: CborValue): ExportChunk {
+  return {
+    rootRelativePath: asString(requireKey(value, "root_relative_path")),
+    chunkIndex: asNumber(requireKey(value, "chunk_index")),
+    data: asBytes(requireKey(value, "data")),
+  };
+}
+
+export function toExportChunkCbor(v: ExportChunk): Uint8Array {
+  return encodeValue(toExportChunkCborValue(v));
+}
+
+export function fromExportChunkCbor(bytes: Uint8Array): ExportChunk {
+  return fromExportChunkCborValue(decode(bytes));
 }
 
 export function toAudiobookProgressCborValue(v: AudiobookProgress): CborValue {
@@ -1407,16 +1553,16 @@ export function fromCmdVolumeCbor(bytes: Uint8Array): CmdVolume {
 }
 
 export function toPlayerCommandCborValue(v: PlayerCommand): CborValue {
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdEnqueue; return [0, toCmdEnqueueCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdRemove; return [1, toCmdRemoveCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdReorder; return [2, toCmdReorderCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdClear; return [3, toCmdClearCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdPlay; return [4, toCmdPlayCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdPause; return [5, toCmdPauseCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdNext; return [6, toCmdNextCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdPrevious; return [7, toCmdPreviousCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdSeek; return [8, toCmdSeekCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as CmdVolume; return [9, toCmdVolumeCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "trackIds")) { const csilV = v as CmdEnqueue; return [0, toCmdEnqueueCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "index")) { const csilV = v as CmdRemove; return [1, toCmdRemoveCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "fromIndex") && Object.prototype.hasOwnProperty.call(v, "toIndex")) { const csilV = v as CmdReorder; return [2, toCmdReorderCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op")) { const csilV = v as CmdClear; return [3, toCmdClearCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op")) { const csilV = v as CmdPlay; return [4, toCmdPlayCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op")) { const csilV = v as CmdPause; return [5, toCmdPauseCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op")) { const csilV = v as CmdNext; return [6, toCmdNextCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op")) { const csilV = v as CmdPrevious; return [7, toCmdPreviousCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "positionMs")) { const csilV = v as CmdSeek; return [8, toCmdSeekCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "volume")) { const csilV = v as CmdVolume; return [9, toCmdVolumeCborValue(csilV)]; }
   throw new Error("unencodable PlayerCommand union value");
 }
 
@@ -1636,11 +1782,11 @@ export function fromMediaStopCbor(bytes: Uint8Array): MediaStop {
 }
 
 export function toMediaControlCborValue(v: MediaControl): CborValue {
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaOpen; return [0, toMediaOpenCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaSeek; return [1, toMediaSeekCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaPause; return [2, toMediaPauseCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaResume; return [3, toMediaResumeCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaStop; return [4, toMediaStopCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind") && Object.prototype.hasOwnProperty.call(v, "trackId") && Object.prototype.hasOwnProperty.call(v, "pref")) { const csilV = v as MediaOpen; return [0, toMediaOpenCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind") && Object.prototype.hasOwnProperty.call(v, "positionMs")) { const csilV = v as MediaSeek; return [1, toMediaSeekCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind")) { const csilV = v as MediaPause; return [2, toMediaPauseCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind")) { const csilV = v as MediaResume; return [3, toMediaResumeCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind")) { const csilV = v as MediaStop; return [4, toMediaStopCborValue(csilV)]; }
   throw new Error("unencodable MediaControl union value");
 }
 
@@ -1773,10 +1919,10 @@ export function fromMediaFailCbor(bytes: Uint8Array): MediaFail {
 }
 
 export function toMediaEventCborValue(v: MediaEvent): CborValue {
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaHeader; return [0, toMediaHeaderCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaChunk; return [1, toMediaChunkCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaEnd; return [2, toMediaEndCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as MediaFail; return [3, toMediaFailCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind") && Object.prototype.hasOwnProperty.call(v, "codec") && Object.prototype.hasOwnProperty.call(v, "transcoded") && Object.prototype.hasOwnProperty.call(v, "sampleRate") && Object.prototype.hasOwnProperty.call(v, "channels") && Object.prototype.hasOwnProperty.call(v, "trimStartSamples") && Object.prototype.hasOwnProperty.call(v, "trimEndSamples")) { const csilV = v as MediaHeader; return [0, toMediaHeaderCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind") && Object.prototype.hasOwnProperty.call(v, "seq") && Object.prototype.hasOwnProperty.call(v, "data")) { const csilV = v as MediaChunk; return [1, toMediaChunkCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind")) { const csilV = v as MediaEnd; return [2, toMediaEndCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "kind") && Object.prototype.hasOwnProperty.call(v, "error")) { const csilV = v as MediaFail; return [3, toMediaFailCborValue(csilV)]; }
   throw new Error("unencodable MediaEvent union value");
 }
 
@@ -1996,11 +2142,11 @@ export function fromDirVolumeCbor(bytes: Uint8Array): DirVolume {
 }
 
 export function toNodeDirectiveCborValue(v: NodeDirective): CborValue {
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as DirLoad; return [0, toDirLoadCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as DirPause; return [1, toDirPauseCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as DirResume; return [2, toDirResumeCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as DirStop; return [3, toDirStopCborValue(csilV)]; }
-  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map)) { const csilV = v as DirVolume; return [4, toDirVolumeCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "playerId") && Object.prototype.hasOwnProperty.call(v, "trackId") && Object.prototype.hasOwnProperty.call(v, "pref")) { const csilV = v as DirLoad; return [0, toDirLoadCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "playerId")) { const csilV = v as DirPause; return [1, toDirPauseCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "playerId")) { const csilV = v as DirResume; return [2, toDirResumeCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "playerId")) { const csilV = v as DirStop; return [3, toDirStopCborValue(csilV)]; }
+  if (typeof v === "object" && v !== null && !Array.isArray(v) && !(v instanceof Uint8Array) && !(v instanceof Map) && Object.prototype.hasOwnProperty.call(v, "op") && Object.prototype.hasOwnProperty.call(v, "playerId") && Object.prototype.hasOwnProperty.call(v, "volume")) { const csilV = v as DirVolume; return [4, toDirVolumeCborValue(csilV)]; }
   throw new Error("unencodable NodeDirective union value");
 }
 
@@ -2627,6 +2773,7 @@ export function fromRevokeSatelliteTokenRequestCbor(bytes: Uint8Array): RevokeSa
 export function toImportTrackRequestCborValue(v: ImportTrackRequest): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
   csilMap.set("data", v.data);
+  if (v.library !== undefined) csilMap.set("library", v.library);
   if (v.contentHash !== undefined) csilMap.set("content_hash", v.contentHash);
   csilMap.set("content_type", v.contentType);
   csilMap.set("root_relative_path", v.rootRelativePath);
@@ -2635,6 +2782,7 @@ export function toImportTrackRequestCborValue(v: ImportTrackRequest): CborValue 
 
 export function fromImportTrackRequestCborValue(value: CborValue): ImportTrackRequest {
   return {
+    library: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : (asEnumMember(asString(csilV), ["music", "audiobook"]) as "music" | "audiobook"))(mapGet(value, "library")),
     rootRelativePath: asString(requireKey(value, "root_relative_path")),
     contentType: asString(requireKey(value, "content_type")),
     contentHash: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "content_hash")),
@@ -2652,6 +2800,7 @@ export function fromImportTrackRequestCbor(bytes: Uint8Array): ImportTrackReques
 
 export function toImportResultCborValue(v: ImportResult): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
+  if (v.track !== undefined) csilMap.set("track", toTrackCborValue(v.track));
   csilMap.set("imported", v.imported);
   if (v.trackId !== undefined) csilMap.set("track_id", v.trackId);
   csilMap.set("skipped_existing", v.skippedExisting);
@@ -2662,6 +2811,7 @@ export function fromImportResultCborValue(value: CborValue): ImportResult {
   return {
     imported: asBool(requireKey(value, "imported")),
     trackId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "track_id")),
+    track: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : fromTrackCborValue(csilV))(mapGet(value, "track")),
     skippedExisting: asBool(requireKey(value, "skipped_existing")),
   };
 }
@@ -2672,6 +2822,140 @@ export function toImportResultCbor(v: ImportResult): Uint8Array {
 
 export function fromImportResultCbor(bytes: Uint8Array): ImportResult {
   return fromImportResultCborValue(decode(bytes));
+}
+
+export function toMissingChunkCborValue(v: MissingChunk): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("file_index", v.fileIndex);
+  csilMap.set("chunk_index", v.chunkIndex);
+  return csilMap;
+}
+
+export function fromMissingChunkCborValue(value: CborValue): MissingChunk {
+  return {
+    fileIndex: asNumber(requireKey(value, "file_index")),
+    chunkIndex: asNumber(requireKey(value, "chunk_index")),
+  };
+}
+
+export function toMissingChunkCbor(v: MissingChunk): Uint8Array {
+  return encodeValue(toMissingChunkCborValue(v));
+}
+
+export function fromMissingChunkCbor(bytes: Uint8Array): MissingChunk {
+  return fromMissingChunkCborValue(decode(bytes));
+}
+
+export function toBeginImportRequestCborValue(v: BeginImportRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("files", v.files.map((csilE): CborValue => toTransferFileCborValue(csilE)));
+  if (v.library !== undefined) csilMap.set("library", v.library);
+  csilMap.set("track_file_index", v.trackFileIndex);
+  return csilMap;
+}
+
+export function fromBeginImportRequestCborValue(value: CborValue): BeginImportRequest {
+  return {
+    library: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : (asEnumMember(asString(csilV), ["music", "audiobook"]) as "music" | "audiobook"))(mapGet(value, "library")),
+    trackFileIndex: asNumber(requireKey(value, "track_file_index")),
+    files: asArray(requireKey(value, "files")).map((csilE) => fromTransferFileCborValue(csilE)),
+  };
+}
+
+export function toBeginImportRequestCbor(v: BeginImportRequest): Uint8Array {
+  return encodeValue(toBeginImportRequestCborValue(v));
+}
+
+export function fromBeginImportRequestCbor(bytes: Uint8Array): BeginImportRequest {
+  return fromBeginImportRequestCborValue(decode(bytes));
+}
+
+export function toBeginImportResultCborValue(v: BeginImportResult): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("transfer_id", v.transferId);
+  csilMap.set("missing_chunks", v.missingChunks.map((csilE): CborValue => toMissingChunkCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromBeginImportResultCborValue(value: CborValue): BeginImportResult {
+  return {
+    transferId: asString(requireKey(value, "transfer_id")),
+    missingChunks: asArray(requireKey(value, "missing_chunks")).map((csilE) => fromMissingChunkCborValue(csilE)),
+  };
+}
+
+export function toBeginImportResultCbor(v: BeginImportResult): Uint8Array {
+  return encodeValue(toBeginImportResultCborValue(v));
+}
+
+export function fromBeginImportResultCbor(bytes: Uint8Array): BeginImportResult {
+  return fromBeginImportResultCborValue(decode(bytes));
+}
+
+export function toImportChunkRequestCborValue(v: ImportChunkRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("data", v.data);
+  csilMap.set("file_index", v.fileIndex);
+  csilMap.set("chunk_index", v.chunkIndex);
+  csilMap.set("transfer_id", v.transferId);
+  return csilMap;
+}
+
+export function fromImportChunkRequestCborValue(value: CborValue): ImportChunkRequest {
+  return {
+    transferId: asString(requireKey(value, "transfer_id")),
+    fileIndex: asNumber(requireKey(value, "file_index")),
+    chunkIndex: asNumber(requireKey(value, "chunk_index")),
+    data: asBytes(requireKey(value, "data")),
+  };
+}
+
+export function toImportChunkRequestCbor(v: ImportChunkRequest): Uint8Array {
+  return encodeValue(toImportChunkRequestCborValue(v));
+}
+
+export function fromImportChunkRequestCbor(bytes: Uint8Array): ImportChunkRequest {
+  return fromImportChunkRequestCborValue(decode(bytes));
+}
+
+export function toFinishImportRequestCborValue(v: FinishImportRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("transfer_id", v.transferId);
+  return csilMap;
+}
+
+export function fromFinishImportRequestCborValue(value: CborValue): FinishImportRequest {
+  return {
+    transferId: asString(requireKey(value, "transfer_id")),
+  };
+}
+
+export function toFinishImportRequestCbor(v: FinishImportRequest): Uint8Array {
+  return encodeValue(toFinishImportRequestCborValue(v));
+}
+
+export function fromFinishImportRequestCbor(bytes: Uint8Array): FinishImportRequest {
+  return fromFinishImportRequestCborValue(decode(bytes));
+}
+
+export function toCancelImportRequestCborValue(v: CancelImportRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("transfer_id", v.transferId);
+  return csilMap;
+}
+
+export function fromCancelImportRequestCborValue(value: CborValue): CancelImportRequest {
+  return {
+    transferId: asString(requireKey(value, "transfer_id")),
+  };
+}
+
+export function toCancelImportRequestCbor(v: CancelImportRequest): Uint8Array {
+  return encodeValue(toCancelImportRequestCborValue(v));
+}
+
+export function fromCancelImportRequestCbor(bytes: Uint8Array): CancelImportRequest {
+  return fromCancelImportRequestCborValue(decode(bytes));
 }
 
 export function toSettingsCborValue(v: Settings): CborValue {

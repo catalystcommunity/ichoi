@@ -93,7 +93,7 @@ and albums_response = { albums : album list; total : int64 }
 and artists_response = { artists : artist list; total : int64 }
 and album_request = { album_id : album_id }
 and album_detail = { album : album; tracks : track list }
-and artist_request = { artist_id : artist_id }
+and artist_request = { artist_id : artist_id; library : library option }
 and artist_detail = { artist : artist; albums : album list }
 
 and search_request = {
@@ -106,6 +106,36 @@ and search_response = {
   artists : artist list;
   albums : album list;
   tracks : track list;
+}
+
+and transfer_chunk = {
+  index : int64;
+  offset : int64;
+  size : int64;
+  sha_256 : string;
+}
+
+and transfer_file = {
+  root_relative_path : string;
+  content_type : string;
+  size_bytes : int64;
+  sha_256 : string;
+  chunks : transfer_chunk list;
+}
+
+and export_manifest_request = { track_id : track_id }
+and export_manifest = { track : track; files : transfer_file list }
+
+and export_chunk_request = {
+  track_id : track_id;
+  root_relative_path : string;
+  chunk_index : int64;
+}
+
+and export_chunk = {
+  root_relative_path : string;
+  chunk_index : int64;
+  data : bytes;
 }
 
 and audiobook_progress = {
@@ -390,6 +420,7 @@ and node_token_result = {
 and revoke_satellite_token_request = { satellite_id : string }
 
 and import_track_request = {
+  library : library option;
   root_relative_path : string;
   content_type : string;
   content_hash : string option;
@@ -399,9 +430,32 @@ and import_track_request = {
 and import_result = {
   imported : bool;
   track_id : track_id option;
+  track : track option;
   skipped_existing : bool;
 }
 
+and missing_chunk = { file_index : int64; chunk_index : int64 }
+
+and begin_import_request = {
+  library : library option;
+  track_file_index : int64;
+  files : transfer_file list;
+}
+
+and begin_import_result = {
+  transfer_id : string;
+  missing_chunks : missing_chunk list;
+}
+
+and import_chunk_request = {
+  transfer_id : string;
+  file_index : int64;
+  chunk_index : int64;
+  data : bytes;
+}
+
+and finish_import_request = { transfer_id : string }
+and cancel_import_request = { transfer_id : string }
 and settings = { entries : (string * string) list }
 and set_setting_request = { key : string; value : string }
 and library_resync_status = { running : bool; started : bool }

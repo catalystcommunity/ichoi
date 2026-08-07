@@ -57,6 +57,18 @@ pub trait LibraryService {
         ctx: &Self::Context,
         input: SearchRequest,
     ) -> Result<SearchResponse, ServiceError>;
+    /// export-manifest (request/response).
+    fn export_manifest(
+        &self,
+        ctx: &Self::Context,
+        input: ExportManifestRequest,
+    ) -> Result<ExportManifest, ServiceError>;
+    /// export-chunk (request/response).
+    fn export_chunk(
+        &self,
+        ctx: &Self::Context,
+        input: ExportChunkRequest,
+    ) -> Result<ExportChunk, ServiceError>;
     /// list-playlists (request/response).
     fn list_playlists(
         &self,
@@ -334,6 +346,30 @@ pub trait AdminService {
         ctx: &Self::Context,
         input: ImportTrackRequest,
     ) -> Result<ImportResult, ServiceError>;
+    /// begin-import (request/response).
+    fn begin_import(
+        &self,
+        ctx: &Self::Context,
+        input: BeginImportRequest,
+    ) -> Result<BeginImportResult, ServiceError>;
+    /// import-chunk (request/response).
+    fn import_chunk(
+        &self,
+        ctx: &Self::Context,
+        input: ImportChunkRequest,
+    ) -> Result<Ok, ServiceError>;
+    /// finish-import (request/response).
+    fn finish_import(
+        &self,
+        ctx: &Self::Context,
+        input: FinishImportRequest,
+    ) -> Result<ImportResult, ServiceError>;
+    /// cancel-import (request/response).
+    fn cancel_import(
+        &self,
+        ctx: &Self::Context,
+        input: CancelImportRequest,
+    ) -> Result<Ok, ServiceError>;
     /// get-settings (request/response).
     fn get_settings(&self, ctx: &Self::Context, input: Page) -> Result<Settings, ServiceError>;
     /// set-setting (request/response).

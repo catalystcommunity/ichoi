@@ -1252,39 +1252,53 @@ final class AlbumDetail {
 
 final class ArtistRequest {
   final ArtistId artistId;
+  final Library? library_;
 
-  const ArtistRequest({required this.artistId});
+  const ArtistRequest({required this.artistId, this.library_});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['artist_id'] = artistId;
+    if (library_ != null) map['library'] = library_;
     return map;
   }
 
   factory ArtistRequest.fromMap(Map<String, Object?> map) {
-    return ArtistRequest(artistId: map['artist_id'] as ArtistId);
+    return ArtistRequest(
+      artistId: map['artist_id'] as ArtistId,
+      library_: map['library'] as Library?,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! ArtistRequest) return false;
-    return artistId == other.artistId;
+    return artistId == other.artistId && library_ == other.library_;
   }
 
   @override
-  int get hashCode => Object.hashAll([artistId]);
+  int get hashCode => Object.hashAll([artistId, library_]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['artist_id'] = artistId;
+    if (library_ != null) map['library'] = library_!;
     return map;
   }
 
   /// Reconstruct this record from a decoded CBOR dynamic tree.
   factory ArtistRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
-    return ArtistRequest(artistId: map['artist_id'] as String);
+    return ArtistRequest(
+      artistId: map['artist_id'] as String,
+      library_: map['library'] == null
+          ? null
+          : CsilCbor.expectOneOf<String>(map['library'], const [
+              'music',
+              'audiobook',
+            ]),
+    );
   }
 
   /// Encode this record to canonical CSIL CBOR bytes.
@@ -1500,6 +1514,408 @@ final class SearchResponse {
   /// Decode a CSIL CBOR byte payload into this record.
   factory SearchResponse.fromCbor(List<int> bytes) =>
       SearchResponse.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class TransferChunk {
+  final int index;
+  final int offset;
+  final int size;
+  final String sha256;
+
+  const TransferChunk({
+    required this.index,
+    required this.offset,
+    required this.size,
+    required this.sha256,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['index'] = index;
+    map['offset'] = offset;
+    map['size'] = size;
+    map['sha256'] = sha256;
+    return map;
+  }
+
+  factory TransferChunk.fromMap(Map<String, Object?> map) {
+    return TransferChunk(
+      index: map['index'] as int,
+      offset: map['offset'] as int,
+      size: map['size'] as int,
+      sha256: map['sha256'] as String,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! TransferChunk) return false;
+    return index == other.index &&
+        offset == other.offset &&
+        size == other.size &&
+        sha256 == other.sha256;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([index, offset, size, sha256]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['index'] = index;
+    map['offset'] = offset;
+    map['size'] = size;
+    map['sha256'] = sha256;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory TransferChunk.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return TransferChunk(
+      index: map['index'] as int,
+      offset: map['offset'] as int,
+      size: map['size'] as int,
+      sha256: map['sha256'] as String,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory TransferChunk.fromCbor(List<int> bytes) =>
+      TransferChunk.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class TransferFile {
+  final String rootRelativePath;
+  final String contentType;
+  final int sizeBytes;
+  final String sha256;
+  final List<TransferChunk> chunks;
+
+  const TransferFile({
+    required this.rootRelativePath,
+    required this.contentType,
+    required this.sizeBytes,
+    required this.sha256,
+    required this.chunks,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['root_relative_path'] = rootRelativePath;
+    map['content_type'] = contentType;
+    map['size_bytes'] = sizeBytes;
+    map['sha256'] = sha256;
+    map['chunks'] = chunks;
+    return map;
+  }
+
+  factory TransferFile.fromMap(Map<String, Object?> map) {
+    return TransferFile(
+      rootRelativePath: map['root_relative_path'] as String,
+      contentType: map['content_type'] as String,
+      sizeBytes: map['size_bytes'] as int,
+      sha256: map['sha256'] as String,
+      chunks: map['chunks'] as List<TransferChunk>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! TransferFile) return false;
+    return rootRelativePath == other.rootRelativePath &&
+        contentType == other.contentType &&
+        sizeBytes == other.sizeBytes &&
+        sha256 == other.sha256 &&
+        chunks == other.chunks;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    rootRelativePath,
+    contentType,
+    sizeBytes,
+    sha256,
+    chunks,
+  ]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['root_relative_path'] = rootRelativePath;
+    map['content_type'] = contentType;
+    map['size_bytes'] = sizeBytes;
+    map['sha256'] = sha256;
+    map['chunks'] = chunks.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory TransferFile.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return TransferFile(
+      rootRelativePath: map['root_relative_path'] as String,
+      contentType: map['content_type'] as String,
+      sizeBytes: map['size_bytes'] as int,
+      sha256: map['sha256'] as String,
+      chunks: (map['chunks'] as List)
+          .map((csilE) => TransferChunk.fromCborValue(csilE))
+          .cast<TransferChunk>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory TransferFile.fromCbor(List<int> bytes) =>
+      TransferFile.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ExportManifestRequest {
+  final TrackId trackId;
+
+  const ExportManifestRequest({required this.trackId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    return map;
+  }
+
+  factory ExportManifestRequest.fromMap(Map<String, Object?> map) {
+    return ExportManifestRequest(trackId: map['track_id'] as TrackId);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ExportManifestRequest) return false;
+    return trackId == other.trackId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([trackId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ExportManifestRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ExportManifestRequest(trackId: map['track_id'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ExportManifestRequest.fromCbor(List<int> bytes) =>
+      ExportManifestRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ExportManifest {
+  final Track track;
+  final List<TransferFile> files;
+
+  const ExportManifest({required this.track, required this.files});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['track'] = track;
+    map['files'] = files;
+    return map;
+  }
+
+  factory ExportManifest.fromMap(Map<String, Object?> map) {
+    return ExportManifest(
+      track: map['track'] as Track,
+      files: map['files'] as List<TransferFile>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ExportManifest) return false;
+    return track == other.track && files == other.files;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([track, files]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['track'] = track.toCborValue();
+    map['files'] = files.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ExportManifest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ExportManifest(
+      track: Track.fromCborValue(map['track']),
+      files: (map['files'] as List)
+          .map((csilE) => TransferFile.fromCborValue(csilE))
+          .cast<TransferFile>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ExportManifest.fromCbor(List<int> bytes) =>
+      ExportManifest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ExportChunkRequest {
+  final TrackId trackId;
+  final String rootRelativePath;
+  final int chunkIndex;
+
+  const ExportChunkRequest({
+    required this.trackId,
+    required this.rootRelativePath,
+    required this.chunkIndex,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    map['root_relative_path'] = rootRelativePath;
+    map['chunk_index'] = chunkIndex;
+    return map;
+  }
+
+  factory ExportChunkRequest.fromMap(Map<String, Object?> map) {
+    return ExportChunkRequest(
+      trackId: map['track_id'] as TrackId,
+      rootRelativePath: map['root_relative_path'] as String,
+      chunkIndex: map['chunk_index'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ExportChunkRequest) return false;
+    return trackId == other.trackId &&
+        rootRelativePath == other.rootRelativePath &&
+        chunkIndex == other.chunkIndex;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([trackId, rootRelativePath, chunkIndex]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['track_id'] = trackId;
+    map['root_relative_path'] = rootRelativePath;
+    map['chunk_index'] = chunkIndex;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ExportChunkRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ExportChunkRequest(
+      trackId: map['track_id'] as String,
+      rootRelativePath: map['root_relative_path'] as String,
+      chunkIndex: map['chunk_index'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ExportChunkRequest.fromCbor(List<int> bytes) =>
+      ExportChunkRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ExportChunk {
+  final String rootRelativePath;
+  final int chunkIndex;
+  final Uint8List data;
+
+  const ExportChunk({
+    required this.rootRelativePath,
+    required this.chunkIndex,
+    required this.data,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['root_relative_path'] = rootRelativePath;
+    map['chunk_index'] = chunkIndex;
+    map['data'] = data;
+    return map;
+  }
+
+  factory ExportChunk.fromMap(Map<String, Object?> map) {
+    return ExportChunk(
+      rootRelativePath: map['root_relative_path'] as String,
+      chunkIndex: map['chunk_index'] as int,
+      data: map['data'] as Uint8List,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ExportChunk) return false;
+    return rootRelativePath == other.rootRelativePath &&
+        chunkIndex == other.chunkIndex &&
+        _bytesEqual(data, other.data);
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([rootRelativePath, chunkIndex, Object.hashAll(data)]);
+
+  static bool _bytesEqual(Uint8List? a, Uint8List? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['root_relative_path'] = rootRelativePath;
+    map['chunk_index'] = chunkIndex;
+    map['data'] = data;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ExportChunk.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ExportChunk(
+      rootRelativePath: map['root_relative_path'] as String,
+      chunkIndex: map['chunk_index'] as int,
+      data: map['data'] as Uint8List,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ExportChunk.fromCbor(List<int> bytes) =>
+      ExportChunk.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class AudiobookProgress {
@@ -6128,12 +6544,14 @@ final class RevokeSatelliteTokenRequest {
 }
 
 final class ImportTrackRequest {
+  final Library? library_;
   final String rootRelativePath;
   final String contentType;
   final String? contentHash;
   final Uint8List data;
 
   const ImportTrackRequest({
+    this.library_,
     required this.rootRelativePath,
     required this.contentType,
     this.contentHash,
@@ -6142,6 +6560,7 @@ final class ImportTrackRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
+    if (library_ != null) map['library'] = library_;
     map['root_relative_path'] = rootRelativePath;
     map['content_type'] = contentType;
     if (contentHash != null) map['content_hash'] = contentHash;
@@ -6151,6 +6570,7 @@ final class ImportTrackRequest {
 
   factory ImportTrackRequest.fromMap(Map<String, Object?> map) {
     return ImportTrackRequest(
+      library_: map['library'] as Library?,
       rootRelativePath: map['root_relative_path'] as String,
       contentType: map['content_type'] as String,
       contentHash: map['content_hash'] as String?,
@@ -6161,7 +6581,8 @@ final class ImportTrackRequest {
   @override
   bool operator ==(Object other) {
     if (other is! ImportTrackRequest) return false;
-    return rootRelativePath == other.rootRelativePath &&
+    return library_ == other.library_ &&
+        rootRelativePath == other.rootRelativePath &&
         contentType == other.contentType &&
         contentHash == other.contentHash &&
         _bytesEqual(data, other.data);
@@ -6169,6 +6590,7 @@ final class ImportTrackRequest {
 
   @override
   int get hashCode => Object.hashAll([
+    library_,
     rootRelativePath,
     contentType,
     contentHash,
@@ -6187,6 +6609,7 @@ final class ImportTrackRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
+    if (library_ != null) map['library'] = library_!;
     map['root_relative_path'] = rootRelativePath;
     map['content_type'] = contentType;
     if (contentHash != null) map['content_hash'] = contentHash!;
@@ -6198,6 +6621,12 @@ final class ImportTrackRequest {
   factory ImportTrackRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return ImportTrackRequest(
+      library_: map['library'] == null
+          ? null
+          : CsilCbor.expectOneOf<String>(map['library'], const [
+              'music',
+              'audiobook',
+            ]),
       rootRelativePath: map['root_relative_path'] as String,
       contentType: map['content_type'] as String,
       contentHash: map['content_hash'] == null
@@ -6218,11 +6647,13 @@ final class ImportTrackRequest {
 final class ImportResult {
   final bool imported;
   final TrackId? trackId;
+  final Track? track;
   final bool skippedExisting;
 
   const ImportResult({
     required this.imported,
     this.trackId,
+    this.track,
     required this.skippedExisting,
   });
 
@@ -6230,6 +6661,7 @@ final class ImportResult {
     final map = <String, Object?>{};
     map['imported'] = imported;
     if (trackId != null) map['track_id'] = trackId;
+    if (track != null) map['track'] = track;
     map['skipped_existing'] = skippedExisting;
     return map;
   }
@@ -6238,6 +6670,7 @@ final class ImportResult {
     return ImportResult(
       imported: map['imported'] as bool,
       trackId: map['track_id'] as TrackId?,
+      track: map['track'] as Track?,
       skippedExisting: map['skipped_existing'] as bool,
     );
   }
@@ -6247,17 +6680,20 @@ final class ImportResult {
     if (other is! ImportResult) return false;
     return imported == other.imported &&
         trackId == other.trackId &&
+        track == other.track &&
         skippedExisting == other.skippedExisting;
   }
 
   @override
-  int get hashCode => Object.hashAll([imported, trackId, skippedExisting]);
+  int get hashCode =>
+      Object.hashAll([imported, trackId, track, skippedExisting]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['imported'] = imported;
     if (trackId != null) map['track_id'] = trackId!;
+    if (track != null) map['track'] = track!.toCborValue();
     map['skipped_existing'] = skippedExisting;
     return map;
   }
@@ -6268,6 +6704,7 @@ final class ImportResult {
     return ImportResult(
       imported: map['imported'] as bool,
       trackId: map['track_id'] == null ? null : map['track_id'] as String,
+      track: map['track'] == null ? null : Track.fromCborValue(map['track']),
       skippedExisting: map['skipped_existing'] as bool,
     );
   }
@@ -6278,6 +6715,368 @@ final class ImportResult {
   /// Decode a CSIL CBOR byte payload into this record.
   factory ImportResult.fromCbor(List<int> bytes) =>
       ImportResult.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class MissingChunk {
+  final int fileIndex;
+  final int chunkIndex;
+
+  const MissingChunk({required this.fileIndex, required this.chunkIndex});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['file_index'] = fileIndex;
+    map['chunk_index'] = chunkIndex;
+    return map;
+  }
+
+  factory MissingChunk.fromMap(Map<String, Object?> map) {
+    return MissingChunk(
+      fileIndex: map['file_index'] as int,
+      chunkIndex: map['chunk_index'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! MissingChunk) return false;
+    return fileIndex == other.fileIndex && chunkIndex == other.chunkIndex;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([fileIndex, chunkIndex]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['file_index'] = fileIndex;
+    map['chunk_index'] = chunkIndex;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory MissingChunk.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return MissingChunk(
+      fileIndex: map['file_index'] as int,
+      chunkIndex: map['chunk_index'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory MissingChunk.fromCbor(List<int> bytes) =>
+      MissingChunk.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class BeginImportRequest {
+  final Library? library_;
+  final int trackFileIndex;
+  final List<TransferFile> files;
+
+  const BeginImportRequest({
+    this.library_,
+    required this.trackFileIndex,
+    required this.files,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    if (library_ != null) map['library'] = library_;
+    map['track_file_index'] = trackFileIndex;
+    map['files'] = files;
+    return map;
+  }
+
+  factory BeginImportRequest.fromMap(Map<String, Object?> map) {
+    return BeginImportRequest(
+      library_: map['library'] as Library?,
+      trackFileIndex: map['track_file_index'] as int,
+      files: map['files'] as List<TransferFile>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! BeginImportRequest) return false;
+    return library_ == other.library_ &&
+        trackFileIndex == other.trackFileIndex &&
+        files == other.files;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([library_, trackFileIndex, files]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    if (library_ != null) map['library'] = library_!;
+    map['track_file_index'] = trackFileIndex;
+    map['files'] = files.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory BeginImportRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return BeginImportRequest(
+      library_: map['library'] == null
+          ? null
+          : CsilCbor.expectOneOf<String>(map['library'], const [
+              'music',
+              'audiobook',
+            ]),
+      trackFileIndex: map['track_file_index'] as int,
+      files: (map['files'] as List)
+          .map((csilE) => TransferFile.fromCborValue(csilE))
+          .cast<TransferFile>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory BeginImportRequest.fromCbor(List<int> bytes) =>
+      BeginImportRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class BeginImportResult {
+  final String transferId;
+  final List<MissingChunk> missingChunks;
+
+  const BeginImportResult({
+    required this.transferId,
+    required this.missingChunks,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    map['missing_chunks'] = missingChunks;
+    return map;
+  }
+
+  factory BeginImportResult.fromMap(Map<String, Object?> map) {
+    return BeginImportResult(
+      transferId: map['transfer_id'] as String,
+      missingChunks: map['missing_chunks'] as List<MissingChunk>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! BeginImportResult) return false;
+    return transferId == other.transferId &&
+        missingChunks == other.missingChunks;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([transferId, missingChunks]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    map['missing_chunks'] = missingChunks
+        .map((csilE) => csilE.toCborValue())
+        .toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory BeginImportResult.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return BeginImportResult(
+      transferId: map['transfer_id'] as String,
+      missingChunks: (map['missing_chunks'] as List)
+          .map((csilE) => MissingChunk.fromCborValue(csilE))
+          .cast<MissingChunk>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory BeginImportResult.fromCbor(List<int> bytes) =>
+      BeginImportResult.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ImportChunkRequest {
+  final String transferId;
+  final int fileIndex;
+  final int chunkIndex;
+  final Uint8List data;
+
+  const ImportChunkRequest({
+    required this.transferId,
+    required this.fileIndex,
+    required this.chunkIndex,
+    required this.data,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    map['file_index'] = fileIndex;
+    map['chunk_index'] = chunkIndex;
+    map['data'] = data;
+    return map;
+  }
+
+  factory ImportChunkRequest.fromMap(Map<String, Object?> map) {
+    return ImportChunkRequest(
+      transferId: map['transfer_id'] as String,
+      fileIndex: map['file_index'] as int,
+      chunkIndex: map['chunk_index'] as int,
+      data: map['data'] as Uint8List,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ImportChunkRequest) return false;
+    return transferId == other.transferId &&
+        fileIndex == other.fileIndex &&
+        chunkIndex == other.chunkIndex &&
+        _bytesEqual(data, other.data);
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([transferId, fileIndex, chunkIndex, Object.hashAll(data)]);
+
+  static bool _bytesEqual(Uint8List? a, Uint8List? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    map['file_index'] = fileIndex;
+    map['chunk_index'] = chunkIndex;
+    map['data'] = data;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ImportChunkRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ImportChunkRequest(
+      transferId: map['transfer_id'] as String,
+      fileIndex: map['file_index'] as int,
+      chunkIndex: map['chunk_index'] as int,
+      data: map['data'] as Uint8List,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ImportChunkRequest.fromCbor(List<int> bytes) =>
+      ImportChunkRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class FinishImportRequest {
+  final String transferId;
+
+  const FinishImportRequest({required this.transferId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    return map;
+  }
+
+  factory FinishImportRequest.fromMap(Map<String, Object?> map) {
+    return FinishImportRequest(transferId: map['transfer_id'] as String);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! FinishImportRequest) return false;
+    return transferId == other.transferId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([transferId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory FinishImportRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return FinishImportRequest(transferId: map['transfer_id'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory FinishImportRequest.fromCbor(List<int> bytes) =>
+      FinishImportRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CancelImportRequest {
+  final String transferId;
+
+  const CancelImportRequest({required this.transferId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    return map;
+  }
+
+  factory CancelImportRequest.fromMap(Map<String, Object?> map) {
+    return CancelImportRequest(transferId: map['transfer_id'] as String);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CancelImportRequest) return false;
+    return transferId == other.transferId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([transferId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['transfer_id'] = transferId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CancelImportRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CancelImportRequest(transferId: map['transfer_id'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CancelImportRequest.fromCbor(List<int> bytes) =>
+      CancelImportRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class Settings {

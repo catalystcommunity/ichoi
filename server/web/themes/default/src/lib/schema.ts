@@ -128,6 +128,7 @@ export interface AlbumDetail {
 }
 export interface ArtistRequest {
   artist_id: string;
+  library?: Library;
 }
 export interface ArtistDetail {
   artist: Artist;
@@ -142,6 +143,31 @@ export interface SearchResponse {
   artists: Artist[];
   albums: Album[];
   tracks: Track[];
+}
+export interface TransferChunk {
+  index: number;
+  offset: number;
+  size: number;
+  sha256: string;
+}
+export interface TransferFile {
+  root_relative_path: string;
+  content_type: string;
+  size_bytes: number;
+  sha256: string;
+  chunks: TransferChunk[];
+}
+export interface ExportManifestRequest { track_id: string }
+export interface ExportManifest { track: Track; files: TransferFile[] }
+export interface ExportChunkRequest {
+  track_id: string;
+  root_relative_path: string;
+  chunk_index: number;
+}
+export interface ExportChunk {
+  root_relative_path: string;
+  chunk_index: number;
+  data: Uint8Array;
 }
 
 export interface AudiobookProgress {
@@ -419,6 +445,7 @@ export interface SatelliteTokenInfo {
 }
 export interface ListSatelliteTokensResponse { satellites: SatelliteTokenInfo[] }
 export interface ImportTrackRequest {
+  library?: Library;
   root_relative_path: string;
   content_type: string;
   content_hash?: string;
@@ -427,8 +454,27 @@ export interface ImportTrackRequest {
 export interface ImportResult {
   imported: boolean;
   track_id?: string;
+  track?: Track;
   skipped_existing?: boolean;
 }
+export interface MissingChunk { file_index: number; chunk_index: number }
+export interface BeginImportRequest {
+  library?: Library;
+  track_file_index: number;
+  files: TransferFile[];
+}
+export interface BeginImportResult {
+  transfer_id: string;
+  missing_chunks: MissingChunk[];
+}
+export interface ImportChunkRequest {
+  transfer_id: string;
+  file_index: number;
+  chunk_index: number;
+  data: Uint8Array;
+}
+export interface FinishImportRequest { transfer_id: string }
+export interface CancelImportRequest { transfer_id: string }
 export interface Settings {
   entries: Record<string, string>;
 }

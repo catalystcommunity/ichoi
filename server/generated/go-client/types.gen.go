@@ -179,6 +179,7 @@ type AlbumDetail struct {
 // ArtistRequest represents a structured data type
 type ArtistRequest struct {
 	ArtistId ArtistId `json:"artist_id" yaml:"artist_id"`
+	Library  *Library `json:"library,omitempty" yaml:"library,omitempty"`
 }
 
 // ArtistDetail represents a structured data type
@@ -199,6 +200,48 @@ type SearchResponse struct {
 	Artists []Artist `json:"artists" yaml:"artists"`
 	Albums  []Album  `json:"albums" yaml:"albums"`
 	Tracks  []Track  `json:"tracks" yaml:"tracks"`
+}
+
+// TransferChunk represents a structured data type
+type TransferChunk struct {
+	Index  uint64 `json:"index" yaml:"index"`
+	Offset uint64 `json:"offset" yaml:"offset"`
+	Size   uint64 `json:"size" yaml:"size"`
+	Sha256 string `json:"sha256" yaml:"sha256"`
+}
+
+// TransferFile represents a structured data type
+type TransferFile struct {
+	RootRelativePath string          `json:"root_relative_path" yaml:"root_relative_path"`
+	ContentType      string          `json:"content_type" yaml:"content_type"`
+	SizeBytes        uint64          `json:"size_bytes" yaml:"size_bytes"`
+	Sha256           string          `json:"sha256" yaml:"sha256"`
+	Chunks           []TransferChunk `json:"chunks" yaml:"chunks"`
+}
+
+// ExportManifestRequest represents a structured data type
+type ExportManifestRequest struct {
+	TrackId TrackId `json:"track_id" yaml:"track_id"`
+}
+
+// ExportManifest represents a structured data type
+type ExportManifest struct {
+	Track Track          `json:"track" yaml:"track"`
+	Files []TransferFile `json:"files" yaml:"files"`
+}
+
+// ExportChunkRequest represents a structured data type
+type ExportChunkRequest struct {
+	TrackId          TrackId `json:"track_id" yaml:"track_id"`
+	RootRelativePath string  `json:"root_relative_path" yaml:"root_relative_path"`
+	ChunkIndex       uint64  `json:"chunk_index" yaml:"chunk_index"`
+}
+
+// ExportChunk represents a structured data type
+type ExportChunk struct {
+	RootRelativePath string `json:"root_relative_path" yaml:"root_relative_path"`
+	ChunkIndex       uint64 `json:"chunk_index" yaml:"chunk_index"`
+	Data             []byte `json:"data" yaml:"data"`
 }
 
 // AudiobookProgress represents a structured data type
@@ -691,17 +734,56 @@ type RevokeSatelliteTokenRequest struct {
 
 // ImportTrackRequest represents a structured data type
 type ImportTrackRequest struct {
-	RootRelativePath string  `json:"root_relative_path" yaml:"root_relative_path"`
-	ContentType      string  `json:"content_type" yaml:"content_type"`
-	ContentHash      *string `json:"content_hash,omitempty" yaml:"content_hash,omitempty"`
-	Data             []byte  `json:"data" yaml:"data"`
+	Library          *Library `json:"library,omitempty" yaml:"library,omitempty"`
+	RootRelativePath string   `json:"root_relative_path" yaml:"root_relative_path"`
+	ContentType      string   `json:"content_type" yaml:"content_type"`
+	ContentHash      *string  `json:"content_hash,omitempty" yaml:"content_hash,omitempty"`
+	Data             []byte   `json:"data" yaml:"data"`
 }
 
 // ImportResult represents a structured data type
 type ImportResult struct {
 	Imported        bool     `json:"imported" yaml:"imported"`
 	TrackId         *TrackId `json:"track_id,omitempty" yaml:"track_id,omitempty"`
+	Track           *Track   `json:"track,omitempty" yaml:"track,omitempty"`
 	SkippedExisting bool     `json:"skipped_existing" yaml:"skipped_existing"`
+}
+
+// MissingChunk represents a structured data type
+type MissingChunk struct {
+	FileIndex  uint64 `json:"file_index" yaml:"file_index"`
+	ChunkIndex uint64 `json:"chunk_index" yaml:"chunk_index"`
+}
+
+// BeginImportRequest represents a structured data type
+type BeginImportRequest struct {
+	Library        *Library       `json:"library,omitempty" yaml:"library,omitempty"`
+	TrackFileIndex uint64         `json:"track_file_index" yaml:"track_file_index"`
+	Files          []TransferFile `json:"files" yaml:"files"`
+}
+
+// BeginImportResult represents a structured data type
+type BeginImportResult struct {
+	TransferId    string         `json:"transfer_id" yaml:"transfer_id"`
+	MissingChunks []MissingChunk `json:"missing_chunks" yaml:"missing_chunks"`
+}
+
+// ImportChunkRequest represents a structured data type
+type ImportChunkRequest struct {
+	TransferId string `json:"transfer_id" yaml:"transfer_id"`
+	FileIndex  uint64 `json:"file_index" yaml:"file_index"`
+	ChunkIndex uint64 `json:"chunk_index" yaml:"chunk_index"`
+	Data       []byte `json:"data" yaml:"data"`
+}
+
+// FinishImportRequest represents a structured data type
+type FinishImportRequest struct {
+	TransferId string `json:"transfer_id" yaml:"transfer_id"`
+}
+
+// CancelImportRequest represents a structured data type
+type CancelImportRequest struct {
+	TransferId string `json:"transfer_id" yaml:"transfer_id"`
 }
 
 // Settings represents a structured data type

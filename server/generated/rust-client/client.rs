@@ -130,6 +130,29 @@ impl<T: Transport> LibraryClient<T> {
         decode_search_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// export-manifest (request/response).
+    pub fn export_manifest(
+        &self,
+        req: ExportManifestRequest,
+    ) -> Result<ExportManifest, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "export-manifest",
+            &encode_export_manifest_request(&req),
+        )?;
+        decode_export_manifest(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// export-chunk (request/response).
+    pub fn export_chunk(&self, req: ExportChunkRequest) -> Result<ExportChunk, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "export-chunk",
+            &encode_export_chunk_request(&req),
+        )?;
+        decode_export_chunk(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// list-playlists (request/response).
     pub fn list_playlists(&self, req: BrowseRequest) -> Result<PlaylistsResponse, ClientError> {
         let csil_resp = self.transport.call(
@@ -487,6 +510,46 @@ impl<T: Transport> AdminClient<T> {
             &encode_import_track_request(&req),
         )?;
         decode_import_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// begin-import (request/response).
+    pub fn begin_import(&self, req: BeginImportRequest) -> Result<BeginImportResult, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "begin-import",
+            &encode_begin_import_request(&req),
+        )?;
+        decode_begin_import_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// import-chunk (request/response).
+    pub fn import_chunk(&self, req: ImportChunkRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "import-chunk",
+            &encode_import_chunk_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// finish-import (request/response).
+    pub fn finish_import(&self, req: FinishImportRequest) -> Result<ImportResult, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "finish-import",
+            &encode_finish_import_request(&req),
+        )?;
+        decode_import_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// cancel-import (request/response).
+    pub fn cancel_import(&self, req: CancelImportRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "cancel-import",
+            &encode_cancel_import_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
     /// get-settings (request/response).

@@ -458,14 +458,17 @@ public struct AlbumDetail: Equatable, Sendable {
 public struct ArtistRequest: Equatable, Sendable {
     /// wire key: artist_id
     public let artistId: ArtistId
+    public let library: Library?
 
-    public init(artistId: ArtistId) {
+    public init(artistId: ArtistId, library: Library? = "music") {
         self.artistId = artistId
+        self.library = library
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "artistId": "artist_id"
+        "artistId": "artist_id",
+        "library": "library"
     ]
 }
 
@@ -533,6 +536,135 @@ public struct SearchResponse: Equatable, Sendable {
         "artists": "artists",
         "albums": "albums",
         "tracks": "tracks"
+    ]
+}
+
+/// TransferChunk is a generated CSIL record type.
+public struct TransferChunk: Equatable, Sendable {
+    public let index: UInt64
+    public let offset: UInt64
+    public let size: UInt64
+    public let sha256: String
+
+    public init(index: UInt64, offset: UInt64, size: UInt64, sha256: String) {
+        self.index = index
+        self.offset = offset
+        self.size = size
+        self.sha256 = sha256
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "index": "index",
+        "offset": "offset",
+        "size": "size",
+        "sha256": "sha256"
+    ]
+}
+
+/// TransferFile is a generated CSIL record type.
+public struct TransferFile: Equatable, Sendable {
+    /// wire key: root_relative_path
+    public let rootRelativePath: String
+    /// wire key: content_type
+    public let contentType: String
+    /// wire key: size_bytes
+    public let sizeBytes: UInt64
+    public let sha256: String
+    public let chunks: [TransferChunk]
+
+    public init(rootRelativePath: String, contentType: String, sizeBytes: UInt64, sha256: String, chunks: [TransferChunk]) {
+        self.rootRelativePath = rootRelativePath
+        self.contentType = contentType
+        self.sizeBytes = sizeBytes
+        self.sha256 = sha256
+        self.chunks = chunks
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "rootRelativePath": "root_relative_path",
+        "contentType": "content_type",
+        "sizeBytes": "size_bytes",
+        "sha256": "sha256",
+        "chunks": "chunks"
+    ]
+}
+
+/// ExportManifestRequest is a generated CSIL record type.
+public struct ExportManifestRequest: Equatable, Sendable {
+    /// wire key: track_id
+    public let trackId: TrackId
+
+    public init(trackId: TrackId) {
+        self.trackId = trackId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "trackId": "track_id"
+    ]
+}
+
+/// ExportManifest is a generated CSIL record type.
+public struct ExportManifest: Equatable, Sendable {
+    public let track: Track
+    public let files: [TransferFile]
+
+    public init(track: Track, files: [TransferFile]) {
+        self.track = track
+        self.files = files
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "track": "track",
+        "files": "files"
+    ]
+}
+
+/// ExportChunkRequest is a generated CSIL record type.
+public struct ExportChunkRequest: Equatable, Sendable {
+    /// wire key: track_id
+    public let trackId: TrackId
+    /// wire key: root_relative_path
+    public let rootRelativePath: String
+    /// wire key: chunk_index
+    public let chunkIndex: UInt64
+
+    public init(trackId: TrackId, rootRelativePath: String, chunkIndex: UInt64) {
+        self.trackId = trackId
+        self.rootRelativePath = rootRelativePath
+        self.chunkIndex = chunkIndex
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "trackId": "track_id",
+        "rootRelativePath": "root_relative_path",
+        "chunkIndex": "chunk_index"
+    ]
+}
+
+/// ExportChunk is a generated CSIL record type.
+public struct ExportChunk: Equatable, Sendable {
+    /// wire key: root_relative_path
+    public let rootRelativePath: String
+    /// wire key: chunk_index
+    public let chunkIndex: UInt64
+    public let data: [UInt8]
+
+    public init(rootRelativePath: String, chunkIndex: UInt64, data: [UInt8]) {
+        self.rootRelativePath = rootRelativePath
+        self.chunkIndex = chunkIndex
+        self.data = data
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "rootRelativePath": "root_relative_path",
+        "chunkIndex": "chunk_index",
+        "data": "data"
     ]
 }
 
@@ -2060,6 +2192,7 @@ public struct RevokeSatelliteTokenRequest: Equatable, Sendable {
 
 /// ImportTrackRequest is a generated CSIL record type.
 public struct ImportTrackRequest: Equatable, Sendable {
+    public let library: Library?
     /// wire key: root_relative_path
     public let rootRelativePath: String
     /// wire key: content_type
@@ -2068,7 +2201,8 @@ public struct ImportTrackRequest: Equatable, Sendable {
     public let contentHash: String?
     public let data: [UInt8]
 
-    public init(rootRelativePath: String, contentType: String, contentHash: String? = nil, data: [UInt8]) {
+    public init(library: Library? = "music", rootRelativePath: String, contentType: String, contentHash: String? = nil, data: [UInt8]) {
+        self.library = library
         self.rootRelativePath = rootRelativePath
         self.contentType = contentType
         self.contentHash = contentHash
@@ -2077,6 +2211,7 @@ public struct ImportTrackRequest: Equatable, Sendable {
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
+        "library": "library",
         "rootRelativePath": "root_relative_path",
         "contentType": "content_type",
         "contentHash": "content_hash",
@@ -2089,12 +2224,14 @@ public struct ImportResult: Equatable, Sendable {
     public let imported: Bool
     /// wire key: track_id
     public let trackId: TrackId?
+    public let track: Track?
     /// wire key: skipped_existing
     public let skippedExisting: Bool
 
-    public init(imported: Bool, trackId: TrackId? = nil, skippedExisting: Bool = false) {
+    public init(imported: Bool, trackId: TrackId? = nil, track: Track? = nil, skippedExisting: Bool = false) {
         self.imported = imported
         self.trackId = trackId
+        self.track = track
         self.skippedExisting = skippedExisting
     }
 
@@ -2102,7 +2239,123 @@ public struct ImportResult: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "imported": "imported",
         "trackId": "track_id",
+        "track": "track",
         "skippedExisting": "skipped_existing"
+    ]
+}
+
+/// MissingChunk is a generated CSIL record type.
+public struct MissingChunk: Equatable, Sendable {
+    /// wire key: file_index
+    public let fileIndex: UInt64
+    /// wire key: chunk_index
+    public let chunkIndex: UInt64
+
+    public init(fileIndex: UInt64, chunkIndex: UInt64) {
+        self.fileIndex = fileIndex
+        self.chunkIndex = chunkIndex
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "fileIndex": "file_index",
+        "chunkIndex": "chunk_index"
+    ]
+}
+
+/// BeginImportRequest is a generated CSIL record type.
+public struct BeginImportRequest: Equatable, Sendable {
+    public let library: Library?
+    /// wire key: track_file_index
+    public let trackFileIndex: UInt64
+    public let files: [TransferFile]
+
+    public init(library: Library? = "music", trackFileIndex: UInt64, files: [TransferFile]) {
+        self.library = library
+        self.trackFileIndex = trackFileIndex
+        self.files = files
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "library": "library",
+        "trackFileIndex": "track_file_index",
+        "files": "files"
+    ]
+}
+
+/// BeginImportResult is a generated CSIL record type.
+public struct BeginImportResult: Equatable, Sendable {
+    /// wire key: transfer_id
+    public let transferId: String
+    /// wire key: missing_chunks
+    public let missingChunks: [MissingChunk]
+
+    public init(transferId: String, missingChunks: [MissingChunk]) {
+        self.transferId = transferId
+        self.missingChunks = missingChunks
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "transferId": "transfer_id",
+        "missingChunks": "missing_chunks"
+    ]
+}
+
+/// ImportChunkRequest is a generated CSIL record type.
+public struct ImportChunkRequest: Equatable, Sendable {
+    /// wire key: transfer_id
+    public let transferId: String
+    /// wire key: file_index
+    public let fileIndex: UInt64
+    /// wire key: chunk_index
+    public let chunkIndex: UInt64
+    public let data: [UInt8]
+
+    public init(transferId: String, fileIndex: UInt64, chunkIndex: UInt64, data: [UInt8]) {
+        self.transferId = transferId
+        self.fileIndex = fileIndex
+        self.chunkIndex = chunkIndex
+        self.data = data
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "transferId": "transfer_id",
+        "fileIndex": "file_index",
+        "chunkIndex": "chunk_index",
+        "data": "data"
+    ]
+}
+
+/// FinishImportRequest is a generated CSIL record type.
+public struct FinishImportRequest: Equatable, Sendable {
+    /// wire key: transfer_id
+    public let transferId: String
+
+    public init(transferId: String) {
+        self.transferId = transferId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "transferId": "transfer_id"
+    ]
+}
+
+/// CancelImportRequest is a generated CSIL record type.
+public struct CancelImportRequest: Equatable, Sendable {
+    /// wire key: transfer_id
+    public let transferId: String
+
+    public init(transferId: String) {
+        self.transferId = transferId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "transferId": "transfer_id"
     ]
 }
 

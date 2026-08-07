@@ -51,6 +51,14 @@ func NewBrowseRequest() *BrowseRequest {
 	}
 }
 
+// NewArtistRequest creates a ArtistRequest with default values:
+//   - library: "music"
+func NewArtistRequest() *ArtistRequest {
+	return &ArtistRequest{
+		Library: func() *Library { v := Library("music"); return &v }(),
+	}
+}
+
 // NewSearchRequest creates a SearchRequest with default values:
 //   - library: "music"
 //   - limit: 50
@@ -153,11 +161,27 @@ func NewCreateNodeTokenRequest() *CreateNodeTokenRequest {
 	}
 }
 
+// NewImportTrackRequest creates a ImportTrackRequest with default values:
+//   - library: "music"
+func NewImportTrackRequest() *ImportTrackRequest {
+	return &ImportTrackRequest{
+		Library: func() *Library { v := Library("music"); return &v }(),
+	}
+}
+
 // NewImportResult creates a ImportResult with default values:
 //   - skipped_existing: false
 func NewImportResult() *ImportResult {
 	return &ImportResult{
 		SkippedExisting: false,
+	}
+}
+
+// NewBeginImportRequest creates a BeginImportRequest with default values:
+//   - library: "music"
+func NewBeginImportRequest() *BeginImportRequest {
+	return &BeginImportRequest{
+		Library: func() *Library { v := Library("music"); return &v }(),
 	}
 }
 

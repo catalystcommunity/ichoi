@@ -48,6 +48,12 @@ class LibraryAsyncClient(private val transport: AsyncTransport) {
     suspend fun search(request: SearchRequest): SearchResponse {
         return decode<SearchResponse>(transport.call("LibraryService", "search", encode(request)))
     }
+    suspend fun exportManifest(request: ExportManifestRequest): ExportManifest {
+        return decode<ExportManifest>(transport.call("LibraryService", "export-manifest", encode(request)))
+    }
+    suspend fun exportChunk(request: ExportChunkRequest): ExportChunk {
+        return decode<ExportChunk>(transport.call("LibraryService", "export-chunk", encode(request)))
+    }
     suspend fun listPlaylists(request: BrowseRequest): PlaylistsResponse {
         return decode<PlaylistsResponse>(transport.call("LibraryService", "list-playlists", encode(request)))
     }
@@ -157,6 +163,18 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun importTrack(request: ImportTrackRequest): ImportResult {
         return decode<ImportResult>(transport.call("AdminService", "import-track", encode(request)))
+    }
+    suspend fun beginImport(request: BeginImportRequest): BeginImportResult {
+        return decode<BeginImportResult>(transport.call("AdminService", "begin-import", encode(request)))
+    }
+    suspend fun importChunk(request: ImportChunkRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "import-chunk", encode(request)))
+    }
+    suspend fun finishImport(request: FinishImportRequest): ImportResult {
+        return decode<ImportResult>(transport.call("AdminService", "finish-import", encode(request)))
+    }
+    suspend fun cancelImport(request: CancelImportRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "cancel-import", encode(request)))
     }
     suspend fun getSettings(request: Page): Settings {
         return decode<Settings>(transport.call("AdminService", "get-settings", encode(request)))

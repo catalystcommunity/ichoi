@@ -236,6 +236,30 @@ pub const SearchResponse = struct {
     tracks: []Track,
 };
 
+/// TransferChunk is a structured data type.
+pub const TransferChunk = struct {
+    index: u64,
+    offset: u64,
+    size: u64,
+    sha256: []const u8,
+};
+
+/// TransferFile is a structured data type.
+pub const TransferFile = struct {
+    root_relative_path: []const u8,
+    content_type: []const u8,
+    size_bytes: u64,
+    sha256: []const u8,
+    chunks: []TransferChunk,
+};
+
+/// ExportChunk is a structured data type.
+pub const ExportChunk = struct {
+    root_relative_path: []const u8,
+    chunk_index: u64,
+    data: []const u8,
+};
+
 /// AudiobookProgressRequest is a structured data type.
 pub const AudiobookProgressRequest = struct {
     track_ids: []TrackId,
@@ -514,6 +538,7 @@ pub const RevokeSatelliteTokenRequest = struct {
 
 /// ImportTrackRequest is a structured data type.
 pub const ImportTrackRequest = struct {
+    library: ?Library = null,
     root_relative_path: []const u8,
     content_type: []const u8,
     content_hash: ?[]const u8 = null,
@@ -524,7 +549,45 @@ pub const ImportTrackRequest = struct {
 pub const ImportResult = struct {
     imported: bool,
     track_id: ?TrackId = null,
+    track: ?Track = null,
     skipped_existing: bool,
+};
+
+/// MissingChunk is a structured data type.
+pub const MissingChunk = struct {
+    file_index: u64,
+    chunk_index: u64,
+};
+
+/// BeginImportRequest is a structured data type.
+pub const BeginImportRequest = struct {
+    library: ?Library = null,
+    track_file_index: u64,
+    files: []TransferFile,
+};
+
+/// BeginImportResult is a structured data type.
+pub const BeginImportResult = struct {
+    transfer_id: []const u8,
+    missing_chunks: []MissingChunk,
+};
+
+/// ImportChunkRequest is a structured data type.
+pub const ImportChunkRequest = struct {
+    transfer_id: []const u8,
+    file_index: u64,
+    chunk_index: u64,
+    data: []const u8,
+};
+
+/// FinishImportRequest is a structured data type.
+pub const FinishImportRequest = struct {
+    transfer_id: []const u8,
+};
+
+/// CancelImportRequest is a structured data type.
+pub const CancelImportRequest = struct {
+    transfer_id: []const u8,
 };
 
 /// Settings is a structured data type.
@@ -619,12 +682,31 @@ pub const AlbumDetail = struct {
 /// ArtistRequest is a structured data type.
 pub const ArtistRequest = struct {
     artist_id: ArtistId,
+    library: ?Library = null,
 };
 
 /// ArtistDetail is a structured data type.
 pub const ArtistDetail = struct {
     artist: Artist,
     albums: []Album,
+};
+
+/// ExportManifestRequest is a structured data type.
+pub const ExportManifestRequest = struct {
+    track_id: TrackId,
+};
+
+/// ExportManifest is a structured data type.
+pub const ExportManifest = struct {
+    track: Track,
+    files: []TransferFile,
+};
+
+/// ExportChunkRequest is a structured data type.
+pub const ExportChunkRequest = struct {
+    track_id: TrackId,
+    root_relative_path: []const u8,
+    chunk_index: u64,
 };
 
 /// AudiobookProgress is a structured data type.

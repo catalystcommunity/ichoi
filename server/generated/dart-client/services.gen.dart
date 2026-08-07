@@ -108,6 +108,24 @@ final class LibraryClient {
     return SearchResponse.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  ExportManifest exportManifest(ExportManifestRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'export-manifest',
+      request.toCbor(),
+    );
+    return ExportManifest.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ExportChunk exportChunk(ExportChunkRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'export-chunk',
+      request.toCbor(),
+    );
+    return ExportChunk.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   PlaylistsResponse listPlaylists(BrowseRequest request) {
     final csilResp = transport.call(
       'LibraryService',
@@ -406,6 +424,42 @@ final class AdminClient {
       request.toCbor(),
     );
     return ImportResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  BeginImportResult beginImport(BeginImportRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'begin-import',
+      request.toCbor(),
+    );
+    return BeginImportResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok importChunk(ImportChunkRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'import-chunk',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ImportResult finishImport(FinishImportRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'finish-import',
+      request.toCbor(),
+    );
+    return ImportResult.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok cancelImport(CancelImportRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'cancel-import',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   Settings getSettings(Page request) {

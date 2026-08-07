@@ -874,6 +874,7 @@ class ArtistRequest
 
   def csil_to_tree
     csil_map = {}
+    csil_map["library"] = (library) unless library.nil?
     csil_map["artist_id"] = artist_id
     csil_map
   end
@@ -884,7 +885,13 @@ class ArtistRequest
 
   def self.csil_from_tree(node)
     new(
-      artist_id: node["artist_id"]
+      artist_id: node["artist_id"],
+      library: (node.key?("library") ? (case (node["library"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
+end) : nil)
     )
   end
 end
@@ -972,6 +979,174 @@ class SearchResponse
       artists: (node["artists"]).map { |csil_e| Artist.csil_from_tree(csil_e) },
       albums: (node["albums"]).map { |csil_e| Album.csil_from_tree(csil_e) },
       tracks: (node["tracks"]).map { |csil_e| Track.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for TransferChunk: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class TransferChunk
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["size"] = size
+    csil_map["index"] = index
+    csil_map["offset"] = offset
+    csil_map["sha256"] = sha256
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      index: node["index"],
+      offset: node["offset"],
+      size: node["size"],
+      sha256: node["sha256"]
+    )
+  end
+end
+
+# CBOR codec for TransferFile: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class TransferFile
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["chunks"] = (chunks).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map["sha256"] = sha256
+    csil_map["size_bytes"] = size_bytes
+    csil_map["content_type"] = content_type
+    csil_map["root_relative_path"] = root_relative_path
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      root_relative_path: node["root_relative_path"],
+      content_type: node["content_type"],
+      size_bytes: node["size_bytes"],
+      sha256: node["sha256"],
+      chunks: (node["chunks"]).map { |csil_e| TransferChunk.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for ExportManifestRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ExportManifestRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["track_id"] = track_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      track_id: node["track_id"]
+    )
+  end
+end
+
+# CBOR codec for ExportManifest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ExportManifest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["files"] = (files).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map["track"] = (track).csil_to_tree
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      track: Track.csil_from_tree(node["track"]),
+      files: (node["files"]).map { |csil_e| TransferFile.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for ExportChunkRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ExportChunkRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["track_id"] = track_id
+    csil_map["chunk_index"] = chunk_index
+    csil_map["root_relative_path"] = root_relative_path
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      track_id: node["track_id"],
+      root_relative_path: node["root_relative_path"],
+      chunk_index: node["chunk_index"]
+    )
+  end
+end
+
+# CBOR codec for ExportChunk: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ExportChunk
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["data"] = (data).b
+    csil_map["chunk_index"] = chunk_index
+    csil_map["root_relative_path"] = root_relative_path
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      root_relative_path: node["root_relative_path"],
+      chunk_index: node["chunk_index"],
+      data: node["data"]
     )
   end
 end
@@ -2988,6 +3163,7 @@ class ImportTrackRequest
   def csil_to_tree
     csil_map = {}
     csil_map["data"] = (data).b
+    csil_map["library"] = (library) unless library.nil?
     csil_map["content_hash"] = content_hash unless content_hash.nil?
     csil_map["content_type"] = content_type
     csil_map["root_relative_path"] = root_relative_path
@@ -3000,6 +3176,12 @@ class ImportTrackRequest
 
   def self.csil_from_tree(node)
     new(
+      library: (node.key?("library") ? (case (node["library"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
+end) : nil),
       root_relative_path: node["root_relative_path"],
       content_type: node["content_type"],
       content_hash: (node.key?("content_hash") ? node["content_hash"] : nil),
@@ -3017,6 +3199,7 @@ class ImportResult
 
   def csil_to_tree
     csil_map = {}
+    csil_map["track"] = (track).csil_to_tree unless track.nil?
     csil_map["imported"] = imported
     csil_map["track_id"] = track_id unless track_id.nil?
     csil_map["skipped_existing"] = skipped_existing
@@ -3031,7 +3214,171 @@ class ImportResult
     new(
       imported: node["imported"],
       track_id: (node.key?("track_id") ? node["track_id"] : nil),
+      track: (node.key?("track") ? Track.csil_from_tree(node["track"]) : nil),
       skipped_existing: node["skipped_existing"]
+    )
+  end
+end
+
+# CBOR codec for MissingChunk: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class MissingChunk
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["file_index"] = file_index
+    csil_map["chunk_index"] = chunk_index
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      file_index: node["file_index"],
+      chunk_index: node["chunk_index"]
+    )
+  end
+end
+
+# CBOR codec for BeginImportRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class BeginImportRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["files"] = (files).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map["library"] = (library) unless library.nil?
+    csil_map["track_file_index"] = track_file_index
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      library: (node.key?("library") ? (case (node["library"])
+when "music" then "music"
+when "audiobook" then "audiobook"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
+end) : nil),
+      track_file_index: node["track_file_index"],
+      files: (node["files"]).map { |csil_e| TransferFile.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for BeginImportResult: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class BeginImportResult
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["transfer_id"] = transfer_id
+    csil_map["missing_chunks"] = (missing_chunks).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      transfer_id: node["transfer_id"],
+      missing_chunks: (node["missing_chunks"]).map { |csil_e| MissingChunk.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for ImportChunkRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ImportChunkRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["data"] = (data).b
+    csil_map["file_index"] = file_index
+    csil_map["chunk_index"] = chunk_index
+    csil_map["transfer_id"] = transfer_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      transfer_id: node["transfer_id"],
+      file_index: node["file_index"],
+      chunk_index: node["chunk_index"],
+      data: node["data"]
+    )
+  end
+end
+
+# CBOR codec for FinishImportRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class FinishImportRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["transfer_id"] = transfer_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      transfer_id: node["transfer_id"]
+    )
+  end
+end
+
+# CBOR codec for CancelImportRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CancelImportRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["transfer_id"] = transfer_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      transfer_id: node["transfer_id"]
     )
   end
 end
