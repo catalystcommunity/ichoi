@@ -318,7 +318,7 @@ fn satellite_player_receives_load_directive() {
     app.control(
         &common::ctx_anon(),
         CommandRequest {
-            player_id,
+            player_id: player_id.clone(),
             command: PlayerCommand::Variant4(CmdPlay {
                 op: "play".to_string(),
                 index: None,
@@ -337,4 +337,25 @@ fn satellite_player_receives_load_directive() {
         load.pref.transcode_codec,
         Some(TranscodeCodec::Aac)
     ));
+
+    let state = app
+        .control(
+            &common::ctx_anon(),
+            CommandRequest {
+                player_id,
+                command: PlayerCommand::Variant9(CmdVolume {
+                    op: "volume".into(),
+                    volume: 37,
+                }),
+            },
+        )
+        .expect("set satellite volume");
+    assert_eq!(state.volume, 37);
+
+    let payload = rx.try_recv().expect("volume directive pushed");
+    let directive = decode_node_directive(&payload).expect("decode volume directive");
+    let NodeDirective::Variant4(volume) = directive else {
+        panic!("expected volume directive")
+    };
+    assert_eq!(volume.volume, 37);
 }

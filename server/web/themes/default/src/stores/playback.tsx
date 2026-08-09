@@ -31,6 +31,8 @@ import { useToast } from "./toasts.tsx";
 import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 import { finishUpdateReload, updateReloadInProgress } from "../lib/app-update.ts";
 import { onFirstGesture, probeAutoplay } from "../lib/audio-unlock.ts";
+import { planVolumeChange } from "../lib/volume.ts";
+import { parseOwnedTargetStore, resolveOutputTarget } from "../lib/output-target.ts";
 
 export const LOCAL_TARGET = "local";
 export type RepeatMode = "off" | "all" | "one";
@@ -39,6 +41,7 @@ const PREF_KEY = "ichoi.streamPref";
 const OWNED_KEY = "ichoi.ownedDevices";
 const REPEAT_KEY = "ichoi.repeatMode";
 const SHUFFLE_KEY = "ichoi.shuffle";
+const VOLUME_KEY = "ichoi.localVolume";
 
 function loadPref(): StreamPref {
   try {
@@ -50,11 +53,11 @@ function loadPref(): StreamPref {
   return { transcode_codec: "aac" };
 }
 
-function loadOwned(): string[] {
+function loadOwned() {
   try {
-    return JSON.parse(localStorage.getItem(OWNED_KEY) ?? "[]") as string[];
+    return parseOwnedTargetStore(localStorage.getItem(OWNED_KEY));
   } catch {
-    return [];
+    return { servers: {}, legacy: [] };
   }
 }
 
@@ -72,6 +75,14 @@ function loadShuffle(): boolean {
     return localStorage.getItem(SHUFFLE_KEY) === "true";
   } catch {
     return false;
+  }
+}
+
+function loadVolume(): number {
+  try {
+    return planVolumeChange(LOCAL_TARGET, Number(localStorage.getItem(VOLUME_KEY) ?? 100)).volume;
+  } catch {
+    return 100;
   }
 }
 
@@ -108,6 +119,8 @@ interface PlaybackContextValue {
   next: () => Promise<void>;
   previous: () => Promise<void>;
   seek: (ms: number) => void;
+  volume: Accessor<number>;
+  setVolume: (volume: number) => void;
   stop: () => void;
   removeAt: (index: number) => void;
   move: (from: number, to: number) => void;
@@ -152,7 +165,9 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     decoderMissing: false,
   });
   const [pref, setPrefSignal] = createSignal<StreamPref>(loadPref());
-  const [owned, setOwned] = createSignal<string[]>(loadOwned());
+  const loadedOwned = loadOwned();
+  const [ownedByServer, setOwnedByServer] = createSignal<Record<string, string[]>>(loadedOwned.servers);
+  const [legacyOwned, setLegacyOwned] = createSignal(loadedOwned.legacy);
   const [target, setTargetSignal] = createSignal<string>(
     satelliteMode ? "satellite-pending" : LOCAL_TARGET,
   );
@@ -160,11 +175,16 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   const [audioBlocked, setAudioBlocked] = createSignal(false);
   const [repeatMode, setRepeatMode] = createSignal<RepeatMode>(loadRepeatMode());
   const [shuffle, setShuffle] = createSignal(loadShuffle());
+  const [localVolume, setLocalVolume] = createSignal(loadVolume());
+  const [remoteVolume, setRemoteVolume] = createSignal(100);
   let lastProgressTrack = "";
   let lastProgressPosition = -1;
   let lastSatelliteReportSecond = -1;
 
   const satellitePlayerId = () => servers.active()?.satellitePlayerId;
+  const owned = () => ownedByServer()[servers.activeId() ?? ""] ?? [];
+  const isLocal = () => !satelliteMode && target() === LOCAL_TARGET;
+  const volume = () => isLocal() ? localVolume() : remoteVolume();
 
   function reportSatellite(status: "stopped" | "playing" | "paused", positionMs?: number): void {
     const playerId = satellitePlayerId();
@@ -225,29 +245,50 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   const isOwned = (id: string) =>
     owned().includes(id) || (satelliteMode && id === satellitePlayerId());
 
-  function persistOwned(next: string[]): void {
+  function persistOwned(next: Record<string, string[]>): void {
     try {
-      localStorage.setItem(OWNED_KEY, JSON.stringify(next));
+      localStorage.setItem(OWNED_KEY, JSON.stringify({ version: 2, servers: next }));
     } catch {
       /* ignore */
     }
   }
 
   function markOwned(id: string): void {
-    setOwned((o) => {
-      const next = o.includes(id) ? o : [...o, id];
+    const serverId = servers.activeId();
+    if (!serverId) return;
+    setOwnedByServer((current) => {
+      const ids = current[serverId] ?? [];
+      const next = ids.includes(id) ? current : { ...current, [serverId]: [...ids, id] };
       persistOwned(next);
       return next;
     });
   }
 
   function unmarkOwned(id: string): void {
-    setOwned((o) => {
-      const next = o.filter((x) => x !== id);
+    const serverId = servers.activeId();
+    if (!serverId) return;
+    setOwnedByServer((current) => {
+      const ids = current[serverId] ?? [];
+      const next = { ...current, [serverId]: ids.filter((value) => value !== id) };
       persistOwned(next);
       return next;
     });
   }
+
+  // Older versions stored one global list. Assign it once to the first active server so it
+  // cannot claim matching player IDs on every connected instance.
+  createEffect(() => {
+    const serverId = servers.activeId();
+    const legacy = legacyOwned();
+    if (!serverId || legacy.length === 0) return;
+    setOwnedByServer((current) => {
+      const existing = current[serverId] ?? [];
+      const next = { ...current, [serverId]: [...new Set([...existing, ...legacy])] };
+      persistOwned(next);
+      return next;
+    });
+    setLegacyOwned([]);
+  });
 
   // A shared id is `share:<owner>:<suffix>`; enable-share re-claims by suffix.
   function suffixOf(id: string): string {
@@ -257,6 +298,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   // --- Audio engine (HTTP /media + native <audio>; §5 bridge) ---------------
   const audio = typeof Audio !== "undefined" ? new Audio() : undefined;
+  if (audio) audio.volume = localVolume() / 100;
 
   async function applySatelliteSink(): Promise<void> {
     if (!satelliteMode || !audio || !("setSinkId" in audio)) return;
@@ -422,9 +464,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     if (state.player_id !== t || target() !== t) return;
     setQueue(state.queue.map(qiToTrack));
     setCurrentIndex(state.current_index ?? -1);
+    setRemoteVolume(state.volume);
     const idx = state.current_index ?? -1;
     const cur = idx >= 0 && idx < state.queue.length ? state.queue[idx] : undefined;
     if (isOwned(t)) {
+      if (audio) audio.volume = state.volume / 100;
       setSnapshot((current): PlaybackSnapshot => ({
         ...current,
         status: mapStatus(state.status),
@@ -465,9 +509,9 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   onCleanup(() => unsub?.());
 
   let controlChain: Promise<PlayerState | undefined> = Promise.resolve(undefined);
+  let volumeTimer: ReturnType<typeof setTimeout> | undefined;
 
-  function control(command: PlayerCommand): Promise<PlayerState | undefined> {
-    const t = target();
+  function control(command: PlayerCommand, t = target()): Promise<PlayerState | undefined> {
     if (t === LOCAL_TARGET || t === "satellite-pending") return Promise.resolve(undefined);
     controlChain = controlChain
       .then(async () => {
@@ -533,6 +577,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   let savedLocal: { tracks: Track[]; index: number } | undefined;
 
   function setTarget(id: string): void {
+    id = resolveOutputTarget(id, sharedTargets(), owned());
     if (satelliteMode && id !== satellitePlayerId()) return;
     const prev = target();
     if (prev === LOCAL_TARGET && id !== LOCAL_TARGET) {
@@ -543,6 +588,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     setTargetSignal(id);
     if (id === LOCAL_TARGET) {
       ownerTrackId = undefined;
+      if (audio) audio.volume = localVolume() / 100;
       if (savedLocal) {
         setQueue(savedLocal.tracks);
         setCurrentIndex(savedLocal.index);
@@ -647,8 +693,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: String(e) }));
     }
   }
-
-  const isLocal = () => !satelliteMode && target() === LOCAL_TARGET;
 
   async function enableOutputAudio(): Promise<void> {
     if (!audio) throw new Error("Browser audio is unavailable");
@@ -814,6 +858,31 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
   }
 
+  function setVolume(value: number): void {
+    const change = planVolumeChange(target(), value);
+    if (change.mediaVolume !== undefined) {
+      setLocalVolume(change.volume);
+      if (audio) audio.volume = change.mediaVolume;
+      try {
+        localStorage.setItem(VOLUME_KEY, String(change.volume));
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    setRemoteVolume(change.volume);
+    if (audio && isOwned(target())) audio.volume = change.volume / 100;
+    if (volumeTimer !== undefined) clearTimeout(volumeTimer);
+    const volumeTarget = target();
+    const command = change.command;
+    if (command) {
+      volumeTimer = setTimeout(() => {
+        volumeTimer = undefined;
+        void control(command, volumeTarget);
+      }, 50);
+    }
+  }
+
   function stop(): void {
     if (!isLocal()) {
       void control({ op: "clear" });
@@ -884,6 +953,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   onCleanup(() => {
+    if (volumeTimer !== undefined) clearTimeout(volumeTimer);
     reportAudiobookProgress();
     audio?.pause();
   });
@@ -903,6 +973,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     next,
     previous,
     seek,
+    volume,
+    setVolume,
     stop,
     removeAt,
     move,
