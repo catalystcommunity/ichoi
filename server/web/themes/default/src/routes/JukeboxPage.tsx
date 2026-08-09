@@ -25,6 +25,7 @@ import {
   IconPlay,
   IconPrev,
 } from "../components/Icons.tsx";
+import { outputTargetName } from "../lib/output-target.ts";
 
 export function JukeboxPage(): JSX.Element {
   const servers = useServers();
@@ -41,6 +42,7 @@ export function JukeboxPage(): JSX.Element {
 
   const shared = () => players()?.players.filter((p) => p.kind === "shared") ?? [];
   const priv = () => players()?.players.filter((p) => p.kind === "private") ?? [];
+  const mine = () => shared().filter((player) => pb.owned().includes(player.id));
 
   const enableShare = async (e: Event) => {
     e.preventDefault();
@@ -70,7 +72,7 @@ export function JukeboxPage(): JSX.Element {
             <p class="page-sub">{t("jukebox.subtitle")}</p>
           </div>
           <Show
-            when={pb.owned().length > 0}
+            when={mine().length > 0}
             fallback={
               <button type="button" class="btn" onClick={() => setShowShare(true)}>
                 <IconBroadcast size={16} /> {t("jukebox.shareThisDevice")}
@@ -81,7 +83,7 @@ export function JukeboxPage(): JSX.Element {
               type="button"
               class="btn"
               onClick={() => {
-                for (const id of pb.owned()) void pb.releaseDevice(id);
+                for (const player of mine()) void pb.releaseDevice(player.id);
               }}
             >
               <IconBroadcast size={16} /> {t("jukebox.stopSharingThisDevice")}
@@ -171,6 +173,7 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
   const [blockedName, setBlockedName] = createSignal<string>();
 
   const isOutput = () => pb.owned().includes(props.player.id);
+  const displayName = () => outputTargetName(props.player.name, isOutput(), t("player.mine"));
 
   const api = servers.api();
   if (api) {
@@ -195,7 +198,7 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
     // Starting a blocked satellite looks like nothing happening at all, so say what is wrong.
     // The command still goes through: it plays as soon as somebody touches the satellite.
     if (props.player.audio_blocked && command.op === "play") {
-      setBlockedName(props.player.name);
+      setBlockedName(displayName());
     }
     try {
       const next = await a.player.control({ player_id: props.player.id, command });
@@ -206,10 +209,10 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
   };
 
   return (
-    <section class={`strip ${onAir() ? "on-air" : ""}`} aria-label={props.player.name}>
+    <section class={`strip ${onAir() ? "on-air" : ""}`} aria-label={displayName()}>
       <div class="strip-top">
         <div>
-          <div class="strip-name">{props.player.name}</div>
+          <div class="strip-name">{displayName()}</div>
           <div class="strip-where">
             <Show when={props.player.audio_blocked} fallback={t("jukebox.shared")}>
               {t("jukebox.blocked")}
@@ -277,7 +280,7 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
           min={0}
           max={100}
           value={state()?.volume ?? 100}
-          aria-label={`${props.player.name} ${t("jukebox.volume")}`}
+          aria-label={`${displayName()} ${t("jukebox.volume")}`}
           onChange={(e) => void send({ op: "volume", volume: Number(e.currentTarget.value) })}
         />
       </label>

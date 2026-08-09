@@ -13,10 +13,12 @@ import {
   IconPrev,
   IconRepeat,
   IconShuffle,
+  IconVolume,
 } from "./Icons.tsx";
 import { satelliteToken } from "../lib/satellite-mode.ts";
 import { isInstalledPwa } from "../lib/audio-unlock.ts";
 import { TargetAudioBlocked } from "./AudioBlocked.tsx";
+import { firstOwnedTarget, outputTargetName } from "../lib/output-target.ts";
 
 export function Transport(): JSX.Element {
   const pb = usePlayback();
@@ -28,10 +30,15 @@ export function Transport(): JSX.Element {
   const [blockedTarget, setBlockedTarget] = createSignal<string>();
 
   const track = () => pb.current();
+  const isMine = (id: string) => pb.owned().includes(id);
+  const activeOwnedTarget = () => firstOwnedTarget(pb.sharedTargets(), pb.owned());
+  const sharedTargetLabel = (id: string, name: string) =>
+    outputTargetName(name, isMine(id), t("player.mine"));
   const targetLabel = () => {
     const id = pb.target();
     if (id === "local") return t("nowPlaying.localPlayer");
-    return pb.sharedTargets().find((p) => p.id === id)?.name ?? id;
+    const player = pb.sharedTargets().find((p) => p.id === id);
+    return player ? sharedTargetLabel(player.id, player.name) : id;
   };
   // Remote (shared-target) queue items carry only title/duration, not codec details.
   const techSummary = () => {
@@ -127,16 +134,32 @@ export function Transport(): JSX.Element {
                 if (picked?.audio_blocked) setBlockedTarget(picked.name);
               }}
             >
-              <option value="local">{t("player.thisDevice")}</option>
+              <Show when={!activeOwnedTarget()}>
+                <option value="local">{t("player.thisDevice")}</option>
+              </Show>
               <For each={pb.sharedTargets()}>
                 {(p) => (
                   <option value={p.id}>
-                    {p.audio_blocked ? `${p.name} — ${t("jukebox.blocked")}` : p.name}
+                    {p.audio_blocked
+                      ? `${sharedTargetLabel(p.id, p.name)} — ${t("jukebox.blocked")}`
+                      : sharedTargetLabel(p.id, p.name)}
                   </option>
                 )}
               </For>
             </select>
           </Show>
+          <label class="transport-volume" title={`${t("player.volume")}: ${pb.volume()}%`}>
+            <IconVolume size={17} />
+            <input
+              class="slider"
+              type="range"
+              min={0}
+              max={100}
+              value={pb.volume()}
+              aria-label={`${targetLabel()} ${t("player.volume")}`}
+              onInput={(event) => pb.setVolume(Number(event.currentTarget.value))}
+            />
+          </label>
         </div>
       </div>
 

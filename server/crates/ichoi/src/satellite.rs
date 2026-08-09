@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 use std::io::{Read, Seek};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -121,10 +121,12 @@ async fn run_once(core_addr: &str, core_keys: &[String], node_token: &str) -> an
 
     let (out_tx, mut out_rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let mut states = HashMap::new();
+    let mut volumes = HashMap::<String, Arc<AtomicU8>>::new();
     let mut playback = HashMap::<String, PlaybackTask>::new();
     let mut media = ActiveMedia::default();
     for player in &registered.players {
         states.insert(player.id.clone(), PlayerStatus::Stopped);
+        volumes.insert(player.id.clone(), Arc::new(AtomicU8::new(100)));
         out_tx.send(report_frame(&player.id, PlayerStatus::Stopped, None))?;
     }
 
@@ -138,10 +140,10 @@ async fn run_once(core_addr: &str, core_keys: &[String], node_token: &str) -> an
                 match (service.as_str(), env.event.as_str()) {
                     ("node", "session") => {
                         let directive = decode_node_directive(&env.payload)?;
-                        apply_directive(&out_tx, &mut states, &mut playback, &mut media, directive).await?;
+                        apply_directive(&out_tx, &mut states, &mut volumes, &mut playback, &mut media, directive).await?;
                     }
                     ("media", "stream") => {
-                        handle_media_event(&out_tx, &mut playback, &mut media, decode_media_event(&env.payload)?).await?;
+                        handle_media_event(&out_tx, &mut volumes, &mut playback, &mut media, decode_media_event(&env.payload)?).await?;
                     }
                     _ => {}
                 }
@@ -226,6 +228,7 @@ struct ActiveMedia {
 async fn apply_directive(
     out_tx: &mpsc::UnboundedSender<Vec<u8>>,
     states: &mut HashMap<String, PlayerStatus>,
+    volumes: &mut HashMap<String, Arc<AtomicU8>>,
     playback: &mut HashMap<String, PlaybackTask>,
     media: &mut ActiveMedia,
     directive: NodeDirective,
@@ -287,6 +290,11 @@ async fn apply_directive(
             ))?;
         }
         NodeDirective::Variant4(vol) => {
+            let volume = u8::try_from(vol.volume.min(100)).unwrap_or(100);
+            volumes
+                .entry(vol.player_id.clone())
+                .or_insert_with(|| Arc::new(AtomicU8::new(100)))
+                .store(volume, Ordering::Relaxed);
             let status = states
                 .get(&vol.player_id)
                 .cloned()
@@ -300,6 +308,7 @@ async fn apply_directive(
 
 async fn handle_media_event(
     out_tx: &mpsc::UnboundedSender<Vec<u8>>,
+    volumes: &mut HashMap<String, Arc<AtomicU8>>,
     playback: &mut HashMap<String, PlaybackTask>,
     media: &mut ActiveMedia,
     event: MediaEvent,
@@ -308,11 +317,16 @@ async fn handle_media_event(
         MediaEvent::Variant0(header) => {
             if let Some(player_id) = media.player_id.clone() {
                 stop_player(playback, &player_id);
+                let volume = volumes
+                    .entry(player_id.clone())
+                    .or_insert_with(|| Arc::new(AtomicU8::new(100)))
+                    .clone();
                 playback.insert(
                     player_id.clone(),
                     PlaybackTask::start_streaming(
                         header.codec,
                         media.position_ms,
+                        volume,
                         player_id,
                         out_tx.clone(),
                     ),
@@ -356,6 +370,7 @@ impl PlaybackTask {
     fn start_streaming(
         codec: Codec,
         seek_ms: u64,
+        volume: Arc<AtomicU8>,
         player_id: String,
         out_tx: mpsc::UnboundedSender<Vec<u8>>,
     ) -> PlaybackTask {
@@ -368,6 +383,7 @@ impl PlaybackTask {
                 codec_extension(&codec),
                 seek_ms,
                 cancel2.clone(),
+                volume,
                 &player_id,
                 out_tx.clone(),
             );
@@ -473,6 +489,7 @@ fn decode_stream_to_default_output(
     extension: &'static str,
     seek_ms: u64,
     cancel: Arc<AtomicBool>,
+    volume: Arc<AtomicU8>,
     player_id: &str,
     out_tx: mpsc::UnboundedSender<Vec<u8>>,
 ) -> anyhow::Result<()> {
@@ -512,6 +529,7 @@ fn decode_stream_to_default_output(
     let mut played_frames: u64 = 0;
     let mut sample_rate: u32 = 0;
     let mut last_report_ms = seek_ms;
+    let mut adjusted = Vec::new();
 
     loop {
         if cancel.load(Ordering::Relaxed) {
@@ -561,6 +579,13 @@ fn decode_stream_to_default_output(
         } else {
             samples.as_bytes()
         };
+        let level = volume.load(Ordering::Relaxed);
+        let bytes = if level < 100 {
+            scale_s16le(bytes, level, &mut adjusted);
+            adjusted.as_slice()
+        } else {
+            bytes
+        };
         played_frames += sink.write_s16le(bytes)?;
         if sample_rate > 0 {
             let position_ms =
@@ -578,6 +603,16 @@ fn decode_stream_to_default_output(
     Ok(())
 }
 
+fn scale_s16le(bytes: &[u8], volume: u8, output: &mut Vec<u8>) {
+    output.clear();
+    output.reserve(bytes.len());
+    for pair in bytes.chunks_exact(2) {
+        let sample = i16::from_le_bytes([pair[0], pair[1]]);
+        let scaled = (i32::from(sample) * i32::from(volume.min(100)) / 100) as i16;
+        output.extend_from_slice(&scaled.to_le_bytes());
+    }
+}
+
 fn codec_extension(codec: &Codec) -> &'static str {
     match codec {
         Codec::Aac => "aac",
@@ -588,5 +623,40 @@ fn codec_extension(codec: &Codec) -> &'static str {
         Codec::Alac => "m4a",
         Codec::Wav => "wav",
         Codec::Wma => "wma",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::scale_s16le;
+
+    #[test]
+    fn scales_signed_pcm_without_changing_its_shape() {
+        let input = [i16::MIN, -10_000, 0, 10_000, i16::MAX]
+            .into_iter()
+            .flat_map(i16::to_le_bytes)
+            .collect::<Vec<_>>();
+        let mut output = Vec::new();
+
+        scale_s16le(&input, 50, &mut output);
+
+        let samples = output
+            .chunks_exact(2)
+            .map(|pair| i16::from_le_bytes([pair[0], pair[1]]))
+            .collect::<Vec<_>>();
+        assert_eq!(samples, [-16_384, -5_000, 0, 5_000, 16_383]);
+    }
+
+    #[test]
+    fn zero_volume_mutes_pcm() {
+        let input = [i16::MIN, -1, 1, i16::MAX]
+            .into_iter()
+            .flat_map(i16::to_le_bytes)
+            .collect::<Vec<_>>();
+        let mut output = Vec::new();
+
+        scale_s16le(&input, 0, &mut output);
+
+        assert!(output.iter().all(|byte| *byte == 0));
     }
 }

@@ -902,6 +902,17 @@ h3 {
   align-items: center;
   gap: 6px;
 }
+.transport-volume {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 118px;
+  margin-top: 6px;
+  color: var(--text-muted);
+}
+.transport-volume .slider {
+  min-width: 0;
+}
 .play-btn {
   width: 46px;
   height: 46px;
@@ -1224,6 +1235,9 @@ h3 {
   }
   .transport-center {
     min-width: 0;
+  }
+  .transport-volume {
+    width: 78px;
   }
   .scrub {
     display: none;
