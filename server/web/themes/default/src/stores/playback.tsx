@@ -32,7 +32,11 @@ import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 import { finishUpdateReload, updateReloadInProgress } from "../lib/app-update.ts";
 import { onFirstGesture, probeAutoplay } from "../lib/audio-unlock.ts";
 import { planVolumeChange } from "../lib/volume.ts";
-import { parseOwnedTargetStore, resolveOutputTarget } from "../lib/output-target.ts";
+import {
+  isBrowserShareTarget,
+  parseOwnedTargetStore,
+  resolveOutputTarget,
+} from "../lib/output-target.ts";
 
 export const LOCAL_TARGET = "local";
 export type RepeatMode = "off" | "all" | "one";
@@ -134,9 +138,6 @@ interface PlaybackContextValue {
   owned: Accessor<string[]>;
   /** Remember that this client owns (is the output for) a shared device. */
   markOwned: (id: string) => void;
-  /** Claim this browser as a device's output — a user gesture, so it also unlocks mobile
-   * audio. Marks it owned, re-asserts the share (server presence), and targets it. */
-  claimOutput: (id: string) => Promise<void>;
   /** Stop being a device's output and remove the share entirely. */
   releaseDevice: (id: string) => Promise<void>;
   /** Satisfy browser autoplay policy and bind the selected satellite audio sink. */
@@ -254,6 +255,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   function markOwned(id: string): void {
+    if (!isBrowserShareTarget(id)) return;
     const serverId = servers.activeId();
     if (!serverId) return;
     setOwnedByServer((current) => {
@@ -292,6 +294,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   // A shared id is `share:<owner>:<suffix>`; enable-share re-claims by suffix.
   function suffixOf(id: string): string {
+    if (!isBrowserShareTarget(id)) return "";
     const parts = id.split(":");
     return parts.length > 2 ? parts.slice(2).join(":") : "";
   }
@@ -546,21 +549,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     ),
   );
 
-  async function claimOutput(id: string): Promise<void> {
-    markOwned(id);
-    setTarget(id);
-    const a = servers.api();
-    const suffix = suffixOf(id);
-    if (a && suffix) {
-      try {
-        await a.player.enableShare({ suffix });
-      } catch (e) {
-        console.warn("[playback] claim output failed", e);
-      }
-    }
-  }
-
   async function releaseDevice(id: string): Promise<void> {
+    if (!isBrowserShareTarget(id) || !owned().includes(id)) return;
     const a = servers.api();
     if (a) {
       try {
@@ -571,6 +561,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
     unmarkOwned(id);
     if (target() === id) setTarget(LOCAL_TARGET);
+    void refetchPlayers();
   }
 
   // --- Target switching -----------------------------------------------------
@@ -594,6 +585,19 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
         setCurrentIndex(savedLocal.index);
       }
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "paused" }));
+    } else {
+      // Do not show the previous target's queue while the subscription changes. Fetch an
+      // explicit snapshot as well, so target switching does not depend on channel timing.
+      setQueue([]);
+      setCurrentIndex(-1);
+      setSnapshot({ status: "idle", positionMs: 0, decoderMissing: false });
+      const api = servers.api();
+      if (api) {
+        void api.player
+          .getState({ player_id: id })
+          .then((state) => applyRemote(id, state))
+          .catch((error) => console.warn("[playback] target state failed", error));
+      }
     }
   }
 
@@ -984,7 +988,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     sharedTargets,
     owned,
     markOwned,
-    claimOutput,
     releaseDevice,
     enableOutputAudio,
     outputAudioReady,

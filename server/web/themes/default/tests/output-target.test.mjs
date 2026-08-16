@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   firstOwnedTarget,
+  isBrowserShareTarget,
   outputTargetName,
   parseOwnedTargetStore,
   resolveOutputTarget,
@@ -45,6 +46,19 @@ test("ownership is stored separately for each server", () => {
   assert.deepEqual(parsed.servers.home, ["share:me:phone"]);
   assert.deepEqual(parsed.servers.cloud, ["share:me:browser"]);
   assert.deepEqual(parsed.legacy, []);
+});
+
+test("native satellite targets cannot become browser-owned shares", () => {
+  const parsed = parseOwnedTargetStore(JSON.stringify({
+    version: 2,
+    servers: {
+      home: ["player:sat:kitchen:default", "share:me:phone"],
+    },
+  }));
+
+  assert.deepEqual(parsed.servers.home, ["share:me:phone"]);
+  assert.equal(isBrowserShareTarget("player:sat:kitchen:default"), false);
+  assert.equal(isBrowserShareTarget("share:me:phone"), true);
 });
 
 test("the old global ownership list is migrated only once", () => {

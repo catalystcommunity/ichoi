@@ -64,6 +64,8 @@ public sealed class PlayerAsyncClient(ICsilAsyncTransport transport)
 {
     public async System.Threading.Tasks.Task<ListPlayersResponse> ListPlayersAsync(ListPlayersRequest listPlayersRequest) =>
         Codec.Decode<ListPlayersResponse>(await transport.Call("PlayerService", "list-players", Codec.Encode(listPlayersRequest)));
+    public async System.Threading.Tasks.Task<PlayerState> GetStateAsync(SubscribeRequest subscribeRequest) =>
+        Codec.Decode<PlayerState>(await transport.Call("PlayerService", "get-state", Codec.Encode(subscribeRequest)));
     // channel operation subscribe is not part of the RPC client
     public async System.Threading.Tasks.Task<PlayerState> ControlAsync(CommandRequest commandRequest) =>
         Codec.Decode<PlayerState>(await transport.Call("PlayerService", "control", Codec.Encode(commandRequest)));

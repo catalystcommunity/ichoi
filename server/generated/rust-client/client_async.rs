@@ -258,6 +258,19 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
         decode_list_players_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// get-state (request/response).
+    pub async fn get_state(&self, req: SubscribeRequest) -> Result<PlayerState, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "PlayerService",
+                "get-state",
+                &encode_subscribe_request(&req),
+            )
+            .await?;
+        decode_player_state(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     // channel operation `subscribe` is not part of the RPC client
 
     /// control (request/response).

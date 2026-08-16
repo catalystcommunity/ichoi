@@ -24,6 +24,9 @@ use tokio::task::JoinHandle;
 use crate::config::Config;
 use crate::transport::{decode_event_envelope, encode_event_envelope, EventEnvelope};
 
+const INITIAL_RECONNECT_DELAY: Duration = Duration::from_secs(5);
+const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(60);
+
 pub async fn run(config: Config) -> anyhow::Result<()> {
     let core = config
         .core_addr
@@ -34,16 +37,42 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .clone()
         .ok_or_else(|| anyhow::anyhow!("satellite role requires ICHOI_NODE_TOKEN"))?;
 
+    let mut reconnect_delay = INITIAL_RECONNECT_DELAY;
     loop {
-        match run_once(&core, &config.core_keys, &node_token).await {
-            Ok(()) => log::warn!("satellite connection closed; reconnecting"),
-            Err(e) => log::warn!("satellite connection failed: {e}; reconnecting"),
+        let mut registered = false;
+        let result = run_once(&core, &config.core_keys, &node_token, &mut registered).await;
+        if registered {
+            reconnect_delay = INITIAL_RECONNECT_DELAY;
         }
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        match result {
+            Ok(()) => log::warn!(
+                "satellite connection closed; reconnecting in {} seconds",
+                reconnect_delay.as_secs()
+            ),
+            Err(e) => log::warn!(
+                "satellite connection failed: {e}; reconnecting in {} seconds",
+                reconnect_delay.as_secs()
+            ),
+        }
+        tokio::time::sleep(reconnect_delay).await;
+        reconnect_delay = advance_reconnect_delay(reconnect_delay, registered);
     }
 }
 
-async fn run_once(core_addr: &str, core_keys: &[String], node_token: &str) -> anyhow::Result<()> {
+fn advance_reconnect_delay(current: Duration, registered: bool) -> Duration {
+    if registered {
+        INITIAL_RECONNECT_DELAY
+    } else {
+        current.saturating_mul(2).min(MAX_RECONNECT_DELAY)
+    }
+}
+
+async fn run_once(
+    core_addr: &str,
+    core_keys: &[String],
+    node_token: &str,
+    registered: &mut bool,
+) -> anyhow::Result<()> {
     let tcp = TcpStream::connect(core_addr).await?;
     let connector = tokio_rustls::TlsConnector::from(crate::tls::client_config(core_keys)?);
     let stream = connector
@@ -94,11 +123,12 @@ async fn run_once(core_addr: &str, core_keys: &[String], node_token: &str) -> an
     if env.id != Some(1) {
         anyhow::bail!("unexpected response before register completion");
     }
-    let registered = decode_register_node_response(&env.payload)?;
+    let registration = decode_register_node_response(&env.payload)?;
+    *registered = true;
     log::info!(
         "registered satellite {} with {} player(s)",
-        registered.node_id,
-        registered.players.len()
+        registration.node_id,
+        registration.players.len()
     );
 
     let (in_tx, mut in_rx) = mpsc::unbounded_channel::<anyhow::Result<Vec<u8>>>();
@@ -124,7 +154,7 @@ async fn run_once(core_addr: &str, core_keys: &[String], node_token: &str) -> an
     let mut volumes = HashMap::<String, Arc<AtomicU8>>::new();
     let mut playback = HashMap::<String, PlaybackTask>::new();
     let mut media = ActiveMedia::default();
-    for player in &registered.players {
+    for player in &registration.players {
         states.insert(player.id.clone(), PlayerStatus::Stopped);
         volumes.insert(player.id.clone(), Arc::new(AtomicU8::new(100)));
         out_tx.send(report_frame(&player.id, PlayerStatus::Stopped, None))?;
@@ -336,7 +366,7 @@ async fn handle_media_event(
         MediaEvent::Variant1(chunk) => {
             if let Some(player_id) = media.player_id.as_deref() {
                 if let Some(task) = playback.get(player_id) {
-                    task.push(chunk.data).await?;
+                    task.push(chunk.data)?;
                 }
             }
         }
@@ -344,7 +374,7 @@ async fn handle_media_event(
             if !matches!(end.reason, Some(MediaEndReason::Stopped)) {
                 if let Some(player_id) = media.player_id.as_deref() {
                     if let Some(task) = playback.get(player_id) {
-                        task.finish().await;
+                        task.finish();
                     }
                 }
             }
@@ -362,7 +392,10 @@ async fn handle_media_event(
 
 struct PlaybackTask {
     cancel: Arc<AtomicBool>,
-    chunks: mpsc::Sender<Option<Vec<u8>>>,
+    // The socket reader already receives frames into an unbounded queue. This handoff must also
+    // remain non-blocking so a full decoder buffer cannot hold pause, stop, seek, or load
+    // directives behind the current song's media chunks.
+    chunks: mpsc::UnboundedSender<Option<Vec<u8>>>,
     handle: JoinHandle<()>,
 }
 
@@ -376,7 +409,7 @@ impl PlaybackTask {
     ) -> PlaybackTask {
         let cancel = Arc::new(AtomicBool::new(false));
         let cancel2 = cancel.clone();
-        let (chunks, rx) = mpsc::channel::<Option<Vec<u8>>>(32);
+        let (chunks, rx) = playback_stream_channel();
         let handle = tokio::task::spawn_blocking(move || {
             let result = decode_stream_to_default_output(
                 StreamingSource::new(rx),
@@ -401,15 +434,14 @@ impl PlaybackTask {
         }
     }
 
-    async fn push(&self, chunk: Vec<u8>) -> anyhow::Result<()> {
+    fn push(&self, chunk: Vec<u8>) -> anyhow::Result<()> {
         self.chunks
             .send(Some(chunk))
-            .await
             .map_err(|_| anyhow::anyhow!("playback decoder is not accepting media chunks"))
     }
 
-    async fn finish(&self) {
-        let _ = self.chunks.send(None).await;
+    fn finish(&self) {
+        let _ = self.chunks.send(None);
     }
 }
 
@@ -427,14 +459,14 @@ fn stop_player(playback: &mut HashMap<String, PlaybackTask>, player_id: &str) {
 }
 
 struct StreamingSource {
-    rx: Mutex<mpsc::Receiver<Option<Vec<u8>>>>,
+    rx: Mutex<mpsc::UnboundedReceiver<Option<Vec<u8>>>>,
     buf: Vec<u8>,
     pos: usize,
     done: bool,
 }
 
 impl StreamingSource {
-    fn new(rx: mpsc::Receiver<Option<Vec<u8>>>) -> StreamingSource {
+    fn new(rx: mpsc::UnboundedReceiver<Option<Vec<u8>>>) -> StreamingSource {
         StreamingSource {
             rx: Mutex::new(rx),
             buf: Vec::new(),
@@ -442,6 +474,13 @@ impl StreamingSource {
             done: false,
         }
     }
+}
+
+fn playback_stream_channel() -> (
+    mpsc::UnboundedSender<Option<Vec<u8>>>,
+    mpsc::UnboundedReceiver<Option<Vec<u8>>>,
+) {
+    mpsc::unbounded_channel()
 }
 
 impl Read for StreamingSource {
@@ -563,7 +602,9 @@ fn decode_stream_to_default_output(
             skip_frames = seek_ms.saturating_mul(u64::from(sample_rate)) / 1000;
         }
         let channels = spec.channels.count().max(1).min(u16::MAX as usize) as u16;
-        let sink = sink.get_or_insert(crate::audio::PcmSink::open(spec.rate, channels)?);
+        let sink = get_or_try_insert_with(&mut sink, || {
+            crate::audio::PcmSink::open(spec.rate, channels)
+        })?;
         let samples = samples
             .get_or_insert_with(|| RawSampleBuffer::<i16>::new(decoded.capacity() as u64, spec));
         samples.copy_interleaved_ref(decoded);
@@ -603,6 +644,16 @@ fn decode_stream_to_default_output(
     Ok(())
 }
 
+fn get_or_try_insert_with<T, E>(
+    slot: &mut Option<T>,
+    create: impl FnOnce() -> Result<T, E>,
+) -> Result<&mut T, E> {
+    if slot.is_none() {
+        *slot = Some(create()?);
+    }
+    Ok(slot.as_mut().expect("slot was initialized"))
+}
+
 fn scale_s16le(bytes: &[u8], volume: u8, output: &mut Vec<u8>) {
     output.clear();
     output.reserve(bytes.len());
@@ -628,7 +679,69 @@ fn codec_extension(codec: &Codec) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::scale_s16le;
+    use std::io::Read;
+    use std::time::Duration;
+
+    use super::{
+        advance_reconnect_delay, get_or_try_insert_with, playback_stream_channel, scale_s16le,
+        StreamingSource,
+    };
+
+    #[test]
+    fn media_handoff_does_not_block_after_thirty_two_chunks() {
+        let (chunks, receiver) = playback_stream_channel();
+        for byte in 0..64 {
+            chunks.send(Some(vec![byte])).unwrap();
+        }
+        chunks.send(None).unwrap();
+
+        let mut source = StreamingSource::new(receiver);
+        let mut output = Vec::new();
+        source.read_to_end(&mut output).unwrap();
+
+        assert_eq!(output, (0..64).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn opens_the_audio_sink_only_once_per_track() {
+        let mut sink = None;
+        let mut opens = 0;
+
+        for _ in 0..3 {
+            let value = get_or_try_insert_with(&mut sink, || {
+                opens += 1;
+                Ok::<_, ()>(42)
+            })
+            .unwrap();
+            assert_eq!(*value, 42);
+        }
+
+        assert_eq!(opens, 1);
+    }
+
+    #[test]
+    fn reconnect_delay_backs_off_to_one_minute() {
+        let mut delay = Duration::from_secs(5);
+        let mut observed = Vec::new();
+        for _ in 0..5 {
+            observed.push(delay.as_secs());
+            delay = advance_reconnect_delay(delay, false);
+        }
+
+        assert_eq!(observed, [5, 10, 20, 40, 60]);
+        assert_eq!(
+            advance_reconnect_delay(delay, false),
+            Duration::from_secs(60)
+        );
+    }
+
+    #[test]
+    fn successful_registration_resets_reconnect_delay() {
+        assert_eq!(
+            advance_reconnect_delay(Duration::from_secs(60), true),
+            Duration::from_secs(5)
+        );
+    }
 
     #[test]
     fn scales_signed_pcm_without_changing_its_shape() {

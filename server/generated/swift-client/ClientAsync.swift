@@ -122,6 +122,11 @@ public struct PlayerAsyncClient {
         return try ListPlayersResponse.fromCbor(csilResp)
     }
 
+    public func getState(_ request: SubscribeRequest) async throws -> PlayerState {
+        let csilResp = try await transport.call(service: "PlayerService", op: "get-state", request: request.toCbor())
+        return try PlayerState.fromCbor(csilResp)
+    }
+
     // channel operation 'subscribe' is not part of the RPC client
     public func control(_ request: CommandRequest) async throws -> PlayerState {
         let csilResp = try await transport.call(service: "PlayerService", op: "control", request: request.toCbor())

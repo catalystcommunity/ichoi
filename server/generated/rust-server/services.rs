@@ -110,6 +110,12 @@ pub trait PlayerService {
         ctx: &Self::Context,
         input: ListPlayersRequest,
     ) -> Result<ListPlayersResponse, ServiceError>;
+    /// get-state (request/response).
+    fn get_state(
+        &self,
+        ctx: &Self::Context,
+        input: SubscribeRequest,
+    ) -> Result<PlayerState, ServiceError>;
     /// subscribe (channel inbound (bidirectional)).
     fn subscribe(&self, ctx: &Self::Context, msg: SubscribeRequest) -> Result<(), ServiceError>;
     /// control (request/response).

@@ -110,6 +110,10 @@ class PlayerClient:
         """list-players"""
         return ListPlayersResponse.from_cbor(self._transport.call("PlayerService", "list-players", req.to_cbor()))
 
+    def get_state(self, req: SubscribeRequest) -> PlayerState:
+        """get-state"""
+        return PlayerState.from_cbor(self._transport.call("PlayerService", "get-state", req.to_cbor()))
+
     # channel operation subscribe is not part of the RPC client
 
     def control(self, req: CommandRequest) -> PlayerState:

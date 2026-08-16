@@ -75,6 +75,8 @@ public sealed class PlayerClient(ICsilTransport transport)
 {
     public ListPlayersResponse ListPlayers(ListPlayersRequest listPlayersRequest) =>
         Codec.Decode<ListPlayersResponse>(transport.Call("PlayerService", "list-players", Codec.Encode(listPlayersRequest)));
+    public PlayerState GetState(SubscribeRequest subscribeRequest) =>
+        Codec.Decode<PlayerState>(transport.Call("PlayerService", "get-state", Codec.Encode(subscribeRequest)));
     // channel operation subscribe is not part of the RPC client
     public PlayerState Control(CommandRequest commandRequest) =>
         Codec.Decode<PlayerState>(transport.Call("PlayerService", "control", Codec.Encode(commandRequest)));

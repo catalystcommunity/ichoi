@@ -77,6 +77,9 @@ class PlayerAsyncClient(private val transport: AsyncTransport) {
     suspend fun listPlayers(request: ListPlayersRequest): ListPlayersResponse {
         return decode<ListPlayersResponse>(transport.call("PlayerService", "list-players", encode(request)))
     }
+    suspend fun getState(request: SubscribeRequest): PlayerState {
+        return decode<PlayerState>(transport.call("PlayerService", "get-state", encode(request)))
+    }
     // channel operation 'subscribe' is not part of the RPC client
     suspend fun control(request: CommandRequest): PlayerState {
         return decode<PlayerState>(transport.call("PlayerService", "control", encode(request)))

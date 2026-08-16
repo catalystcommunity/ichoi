@@ -215,6 +215,9 @@ export class PlayerService {
   listPlayers(req: ListPlayersRequest = {}): Promise<ListPlayersResponse> {
     return this.conn.call(PLAYER, "list-players", encodeRecord(req), decodeRecord<ListPlayersResponse>);
   }
+  getState(req: SubscribeRequest): Promise<PlayerState> {
+    return this.conn.call(PLAYER, "get-state", encodeRecord(req), decodeRecord<PlayerState>);
+  }
   control(req: CommandRequest): Promise<PlayerState> {
     return this.conn.call(PLAYER, "control", encodeCommandRequest(req), decodeRecord<PlayerState>);
   }

@@ -216,6 +216,15 @@ func (c *PlayerClient) ListPlayers(ctx context.Context, req ListPlayersRequest) 
 	return DecodeListPlayersResponse(csilResp)
 }
 
+func (c *PlayerClient) GetState(ctx context.Context, req SubscribeRequest) (PlayerState, error) {
+	var csilZero PlayerState
+	csilResp, csilErr := c.transport.Call(ctx, "PlayerService", "get-state", EncodeSubscribeRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodePlayerState(csilResp)
+}
+
 // channel operation subscribe is not part of the RPC client
 
 func (c *PlayerClient) Control(ctx context.Context, req CommandRequest) (PlayerState, error) {

@@ -269,6 +269,18 @@ fn control_enqueues_and_plays() {
     let state = app.control(&common::ctx_anon(), play).expect("play");
     assert!(matches!(state.status, PlayerStatus::Playing));
     assert_eq!(state.current_index, Some(0));
+
+    let snapshot = app
+        .get_state(
+            &common::ctx_anon(),
+            SubscribeRequest {
+                player_id: "player-1".into(),
+            },
+        )
+        .expect("target snapshot");
+    assert!(matches!(snapshot.status, PlayerStatus::Playing));
+    assert_eq!(snapshot.queue.len(), 1);
+    assert_eq!(snapshot.queue[0].track_id, "track-1");
 }
 
 #[test]

@@ -83,7 +83,9 @@ export function JukeboxPage(): JSX.Element {
               type="button"
               class="btn"
               onClick={() => {
-                for (const player of mine()) void pb.releaseDevice(player.id);
+                void Promise.all(mine().map((player) => pb.releaseDevice(player.id))).then(() =>
+                  refetch(),
+                );
               }}
             >
               <IconBroadcast size={16} /> {t("jukebox.stopSharingThisDevice")}
@@ -103,7 +105,9 @@ export function JukeboxPage(): JSX.Element {
             fallback={<EmptyState title={t("jukebox.empty")} />}
           >
             <div class="strip-grid">
-              <For each={shared()}>{(player) => <ChannelStrip player={player} />}</For>
+              <For each={shared()}>
+                {(player) => <ChannelStrip player={player} onPlayersChanged={() => void refetch()} />}
+              </For>
             </div>
           </Show>
 
@@ -165,7 +169,7 @@ export function JukeboxPage(): JSX.Element {
 /** One shared target as a console channel strip: live now-playing, transport, and
  * a volume fader. Subscribes to the target's `PlayerState` stream for the life of
  * the component. */
-function ChannelStrip(props: { player: Player }): JSX.Element {
+function ChannelStrip(props: { player: Player; onPlayersChanged: () => void }): JSX.Element {
   const servers = useServers();
   const pb = usePlayback();
   const { t } = useI18n();
@@ -289,13 +293,17 @@ function ChannelStrip(props: { player: Player }): JSX.Element {
         <Show
           when={isOutput()}
           fallback={
-            <button type="button" class="btn btn-ghost" onClick={() => void pb.claimOutput(props.player.id)}>
+            <button type="button" class="btn btn-ghost" onClick={() => pb.setTarget(props.player.id)}>
               {t("jukebox.playHere")}
             </button>
           }
         >
           <span class="chip">{t("jukebox.outputHere")}</span>
-          <button type="button" class="btn btn-ghost" onClick={() => void pb.releaseDevice(props.player.id)}>
+          <button
+            type="button"
+            class="btn btn-ghost"
+            onClick={() => void pb.releaseDevice(props.player.id).then(props.onPlayersChanged)}
+          >
             {t("jukebox.stopSharing")}
           </button>
         </Show>
