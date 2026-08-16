@@ -191,6 +191,15 @@ final class PlayerClient {
     return ListPlayersResponse.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  PlayerState getState(SubscribeRequest request) {
+    final csilResp = transport.call(
+      'PlayerService',
+      'get-state',
+      request.toCbor(),
+    );
+    return PlayerState.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   // channel operation 'subscribe' rides the router surface
   PlayerState control(CommandRequest request) {
     final csilResp = transport.call(

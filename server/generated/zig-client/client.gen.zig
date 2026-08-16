@@ -227,6 +227,17 @@ pub const PlayerClient = struct {
         try codec.decode_ListPlayersResponse(alloc, csil_respb, out);
     }
 
+    /// Invoke PlayerService/get-state with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn get_state(self: PlayerClient, alloc: std.mem.Allocator, req: *const types.SubscribeRequest, out: *types.PlayerState) anyerror!void {
+        const csil_reqb = try codec.encode_SubscribeRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "PlayerService", "get-state", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_PlayerState(alloc, csil_respb, out);
+    }
+
     // channel operation subscribe is not part of the RPC client
 
     /// Invoke PlayerService/control with a typed request, returning the decoded

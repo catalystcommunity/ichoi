@@ -87,6 +87,9 @@ class PlayerClient(private val transport: Transport) {
     fun listPlayers(request: ListPlayersRequest): ListPlayersResponse {
         return decode<ListPlayersResponse>(transport.call("PlayerService", "list-players", encode(request)))
     }
+    fun getState(request: SubscribeRequest): PlayerState {
+        return decode<PlayerState>(transport.call("PlayerService", "get-state", encode(request)))
+    }
     // channel operation 'subscribe' is not part of the RPC client
     fun control(request: CommandRequest): PlayerState {
         return decode<PlayerState>(transport.call("PlayerService", "control", encode(request)))

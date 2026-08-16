@@ -283,6 +283,20 @@ defmodule Csilgen.Generated.PlayerClient do
     Csilgen.Generated.ListPlayersResponse.from_cbor(resp)
   end
 
+  @spec get_state(t(), Csilgen.Generated.SubscribeRequest.t()) ::
+          Csilgen.Generated.PlayerState.t()
+  def get_state(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "PlayerService",
+        "get-state",
+        Csilgen.Generated.SubscribeRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.PlayerState.from_cbor(resp)
+  end
+
   # channel operation subscribe is not part of the RPC client
 
   @spec control(t(), Csilgen.Generated.CommandRequest.t()) :: Csilgen.Generated.PlayerState.t()

@@ -197,6 +197,12 @@ impl Presence {
             .get(player_id)
             .is_some_and(|s| !s.is_empty())
     }
+
+    pub fn drop_player(&self, player_id: &str) {
+        if let Ok(mut map) = self.inner.lock() {
+            map.remove(player_id);
+        }
+    }
 }
 
 /// Who is calling, resolved from the transport `$hello` (pre-alpha: usually Anonymous).
@@ -1132,6 +1138,19 @@ impl PlayerService for App {
         std::result::Result::Ok(ListPlayersResponse { players })
     }
 
+    fn get_state(&self, ctx: &Ctx, input: SubscribeRequest) -> Result<PlayerState, ServiceError> {
+        let mut conn = self.conn()?;
+        if db(store::get_player(&mut conn, &input.player_id))?.is_none() {
+            return Err(err(404, "player not found"));
+        }
+        drop(conn);
+        if !self.can_access_player(&ctx.identity, &input.player_id) {
+            return Err(err(403, "this player is not available to this account"));
+        }
+        let mut conn = self.conn()?;
+        self.load_player_state(&mut conn, &input.player_id)
+    }
+
     fn subscribe(&self, _ctx: &Ctx, _msg: SubscribeRequest) -> Result<(), ServiceError> {
         // The subscription push loop lives in the transport; this inbound entry acknowledges.
         // TODO: register the subscriber and stream PlayerState snapshots (§6.5).
@@ -1289,7 +1308,34 @@ impl PlayerService for App {
             return Err(err(403, "satellites cannot remove outputs"));
         }
         let mut conn = self.conn()?;
+        let player = db(store::get_player(&mut conn, &input.player_id))?
+            .ok_or_else(|| err(404, "shared device not found"))?;
+        if player.kind != "shared"
+            || player.output_device_id.is_some()
+            || player.name_suffix.is_none()
+        {
+            return Err(err(403, "only a browser-owned share can be removed"));
+        }
+        let owns_share = match &ctx.identity {
+            Identity::User { account_id, .. } => {
+                player.owner_account_id.as_deref() == Some(account_id)
+            }
+            Identity::Anonymous => {
+                db(store::count_accounts(&mut conn))? == 0 && player.owner_account_id.is_none()
+            }
+            Identity::Node { .. } => false,
+        };
+        if !owns_share {
+            return Err(err(
+                403,
+                "only the browser-share owner can remove this device",
+            ));
+        }
         db(store::delete_player(&mut conn, &input.player_id))?;
+        self.subs.drop_player(&input.player_id);
+        self.nodes.drop_player(&input.player_id);
+        self.presence.drop_player(&input.player_id);
+        self.output_health.clear(&input.player_id);
         std::result::Result::Ok(Ok { ok: true })
     }
 }
@@ -2102,11 +2148,7 @@ impl AdminService for App {
             .finish(&self.config, &mut conn, &transfer_owner(ctx), input)
     }
 
-    fn cancel_import(
-        &self,
-        ctx: &Ctx,
-        input: CancelImportRequest,
-    ) -> Result<Ok, ServiceError> {
+    fn cancel_import(&self, ctx: &Ctx, input: CancelImportRequest) -> Result<Ok, ServiceError> {
         let mut conn = self.conn()?;
         require_admin_or_guest_instance(ctx, &mut conn)?;
         drop(conn);

@@ -8,6 +8,10 @@ export interface OwnedTargetStore {
   legacy: string[];
 }
 
+export function isBrowserShareTarget(id: string): boolean {
+  return id.startsWith("share:");
+}
+
 export function parseOwnedTargetStore(raw: string | null): OwnedTargetStore {
   if (!raw) return { servers: {}, legacy: [] };
   try {
@@ -15,7 +19,9 @@ export function parseOwnedTargetStore(raw: string | null): OwnedTargetStore {
     if (Array.isArray(parsed)) {
       return {
         servers: {},
-        legacy: parsed.filter((id): id is string => typeof id === "string"),
+        legacy: parsed.filter(
+          (id): id is string => typeof id === "string" && isBrowserShareTarget(id),
+        ),
       };
     }
     if (!parsed || typeof parsed !== "object") return { servers: {}, legacy: [] };
@@ -26,7 +32,9 @@ export function parseOwnedTargetStore(raw: string | null): OwnedTargetStore {
     const servers: Record<string, string[]> = {};
     for (const [serverId, ids] of Object.entries(candidate)) {
       if (Array.isArray(ids)) {
-        servers[serverId] = ids.filter((id): id is string => typeof id === "string");
+        servers[serverId] = ids.filter(
+          (id): id is string => typeof id === "string" && isBrowserShareTarget(id),
+        );
       }
     }
     return { servers, legacy: [] };

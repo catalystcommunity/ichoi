@@ -64,6 +64,82 @@ fn loginless_guest_can_administer_but_a_member_cannot() {
 }
 
 #[test]
+fn disable_share_cannot_delete_a_native_satellite_player() {
+    let (app, pool) = common::test_app();
+    let registered = app
+        .register(
+            &common::ctx_node("pending:native-token"),
+            RegisterNodeRequest {
+                hostname: "kitchen".into(),
+                platform: "linux".into(),
+                arch: "x86_64".into(),
+                outputs: vec![AudioOutput {
+                    os_device_id: "default".into(),
+                    friendly_name: Some("ALSA".into()),
+                    channels: 2,
+                    sample_rates: vec![48_000],
+                    is_default: true,
+                }],
+            },
+        )
+        .unwrap();
+    let player_id = registered.players[0].id.clone();
+
+    let error = app
+        .disable_share(
+            &common::ctx_anon(),
+            DisableShareRequest {
+                player_id: player_id.clone(),
+            },
+        )
+        .expect_err("a native satellite is not a browser share");
+
+    assert_eq!(error.code, 403);
+    let mut conn = pool.get().unwrap();
+    assert!(store::get_player(&mut conn, &player_id).unwrap().is_some());
+}
+
+#[test]
+fn only_the_browser_share_owner_can_remove_it() {
+    let (app, pool) = common::test_app();
+    {
+        let mut conn = pool.get().unwrap();
+        seed_account(&mut conn, "owner@example.com", "member");
+        seed_account(&mut conn, "other@example.com", "member");
+    }
+    let shared = app
+        .enable_share(
+            &common::ctx_user("owner@example.com"),
+            EnableShareRequest {
+                suffix: Some("Laptop".into()),
+            },
+        )
+        .unwrap();
+
+    let error = app
+        .disable_share(
+            &common::ctx_user("other@example.com"),
+            DisableShareRequest {
+                player_id: shared.player.id.clone(),
+            },
+        )
+        .expect_err("another account does not own this browser share");
+    assert_eq!(error.code, 403);
+
+    app.disable_share(
+        &common::ctx_user("owner@example.com"),
+        DisableShareRequest {
+            player_id: shared.player.id.clone(),
+        },
+    )
+    .unwrap();
+    let mut conn = pool.get().unwrap();
+    assert!(store::get_player(&mut conn, &shared.player.id)
+        .unwrap()
+        .is_none());
+}
+
+#[test]
 fn satellite_defaults_flow_to_new_outputs_and_groups_filter_players() {
     let (app, pool) = common::test_app();
     let group = app

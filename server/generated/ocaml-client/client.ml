@@ -102,6 +102,11 @@ module Player_service = struct
     | Ok payload -> Ok (Codec.decode_list_players_response_bytes payload)
     | Error _ as e -> e
 
+  let get_state (c : client) (req : subscribe_request) : (player_state, string) result =
+    match c.call ~service:"PlayerService" ~op:"get-state" ~payload:(Codec.encode_subscribe_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_player_state_bytes payload)
+    | Error _ as e -> e
+
   (* channel operation subscribe is not part of the RPC client *)
   let control (c : client) (req : command_request) : (player_state, string) result =
     match c.call ~service:"PlayerService" ~op:"control" ~payload:(Codec.encode_command_request_bytes req) with

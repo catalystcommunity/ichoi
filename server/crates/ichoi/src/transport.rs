@@ -186,6 +186,9 @@ pub fn dispatch(
                 encode_list_players_response
             )
         }
+        ("player", "get-state") => {
+            rr!(decode_subscribe_request, get_state, encode_player_state)
+        }
         ("player", "control") => rr!(decode_command_request, control, encode_player_state),
         ("player", "enable-share") => {
             rr!(

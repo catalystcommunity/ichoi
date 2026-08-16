@@ -59,6 +59,7 @@ ShareResult         = { player: Player }
 
 service PlayerService {
     list-players: ListPlayersRequest -> ListPlayersResponse / ServiceError,
+    get-state: SubscribeRequest -> PlayerState / ServiceError,
     subscribe: SubscribeRequest <-> PlayerState,
     control: CommandRequest -> PlayerState / ServiceError,
     enable-share: EnableShareRequest -> ShareResult / ServiceError,

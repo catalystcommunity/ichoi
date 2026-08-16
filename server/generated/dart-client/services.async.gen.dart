@@ -192,6 +192,15 @@ final class PlayerAsyncClient {
     return ListPlayersResponse.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<PlayerState> getState(SubscribeRequest request) async {
+    final csilResp = await transport.call(
+      'PlayerService',
+      'get-state',
+      request.toCbor(),
+    );
+    return PlayerState.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   // channel operation 'subscribe' rides the router surface
   Future<PlayerState> control(CommandRequest request) async {
     final csilResp = await transport.call(

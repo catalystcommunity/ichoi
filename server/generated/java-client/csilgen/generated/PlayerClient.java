@@ -17,6 +17,10 @@ public final class PlayerClient {
         return CsilCbor.decodeListPlayersResponse(transport.call("PlayerService", "list-players", CsilCbor.encodeListPlayersRequest(req)));
     }
 
+    public PlayerState getState(SubscribeRequest req) throws ClientException {
+        return CsilCbor.decodePlayerState(transport.call("PlayerService", "get-state", CsilCbor.encodeSubscribeRequest(req)));
+    }
+
     public PlayerState control(CommandRequest req) throws ClientException {
         return CsilCbor.decodePlayerState(transport.call("PlayerService", "control", CsilCbor.encodeCommandRequest(req)));
     }
