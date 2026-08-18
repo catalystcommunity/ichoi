@@ -217,11 +217,11 @@ class ReleaseWorkflowTest(unittest.TestCase):
         self.assertTrue(all(identifiers))
         self.assertEqual(len(identifiers), len(set(identifiers)))
 
-    def test_current_evaluator_loads_and_selects_the_release_workflow(self):
+    def test_installed_evaluator_loads_and_selects_the_release_workflow(self):
         workflows = load_workflow_definitions(ROOT)
         self.assertEqual(len(workflows), 5)
         selected = evaluate_workflows(workflows, "tag_created", branch="server/v1.2.3")
-        self.assertEqual([workflow.workflow_id for workflow in selected], ["ichoi-release"])
+        self.assertEqual([workflow.name for workflow in selected], ["Ichoi Release"])
 
     def test_all_jobs_use_the_current_runner_image(self):
         for path in (ROOT / ".reactorcide/jobs").glob("*.yaml"):
