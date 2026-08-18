@@ -1,9 +1,9 @@
 name: Ichoi Release Tag
-description: "Calculate the next version per target, tag it, and publish the GitHub release."
+id: ichoi-release-tag
+description: "Calculate and push release tags after a merge."
 
-# semver-tags tags each independently versioned top-level directory as "<target>/vX.Y.Z" and
-# stamps that target's version/VERSION.txt. The version-bump push to main is what starts the
-# deploy workflow, so the two are chained through the version file rather than through a tag.
+# semver-tags creates each target tag. This workflow then stamps the version file. The
+# version commit starts the image deployment workflow. The tag starts the release workflow.
 on:
   events:
     - pull_request_merged
@@ -11,5 +11,5 @@ on:
     - main
 
 jobs:
-  ichoi-release:
-    job_file: release.yaml
+  ichoi-release-tag:
+    job_file: release-tag.yaml

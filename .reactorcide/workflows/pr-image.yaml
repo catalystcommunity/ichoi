@@ -1,4 +1,5 @@
 name: Ichoi PR Image
+id: ichoi-pr-image
 description: "Prove the server container image still builds, for pull requests that touch it."
 
 # A separate workflow, because it is the only pull-request work with a paths filter: a

@@ -296,8 +296,9 @@ the data layer, every test isolated in its own transaction. CI runs on
 [Reactorcide](https://github.com/catalystcommunity/reactorcide) (not GitHub Actions):
 conventional commits gate PRs and fan out to build (amd64 + arm64), the SQLite suite, and
 CSIL validation; `semver-tags` cuts per-target releases (`server/vX.Y.Z`) on merge to
-`main`. `./tools.sh check` reproduces the gate locally. Definitions live in
-[`.reactorcide/jobs/`](.reactorcide/jobs/).
+`main`. A tag workflow builds four archives in parallel. It seals the archives in the asset
+cache before it publishes the GitHub Release. `./tools.sh check` reproduces the PR gate
+locally. Definitions live in [`.reactorcide/`](.reactorcide/).
 
 ## License
 

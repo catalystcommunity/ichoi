@@ -1,14 +1,7 @@
 name: ichoi-conventional-commits
-description: "Validate that all pull-request commits use the conventional commit format"
-# Compatibility trigger; see build.yaml.
-triggers:
-  events:
-    - pull_request_opened
-    - pull_request_updated
-  branches:
-    - main
+description: "Validate that all pull-request commits use the conventional commit format."
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:latest
   command: "runnerlib run --job-command true"
   timeout: 300
   priority: 10
@@ -16,9 +9,6 @@ job:
   run_as:
     user: runner
 environment:
-  REACTORCIDE_ICHOI_CI_JOB: conventional-commits
-# This used to be disable_run_local, because the job ended with a `runnerlib trigger` fan-out
-# that only made sense on a worker. The workflow expresses that order now, so the job is just
-# a commit-message check and runs locally like the rest.
+  ICHOI_CI_JOB: conventional-commits
 run_local:
-  as_runner: true
+  user: host

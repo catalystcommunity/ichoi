@@ -1,14 +1,13 @@
-name: ichoi-csil
-description: "Validate the CSIL schema and checked-in generated server code."
+name: ichoi-release-asset-build
+description: "Build and upload one architecture-specific Ichoi archive."
 job:
   image: containers.catalystsquad.com/public/reactorcide/runnerbase:latest
   command: "runnerlib run --job-command true"
-  timeout: 1200
+  timeout: 3600
   priority: 10
   working_dir: /job
+  disable_run_local: true
   run_as:
     user: runner
 environment:
-  ICHOI_CI_JOB: csil
-run_local:
-  user: host
+  ICHOI_RELEASE_JOB: asset-build

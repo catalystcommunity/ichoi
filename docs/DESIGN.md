@@ -494,9 +494,11 @@ Illustrative, not final.
 - **Migrations:** `diesel_migrations` + `embed_migrations!`, one SQLite tree at
   `migrations/`, run at `serve` startup under WAL. Schema DDL only; idempotent data
   backfills are separate **transforms** run every boot.
-- **CI:** `.reactorcide/jobs/*.yaml` + a `tools.sh` mirror. No GitHub Actions. Conventional
-  commits gate PRs; `semver-tags` releases on merge. **amd64 and arm64** are both release
-  targets (binaries + container images). Enforcement by command: `cargo fmt --all`,
+- **CI:** Native workflows in `.reactorcide/workflows/` use small job files. No GitHub
+  Actions. Conventional commits gate PRs. `semver-tags` creates a release tag after a
+  merge. The tag workflow builds, tests, seals, and publishes the archives. **amd64 and
+  arm64** are release targets for binaries and container images. Enforcement by command:
+  `cargo fmt --all`,
   `cargo clippy --workspace --all-targets -- -D warnings`.
 - **Test media:** a few public-domain files, committed if small, **never bundled** in the
   binary or a container image.

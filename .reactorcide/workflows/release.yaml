@@ -1,0 +1,60 @@
+name: Ichoi Release
+id: ichoi-release
+description: "Build, verify, and publish the archives for one server release tag."
+
+on:
+  events:
+    - tag_created
+  branches:
+    - "server/v*"
+
+jobs:
+  ichoi-release-prepare:
+    job_file: release-asset-control.yaml
+    environment:
+      ICHOI_RELEASE_JOB: asset-prepare
+      ICHOI_REPOSITORY: catalystcommunity/ichoi
+      GITHUB_PAT: "${secret:catalystcommunity/ci:githubpat}"
+
+  ichoi-release-asset:
+    job_file: release-asset-build.yaml
+    depends_on:
+      - ichoi-release-prepare
+    for_each:
+      - core-amd64.tar.gz
+      - core-arm64.tar.gz
+      - satellite-amd64.tar.gz
+      - satellite-arm64.tar.gz
+    item_var: ICHOI_RELEASE_ASSET
+
+  ichoi-release-test-sqlite:
+    job_file: test-sqlite.yaml
+    depends_on:
+      - ichoi-release-prepare
+
+  ichoi-release-csil:
+    job_file: csil.yaml
+    depends_on:
+      - ichoi-release-prepare
+
+  ichoi-asset-seal:
+    job_file: release-asset-control.yaml
+    depends_on:
+      - ichoi-release-asset
+      - ichoi-release-test-sqlite
+      - ichoi-release-csil
+    environment:
+      ICHOI_RELEASE_JOB: asset-seal
+
+  ichoi-release-publish:
+    job_file: release-publish.yaml
+    depends_on:
+      - ichoi-asset-seal
+
+  ichoi-asset-cleanup:
+    job_file: release-asset-control.yaml
+    depends_on:
+      - ichoi-release-publish
+    condition: always
+    environment:
+      ICHOI_RELEASE_JOB: asset-cleanup
