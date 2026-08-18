@@ -1,4 +1,5 @@
 name: Ichoi PR
+id: ichoi-pr
 description: "Validate commits, then build, test, and check the schema for pull requests."
 
 # One event can match several workflows, so each workflow shows as its own named check on

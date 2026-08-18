@@ -4,7 +4,7 @@ Two jobs share one builder: a pull-request job that only proves the image still 
 a deploy job that pushes it. Both need the `builder` capability, which gives the job a
 buildkitd sidecar reachable through BUILDKIT_HOST.
 
-The job file picks the work with REACTORCIDE_ICHOI_IMAGE_JOB.
+The job file picks the work with ICHOI_IMAGE_JOB.
 """
 
 from __future__ import annotations
@@ -285,7 +285,7 @@ class IchoiImageJobsPlugin(Plugin):
         if context.phase != PluginPhase.POST_SOURCE_PREP:
             return
 
-        job_name = os.environ.get("REACTORCIDE_ICHOI_IMAGE_JOB", "").strip()
+        job_name = os.environ.get("ICHOI_IMAGE_JOB", "").strip()
         if not job_name:
             return
 
@@ -293,7 +293,7 @@ class IchoiImageJobsPlugin(Plugin):
         if job is None:
             names = ", ".join(sorted(IMAGE_JOBS))
             raise RuntimeError(
-                f"Unknown REACTORCIDE_ICHOI_IMAGE_JOB '{job_name}'. Valid jobs: {names}"
+                f"Unknown ICHOI_IMAGE_JOB '{job_name}'. Valid jobs: {names}"
             )
 
         code_dir = Path(context.config.code_dir)

@@ -1,4 +1,5 @@
 name: Ichoi Server Deploy
+id: ichoi-server-deploy
 description: "Build the multi-arch server image and push it when the version file changes."
 
 # The release workflow pushes the version bump to main; this workflow watches that one file,

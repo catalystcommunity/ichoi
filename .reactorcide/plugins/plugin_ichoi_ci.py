@@ -1,7 +1,7 @@
 """Runnerlib lifecycle jobs for the ichoi pull-request workflow.
 
 Every job runs the same container command, `runnerlib run --job-command true`. The job file
-picks the work with REACTORCIDE_ICHOI_CI_JOB, and this plugin does it after source
+picks the work with ICHOI_CI_JOB, and this plugin does it after source
 preparation. `reactorcide run-local` loads the same plugin, so a job runs the same way on a
 workstation as it does on a worker.
 """
@@ -380,7 +380,7 @@ class IchoiCIJobsPlugin(Plugin):
         if context.phase != PluginPhase.POST_SOURCE_PREP:
             return
 
-        job_name = os.environ.get("REACTORCIDE_ICHOI_CI_JOB", "").strip()
+        job_name = os.environ.get("ICHOI_CI_JOB", "").strip()
         if not job_name:
             return
 
@@ -388,7 +388,7 @@ class IchoiCIJobsPlugin(Plugin):
         if job is None:
             names = ", ".join(sorted(CI_JOBS))
             raise RuntimeError(
-                f"Unknown REACTORCIDE_ICHOI_CI_JOB '{job_name}'. Valid jobs: {names}"
+                f"Unknown ICHOI_CI_JOB '{job_name}'. Valid jobs: {names}"
             )
 
         code_dir = Path(context.config.code_dir)

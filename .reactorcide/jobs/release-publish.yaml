@@ -1,0 +1,19 @@
+name: ichoi-release-publish
+description: "Verify sealed archives and publish one Ichoi GitHub Release."
+job:
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:latest
+  command: "runnerlib run --job-command true"
+  timeout: 3600
+  priority: 15
+  working_dir: /job
+  disable_run_local: true
+  run_as:
+    user: runner
+environment:
+  ICHOI_RELEASE_JOB: publish
+  ICHOI_REPOSITORY: catalystcommunity/ichoi
+  GITHUB_PAT: "${secret:catalystcommunity/ci:githubpat}"
+  ASSET_CACHE_ENDPOINT: "${secret:catalystcommunity/asset-cache:endpoint}"
+  ASSET_CACHE_BUCKET: "${secret:catalystcommunity/asset-cache:bucket}"
+  ASSET_CACHE_ACCESS_KEY: "${secret:catalystcommunity/asset-cache:access_key}"
+  ASSET_CACHE_SECRET_KEY: "${secret:catalystcommunity/asset-cache:secret_key}"

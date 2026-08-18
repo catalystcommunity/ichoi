@@ -1,33 +1,27 @@
-"""Runnerlib lifecycle job that releases ichoi.
+"""Runnerlib lifecycle jobs for Ichoi tags and release archives.
 
-A merge to main runs this job. semver-tags reads the conventional commits that touched each
-independently versioned top-level directory and tags that directory as `<target>/vX.Y.Z`.
-This job then stamps the target's version/VERSION.txt, pushes that bump to main, builds the
-release archives, and creates the GitHub release.
-
-The version-bump push is what starts the deploy workflow, so the release and the container
-image are chained through the version file rather than through a tag.
-
-Version targets: each entry in TARGETS is a top-level directory with its own
-version/VERSION.txt. To add one later (a mobile app, say), create `mobile/` with its source
-and version file, append it to TARGETS, add an artifact builder in `_build_artifacts`, and
-add a deploy workflow whose paths filter watches `mobile/version/VERSION.txt`. Nothing else
-changes.
+The merge workflow creates a target tag and a separate version commit. The tag workflow
+builds four archives in parallel jobs. Trusted control jobs verify and seal the archives in
+the asset cache before one job publishes the GitHub Release.
 """
 
 from __future__ import annotations
 
+import hashlib
+import importlib.util
 import json
 import os
 import re
 import shlex
 import subprocess
+import sys
 import tarfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, NamedTuple, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional
 
 from src.logging import log_stdout
 from src.plugins import Plugin, PluginContext, PluginPhase
@@ -35,11 +29,16 @@ from src.plugins import Plugin, PluginContext, PluginPhase
 
 TARGETS = ("server",)
 
-SEMVER_TAGS_VERSION = "v0.4.0"
-SEMVER_TAGS_URL = (
-    f"https://github.com/catalystcommunity/semver-tags/releases/download/"
-    f"{SEMVER_TAGS_VERSION}/semver-tags.tar.gz"
-)
+ASSET_CACHE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "asset_cache.py"
+ASSET_CACHE_SPEC = importlib.util.spec_from_file_location("ichoi_asset_cache", ASSET_CACHE_PATH)
+if ASSET_CACHE_SPEC is None or ASSET_CACHE_SPEC.loader is None:
+    raise RuntimeError("The Ichoi asset-cache module is not available")
+ASSET_CACHE = importlib.util.module_from_spec(ASSET_CACHE_SPEC)
+sys.modules[ASSET_CACHE_SPEC.name] = ASSET_CACHE
+ASSET_CACHE_SPEC.loader.exec_module(ASSET_CACHE)
+
+SEMVER_TAGS_REPOSITORY = "catalystcommunity/semver-tags"
+SEMVER_TAGS_ASSET = "semver-tags.tar.gz"
 AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
 CARGO_ZIGBUILD_VERSION = "0.23.0"
 SATELLITE_GLIBC_VERSION = "2.17"
@@ -62,14 +61,35 @@ SATELLITE_ARCHITECTURES = (
 )
 
 GITHUB_API = "https://api.github.com"
-GITHUB_UPLOADS = "https://uploads.github.com"
 GITHUB_API_VERSION = "2022-11-28"
 REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
-# The same shape the shell release guarded on: digits and dots only, no empty component.
-VERSION_PATTERN = re.compile(r"^[0-9]+(\.[0-9]+)*$")
+# Ichoi release lanes use a three-component semantic version.
+VERSION_PATTERN = re.compile(
+    r"^(?:0|[1-9][0-9]*)\."
+    r"(?:0|[1-9][0-9]*)\."
+    r"(?:0|[1-9][0-9]*)$"
+)
+RELEASE_TAG_PATTERN = re.compile(
+    r"^server/v(?P<version>"
+    r"(?:0|[1-9][0-9]*)\."
+    r"(?:0|[1-9][0-9]*)\."
+    r"(?:0|[1-9][0-9]*)"
+    r")$"
+)
+RELEASE_MARKER_PREFIX = "<!-- ichoi-release-source:"
+EXPECTED_CACHE_ASSETS = (
+    "core-amd64.tar.gz",
+    "core-arm64.tar.gz",
+    "satellite-amd64.tar.gz",
+    "satellite-arm64.tar.gz",
+)
 
 PUSH_ATTEMPTS = 5
-SECRET_ENVIRONMENT_NAMES = ("GITHUB_PAT",)
+SECRET_ENVIRONMENT_NAMES = (
+    "GITHUB_PAT",
+    "ASSET_CACHE_ACCESS_KEY",
+    "ASSET_CACHE_SECRET_KEY",
+)
 
 AUTOMATION_NAME = "Catalyst Community (automation)"
 AUTOMATION_EMAIL = "automation@catalystcommunity.dev"
@@ -81,11 +101,6 @@ class Release(NamedTuple):
     target: str
     version: str
     tag: str
-
-
-def _skip_github() -> bool:
-    """True for a local run: edit files and build, but never push or publish."""
-    return os.environ.get("SKIP_GITHUB", "false").strip().lower() == "true"
 
 
 def _masked(text: str) -> str:
@@ -135,9 +150,9 @@ def _required(name: str) -> str:
 
 
 def _repository() -> str:
-    repository = _required("REACTORCIDE_REPO")
+    repository = _required("ICHOI_REPOSITORY")
     if not REPOSITORY_PATTERN.fullmatch(repository):
-        raise RuntimeError("REACTORCIDE_REPO must use the OWNER/REPOSITORY format")
+        raise RuntimeError("ICHOI_REPOSITORY must use the OWNER/REPOSITORY format")
     return repository
 
 
@@ -150,7 +165,7 @@ def _github_request(
     *,
     body: Optional[bytes] = None,
     content_type: str = "application/json",
-) -> Optional[dict]:
+) -> Any:
     """Call the GitHub API. Returns None for 404, so a caller can ask "does this exist?"."""
     request = urllib.request.Request(method=method, url=url, data=body)
     request.add_header("Authorization", f"Bearer {_required('GITHUB_PAT')}")
@@ -171,47 +186,19 @@ def _github_request(
         raise RuntimeError(f"GitHub {method} {url} failed: {error.code} {detail}") from None
 
 
-def github_release_exists(repository: str, tag: str) -> bool:
-    quoted = urllib.parse.quote(tag, safe="")
-    return _github_request("GET", f"{GITHUB_API}/repos/{repository}/releases/tags/{quoted}") is not None
-
-
-def _create_github_release(repository: str, tag: str, assets: List[Path]) -> None:
-    log_stdout(f"=== Creating GitHub release {tag} ===")
-    body = json.dumps(
-        {"tag_name": tag, "name": tag, "generate_release_notes": True}
-    ).encode()
-    created = _github_request("POST", f"{GITHUB_API}/repos/{repository}/releases", body=body)
-    if not created or "id" not in created:
-        raise RuntimeError(f"GitHub did not return a release id for {tag}")
-
-    release_id = created["id"]
-    for asset in sorted(assets):
-        name = urllib.parse.quote(asset.name, safe="")
-        log_stdout(f"Uploading {asset.name}")
-        _github_request(
-            "POST",
-            f"{GITHUB_UPLOADS}/repos/{repository}/releases/{release_id}/assets?name={name}",
-            body=asset.read_bytes(),
-            content_type="application/octet-stream",
-        )
-    log_stdout(f"=== Released {tag} ===")
-
-
 # ------------------------------------------------------------------- recovery state machine
 
 
-def recover_unreleased_targets(
+def recover_unstamped_targets(
     targets: Iterable[str],
     published: List[Release],
     list_tags: Callable[[str], List[str]],
-    release_exists: Callable[[str], bool],
+    read_version: Callable[[str], str],
 ) -> List[Release]:
-    """Return `published` plus any target whose tag exists with no GitHub release.
+    """Return `published` plus each tag that is not in its target version file.
 
-    This is the state a release job leaves behind when it dies after semver-tags pushed the
-    tag but before the release was created. On the retry semver-tags reports no new release,
-    because the tag is already there, so without this the release is never published.
+    This state exists when the tag job stops after semver-tags pushes a tag but before the
+    separate version-bump commit reaches main. The tag-created workflow owns publication.
 
     The lookups are injected, so the decision is testable without a network or a repository.
     """
@@ -227,17 +214,24 @@ def recover_unreleased_targets(
             continue
         latest = tags[0]
 
-        if release_exists(latest):
+        version = latest[len(f"{target}/v"):]
+        if not latest.startswith(f"{target}/v") or not VERSION_PATTERN.fullmatch(version):
+            raise RuntimeError(f"Refusing to recover the malformed release tag '{latest}'")
+        if read_version(target).strip() == version:
             continue
 
-        version = latest[len(f"{target}/v"):]
-        if not VERSION_PATTERN.fullmatch(version):
-            raise RuntimeError(f"Refusing to recover the malformed release tag '{latest}'")
-
         recovered.append(Release(target, version, latest))
-        log_stdout(f"=== Recovering incomplete release: {target} -> {latest} ({version}) ===")
+        log_stdout(f"=== Recovering unstamped tag: {target} -> {latest} ({version}) ===")
 
     return recovered
+
+
+def _version_reader(code_dir: Path) -> Callable[[str], str]:
+    def read_version(target: str) -> str:
+        version_file = code_dir / target / "version" / "VERSION.txt"
+        return version_file.read_text(encoding="utf-8") if version_file.is_file() else ""
+
+    return read_version
 
 
 def _tag_lister(code_dir: Path) -> Callable[[str], List[str]]:
@@ -262,10 +256,37 @@ def _tag_lister(code_dir: Path) -> Callable[[str], List[str]]:
 # ------------------------------------------------------------------------------- semver-tags
 
 
+def _latest_semver_tags_download() -> tuple[str, str]:
+    latest = _github_request(
+        "GET", f"{GITHUB_API}/repos/{SEMVER_TAGS_REPOSITORY}/releases/latest"
+    )
+    if not isinstance(latest, dict) or not re.fullmatch(
+        r"v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)",
+        str(latest.get("tag_name") or ""),
+    ):
+        raise RuntimeError("GitHub did not return a valid semver-tags release")
+    assets = latest.get("assets")
+    if not isinstance(assets, list):
+        raise RuntimeError("The semver-tags release has no asset list")
+    download_url = next(
+        (
+            asset.get("browser_download_url")
+            for asset in assets
+            if isinstance(asset, dict) and asset.get("name") == SEMVER_TAGS_ASSET
+        ),
+        None,
+    )
+    expected_prefix = f"https://github.com/{SEMVER_TAGS_REPOSITORY}/releases/download/"
+    if not isinstance(download_url, str) or not download_url.startswith(expected_prefix):
+        raise RuntimeError("The semver-tags release does not contain the expected archive")
+    return str(latest["tag_name"]), download_url
+
+
 def _install_semver_tags(code_dir: Path) -> Path:
-    log_stdout(f"=== Installing semver-tags {SEMVER_TAGS_VERSION} ===")
+    version, download_url = _latest_semver_tags_download()
+    log_stdout(f"=== Installing semver-tags {version} ===")
     archive = Path("/tmp/semver-tags.tar.gz")
-    with urllib.request.urlopen(SEMVER_TAGS_URL, timeout=300) as response:
+    with urllib.request.urlopen(download_url, timeout=300) as response:
         archive.write_bytes(response.read())
     with tarfile.open(archive) as tar:
         tar.extractall("/tmp", filter="data")
@@ -303,7 +324,11 @@ def parse_semver_output(metadata: dict, targets: Iterable[str]) -> List[Release]
         if index >= len(published) or published[index].strip().lower() != "true":
             log_stdout(f"=== {target}: no new release ===")
             continue
-        release = Release(target, versions[index].strip(), tags[index].strip())
+        version = versions[index].strip() if index < len(versions) else ""
+        tag = tags[index].strip() if index < len(tags) else ""
+        if not VERSION_PATTERN.fullmatch(version) or tag != f"{target}/v{version}":
+            raise RuntimeError(f"semver-tags returned invalid release metadata for {target}")
+        release = Release(target, version, tag)
         releases.append(release)
         log_stdout(f"=== New release: {target} -> {release.tag} ({release.version}) ===")
     return releases
@@ -488,132 +513,581 @@ def _install_cargo_zigbuild(environment: Dict[str, str], cwd: Path) -> None:
     environment["CARGO_ZIGBUILD_PYTHON_PATH"] = "python3"
 
 
-def _build_artifacts(code_dir: Path, release: Release, out_dir: Path) -> List[Path]:
-    """Build the release archives for one target.
+def _asset_selection(asset: str) -> tuple[str, str, str]:
+    for architecture, triple in CORE_ARCHITECTURES:
+        if asset == f"core-{architecture}.tar.gz":
+            return "core", architecture, triple
+    for architecture, triple in SATELLITE_ARCHITECTURES:
+        if asset == f"satellite-{architecture}.tar.gz":
+            return "satellite", architecture, triple
+    raise RuntimeError(f"Unknown Ichoi release asset: {asset}")
 
-    The scratch core remains a static musl binary. Native satellites are GNU binaries built
-    against the oldest supported glibc so runtime loading of the host ALSA stack works.
-    """
-    if release.target != "server":
-        log_stdout(
-            f"WARNING: no artifact builder for target '{release.target}'; "
-            "releasing the tag and notes only."
-        )
-        return []
 
-    _apt_install(BUILD_PACKAGES, code_dir)
+def _build_cache_asset(code_dir: Path, asset: str) -> Path:
+    """Build one logical cache asset in one temporary architecture job."""
+    kind, architecture, triple = _asset_selection(asset)
+    if kind == "core":
+        _apt_install(BUILD_PACKAGES, code_dir)
+
     environment = _rust_environment()
-    _install_aarch64_musl_cross(environment, code_dir)
-    _install_cargo_zigbuild(environment, code_dir)
+    if kind == "core" and architecture == "arm64":
+        _install_aarch64_musl_cross(environment, code_dir)
+    if kind == "satellite":
+        _install_cargo_zigbuild(environment, code_dir)
+
     server_dir = code_dir / "server"
     target_dir = Path(environment["CARGO_TARGET_DIR"])
-
-    archives = []
-    for architecture, triple in CORE_ARCHITECTURES:
-        log_stdout(
-            f"=== Building ichoi core {release.version} for {architecture} ({triple}) ==="
-        )
-        _run(["rustup", "target", "add", triple], cwd=server_dir, env=environment)
-        _run(
-            ["cargo", "build", "--release", "--target", triple, "--bin", "ichoi"],
-            cwd=server_dir,
-            env=environment,
-        )
-        archive = out_dir / f"ichoi-{release.version}-linux-{architecture}-core-musl.tar.gz"
-        binary = target_dir / triple / "release" / "ichoi"
-        with tarfile.open(archive, "w:gz") as tar:
-            tar.add(binary, arcname="ichoi")
-        archives.append(archive)
-
-    for architecture, triple in SATELLITE_ARCHITECTURES:
-        versioned_target = f"{triple}.{SATELLITE_GLIBC_VERSION}"
-        log_stdout(
-            f"=== Building ichoi satellite {release.version} for {architecture} "
-            f"({versioned_target}) ==="
-        )
-        _run(["rustup", "target", "add", triple], cwd=server_dir, env=environment)
-        _run(
-            [
-                "cargo",
-                "zigbuild",
-                "--release",
-                "--target",
-                versioned_target,
-                "--bin",
-                "ichoi",
-            ],
-            cwd=server_dir,
-            env=environment,
-        )
-        archive = out_dir / (
-            f"ichoi-{release.version}-linux-{architecture}-satellite-gnu.tar.gz"
-        )
-        binary = target_dir / triple / "release" / "ichoi"
-        with tarfile.open(archive, "w:gz") as tar:
-            tar.add(binary, arcname="ichoi")
-        archives.append(archive)
-
-    return archives
-
-
-# ------------------------------------------------------------------------------------- job
-
-
-def release(code_dir: Path) -> None:
-    """Tag, stamp, push, build, and publish."""
-    repository = _repository() if not _skip_github() else os.environ.get("REACTORCIDE_REPO", "")
-
-    if _skip_github():
-        log_stdout("=== SKIP_GITHUB=true: using the working tree as it is ===")
+    _run(["rustup", "target", "add", triple], cwd=server_dir, env=environment)
+    if kind == "core":
+        command = ["cargo", "build", "--release", "--target", triple, "--bin", "ichoi"]
     else:
-        _sync_onto_main(code_dir, repository)
+        command = [
+            "cargo",
+            "zigbuild",
+            "--release",
+            "--target",
+            f"{triple}.{SATELLITE_GLIBC_VERSION}",
+            "--bin",
+            "ichoi",
+        ]
+    log_stdout(f"=== Building Ichoi {kind} for {architecture} ({triple}) ===")
+    _run(command, cwd=server_dir, env=environment)
 
+    binary = target_dir / triple / "release" / "ichoi"
+    if not binary.is_file():
+        raise RuntimeError(f"The {kind} {architecture} build did not create an Ichoi binary")
+    out_dir = Path("/tmp/ichoi-release-assets")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    archive = out_dir / asset
+    with tarfile.open(archive, "w:gz") as tar:
+        tar.add(binary, arcname="ichoi")
+    return archive
+
+
+# ------------------------------------------------------------------------- workflow state
+
+
+def _git_value(code_dir: Path, *arguments: str) -> str:
+    result = _run(
+        ["git", *arguments],
+        cwd=code_dir,
+        capture_output=True,
+    )
+    return result.stdout.strip()
+
+
+def _git_sha(code_dir: Path) -> str:
+    value = _git_value(code_dir, "rev-parse", "HEAD")
+    if not re.fullmatch(r"[0-9a-f]{40,64}", value):
+        raise RuntimeError("Git returned an invalid commit hash")
+    return value
+
+
+def _git_tree(code_dir: Path) -> str:
+    value = _git_value(code_dir, "rev-parse", "HEAD^{tree}")
+    if not re.fullmatch(r"[0-9a-f]{40,64}", value):
+        raise RuntimeError("Git returned an invalid tree hash")
+    return value
+
+
+def _workflow_vars() -> Mapping[str, Any]:
+    path = _required("RC_WF_VARS_FILE")
+    value = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise RuntimeError("The workflow variables are invalid")
+    return value
+
+
+def _set_workflow_vars(values: Mapping[str, Any]) -> None:
+    path = _required("RC_WF_OUTPUT_FILE")
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps({"vars": dict(values), "outputs": {}}, sort_keys=True),
+        encoding="utf-8",
+    )
+
+
+def _release_from_tag(tag: str) -> Release:
+    match = RELEASE_TAG_PATTERN.fullmatch(tag)
+    if match is None:
+        raise RuntimeError(f"The Ichoi release tag is invalid: {tag}")
+    return Release("server", match.group("version"), tag)
+
+
+def _release_tag_from_environment(code_dir: Path) -> str:
+    branch = os.environ.get("REACTORCIDE_BRANCH", "").strip()
+    if branch:
+        return _release_from_tag(branch).tag
+    tags = _git_value(code_dir, "tag", "--points-at", "HEAD").splitlines()
+    matches = [tag for tag in tags if RELEASE_TAG_PATTERN.fullmatch(tag)]
+    if len(matches) != 1:
+        raise RuntimeError("A release job requires one Ichoi server release tag")
+    return matches[0]
+
+
+# -------------------------------------------------------------------------- release draft
+
+
+def _release_marker(source_sha: str) -> str:
+    return f"{RELEASE_MARKER_PREFIX}{source_sha} -->"
+
+
+def _find_github_release(repository: str, tag: str) -> Optional[dict]:
+    quoted = urllib.parse.quote(tag, safe="")
+    published = _github_request(
+        "GET", f"{GITHUB_API}/repos/{repository}/releases/tags/{quoted}"
+    )
+    if isinstance(published, dict):
+        return published
+    for page in range(1, 11):
+        releases = _github_request(
+            "GET",
+            f"{GITHUB_API}/repos/{repository}/releases?per_page=100&page={page}",
+        )
+        if not isinstance(releases, list):
+            raise RuntimeError("GitHub returned an invalid release list")
+        for release in releases:
+            if isinstance(release, dict) and release.get("tag_name") == tag:
+                return release
+        if len(releases) < 100:
+            break
+    return None
+
+
+def _create_or_reuse_draft(repository: str, release: Release, source_sha: str) -> dict:
+    existing = _find_github_release(repository, release.tag)
+    marker = _release_marker(source_sha)
+    if existing is not None:
+        if marker not in str(existing.get("body") or ""):
+            raise RuntimeError(f"An unrelated GitHub Release uses {release.tag}")
+        state = "draft" if existing.get("draft") else "published"
+        log_stdout(f"Reuse {state} GitHub Release {release.tag}")
+        return existing
+    payload = json.dumps(
+        {
+            "tag_name": release.tag,
+            "target_commitish": source_sha,
+            "name": release.tag,
+            "body": marker,
+            "draft": True,
+            "prerelease": False,
+            "generate_release_notes": True,
+        }
+    ).encode("utf-8")
+    created = _github_request(
+        "POST",
+        f"{GITHUB_API}/repos/{repository}/releases",
+        body=payload,
+    )
+    if not isinstance(created, dict) or "id" not in created:
+        raise RuntimeError("GitHub did not return a valid draft release")
+    log_stdout(f"Created draft GitHub Release {release.tag}")
+    return created
+
+
+def _authorized_release(repository: str, tag: str, source_sha: str) -> dict:
+    release = _find_github_release(repository, tag)
+    if release is None or _release_marker(source_sha) not in str(release.get("body") or ""):
+        raise RuntimeError(f"No CI-created draft authorizes {tag} at this commit")
+    return release
+
+
+def _github_tag_target(repository: str, tag: str) -> str:
+    quoted = urllib.parse.quote(tag, safe="/")
+    reference = _github_request(
+        "GET", f"{GITHUB_API}/repos/{repository}/git/ref/tags/{quoted}"
+    )
+    if not isinstance(reference, dict) or not isinstance(reference.get("object"), dict):
+        raise RuntimeError("GitHub did not return the release tag")
+    target = reference["object"]
+    for _ in range(5):
+        object_type = target.get("type")
+        sha = target.get("sha")
+        if not isinstance(sha, str):
+            break
+        if object_type == "commit":
+            return sha
+        if object_type != "tag":
+            break
+        tag_object = _github_request(
+            "GET", f"{GITHUB_API}/repos/{repository}/git/tags/{sha}"
+        )
+        if not isinstance(tag_object, dict) or not isinstance(tag_object.get("object"), dict):
+            break
+        target = tag_object["object"]
+    raise RuntimeError("GitHub returned an invalid release tag target")
+
+
+# ----------------------------------------------------------------------------- asset cache
+
+
+def _read_lane_manifest(cache: Any, lane: str, *, verify_files: bool) -> dict[str, Any]:
+    content = cache.get_bytes(ASSET_CACHE.object_key(lane, ASSET_CACHE.MANIFEST))
+    manifest = ASSET_CACHE.decode_manifest(content)
+    assets = manifest.get("assets")
+    if not isinstance(assets, list) or len(assets) != len(EXPECTED_CACHE_ASSETS):
+        raise RuntimeError("The Ichoi asset manifest has the wrong asset count")
+    by_name = {item.get("name"): item for item in assets if isinstance(item, dict)}
+    if set(by_name) != set(EXPECTED_CACHE_ASSETS):
+        raise RuntimeError("The Ichoi asset manifest has unexpected assets")
+    if verify_files:
+        for name in EXPECTED_CACHE_ASSETS:
+            payload = cache.get_bytes(ASSET_CACHE.object_key(lane, name))
+            if (
+                by_name[name].get("sha256") != hashlib.sha256(payload).hexdigest()
+                or by_name[name].get("size") != len(payload)
+            ):
+                raise RuntimeError(f"The cached Ichoi asset is invalid: {name}")
+    return manifest
+
+
+def _prepare_asset_lane(code_dir: Path) -> None:
+    repository = _repository()
+    tag = _release_tag_from_environment(code_dir)
+    release = _release_from_tag(tag)
+    source_sha = _git_sha(code_dir)
+    source_tree = _git_tree(code_dir)
+    if _github_tag_target(repository, tag) != source_sha:
+        raise RuntimeError("The release tag does not point to the checked-out commit")
+    _create_or_reuse_draft(repository, release, source_sha)
+
+    lane = ASSET_CACHE.version_lane(release.version)
+    cache = ASSET_CACHE.S3Cache.from_environment()
+    cached_assets: set[str] = set()
+    try:
+        manifest = _read_lane_manifest(cache, lane, verify_files=True)
+    except (FileNotFoundError, RuntimeError, ValueError, json.JSONDecodeError):
+        log_stdout(f"The existing lane {lane} is not reusable; rebuild its assets")
+    else:
+        if manifest.get("source_sha") == source_sha and manifest.get("source_tree") == source_tree:
+            cached_assets = set(EXPECTED_CACHE_ASSETS)
+
+    uploads: dict[str, dict[str, str]] = {}
+    for asset in EXPECTED_CACHE_ASSETS:
+        if asset in cached_assets:
+            continue
+        staging = "staging-" + asset
+        uploads[asset] = {
+            "asset": cache.presign("PUT", ASSET_CACHE.object_key(lane, staging)),
+            "sha256": cache.presign(
+                "PUT", ASSET_CACHE.object_key(lane, staging + ".sha256")
+            ),
+        }
+    _set_workflow_vars(
+        {
+            "asset_cache_lane": lane,
+            "asset_cache_source_sha": source_sha,
+            "asset_cache_source_tree": source_tree,
+            "asset_cache_uploads": uploads,
+            "ichoi_release_tag": tag,
+            "ichoi_release_version": release.version,
+        }
+    )
+    log_stdout(f"Prepared {lane} with {len(uploads)} asset upload set(s)")
+
+
+def _put_presigned(url: str, content: bytes) -> None:
+    request = urllib.request.Request(url, data=content, method="PUT")
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                response.read()
+            return
+        except urllib.error.HTTPError as error:
+            if error.code not in {408, 429, 500, 502, 503, 504} or attempt == 4:
+                raise RuntimeError(
+                    f"The exact-object asset upload failed with HTTP {error.code}"
+                ) from None
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 4:
+                raise RuntimeError("The exact-object asset upload failed") from None
+        time.sleep(2**attempt)
+    raise RuntimeError("The exact-object asset upload failed")
+
+
+def _build_and_upload_asset(code_dir: Path) -> None:
+    asset = _required("ICHOI_RELEASE_ASSET")
+    _asset_selection(asset)
+    variables = _workflow_vars()
+    uploads = variables.get("asset_cache_uploads")
+    if not isinstance(uploads, dict):
+        raise RuntimeError("The asset upload map is missing")
+    upload = uploads.get(asset)
+    if upload is None:
+        log_stdout(f"Reuse sealed cache asset {asset}")
+        return
+    if not isinstance(upload, dict):
+        raise RuntimeError("The asset upload entry is invalid")
+    asset_url = upload.get("asset")
+    digest_url = upload.get("sha256")
+    if not isinstance(asset_url, str) or not isinstance(digest_url, str):
+        raise RuntimeError("The asset upload URLs are invalid")
+    archive = _build_cache_asset(code_dir, asset)
+    digest = ASSET_CACHE.file_sha256(archive)
+    _put_presigned(asset_url, archive.read_bytes())
+    _put_presigned(digest_url, (digest + "\n").encode("utf-8"))
+    log_stdout(f"Built and uploaded {asset}")
+
+
+def _seal_asset_lane(_code_dir: Path) -> None:
+    variables = _workflow_vars()
+    lane = variables.get("asset_cache_lane")
+    source_sha = variables.get("asset_cache_source_sha")
+    source_tree = variables.get("asset_cache_source_tree")
+    if not all(isinstance(value, str) for value in (lane, source_sha, source_tree)):
+        raise RuntimeError("The asset lane variables are invalid")
+    uploads = variables.get("asset_cache_uploads")
+    if not isinstance(uploads, dict):
+        raise RuntimeError("The asset upload map is missing")
+    cache = ASSET_CACHE.S3Cache.from_environment()
+    assets = []
+    for asset in EXPECTED_CACHE_ASSETS:
+        if asset in uploads:
+            staging = "staging-" + asset
+            staging_key = ASSET_CACHE.object_key(lane, staging)
+            digest_key = ASSET_CACHE.object_key(lane, staging + ".sha256")
+            content = cache.get_bytes(staging_key)
+            recorded = cache.get_bytes(digest_key).decode("utf-8").strip()
+        else:
+            content = cache.get_bytes(ASSET_CACHE.object_key(lane, asset))
+            recorded = cache.get_bytes(
+                ASSET_CACHE.object_key(lane, asset + ".sha256")
+            ).decode("utf-8").strip()
+        digest = hashlib.sha256(content).hexdigest()
+        if recorded != digest:
+            raise RuntimeError(f"The asset checksum does not match: {asset}")
+        if asset in uploads:
+            final_key = ASSET_CACHE.object_key(lane, asset)
+            cache.copy(staging_key, final_key)
+            copied = cache.get_bytes(final_key)
+            if hashlib.sha256(copied).hexdigest() != digest or len(copied) != len(content):
+                raise RuntimeError(f"The sealed asset copy is invalid: {asset}")
+            cache.put_bytes(
+                ASSET_CACHE.object_key(lane, asset + ".sha256"),
+                (digest + "\n").encode("utf-8"),
+            )
+            cache.delete(staging_key)
+            cache.delete(digest_key)
+        assets.append({"name": asset, "sha256": digest, "size": len(content)})
+    manifest = {
+        "schema": 1,
+        "project": ASSET_CACHE.PROJECT,
+        "lane": lane,
+        "source_sha": source_sha,
+        "source_tree": source_tree,
+        "created_at": time.time(),
+        "assets": assets,
+    }
+    cache.put_bytes(
+        ASSET_CACHE.object_key(lane, ASSET_CACHE.MANIFEST),
+        ASSET_CACHE.encode_manifest(manifest),
+    )
+    log_stdout(f"Sealed Ichoi asset lane {lane}")
+
+
+def _versioned_asset_name(asset: str, version: str) -> str:
+    kind, architecture, _ = _asset_selection(asset)
+    suffix = "core-musl" if kind == "core" else "satellite-gnu"
+    return f"ichoi-{version}-linux-{architecture}-{suffix}.tar.gz"
+
+
+def _upload_release_assets(
+    repository: str,
+    release: Mapping[str, Any],
+    artifacts: Iterable[Path],
+) -> None:
+    release_id = release.get("id")
+    upload_url = release.get("upload_url")
+    if not isinstance(release_id, int) or not isinstance(upload_url, str):
+        raise RuntimeError("GitHub returned invalid release upload data")
+    current = _github_request(
+        "GET", f"{GITHUB_API}/repos/{repository}/releases/{release_id}/assets?per_page=100"
+    )
+    if not isinstance(current, list):
+        raise RuntimeError("GitHub returned an invalid release asset list")
+    existing = {
+        item.get("name"): item.get("id") for item in current if isinstance(item, dict)
+    }
+    upload_base = upload_url.split("{", 1)[0]
+    for artifact in sorted(artifacts):
+        asset_id = existing.get(artifact.name)
+        if isinstance(asset_id, int):
+            _github_request(
+                "DELETE", f"{GITHUB_API}/repos/{repository}/releases/assets/{asset_id}"
+            )
+        query = urllib.parse.urlencode({"name": artifact.name})
+        _github_request(
+            "POST",
+            f"{upload_base}?{query}",
+            body=artifact.read_bytes(),
+            content_type="application/gzip",
+        )
+        log_stdout(f"Uploaded {artifact.name}")
+
+
+def _promote_main_lane(cache: Any, manifest: Mapping[str, Any], source_sha: str) -> None:
+    release_lane = str(manifest["lane"])
+    main_lane = ASSET_CACHE.main_lane(source_sha)
+    for asset in EXPECTED_CACHE_ASSETS:
+        source_key = ASSET_CACHE.object_key(release_lane, asset)
+        target_key = ASSET_CACHE.object_key(main_lane, asset)
+        source = cache.get_bytes(source_key)
+        cache.copy(source_key, target_key)
+        copied = cache.get_bytes(target_key)
+        if (
+            hashlib.sha256(source).digest() != hashlib.sha256(copied).digest()
+            or len(source) != len(copied)
+        ):
+            raise RuntimeError(f"The promoted main asset is invalid: {asset}")
+        cache.put_bytes(
+            ASSET_CACHE.object_key(main_lane, asset + ".sha256"),
+            (hashlib.sha256(copied).hexdigest() + "\n").encode("utf-8"),
+        )
+    main_manifest = dict(manifest)
+    main_manifest.update({"lane": main_lane, "release_lane": release_lane})
+    cache.put_bytes(
+        ASSET_CACHE.object_key(main_lane, ASSET_CACHE.MANIFEST),
+        ASSET_CACHE.encode_manifest(main_manifest),
+    )
+    cache.put_bytes(
+        ASSET_CACHE.object_key("main", "latest.json"),
+        ASSET_CACHE.encode_manifest(
+            {
+                "schema": 1,
+                "project": ASSET_CACHE.PROJECT,
+                "lane": "main",
+                "main_lane": main_lane,
+                "release_lane": release_lane,
+                "source_sha": source_sha,
+                "source_tree": manifest["source_tree"],
+                "created_at": time.time(),
+            }
+        ),
+    )
+
+
+def _publish_release(code_dir: Path) -> None:
+    repository = _repository()
+    tag = _release_tag_from_environment(code_dir)
+    release_info = _release_from_tag(tag)
+    source_sha = _git_sha(code_dir)
+    source_tree = _git_tree(code_dir)
+    if _github_tag_target(repository, tag) != source_sha:
+        raise RuntimeError("The release tag no longer points to the checked-out commit")
+    release = _authorized_release(repository, tag, source_sha)
+    lane = ASSET_CACHE.version_lane(release_info.version)
+    cache = ASSET_CACHE.S3Cache.from_environment()
+    manifest = _read_lane_manifest(cache, lane, verify_files=True)
+    if manifest.get("source_sha") != source_sha or manifest.get("source_tree") != source_tree:
+        raise RuntimeError("The release asset lane does not match the checked-out source")
+    output = Path("/tmp/release/server")
+    output.mkdir(parents=True, exist_ok=True)
+    artifacts = []
+    for asset in EXPECTED_CACHE_ASSETS:
+        destination = output / _versioned_asset_name(asset, release_info.version)
+        cache.get_file(ASSET_CACHE.object_key(lane, asset), destination)
+        artifacts.append(destination)
+    _upload_release_assets(repository, release, artifacts)
+
+    current = _github_request(
+        "GET", f"{GITHUB_API}/repos/{repository}/releases/{release['id']}/assets?per_page=100"
+    )
+    if not isinstance(current, list):
+        raise RuntimeError("GitHub returned an invalid release asset list")
+    actual = {item.get("name") for item in current if isinstance(item, dict)}
+    expected = {artifact.name for artifact in artifacts}
+    if not expected.issubset(actual):
+        raise RuntimeError("The GitHub Release is missing one or more Ichoi archives")
+    _github_request(
+        "PATCH",
+        f"{GITHUB_API}/repos/{repository}/releases/{release['id']}",
+        body=json.dumps({"draft": False}).encode("utf-8"),
+    )
+    _promote_main_lane(cache, manifest, source_sha)
+    log_stdout(f"Published GitHub Release {tag}")
+
+
+def _cleanup_asset_cache(_code_dir: Path) -> None:
+    cache = ASSET_CACHE.S3Cache.from_environment()
+    prefix = ASSET_CACHE.PROJECT + "/"
+    objects = cache.list(prefix)
+    by_lane: dict[str, list[Any]] = {}
+    for item in objects:
+        relative = item.key.removeprefix(prefix)
+        lane, separator, _ = relative.partition("/")
+        if separator and ASSET_CACHE.LANE_RE.fullmatch(lane):
+            by_lane.setdefault(lane, []).append(item)
+    versions = sorted(
+        (lane for lane in by_lane if ASSET_CACHE.VERSION_LANE_RE.fullmatch(lane)),
+        key=ASSET_CACHE.version_sort_key,
+        reverse=True,
+    )
+    completed: list[tuple[str, dict[str, Any], float]] = []
+    for lane in versions:
+        try:
+            manifest = _read_lane_manifest(cache, lane, verify_files=False)
+        except (FileNotFoundError, RuntimeError, ValueError, json.JSONDecodeError):
+            continue
+        created_at = manifest.get("created_at")
+        if isinstance(created_at, (int, float)):
+            completed.append((lane, manifest, float(created_at)))
+        if len(completed) == 6:
+            break
+    if not completed:
+        log_stdout("The Ichoi asset cache has no complete release lane")
+        return
+    retained = {"main", *(lane for lane, _, _ in completed)}
+    for _, manifest, _ in completed:
+        source_sha = manifest.get("source_sha")
+        if isinstance(source_sha, str):
+            retained.add(ASSET_CACHE.main_lane(source_sha))
+    cutoff = min(created_at for _, _, created_at in completed)
+    deleted = 0
+    for lane, lane_objects in sorted(by_lane.items()):
+        if lane in retained:
+            continue
+        newest = max(item.last_modified.timestamp() for item in lane_objects)
+        if newest >= cutoff:
+            continue
+        for item in lane_objects:
+            if not item.key.startswith(prefix + lane + "/"):
+                raise RuntimeError("The cleanup object escaped its validated lane")
+            cache.delete(item.key)
+        deleted += 1
+    log_stdout(f"Deleted {deleted} expired Ichoi asset-cache lane(s)")
+
+
+# ------------------------------------------------------------------------------------- jobs
+
+
+def tag_release(code_dir: Path) -> None:
+    """Push release tags, then stamp and push the separate version commit."""
+    repository = _repository()
+    _sync_onto_main(code_dir, repository)
     semver_tags = _install_semver_tags(code_dir)
     releases = _run_semver_tags(code_dir, semver_tags)
-
-    # Recover before deciding there is nothing to do: an earlier attempt may have pushed a
-    # tag and then failed before creating its GitHub release.
-    if not _skip_github():
-        releases = recover_unreleased_targets(
-            TARGETS,
-            releases,
-            _tag_lister(code_dir),
-            lambda tag: github_release_exists(repository, tag),
-        )
-
+    releases = recover_unstamped_targets(
+        TARGETS,
+        releases,
+        _tag_lister(code_dir),
+        _version_reader(code_dir),
+    )
     if not releases:
-        log_stdout("No new or incomplete release found for any target.")
+        log_stdout("No new or unstamped Ichoi release tag was found")
         return
-
     summary = ", ".join(f"{release.target} {release.version}" for release in releases)
-    log_stdout(f"=== Updating versioned files ({summary}) ===")
-
-    if _skip_github():
-        _stamp_version_files(code_dir, releases)
-        log_stdout("=== SKIP_GITHUB=true: skipping the version-bump commit and push ===")
-    elif not _push_version_bump(code_dir, releases):
-        return
-
-    for entry in releases:
-        out_dir = Path("/tmp/release") / entry.target
-        out_dir.mkdir(parents=True, exist_ok=True)
-        archives = _build_artifacts(code_dir, entry, out_dir)
-
-        if _skip_github():
-            log_stdout(
-                f"=== SKIP_GITHUB=true: skipping the GitHub release for {entry.tag}; "
-                f"artifacts are in {out_dir} ==="
-            )
-            continue
-
-        # Do NOT guard on "the tag already exists" here. semver-tags created and pushed each
-        # tag before this point, so the tags always exist; guarding would skip every release.
-        # The recovery pass above is what handles a tag left without a release.
-        _create_github_release(repository, entry.tag, archives)
+    log_stdout(f"=== Updating version files ({summary}) ===")
+    _push_version_bump(code_dir, releases)
 
 
 RELEASE_JOBS: Dict[str, Callable[[Path], None]] = {
-    "release": release,
+    "tag": tag_release,
+    "asset-prepare": _prepare_asset_lane,
+    "asset-build": _build_and_upload_asset,
+    "asset-seal": _seal_asset_lane,
+    "publish": _publish_release,
+    "asset-cleanup": _cleanup_asset_cache,
 }
 
 
@@ -630,7 +1104,7 @@ class IchoiReleaseJobsPlugin(Plugin):
         if context.phase != PluginPhase.POST_SOURCE_PREP:
             return
 
-        job_name = os.environ.get("REACTORCIDE_ICHOI_RELEASE_JOB", "").strip()
+        job_name = os.environ.get("ICHOI_RELEASE_JOB", "").strip()
         if not job_name:
             return
 
@@ -638,7 +1112,7 @@ class IchoiReleaseJobsPlugin(Plugin):
         if job is None:
             names = ", ".join(sorted(RELEASE_JOBS))
             raise RuntimeError(
-                f"Unknown REACTORCIDE_ICHOI_RELEASE_JOB '{job_name}'. Valid jobs: {names}"
+                f"Unknown ICHOI_RELEASE_JOB '{job_name}'. Valid jobs: {names}"
             )
 
         code_dir = Path(context.config.code_dir)

@@ -1,18 +1,7 @@
 name: ichoi-build
-description: "Build the ichoi workspace for amd64 and arm64 (static musl targets)"
-# Compatibility trigger: an eval image that predates workflow support reads job files only
-# and ignores .reactorcide/workflows/. Remove these once every project runs a runnerbase
-# that logs "Loaded N workflow definition(s)".
-triggers:
-  events:
-    - pull_request_opened
-    - pull_request_updated
-  branches:
-    - main
-depends_on:
-  - ichoi-conventional-commits
+description: "Build the Ichoi workspace for amd64 and arm64 static musl targets."
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:latest
   command: "runnerlib run --job-command true"
   timeout: 2400
   priority: 10
@@ -20,6 +9,6 @@ job:
   run_as:
     user: runner
 environment:
-  REACTORCIDE_ICHOI_CI_JOB: build
+  ICHOI_CI_JOB: build
 run_local:
-  as_runner: true
+  user: host

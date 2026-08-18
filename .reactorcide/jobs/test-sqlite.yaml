@@ -1,16 +1,7 @@
 name: ichoi-test-sqlite
-description: "Run the workspace test suite against the SQLite backend"
-# Compatibility trigger; see build.yaml.
-triggers:
-  events:
-    - pull_request_opened
-    - pull_request_updated
-  branches:
-    - main
-depends_on:
-  - ichoi-conventional-commits
+description: "Run the workspace test suite against the SQLite backend."
 job:
-  image: containers.catalystsquad.com/public/reactorcide/runnerbase:v0.8.11
+  image: containers.catalystsquad.com/public/reactorcide/runnerbase:latest
   command: "runnerlib run --job-command true"
   timeout: 1800
   priority: 10
@@ -18,6 +9,6 @@ job:
   run_as:
     user: runner
 environment:
-  REACTORCIDE_ICHOI_CI_JOB: test-sqlite
+  ICHOI_CI_JOB: test-sqlite
 run_local:
-  as_runner: true
+  user: host
