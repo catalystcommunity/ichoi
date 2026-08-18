@@ -612,3 +612,14 @@ pub const AdminClient = struct {
         try codec.decode_LibraryResyncStatus(alloc, csil_respb, out);
     }
 };
+
+/// ChangeClient is a typed client for the ChangeService service over a CsilgenTransport.
+pub const ChangeClient = struct {
+    transport: CsilgenTransport,
+
+    pub fn init(transport: CsilgenTransport) ChangeClient {
+        return .{ .transport = transport };
+    }
+
+    // channel operation watch is not part of the RPC client
+};

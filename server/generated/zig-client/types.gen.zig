@@ -140,6 +140,37 @@ pub const AudioOutputsState = enum {
     }
 };
 
+/// ChangeTopic is an enumeration.
+pub const ChangeTopic = enum {
+    players,
+    libraries,
+    playlists,
+    progress,
+    session,
+    accounts,
+    trust,
+    nodes,
+    groups,
+    settings,
+    imports,
+
+    pub fn wire_name(self: ChangeTopic) []const u8 {
+        return switch (self) {
+            .players => "players",
+            .libraries => "libraries",
+            .playlists => "playlists",
+            .progress => "progress",
+            .session => "session",
+            .accounts => "accounts",
+            .trust => "trust",
+            .nodes => "nodes",
+            .groups => "groups",
+            .settings => "settings",
+            .imports => "imports",
+        };
+    }
+};
+
 /// AccountId is a type alias.
 pub const AccountId = []const u8;
 
@@ -607,6 +638,11 @@ pub const LibraryResyncStatus = struct {
     started: bool,
 };
 
+/// WatchChangesRequest is a structured data type.
+pub const WatchChangesRequest = struct {
+    active: ?bool = null,
+};
+
 /// SessionInfo is a structured data type.
 pub const SessionInfo = struct {
     account_id: AccountId,
@@ -774,6 +810,7 @@ pub const PlayerState = struct {
 /// SubscribeRequest is a structured data type.
 pub const SubscribeRequest = struct {
     player_id: PlayerId,
+    active: ?bool = null,
 };
 
 /// CommandRequest is a structured data type.
@@ -979,4 +1016,10 @@ pub const SetDeviceAccessRequest = struct {
     device_id: DeviceId,
     enabled: bool,
     group_ids: [][]const u8,
+};
+
+/// DataChange is a structured data type.
+pub const DataChange = struct {
+    topic: ChangeTopic,
+    revision: u64,
 };

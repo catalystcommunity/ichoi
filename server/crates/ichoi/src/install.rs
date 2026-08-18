@@ -467,6 +467,9 @@ pub fn describe(plan: &InstallPlan) -> String {
 }
 
 pub fn apply(plan: &InstallPlan, replace: bool) -> anyhow::Result<()> {
+    if plan.platform == Platform::Linux {
+        crate::audio::validate_satellite_output()?;
+    }
     ensure_privileges(plan.platform, plan.scope)?;
     for file in &plan.files {
         write_planned_file(file, replace)?;

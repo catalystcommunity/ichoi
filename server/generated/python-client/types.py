@@ -1337,17 +1337,20 @@ class ListPlayersResponse:
 @dataclass
 class SubscribeRequest:
     player_id: PlayerId
+    active: Optional[bool] = True
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'player_id') and self.player_id is not None:
             result['player_id'] = self.player_id
+        if hasattr(self, 'active') and self.active is not None:
+            result['active'] = self.active
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SubscribeRequest':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'))
+        return cls(player_id=data.get('player_id'), active=data.get('active'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -3428,6 +3431,61 @@ class LibraryResyncStatus:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'LibraryResyncStatus':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+ChangeTopic = Union[str, str, str, str, str, str, str, str, str, str, str]
+
+@dataclass
+class WatchChangesRequest:
+    active: Optional[bool] = True
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'active') and self.active is not None:
+            result['active'] = self.active
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'WatchChangesRequest':
+        """Create instance from dictionary."""
+        return cls(active=data.get('active'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'WatchChangesRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class DataChange:
+    topic: ChangeTopic
+    revision: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'topic') and self.topic is not None:
+            result['topic'] = self.topic
+        if hasattr(self, 'revision') and self.revision is not None:
+            result['revision'] = self.revision
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'DataChange':
+        """Create instance from dictionary."""
+        return cls(topic=data.get('topic'), revision=data.get('revision'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'DataChange':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 

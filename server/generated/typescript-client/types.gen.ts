@@ -281,6 +281,7 @@ export interface ListPlayersResponse {
 
 export interface SubscribeRequest {
   playerId: PlayerId;
+  active?: boolean;
 }
 
 export interface CmdEnqueue {
@@ -664,6 +665,17 @@ export interface SetSettingRequest {
 export interface LibraryResyncStatus {
   running: boolean;
   started: boolean;
+}
+
+export type ChangeTopic = "players" | "libraries" | "playlists" | "progress" | "session" | "accounts" | "trust" | "nodes" | "groups" | "settings" | "imports";
+
+export interface WatchChangesRequest {
+  active?: boolean;
+}
+
+export interface DataChange {
+  topic: ChangeTopic;
+  revision: number;
 }
 
 export function validateHandle(value: Handle): string[] {

@@ -772,16 +772,31 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
                         .await
                         .unwrap_or((Identity::Anonymous, None, transport::FrameEffects::default()));
                         ident = new_ident;
-                        if let Some(player_id) = effects.subscribe {
-                            app.subs.subscribe(player_id, conn_id, tx.clone());
+                        if let Some((player_id, active)) = effects.player_subscription {
+                            if active {
+                                app.subs.subscribe(player_id, conn_id, tx.clone());
+                            } else {
+                                app.subs.unsubscribe(&player_id, conn_id);
+                            }
                         }
                         if let Some(player_id) = effects.attach {
                             // This connection is now the device's speaker; it shows up as a live
                             // device and, via subscribe, drives its audio.
-                            app.presence.attach(player_id, conn_id);
+                            if app.presence.attach(player_id, conn_id) {
+                                app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
+                            }
                         }
                         if let Some(player_id) = effects.node_session {
-                            app.nodes.subscribe(player_id, conn_id, tx.clone());
+                            if app.nodes.subscribe(player_id, conn_id, tx.clone()) {
+                                app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
+                            }
+                        }
+                        if let Some(active) = effects.watch_changes {
+                            if active {
+                                app.changes.subscribe(conn_id, tx.clone());
+                            } else {
+                                app.changes.unsubscribe(conn_id);
+                            }
                         }
                         if let Some(frame) = reply {
                             if socket.send(Message::Binary(frame)).await.is_err() {
@@ -822,6 +837,10 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
         }
     }
     app.subs.unsubscribe_conn(conn_id);
-    app.presence.detach_conn(conn_id);
-    app.nodes.unsubscribe_conn(conn_id);
+    let players_changed = app.presence.detach_conn(conn_id) | app.nodes.unsubscribe_conn(conn_id);
+    app.changes.unsubscribe(conn_id);
+    if players_changed {
+        app.changes
+            .publish(libichoi::csil::types::ChangeTopic::Players);
+    }
 }

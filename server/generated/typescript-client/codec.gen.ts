@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import type { Account, AccountId, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, ChangeTopic, CmdClear, CmdEnqueue, CmdNext, CmdPause, CmdPlay, CmdPrevious, CmdRemove, CmdReorder, CmdSeek, CmdVolume, Codec, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteGroupRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest, WatchChangesRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -1318,6 +1318,7 @@ export function fromListPlayersResponseCbor(bytes: Uint8Array): ListPlayersRespo
 
 export function toSubscribeRequestCborValue(v: SubscribeRequest): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
+  if (v.active !== undefined) csilMap.set("active", v.active);
   csilMap.set("player_id", v.playerId);
   return csilMap;
 }
@@ -1325,6 +1326,7 @@ export function toSubscribeRequestCborValue(v: SubscribeRequest): CborValue {
 export function fromSubscribeRequestCborValue(value: CborValue): SubscribeRequest {
   return {
     playerId: asString(requireKey(value, "player_id")),
+    active: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBool(csilV))(mapGet(value, "active")),
   };
 }
 
@@ -3020,5 +3022,47 @@ export function toLibraryResyncStatusCbor(v: LibraryResyncStatus): Uint8Array {
 
 export function fromLibraryResyncStatusCbor(bytes: Uint8Array): LibraryResyncStatus {
   return fromLibraryResyncStatusCborValue(decode(bytes));
+}
+
+export function toWatchChangesRequestCborValue(v: WatchChangesRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  if (v.active !== undefined) csilMap.set("active", v.active);
+  return csilMap;
+}
+
+export function fromWatchChangesRequestCborValue(value: CborValue): WatchChangesRequest {
+  return {
+    active: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBool(csilV))(mapGet(value, "active")),
+  };
+}
+
+export function toWatchChangesRequestCbor(v: WatchChangesRequest): Uint8Array {
+  return encodeValue(toWatchChangesRequestCborValue(v));
+}
+
+export function fromWatchChangesRequestCbor(bytes: Uint8Array): WatchChangesRequest {
+  return fromWatchChangesRequestCborValue(decode(bytes));
+}
+
+export function toDataChangeCborValue(v: DataChange): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("topic", v.topic);
+  csilMap.set("revision", v.revision);
+  return csilMap;
+}
+
+export function fromDataChangeCborValue(value: CborValue): DataChange {
+  return {
+    topic: (asEnumMember(asString(requireKey(value, "topic")), ["players", "libraries", "playlists", "progress", "session", "accounts", "trust", "nodes", "groups", "settings", "imports"]) as "players" | "libraries" | "playlists" | "progress" | "session" | "accounts" | "trust" | "nodes" | "groups" | "settings" | "imports"),
+    revision: asNumber(requireKey(value, "revision")),
+  };
+}
+
+export function toDataChangeCbor(v: DataChange): Uint8Array {
+  return encodeValue(toDataChangeCborValue(v));
+}
+
+export function fromDataChangeCbor(bytes: Uint8Array): DataChange {
+  return fromDataChangeCborValue(decode(bytes));
 }
 

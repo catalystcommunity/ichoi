@@ -2828,39 +2828,48 @@ final class ListPlayersResponse {
 
 final class SubscribeRequest {
   final PlayerId playerId;
+  final bool? active;
 
-  const SubscribeRequest({required this.playerId});
+  const SubscribeRequest({required this.playerId, this.active});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
+    if (active != null) map['active'] = active;
     return map;
   }
 
   factory SubscribeRequest.fromMap(Map<String, Object?> map) {
-    return SubscribeRequest(playerId: map['player_id'] as PlayerId);
+    return SubscribeRequest(
+      playerId: map['player_id'] as PlayerId,
+      active: map['active'] as bool?,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! SubscribeRequest) return false;
-    return playerId == other.playerId;
+    return playerId == other.playerId && active == other.active;
   }
 
   @override
-  int get hashCode => Object.hashAll([playerId]);
+  int get hashCode => Object.hashAll([playerId, active]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
+    if (active != null) map['active'] = active!;
     return map;
   }
 
   /// Reconstruct this record from a decoded CBOR dynamic tree.
   factory SubscribeRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
-    return SubscribeRequest(playerId: map['player_id'] as String);
+    return SubscribeRequest(
+      playerId: map['player_id'] as String,
+      active: map['active'] == null ? null : map['active'] as bool,
+    );
   }
 
   /// Encode this record to canonical CSIL CBOR bytes.
@@ -7234,4 +7243,119 @@ final class LibraryResyncStatus {
   /// Decode a CSIL CBOR byte payload into this record.
   factory LibraryResyncStatus.fromCbor(List<int> bytes) =>
       LibraryResyncStatus.fromCborValue(CsilCbor.decode(bytes));
+}
+
+typedef ChangeTopic = String;
+
+final class WatchChangesRequest {
+  final bool? active;
+
+  const WatchChangesRequest({this.active});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    if (active != null) map['active'] = active;
+    return map;
+  }
+
+  factory WatchChangesRequest.fromMap(Map<String, Object?> map) {
+    return WatchChangesRequest(active: map['active'] as bool?);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! WatchChangesRequest) return false;
+    return active == other.active;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([active]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    if (active != null) map['active'] = active!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory WatchChangesRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return WatchChangesRequest(
+      active: map['active'] == null ? null : map['active'] as bool,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory WatchChangesRequest.fromCbor(List<int> bytes) =>
+      WatchChangesRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class DataChange {
+  final ChangeTopic topic;
+  final int revision;
+
+  const DataChange({required this.topic, required this.revision});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['topic'] = topic;
+    map['revision'] = revision;
+    return map;
+  }
+
+  factory DataChange.fromMap(Map<String, Object?> map) {
+    return DataChange(
+      topic: map['topic'] as ChangeTopic,
+      revision: map['revision'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! DataChange) return false;
+    return topic == other.topic && revision == other.revision;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([topic, revision]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['topic'] = topic;
+    map['revision'] = revision;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory DataChange.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return DataChange(
+      topic: CsilCbor.expectOneOf<String>(map['topic'], const [
+        'players',
+        'libraries',
+        'playlists',
+        'progress',
+        'session',
+        'accounts',
+        'trust',
+        'nodes',
+        'groups',
+        'settings',
+        'imports',
+      ]),
+      revision: map['revision'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory DataChange.fromCbor(List<int> bytes) =>
+      DataChange.fromCborValue(CsilCbor.decode(bytes));
 }

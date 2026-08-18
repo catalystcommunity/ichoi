@@ -2721,13 +2721,14 @@ defmodule Csilgen.Generated.SubscribeRequest do
   @moduledoc "Generated struct for the SubscribeRequest type."
 
   @enforce_keys [:player_id]
-  defstruct [:player_id]
+  defstruct [:player_id, active: true]
 
   @type t :: %__MODULE__{
-          player_id: Csilgen.Generated.PlayerId.t()
+          player_id: Csilgen.Generated.PlayerId.t(),
+          active: boolean() | nil
         }
 
-  @wire_keys [player_id: "player_id"]
+  @wire_keys [player_id: "player_id", active: "active"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -2738,6 +2739,7 @@ defmodule Csilgen.Generated.SubscribeRequest do
     {:map,
      Enum.reject(
        [
+         if(is_nil(v.active), do: nil, else: {{:text, "active"}, {:bool, v.active}}),
          {{:text, "player_id"}, {:text, v.player_id}}
        ],
        &is_nil/1
@@ -2750,6 +2752,11 @@ defmodule Csilgen.Generated.SubscribeRequest do
     csil_fields = Map.new(csil_kvs)
 
     %__MODULE__{
+      active:
+        case Map.get(csil_fields, {:text, "active"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_bool(csil_v)
+        end,
       player_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "player_id"}))
     }
   end
@@ -6691,6 +6698,123 @@ defmodule Csilgen.Generated.LibraryResyncStatus do
     %__MODULE__{
       running: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "running"})),
       started: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "started"}))
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.ChangeTopic do
+  @moduledoc "Type alias for ChangeTopic."
+  @type t :: String.t()
+end
+
+defmodule Csilgen.Generated.WatchChangesRequest do
+  @moduledoc "Generated struct for the WatchChangesRequest type."
+
+  defstruct active: true
+
+  @type t :: %__MODULE__{
+          active: boolean() | nil
+        }
+
+  @wire_keys [active: "active"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         if(is_nil(v.active), do: nil, else: {{:text, "active"}, {:bool, v.active}})
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      active:
+        case Map.get(csil_fields, {:text, "active"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_bool(csil_v)
+        end
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.DataChange do
+  @moduledoc "Generated struct for the DataChange type."
+
+  @enforce_keys [:topic, :revision]
+  defstruct [:topic, :revision]
+
+  @type t :: %__MODULE__{
+          topic: Csilgen.Generated.ChangeTopic.t(),
+          revision: integer()
+        }
+
+  @wire_keys [topic: "topic", revision: "revision"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "topic"}, {:text, v.topic}},
+         {{:text, "revision"}, {:int, v.revision}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      topic:
+        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "topic"})) do
+          "players" -> "players"
+          "libraries" -> "libraries"
+          "playlists" -> "playlists"
+          "progress" -> "progress"
+          "session" -> "session"
+          "accounts" -> "accounts"
+          "trust" -> "trust"
+          "nodes" -> "nodes"
+          "groups" -> "groups"
+          "settings" -> "settings"
+          "imports" -> "imports"
+          csil_other -> raise("csilgen: unknown ChangeTopic literal #{inspect(csil_other)}")
+        end,
+      revision: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "revision"}))
     }
   end
 

@@ -35,7 +35,7 @@ PlayerState = {
 ListPlayersRequest  = { ? kind: PlayerKind }
 ListPlayersResponse = { players: [* Player] }
 
-SubscribeRequest = { player_id: PlayerId }
+SubscribeRequest = { player_id: PlayerId, ? active: bool .default true }
 
 ;; Transport/queue commands (client -> server), discriminated on `op`.
 CmdEnqueue  = { op: "enqueue", track_ids: [+ TrackId], ? at_index: uint }

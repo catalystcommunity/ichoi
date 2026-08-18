@@ -126,14 +126,29 @@ where
                 if let Some(reply) = reply {
                     write_frame(&mut write_half, &reply).await?;
                 }
-                if let Some(player_id) = effects.subscribe {
-                    app.subs.subscribe(player_id, conn_id, tx.clone());
+                if let Some((player_id, active)) = effects.player_subscription {
+                    if active {
+                        app.subs.subscribe(player_id, conn_id, tx.clone());
+                    } else {
+                        app.subs.unsubscribe(&player_id, conn_id);
+                    }
                 }
                 if let Some(player_id) = effects.attach {
-                    app.presence.attach(player_id, conn_id);
+                    if app.presence.attach(player_id, conn_id) {
+                        app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
+                    }
                 }
                 if let Some(player_id) = effects.node_session {
-                    app.nodes.subscribe(player_id, conn_id, node_tx.clone());
+                    if app.nodes.subscribe(player_id, conn_id, node_tx.clone()) {
+                        app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
+                    }
+                }
+                if let Some(active) = effects.watch_changes {
+                    if active {
+                        app.changes.subscribe(conn_id, tx.clone());
+                    } else {
+                        app.changes.unsubscribe(conn_id);
+                    }
                 }
                 if let Some(open) = effects.media_open {
                     spawn_media_stream(app.clone(), open, tx.clone());
@@ -154,8 +169,12 @@ where
         }
     }
     app.subs.unsubscribe_conn(conn_id);
-    app.nodes.unsubscribe_conn(conn_id);
-    app.presence.detach_conn(conn_id);
+    let players_changed = app.nodes.unsubscribe_conn(conn_id) | app.presence.detach_conn(conn_id);
+    app.changes.unsubscribe(conn_id);
+    if players_changed {
+        app.changes
+            .publish(libichoi::csil::types::ChangeTopic::Players);
+    }
     Ok(())
 }
 
@@ -348,7 +367,10 @@ where
             }
         }
     }
-    app.nodes.unsubscribe_conn(conn_id);
+    if app.nodes.unsubscribe_conn(conn_id) {
+        app.changes
+            .publish(libichoi::csil::types::ChangeTopic::Players);
+    }
     Ok(())
 }
 
@@ -371,6 +393,9 @@ fn handle_node_session_line(
     let report = decode_node_report(&payload).ok()?;
     let player_id = report.player_id.clone();
     let _ = app.record_node_report(report);
-    app.nodes.subscribe(player_id.clone(), conn_id, tx);
+    if app.nodes.subscribe(player_id.clone(), conn_id, tx) {
+        app.changes
+            .publish(libichoi::csil::types::ChangeTopic::Players);
+    }
     Some(player_id)
 }

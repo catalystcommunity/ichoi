@@ -259,3 +259,10 @@ class AdminAsyncClient:
         """get-resync-status"""
         return LibraryResyncStatus.from_cbor(await self._transport.call("AdminService", "get-resync-status", req.to_cbor()))
 
+class ChangeAsyncClient:
+    """Typed client for the ChangeService service."""
+    def __init__(self, transport: AsyncTransport):
+        self._transport = transport
+
+    # channel operation watch is not part of the RPC client
+

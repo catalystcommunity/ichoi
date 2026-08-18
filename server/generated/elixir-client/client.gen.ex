@@ -761,3 +761,16 @@ defmodule Csilgen.Generated.AdminClient do
     Csilgen.Generated.LibraryResyncStatus.from_cbor(resp)
   end
 end
+
+defmodule Csilgen.Generated.ChangeClient do
+  @moduledoc "Typed client for the ChangeService service. The client owns (de)serialization via the codec; the transport only moves bytes."
+
+  @enforce_keys [:transport]
+  defstruct [:transport]
+  @type t :: %__MODULE__{transport: Csilgen.Generated.Transport.t()}
+
+  @spec new(Csilgen.Generated.Transport.t()) :: t()
+  def new(transport), do: %__MODULE__{transport: transport}
+
+  # channel operation watch is not part of the RPC client
+end

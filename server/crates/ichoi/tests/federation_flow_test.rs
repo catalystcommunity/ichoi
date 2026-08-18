@@ -220,11 +220,26 @@ fn chunked_copy_verifies_chunks_and_includes_art_and_lyrics() {
         .unwrap();
     assert_eq!(manifest.files.len(), 3);
     assert_eq!(manifest.files[0].chunks.len(), 2);
-    assert!(manifest.files.iter().any(|file| file.root_relative_path.ends_with("cover.jpg")));
-    assert!(manifest.files.iter().any(|file| file.root_relative_path.ends_with("01.lrc")));
-    assert!(!manifest.files.iter().any(|file| file.root_relative_path.ends_with(".m3u")));
-    assert!(!manifest.files.iter().any(|file| file.root_relative_path.ends_with("notes.txt")));
-    assert!(!manifest.files.iter().any(|file| file.root_relative_path.ends_with("linked.jpg")));
+    assert!(manifest
+        .files
+        .iter()
+        .any(|file| file.root_relative_path.ends_with("cover.jpg")));
+    assert!(manifest
+        .files
+        .iter()
+        .any(|file| file.root_relative_path.ends_with("01.lrc")));
+    assert!(!manifest
+        .files
+        .iter()
+        .any(|file| file.root_relative_path.ends_with(".m3u")));
+    assert!(!manifest
+        .files
+        .iter()
+        .any(|file| file.root_relative_path.ends_with("notes.txt")));
+    assert!(!manifest
+        .files
+        .iter()
+        .any(|file| file.root_relative_path.ends_with("linked.jpg")));
 
     let (destination, _destination_pool, destination_root) = app_with_music_root();
     let destination_files: Vec<TransferFile> = manifest
@@ -309,7 +324,9 @@ fn chunked_copy_verifies_chunks_and_includes_art_and_lyrics() {
         .unwrap();
 
     assert!(finished.imported);
-    let copied = destination_root.path().join("imports/friend/Test Artist/Test Album");
+    let copied = destination_root
+        .path()
+        .join("imports/friend/Test Artist/Test Album");
     assert_eq!(std::fs::read(copied.join("01.flac")).unwrap(), audio);
     assert_eq!(std::fs::read(copied.join("cover.jpg")).unwrap(), b"art");
     assert_eq!(std::fs::read(copied.join("01.lrc")).unwrap(), b"lyrics");

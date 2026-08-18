@@ -101,6 +101,14 @@ func NewPlayerState() *PlayerState {
 	}
 }
 
+// NewSubscribeRequest creates a SubscribeRequest with default values:
+//   - active: true
+func NewSubscribeRequest() *SubscribeRequest {
+	return &SubscribeRequest{
+		Active: func() *bool { v := bool(true); return &v }(),
+	}
+}
+
 // NewEnableShareRequest creates a EnableShareRequest with default values:
 //   - suffix: "Device"
 func NewEnableShareRequest() *EnableShareRequest {
@@ -190,5 +198,13 @@ func NewBeginImportRequest() *BeginImportRequest {
 func NewLibraryResyncStatus() *LibraryResyncStatus {
 	return &LibraryResyncStatus{
 		Started: false,
+	}
+}
+
+// NewWatchChangesRequest creates a WatchChangesRequest with default values:
+//   - active: true
+func NewWatchChangesRequest() *WatchChangesRequest {
+	return &WatchChangesRequest{
+		Active: func() *bool { v := bool(true); return &v }(),
 	}
 }

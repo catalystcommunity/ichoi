@@ -322,7 +322,12 @@ end
 ListPlayersResponse = Data.define(:players)
 
 # player_id [PlayerId]
-SubscribeRequest = Data.define(:player_id)
+# active [Boolean]
+SubscribeRequest = Data.define(:player_id, :active) do
+  def initialize(player_id:, active: true)
+    super
+  end
+end
 
 # op [String]
 # track_ids [Array<TrackId>]
@@ -754,3 +759,16 @@ LibraryResyncStatus = Data.define(:running, :started) do
     super
   end
 end
+
+# ChangeTopic is an alias for String.
+
+# active [Boolean]
+WatchChangesRequest = Data.define(:active) do
+  def initialize(active: true)
+    super
+  end
+end
+
+# topic [ChangeTopic]
+# revision [Integer]
+DataChange = Data.define(:topic, :revision)

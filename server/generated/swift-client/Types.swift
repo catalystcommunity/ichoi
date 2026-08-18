@@ -968,14 +968,17 @@ public struct ListPlayersResponse: Equatable, Sendable {
 public struct SubscribeRequest: Equatable, Sendable {
     /// wire key: player_id
     public let playerId: PlayerId
+    public let active: Bool?
 
-    public init(playerId: PlayerId) {
+    public init(playerId: PlayerId, active: Bool? = true) {
         self.playerId = playerId
+        self.active = active
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "playerId": "player_id"
+        "playerId": "player_id",
+        "active": "active"
     ]
 }
 
@@ -2404,6 +2407,52 @@ public struct LibraryResyncStatus: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "running": "running",
         "started": "started"
+    ]
+}
+
+/// ChangeTopic is a generated CSIL string enum (a closed set of wire values).
+public enum ChangeTopic: String, Equatable, Sendable, CaseIterable {
+    case players = "players"
+    case libraries = "libraries"
+    case playlists = "playlists"
+    case progress = "progress"
+    case session = "session"
+    case accounts = "accounts"
+    case trust = "trust"
+    case nodes = "nodes"
+    case groups = "groups"
+    case settings = "settings"
+    case imports = "imports"
+}
+
+/// WatchChangesRequest is a generated CSIL record type.
+public struct WatchChangesRequest: Equatable, Sendable {
+    public let active: Bool?
+
+    public init(active: Bool? = true) {
+        self.active = active
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "active": "active"
+    ]
+}
+
+/// DataChange is a generated CSIL record type.
+public struct DataChange: Equatable, Sendable {
+    public let topic: ChangeTopic
+    public let revision: UInt64
+
+    public init(topic: ChangeTopic, revision: UInt64) {
+        self.topic = topic
+        self.revision = revision
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "topic": "topic",
+        "revision": "revision"
     ]
 }
 

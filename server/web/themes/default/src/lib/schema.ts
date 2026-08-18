@@ -249,6 +249,31 @@ export interface ListPlayersResponse {
 }
 export interface SubscribeRequest {
   player_id: string;
+  active?: boolean;
+}
+
+// --- changes.csil --------------------------------------------------------
+
+export type ChangeTopic =
+  | "players"
+  | "libraries"
+  | "playlists"
+  | "progress"
+  | "session"
+  | "accounts"
+  | "trust"
+  | "nodes"
+  | "groups"
+  | "settings"
+  | "imports";
+
+export interface WatchChangesRequest {
+  active?: boolean;
+}
+
+export interface DataChange {
+  topic: ChangeTopic;
+  revision: number;
 }
 
 // Transport/queue commands, discriminated on `op`.

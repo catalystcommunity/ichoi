@@ -26,6 +26,7 @@ import type {
   CoverArt,
   CoverArtRequest,
   CreateNodeTokenRequest,
+  DataChange,
   GroupInfo,
   DeviceInfo,
   DisableShareRequest,
@@ -77,6 +78,7 @@ import type {
   TrustedIdentities,
   RevokeTrustedIdentityRequest,
   UpdateAudiobookProgressRequest,
+  WatchChangesRequest,
 } from "./schema.ts";
 
 const SESSION = "SessionService";
@@ -85,6 +87,7 @@ const PLAYER = "PlayerService";
 const MEDIA = "MediaService";
 const ADMIN = "AdminService";
 const NODE = "NodeService";
+const CHANGE = "ChangeService";
 
 function encodeRecord(obj: object): Uint8Array {
   return cborEncode(obj as CborValue);
@@ -237,7 +240,37 @@ export class PlayerService {
       onState(decodeRecord<PlayerState>(payload));
     });
     this.conn.sendChannel(PLAYER, "subscribe", encodeRecord(req));
-    return off;
+    return () => {
+      off();
+      if (this.conn.connectionState === "ready") {
+        this.conn.sendChannel(PLAYER, "subscribe", encodeRecord({ ...req, active: false }));
+      }
+    };
+  }
+
+  onState(onState: (state: PlayerState) => void): () => void {
+    return this.conn.onChannel(PLAYER, "subscribe", (payload) => {
+      onState(decodeRecord<PlayerState>(payload));
+    });
+  }
+
+  setSubscription(player_id: string, active: boolean): void {
+    this.conn.sendChannel(PLAYER, "subscribe", encodeRecord({ player_id, active }));
+  }
+}
+
+export class ChangeService {
+  constructor(private readonly conn: CsilConnection) {}
+
+  onChange(onChange: (change: DataChange) => void): () => void {
+    return this.conn.onChannel(CHANGE, "watch", (payload) => {
+      onChange(decodeRecord<DataChange>(payload));
+    });
+  }
+
+  setWatching(active: boolean): void {
+    const request: WatchChangesRequest = { active };
+    this.conn.sendChannel(CHANGE, "watch", encodeRecord(request));
   }
 }
 
@@ -393,6 +426,7 @@ export class ServerApi {
   readonly player: PlayerService;
   readonly admin: AdminService;
   readonly node: NodeService;
+  readonly changes: ChangeService;
 
   constructor(readonly conn: CsilConnection) {
     this.session = new SessionService(conn);
@@ -400,6 +434,7 @@ export class ServerApi {
     this.player = new PlayerService(conn);
     this.admin = new AdminService(conn);
     this.node = new NodeService(conn);
+    this.changes = new ChangeService(conn);
   }
 
   mediaStream(): MediaStream {

@@ -1,7 +1,7 @@
 # Ichoi
 
 Ichoi is a music player, library manager, and **distributed jukebox** server. One
-static binary runs your library, streams to browsers and native clients, and turns
+executable runs your library, streams to browsers and native clients, and turns
 speakers on other machines — a Raspberry Pi in the kitchen, a tablet by the door —
 into shared, controllable playback targets that anyone you permit can queue music to.
 
@@ -32,7 +32,8 @@ Status: **design**. The architecture is settled; implementation is in progress.
 
 ## The three roles
 
-All three are the same binary; the role is configuration.
+All three use the same source and command interface. Linux core and satellite releases use
+different libc build targets.
 
 | Role | What it is |
 |---|---|
@@ -249,14 +250,16 @@ The server target is under [`server/`](server/); the repo root holds only shared
 
 ## Building
 
-Ichoi is a single static binary with zero system-library link dependencies. SQLite is
-compiled in; ffmpeg and host audio are never linked. Direct `cargo` runs from the server
-target dir; use the musl targets for a fully static build:
+Ichoi has two Linux build types. The core uses static musl and runs in a scratch container.
+The native satellite uses GNU libc and loads the host ALSA library at run time. SQLite is
+compiled in, and ffmpeg is a separate program.
 
 ```sh
 cd server
 cargo build --release --target x86_64-unknown-linux-musl   # amd64
-cargo build --release --target aarch64-unknown-linux-musl  # arm64 (Pi satellites)
+cargo build --release --target aarch64-unknown-linux-musl  # arm64 core
+cargo zigbuild --release --target x86_64-unknown-linux-gnu.2.17   # amd64 satellite
+cargo zigbuild --release --target aarch64-unknown-linux-gnu.2.17  # arm64 satellite
 ```
 
 Day-to-day, use [`./tools.sh`](tools.sh) from the repo root (it drives the server target
@@ -275,8 +278,8 @@ for you), which mirrors what CI runs:
 
 The [`server/Dockerfile`](server/Dockerfile) produces a minimal **scratch** image (multi-arch,
 `linux/amd64` + `linux/arm64`) containing the `ichoi` binary, a bundled static **LGPL**
-ffmpeg, and the web UI. Scratch is safe because host audio is loaded at runtime — a
-server needs no audio output, so the image just reports `audio_outputs: none`.
+ffmpeg, and the web UI. The static core build does not load audio libraries. It reports
+`audio_outputs: none`.
 
 ```sh
 docker buildx build --platform linux/amd64,linux/arm64 -t ichoi:dev server

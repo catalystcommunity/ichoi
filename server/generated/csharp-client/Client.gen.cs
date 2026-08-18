@@ -159,3 +159,7 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<LibraryResyncStatus>(transport.Call("AdminService", "get-resync-status", Codec.Encode(page)));
 }
 
+// ChangeService has no unary operation csilgen can put on an RPC client (channel-only,
+// or every payload is inexpressible); no ChangeClient is emitted so `transport`
+// is never left an unread constructor parameter.
+

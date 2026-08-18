@@ -6,8 +6,6 @@
 import {
   createContext,
   createEffect,
-  createMemo,
-  createResource,
   createSignal,
   on,
   onCleanup,
@@ -365,32 +363,28 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   // --- Shared targets -------------------------------------------------------
-  const [playersRes, { refetch: refetchPlayers }] = createResource(
-    () =>
-      `${servers.activeId() ?? ""}:${servers.active()?.state ?? ""}:${
-        servers.active()?.satellitePlayerId ?? ""
-      }`,
-    async () => {
-      const a = servers.api();
-      if (!a) return [] as Player[];
-      try {
-        const r = await a.player.listPlayers();
-        return r.players.filter((p) => p.kind === "shared");
-      } catch {
-        return [] as Player[];
-      }
-    },
+  const [sharedTargets, setSharedTargets] = createSignal<Player[]>([]);
+  const [playersLoaded, setPlayersLoaded] = createSignal(false);
+  let offCatalog: (() => void) | undefined;
+  createEffect(
+    on([servers.activeId, servers.data], ([, dataStore]) => {
+      offCatalog?.();
+      offCatalog = undefined;
+      setSharedTargets([]);
+      setPlayersLoaded(false);
+      if (!dataStore) return;
+      offCatalog = dataStore.playerCatalog.watch((change) => {
+        // This component owns only the target selector. It ignores private-player changes.
+        const next = change.players.filter((player) => player.kind === "shared");
+        const current = sharedTargets();
+        if (next.length !== current.length || next.some((player, index) => player !== current[index])) {
+          setSharedTargets(next);
+        }
+        setPlayersLoaded(true);
+      });
+    }),
   );
-  // Stable reference across polls when the id set is unchanged, so the <select> options don't
-  // churn (which would drop the current selection).
-  const sharedTargets = createMemo<Player[]>((prev) => {
-    const players = playersRes() ?? [];
-    const ids = players.map((p) => p.id).join("");
-    const prevIds = (prev ?? []).map((p) => p.id).join("");
-    return ids === prevIds ? (prev ?? []) : players;
-  }, []);
-  const playersPoll = setInterval(() => void refetchPlayers(), 4000);
-  onCleanup(() => clearInterval(playersPoll));
+  onCleanup(() => offCatalog?.());
 
   // Auto-output a device this client owns, once, when it first appears (so the phone that
   // shared "TodPhone" resumes playing its queue on load).
@@ -489,21 +483,17 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
   }
 
-  // Subscribe to the active shared target for live PlayerState pushes. Re-runs when the target
-  // OR the connection readiness changes, so it re-subscribes after a reconnect (the server
-  // forgets subscriptions when the socket drops). Only sends once the socket is actually ready.
+  // Reconcile only the active target. The per-server state store owns the one wire decoder and
+  // reference-counts the server subscription across all interested components.
   let unsub: (() => void) | undefined;
   createEffect(
-    on([target, () => servers.active()?.state], () => {
+    on([target, servers.data], ([t, dataStore]) => {
       unsub?.();
       unsub = undefined;
-      const t = target();
       if (t === LOCAL_TARGET) return;
-      if (servers.active()?.state !== "ready") return;
-      const a = servers.api();
-      if (!a) return;
+      if (!dataStore) return;
       try {
-        unsub = a.player.subscribe({ player_id: t }, (state) => applyRemote(t, state));
+        unsub = dataStore.playerStates.watch(t, (state) => applyRemote(t, state));
       } catch (e) {
         console.warn("[playback] subscribe failed", e);
       }
@@ -518,11 +508,9 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     if (t === LOCAL_TARGET || t === "satellite-pending") return Promise.resolve(undefined);
     controlChain = controlChain
       .then(async () => {
-        const a = servers.api();
-        if (!a) return;
-        const state = await a.player.control({ player_id: t, command });
-        applyRemote(t, state);
-        return state;
+        const dataStore = servers.data();
+        if (!dataStore) return;
+        return dataStore.playerStates.control({ player_id: t, command });
       })
       .catch((e) => {
         console.warn("[playback] control failed", e);
@@ -561,7 +549,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
     unmarkOwned(id);
     if (target() === id) setTarget(LOCAL_TARGET);
-    void refetchPlayers();
   }
 
   // --- Target switching -----------------------------------------------------
@@ -591,11 +578,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       setQueue([]);
       setCurrentIndex(-1);
       setSnapshot({ status: "idle", positionMs: 0, decoderMissing: false });
-      const api = servers.api();
-      if (api) {
-        void api.player
-          .getState({ player_id: id })
-          .then((state) => applyRemote(id, state))
+      const dataStore = servers.data();
+      if (dataStore) {
+        void dataStore.playerStates
+          .fetch(id)
           .catch((error) => console.warn("[playback] target state failed", error));
       }
     }
@@ -604,8 +590,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   createEffect(() => {
     const t = target();
     if (t === LOCAL_TARGET || t === "satellite-pending") return;
-    const loaded = playersRes() !== undefined;
-    if (!loaded) return;
+    if (!playersLoaded()) return;
     if (sharedTargets().some((p) => p.id === t)) return;
     if (satelliteMode) return;
 

@@ -13,7 +13,9 @@
 use ciborium::value::Value;
 use libichoi::csil::codec::*;
 use libichoi::csil::services::*;
-use libichoi::csil::types::{MediaControl, MediaOpen, PlayerState, ServiceError};
+use libichoi::csil::types::{
+    ChangeTopic, DataChange, MediaControl, MediaOpen, PlayerState, ServiceError,
+};
 use libichoi::csil_channel::decode_media_control;
 use serde::{Deserialize, Serialize};
 
@@ -320,7 +322,10 @@ pub fn dispatch(
         }
 
         // Channel operations require the streaming transport (not this request path).
-        ("player", "subscribe") | ("media", "stream") | ("node", "session") => Err(ServiceError {
+        ("player", "subscribe")
+        | ("media", "stream")
+        | ("node", "session")
+        | ("change", "watch") => Err(ServiceError {
             code: 501,
             message: format!(
                 "{service}.{op} is a streaming op; not available over the request path (pre-alpha)"
@@ -436,14 +441,16 @@ fn encode_service_error(e: &ServiceError) -> Vec<u8> {
 /// The side effects a decoded frame asks the connection to perform, beyond sending the reply.
 #[derive(Default)]
 pub struct FrameEffects {
-    /// A `player.Subscribe`: register this connection for live pushes of this player.
-    pub subscribe: Option<String>,
+    /// A `player.Subscribe`: add or remove this connection's live player-state subscription.
+    pub player_subscription: Option<(String, bool)>,
     /// A successful `player.EnableShare`: this connection is now the device's output (§6).
     pub attach: Option<String>,
     /// A `node.Session`: register this connection for directives to this satellite player.
     pub node_session: Option<String>,
     /// A `media.Stream` open request: start sending MediaEvent frames for the requested track.
     pub media_open: Option<MediaOpen>,
+    /// A `change.Watch`: add or remove this connection's invalidation subscription.
+    pub watch_changes: Option<bool>,
 }
 
 /// Handle one inbound frame. Returns the (possibly updated) identity, an optional immediate
@@ -492,6 +499,11 @@ pub fn handle_events_frame(
         } else {
             None
         };
+        if result.is_ok() {
+            for topic in change_topics_for_operation(&service, &env.event) {
+                app.changes.publish(topic);
+            }
+        }
         let payload = match result {
             Ok(p) => p,
             Err(se) => encode_service_error(&se),
@@ -506,10 +518,11 @@ pub fn handle_events_frame(
             ident,
             Some(reply),
             FrameEffects {
-                subscribe: None,
+                player_subscription: None,
                 attach,
                 node_session: None,
                 media_open: None,
+                watch_changes: None,
             },
         );
     }
@@ -519,15 +532,29 @@ pub fn handle_events_frame(
         if matches!(ident, Identity::Anonymous) && !allow_guest {
             return (ident, None, FrameEffects::default());
         }
+        if let Ok(request) = decode_subscribe_request(&env.payload) {
+            let active = request.active.unwrap_or(true);
+            if !active {
+                return (
+                    ident,
+                    None,
+                    FrameEffects {
+                        player_subscription: Some((request.player_id, false)),
+                        ..FrameEffects::default()
+                    },
+                );
+            }
+        }
         if let Some((reply, player_id)) = subscribe_snapshot(app, &ident, &env.payload) {
             return (
                 ident,
                 Some(reply),
                 FrameEffects {
-                    subscribe: Some(player_id),
+                    player_subscription: Some((player_id, true)),
                     attach: None,
                     node_session: None,
                     media_open: None,
+                    watch_changes: None,
                 },
             );
         }
@@ -546,10 +573,11 @@ pub fn handle_events_frame(
                 ident,
                 None,
                 FrameEffects {
-                    subscribe: None,
+                    player_subscription: None,
                     attach: None,
                     node_session: Some(player_id),
                     media_open: None,
+                    watch_changes: None,
                 },
             );
         }
@@ -563,10 +591,26 @@ pub fn handle_events_frame(
                 ident,
                 None,
                 FrameEffects {
-                    subscribe: None,
+                    player_subscription: None,
                     attach: None,
                     node_session: None,
                     media_open: Some(open),
+                    watch_changes: None,
+                },
+            );
+        }
+    }
+    if service == "change" && env.event == "watch" {
+        if matches!(ident, Identity::Anonymous) && !allow_guest {
+            return (ident, None, FrameEffects::default());
+        }
+        if let Ok(request) = decode_watch_changes_request(&env.payload) {
+            return (
+                ident,
+                None,
+                FrameEffects {
+                    watch_changes: Some(request.active.unwrap_or(true)),
+                    ..FrameEffects::default()
                 },
             );
         }
@@ -583,6 +627,46 @@ pub fn player_state_frame(state: &PlayerState) -> Vec<u8> {
         id: None,
         payload: encode_player_state(state),
     })
+}
+
+/// Encode a `DataChange` as a `change.watch` channel-push frame.
+pub fn data_change_frame(change: &DataChange) -> Vec<u8> {
+    encode_event_envelope(&EventEnvelope {
+        service: Some("change".to_string()),
+        event: "watch".to_string(),
+        id: None,
+        payload: encode_data_change(change),
+    })
+}
+
+fn change_topics_for_operation(service: &str, event: &str) -> Vec<ChangeTopic> {
+    match (service, event) {
+        ("session", "authenticate" | "logout") => vec![ChangeTopic::Session],
+        ("library", "update-audiobook-progress") => vec![ChangeTopic::Progress],
+        ("player", "disable-share") => vec![ChangeTopic::Players],
+        ("admin", "set-role") => vec![ChangeTopic::Accounts],
+        ("admin", "trust-domain" | "trust-identity" | "revoke-trusted-identity") => {
+            vec![ChangeTopic::Trust]
+        }
+        ("admin", "rename-node") => vec![ChangeTopic::Nodes, ChangeTopic::Players],
+        ("admin", "rename-device" | "set-device-access") => {
+            vec![ChangeTopic::Nodes, ChangeTopic::Players]
+        }
+        ("admin", "create-group" | "set-group-members" | "delete-group") => {
+            vec![ChangeTopic::Groups, ChangeTopic::Players]
+        }
+        ("admin", "create-node-token" | "revoke-satellite-token") => {
+            vec![ChangeTopic::Nodes]
+        }
+        ("admin", "import-track" | "finish-import") => vec![ChangeTopic::Libraries],
+        ("admin", "begin-import" | "import-chunk" | "cancel-import") => {
+            vec![ChangeTopic::Imports]
+        }
+        ("admin", "set-setting") => vec![ChangeTopic::Settings, ChangeTopic::Players],
+        ("admin", "resync-library") => vec![ChangeTopic::Libraries],
+        ("node", "register") => vec![ChangeTopic::Nodes],
+        _ => Vec::new(),
+    }
 }
 
 fn handle_control(

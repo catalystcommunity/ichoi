@@ -1341,6 +1341,7 @@ fun listPlayersResponseFromCbor(bytes: ByteArray): ListPlayersResponse = listPla
 /** The CBOR value tree for a SubscribeRequest (deep, canonical key order). */
 fun SubscribeRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    this.active?.let { csilV -> csilEntries.add(CborValue.CText("active") to CborValue.CBool(csilV)) }
     csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
     return CborValue.CMap(csilEntries)
 }
@@ -1351,7 +1352,8 @@ fun SubscribeRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a SubscribeRequest from a decoded CBOR value tree. */
 fun subscribeRequestFromCborValue(cbor: CborValue): SubscribeRequest {
     val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
-    return SubscribeRequest(playerId = playerId)
+    val active = CsilCbor.mapGet(cbor, "active")?.let { csilV -> CsilCbor.asBoolean(csilV) }
+    return SubscribeRequest(playerId = playerId, active = active)
 }
 
 /** Decode CSIL CBOR bytes into a SubscribeRequest. */
@@ -2984,6 +2986,77 @@ fun libraryResyncStatusFromCborValue(cbor: CborValue): LibraryResyncStatus {
 /** Decode CSIL CBOR bytes into a LibraryResyncStatus. */
 fun libraryResyncStatusFromCbor(bytes: ByteArray): LibraryResyncStatus = libraryResyncStatusFromCborValue(CsilCbor.decode(bytes))
 
+/** Encode a ChangeTopic enum as its bare literal value. */
+fun ChangeTopic.toCborValue(): CborValue = when (this) {
+    ChangeTopic.Players -> CborValue.CText("players")
+    ChangeTopic.Libraries -> CborValue.CText("libraries")
+    ChangeTopic.Playlists -> CborValue.CText("playlists")
+    ChangeTopic.Progress -> CborValue.CText("progress")
+    ChangeTopic.Session -> CborValue.CText("session")
+    ChangeTopic.Accounts -> CborValue.CText("accounts")
+    ChangeTopic.Trust -> CborValue.CText("trust")
+    ChangeTopic.Nodes -> CborValue.CText("nodes")
+    ChangeTopic.Groups -> CborValue.CText("groups")
+    ChangeTopic.Settings -> CborValue.CText("settings")
+    ChangeTopic.Imports -> CborValue.CText("imports")
+}
+
+/** Decode a bare literal value into a ChangeTopic enum. */
+fun changeTopicFromCborValue(cbor: CborValue): ChangeTopic = when (CsilCbor.asText(cbor)) {
+    "players" -> ChangeTopic.Players
+    "libraries" -> ChangeTopic.Libraries
+    "playlists" -> ChangeTopic.Playlists
+    "progress" -> ChangeTopic.Progress
+    "session" -> ChangeTopic.Session
+    "accounts" -> ChangeTopic.Accounts
+    "trust" -> ChangeTopic.Trust
+    "nodes" -> ChangeTopic.Nodes
+    "groups" -> ChangeTopic.Groups
+    "settings" -> ChangeTopic.Settings
+    "imports" -> ChangeTopic.Imports
+    else -> throw CborError("unknown ChangeTopic value")
+}
+
+/** The CBOR value tree for a WatchChangesRequest (deep, canonical key order). */
+fun WatchChangesRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    this.active?.let { csilV -> csilEntries.add(CborValue.CText("active") to CborValue.CBool(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a WatchChangesRequest to canonical CSIL CBOR bytes. */
+fun WatchChangesRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a WatchChangesRequest from a decoded CBOR value tree. */
+fun watchChangesRequestFromCborValue(cbor: CborValue): WatchChangesRequest {
+    val active = CsilCbor.mapGet(cbor, "active")?.let { csilV -> CsilCbor.asBoolean(csilV) }
+    return WatchChangesRequest(active = active)
+}
+
+/** Decode CSIL CBOR bytes into a WatchChangesRequest. */
+fun watchChangesRequestFromCbor(bytes: ByteArray): WatchChangesRequest = watchChangesRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a DataChange (deep, canonical key order). */
+fun DataChange.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("topic") to this.topic.toCborValue())
+    csilEntries.add(CborValue.CText("revision") to CborValue.CUint(this.revision))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a DataChange to canonical CSIL CBOR bytes. */
+fun DataChange.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a DataChange from a decoded CBOR value tree. */
+fun dataChangeFromCborValue(cbor: CborValue): DataChange {
+    val topic = changeTopicFromCborValue(CsilCbor.require(cbor, "topic"))
+    val revision = CsilCbor.asULong(CsilCbor.require(cbor, "revision"))
+    return DataChange(topic = topic, revision = revision)
+}
+
+/** Decode CSIL CBOR bytes into a DataChange. */
+fun dataChangeFromCbor(bytes: ByteArray): DataChange = dataChangeFromCborValue(CsilCbor.decode(bytes))
+
 /** Encode a generated CSIL record to canonical CBOR bytes. */
 fun <T> encode(value: T): ByteArray = CsilCbor.encode(csilToCborValue(value))
 
@@ -3099,6 +3172,8 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is Settings -> value.toCborValue()
     is SetSettingRequest -> value.toCborValue()
     is LibraryResyncStatus -> value.toCborValue()
+    is WatchChangesRequest -> value.toCborValue()
+    is DataChange -> value.toCborValue()
     else -> throw CborError("no CSIL CBOR codec for ${value::class}")
 }
 
@@ -3217,5 +3292,7 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     Settings::class -> settingsFromCborValue(cbor)
     SetSettingRequest::class -> setSettingRequestFromCborValue(cbor)
     LibraryResyncStatus::class -> libraryResyncStatusFromCborValue(cbor)
+    WatchChangesRequest::class -> watchChangesRequestFromCborValue(cbor)
+    DataChange::class -> dataChangeFromCborValue(cbor)
     else -> throw CborError("no CSIL CBOR codec for $type")
 }

@@ -517,6 +517,8 @@ public sealed record SubscribeRequest
 {
     // CBOR key: player_id
     public required PlayerId PlayerId { get; init; }
+    // CBOR key: active
+    public bool? Active { get; init; }
 }
 
 public sealed record CmdEnqueue
@@ -1278,5 +1280,45 @@ public sealed record LibraryResyncStatus
     public required bool Running { get; init; }
     // CBOR key: started
     public required bool Started { get; init; }
+}
+
+public enum ChangeTopic
+{
+    // wire value: players
+    Players,
+    // wire value: libraries
+    Libraries,
+    // wire value: playlists
+    Playlists,
+    // wire value: progress
+    Progress,
+    // wire value: session
+    Session,
+    // wire value: accounts
+    Accounts,
+    // wire value: trust
+    Trust,
+    // wire value: nodes
+    Nodes,
+    // wire value: groups
+    Groups,
+    // wire value: settings
+    Settings,
+    // wire value: imports
+    Imports,
+}
+
+public sealed record WatchChangesRequest
+{
+    // CBOR key: active
+    public bool? Active { get; init; }
+}
+
+public sealed record DataChange
+{
+    // CBOR key: topic
+    public required ChangeTopic Topic { get; init; }
+    // CBOR key: revision
+    public required ulong Revision { get; init; }
 }
 

@@ -196,6 +196,7 @@ pub fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
             anyhow::bail!("satellite role requires ICHOI_NODE_TOKEN");
         }
         crate::tls::client_config(&config.core_keys)?;
+        crate::audio::validate_satellite_output()?;
     }
 
     if config.require_music {

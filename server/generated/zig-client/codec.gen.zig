@@ -1941,7 +1941,13 @@ fn dec_ListPlayersResponse(alloc: std.mem.Allocator, m: Value, out: *types.ListP
 }
 
 fn enc_SubscribeRequest(out: *std.ArrayList(u8), v: *const types.SubscribeRequest) CodecError!void {
-    try w_map_head(out, 1);
+    var csil_n: usize = 1;
+    if (v.active != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    if (v.active) |csil_x| {
+        try w_text(out, "active");
+        try w_bool(out, csil_x);
+    }
     try w_text(out, "player_id");
     try w_text(out, v.player_id);
 }
@@ -1949,6 +1955,13 @@ fn enc_SubscribeRequest(out: *std.ArrayList(u8), v: *const types.SubscribeReques
 fn dec_SubscribeRequest(alloc: std.mem.Allocator, m: Value, out: *types.SubscribeRequest) CodecError!void {
     _ = alloc;
     if (m != .map) return error.WrongType;
+    {
+        if (mget(m, "active")) |csil_fv| {
+            out.active = try as_bool(csil_fv);
+        } else {
+            out.active = null;
+        }
+    }
     {
         const csil_fv = try req(m, "player_id");
         out.player_id = try as_text(csil_fv);
@@ -4252,6 +4265,102 @@ fn dec_LibraryResyncStatus(alloc: std.mem.Allocator, m: Value, out: *types.Libra
     }
 }
 
+fn enc_ChangeTopic(out: *std.ArrayList(u8), v: *const types.ChangeTopic) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_ChangeTopic(alloc: std.mem.Allocator, src: Value, out: *types.ChangeTopic) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "players")) {
+        out.* = .players;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "libraries")) {
+        out.* = .libraries;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "playlists")) {
+        out.* = .playlists;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "progress")) {
+        out.* = .progress;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "session")) {
+        out.* = .session;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "accounts")) {
+        out.* = .accounts;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "trust")) {
+        out.* = .trust;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "nodes")) {
+        out.* = .nodes;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "groups")) {
+        out.* = .groups;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "settings")) {
+        out.* = .settings;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "imports")) {
+        out.* = .imports;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_WatchChangesRequest(out: *std.ArrayList(u8), v: *const types.WatchChangesRequest) CodecError!void {
+    var csil_n: usize = 0;
+    if (v.active != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    if (v.active) |csil_x| {
+        try w_text(out, "active");
+        try w_bool(out, csil_x);
+    }
+}
+
+fn dec_WatchChangesRequest(alloc: std.mem.Allocator, m: Value, out: *types.WatchChangesRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        if (mget(m, "active")) |csil_fv| {
+            out.active = try as_bool(csil_fv);
+        } else {
+            out.active = null;
+        }
+    }
+}
+
+fn enc_DataChange(out: *std.ArrayList(u8), v: *const types.DataChange) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "topic");
+    try enc_ChangeTopic(out, &(v.topic));
+    try w_text(out, "revision");
+    try w_uint(out, v.revision);
+}
+
+fn dec_DataChange(alloc: std.mem.Allocator, m: Value, out: *types.DataChange) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "topic");
+        try dec_ChangeTopic(alloc, csil_fv, &(out.topic));
+    }
+    {
+        const csil_fv = try req(m, "revision");
+        out.revision = try as_u64(csil_fv);
+    }
+}
+
 /// Encode a Role to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_Role(alloc: std.mem.Allocator, v: *const types.Role) CodecError![]u8 {
@@ -6218,4 +6327,52 @@ pub fn encode_LibraryResyncStatus(alloc: std.mem.Allocator, v: *const types.Libr
 pub fn decode_LibraryResyncStatus(alloc: std.mem.Allocator, bytes: []const u8, out: *types.LibraryResyncStatus) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_LibraryResyncStatus(alloc, root, out);
+}
+
+/// Encode a ChangeTopic to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ChangeTopic(alloc: std.mem.Allocator, v: *const types.ChangeTopic) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ChangeTopic(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ChangeTopic. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ChangeTopic(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ChangeTopic) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ChangeTopic(alloc, root, out);
+}
+
+/// Encode a WatchChangesRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_WatchChangesRequest(alloc: std.mem.Allocator, v: *const types.WatchChangesRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_WatchChangesRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a WatchChangesRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_WatchChangesRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.WatchChangesRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_WatchChangesRequest(alloc, root, out);
+}
+
+/// Encode a DataChange to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_DataChange(alloc: std.mem.Allocator, v: *const types.DataChange) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_DataChange(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a DataChange. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_DataChange(alloc: std.mem.Allocator, bytes: []const u8, out: *types.DataChange) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_DataChange(alloc, root, out);
 }

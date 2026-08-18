@@ -539,3 +539,15 @@ func (c *AdminClient) GetResyncStatus(ctx context.Context, req Page) (LibraryRes
 	}
 	return DecodeLibraryResyncStatus(csilResp)
 }
+
+// ChangeClient is a typed client for the ChangeService service. The client owns
+// (de)serialization via the generated codec; the transport only moves bytes.
+type ChangeClient struct {
+	transport Transport
+}
+
+func NewChangeClient(transport Transport) *ChangeClient {
+	return &ChangeClient{transport: transport}
+}
+
+// channel operation watch is not part of the RPC client

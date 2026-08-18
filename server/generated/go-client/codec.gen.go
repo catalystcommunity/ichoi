@@ -3262,7 +3262,10 @@ func DecodeListPlayersResponse(csilData []byte) (ListPlayersResponse, error) {
 
 // csilEncSubscribeRequest builds the canonical CBOR value tree for a SubscribeRequest.
 func csilEncSubscribeRequest(csilV SubscribeRequest) cborValue {
-	csilEntries := make(cborMap, 0, 1)
+	csilEntries := make(cborMap, 0, 2)
+	if csilV.Active != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("active"), cborBool((*csilV.Active))})
+	}
 	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
 	return csilEntries
 }
@@ -3283,6 +3286,13 @@ func csilDecSubscribeRequest(csilRoot cborValue) (SubscribeRequest, error) {
 			return csilOut, csilErr
 		}
 		csilOut.PlayerId = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "active"); csilOk {
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Active = &csilVal
 	}
 	return csilOut, nil
 }
@@ -7426,6 +7436,108 @@ func DecodeLibraryResyncStatus(csilData []byte) (LibraryResyncStatus, error) {
 		return csilZero, csilErr
 	}
 	return csilDecLibraryResyncStatus(csilRoot)
+}
+
+// csilEncWatchChangesRequest builds the canonical CBOR value tree for a WatchChangesRequest.
+func csilEncWatchChangesRequest(csilV WatchChangesRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	if csilV.Active != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("active"), cborBool((*csilV.Active))})
+	}
+	return csilEntries
+}
+
+// csilDecWatchChangesRequest reconstructs a WatchChangesRequest from a decoded CBOR value tree.
+func csilDecWatchChangesRequest(csilRoot cborValue) (WatchChangesRequest, error) {
+	var csilOut WatchChangesRequest
+	if csilField, csilOk := cborMapGet(csilRoot, "active"); csilOk {
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Active = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeWatchChangesRequest encodes a WatchChangesRequest to canonical CSIL CBOR bytes.
+func EncodeWatchChangesRequest(csilV WatchChangesRequest) []byte {
+	return cborEncode(csilEncWatchChangesRequest(csilV))
+}
+
+// DecodeWatchChangesRequest decodes canonical CSIL CBOR bytes into a WatchChangesRequest.
+func DecodeWatchChangesRequest(csilData []byte) (WatchChangesRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero WatchChangesRequest
+		return csilZero, csilErr
+	}
+	return csilDecWatchChangesRequest(csilRoot)
+}
+
+// csilEncDataChange builds the canonical CBOR value tree for a DataChange.
+func csilEncDataChange(csilV DataChange) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("topic"), cborText(csilV.Topic)})
+	csilEntries = append(csilEntries, cborEntry{cborText("revision"), cborUint(csilV.Revision)})
+	return csilEntries
+}
+
+// csilDecDataChange reconstructs a DataChange from a decoded CBOR value tree.
+func csilDecDataChange(csilRoot cborValue) (DataChange, error) {
+	var csilOut DataChange
+	{
+		csilField, csilErr := cborRequire(csilRoot, "topic")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ChangeTopic, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "players" || csilInner == "libraries" || csilInner == "playlists" || csilInner == "progress" || csilInner == "session" || csilInner == "accounts" || csilInner == "trust" || csilInner == "nodes" || csilInner == "groups" || csilInner == "settings" || csilInner == "imports") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ChangeTopic(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Topic = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "revision")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Revision = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeDataChange encodes a DataChange to canonical CSIL CBOR bytes.
+func EncodeDataChange(csilV DataChange) []byte {
+	return cborEncode(csilEncDataChange(csilV))
+}
+
+// DecodeDataChange decodes canonical CSIL CBOR bytes into a DataChange.
+func DecodeDataChange(csilData []byte) (DataChange, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero DataChange
+		return csilZero, csilErr
+	}
+	return csilDecDataChange(csilRoot)
 }
 
 // csilEncPlayerCommand encodes a PlayerCommand union as a tagged sum [variant_index, value].

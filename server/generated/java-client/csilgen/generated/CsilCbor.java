@@ -1593,14 +1593,22 @@ public final class CsilCbor {
     }
 
     static CborValue encSubscribeRequest(SubscribeRequest v) {
-        List<CborEntry> csilEntries = new ArrayList<>(1);
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        if (v.active() != null) {
+            csilEntries.add(new CborEntry(new CborText("active"), new CborBool(v.active())));
+        }
         csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
         return new CborMap(csilEntries);
     }
 
     static SubscribeRequest decSubscribeRequest(CborValue csilRoot) {
         PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
-        return new SubscribeRequest(playerId);
+        Boolean active;
+        {
+            CborValue csilField = mapGet(csilRoot, "active");
+            active = csilField != null ? asBool(csilField) : null;
+        }
+        return new SubscribeRequest(playerId, active);
     }
 
     public static byte[] encodeSubscribeRequest(SubscribeRequest v) {
@@ -3217,6 +3225,52 @@ public final class CsilCbor {
         return decLibraryResyncStatus(decode(data));
     }
 
+    static CborValue encWatchChangesRequest(WatchChangesRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        if (v.active() != null) {
+            csilEntries.add(new CborEntry(new CborText("active"), new CborBool(v.active())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static WatchChangesRequest decWatchChangesRequest(CborValue csilRoot) {
+        Boolean active;
+        {
+            CborValue csilField = mapGet(csilRoot, "active");
+            active = csilField != null ? asBool(csilField) : null;
+        }
+        return new WatchChangesRequest(active);
+    }
+
+    public static byte[] encodeWatchChangesRequest(WatchChangesRequest v) {
+        return encode(encWatchChangesRequest(v));
+    }
+
+    public static WatchChangesRequest decodeWatchChangesRequest(byte[] data) {
+        return decWatchChangesRequest(decode(data));
+    }
+
+    static CborValue encDataChange(DataChange v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("topic"), encChangeTopic(v.topic())));
+        csilEntries.add(new CborEntry(new CborText("revision"), new CborUint(v.revision())));
+        return new CborMap(csilEntries);
+    }
+
+    static DataChange decDataChange(CborValue csilRoot) {
+        ChangeTopic topic = decChangeTopic(require(csilRoot, "topic"));
+        long revision = asU64(require(csilRoot, "revision"));
+        return new DataChange(topic, revision);
+    }
+
+    public static byte[] encodeDataChange(DataChange v) {
+        return encode(encDataChange(v));
+    }
+
+    public static DataChange decodeDataChange(byte[] data) {
+        return decDataChange(decode(data));
+    }
+
     static CborValue encRole(Role v) {
         return new CborText((String) v.value());
     }
@@ -3515,5 +3569,17 @@ public final class CsilCbor {
             throw new CsilCborException("csil cbor: AudioOutputsState value " + csilVal + " is not a member of the declared enum");
         }
         return new AudioOutputsState(csilVal);
+    }
+
+    static CborValue encChangeTopic(ChangeTopic v) {
+        return new CborText((String) v.value());
+    }
+
+    static ChangeTopic decChangeTopic(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "players") || Objects.equals(csilVal, "libraries") || Objects.equals(csilVal, "playlists") || Objects.equals(csilVal, "progress") || Objects.equals(csilVal, "session") || Objects.equals(csilVal, "accounts") || Objects.equals(csilVal, "trust") || Objects.equals(csilVal, "nodes") || Objects.equals(csilVal, "groups") || Objects.equals(csilVal, "settings") || Objects.equals(csilVal, "imports"))) {
+            throw new CsilCborException("csil cbor: ChangeTopic value " + csilVal + " is not a member of the declared enum");
+        }
+        return new ChangeTopic(csilVal);
     }
 }

@@ -275,6 +275,7 @@ fn control_enqueues_and_plays() {
             &common::ctx_anon(),
             SubscribeRequest {
                 player_id: "player-1".into(),
+                active: None,
             },
         )
         .expect("target snapshot");

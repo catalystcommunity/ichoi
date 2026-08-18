@@ -1404,6 +1404,7 @@ public extension SubscribeRequest {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        if let csilV = self.active { csilEntries.append(("active", .bool(csilV))) }
         csilEntries.append(("player_id", .text(self.playerId)))
         return .map(csilEntries)
     }
@@ -1411,7 +1412,8 @@ public extension SubscribeRequest {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let playerId = try CsilCbor.asText((try CsilCbor.require(cborValue, "player_id")))
-        self.init(playerId: playerId)
+        let active: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "active") { try CsilCbor.asBool(csilV) } else { nil }
+        self.init(playerId: playerId, active: active)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -3274,5 +3276,68 @@ public extension LibraryResyncStatus {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> LibraryResyncStatus { try LibraryResyncStatus(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ChangeTopic {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = ChangeTopic(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ChangeTopic { try ChangeTopic(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension WatchChangesRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        if let csilV = self.active { csilEntries.append(("active", .bool(csilV))) }
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let active: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "active") { try CsilCbor.asBool(csilV) } else { nil }
+        self.init(active: active)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> WatchChangesRequest { try WatchChangesRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension DataChange {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("topic", self.topic.toCborValue()))
+        csilEntries.append(("revision", .uint(self.revision)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let topic = try ChangeTopic(cborValue: (try CsilCbor.require(cborValue, "topic")))
+        let revision = try CsilCbor.asU64((try CsilCbor.require(cborValue, "revision")))
+        self.init(topic: topic, revision: revision)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> DataChange { try DataChange(cborValue: CsilCbor.decode(bytes)) }
 }
 
