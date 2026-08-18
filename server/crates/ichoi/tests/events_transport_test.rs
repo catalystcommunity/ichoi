@@ -12,12 +12,16 @@ use ichoi::transport::{
     EventEnvelope,
 };
 use libichoi::csil::codec::{
-    decode_albums_response, decode_libraries_response, decode_library_resync_status,
-    decode_player_state, encode_browse_request, encode_page,
+    decode_albums_response, decode_data_change, decode_libraries_response,
+    decode_library_resync_status, decode_player_state, encode_browse_request, encode_page,
+    encode_subscribe_request, encode_watch_changes_request,
 };
 use libichoi::csil::services::AdminService;
 use libichoi::csil::types::CreateNodeTokenRequest;
-use libichoi::csil::types::{BrowseRequest, Library, Page, PlayerState, PlayerStatus, QueueItem};
+use libichoi::csil::types::{
+    BrowseRequest, ChangeTopic, Library, Page, PlayerState, PlayerStatus, QueueItem,
+    SubscribeRequest, WatchChangesRequest,
+};
 
 use common::DataMap;
 
@@ -82,6 +86,53 @@ fn hello_gets_ack() {
         handle_events_frame(&app, Identity::Anonymous, true, &hello_frame(None));
     let env = decode_event_envelope(&reply.expect("ack frame")).unwrap();
     assert_eq!(env.event, "$hello-ack");
+}
+
+#[test]
+fn change_watch_and_player_unsubscribe_return_connection_effects() {
+    let (app, _pool) = common::test_app();
+    let watch = encode_event_envelope(&EventEnvelope {
+        service: Some("change".into()),
+        event: "watch".into(),
+        id: None,
+        payload: encode_watch_changes_request(&WatchChangesRequest { active: Some(true) }),
+    });
+    let (_, reply, effects) = handle_events_frame(&app, Identity::Anonymous, true, &watch);
+    assert!(reply.is_none());
+    assert_eq!(effects.watch_changes, Some(true));
+
+    let unsubscribe = encode_event_envelope(&EventEnvelope {
+        service: Some("player".into()),
+        event: "subscribe".into(),
+        id: None,
+        payload: encode_subscribe_request(&SubscribeRequest {
+            player_id: "gone-player".into(),
+            active: Some(false),
+        }),
+    });
+    let (_, reply, effects) = handle_events_frame(&app, Identity::Anonymous, true, &unsubscribe);
+    assert!(reply.is_none());
+    assert_eq!(
+        effects.player_subscription,
+        Some(("gone-player".to_string(), false))
+    );
+}
+
+#[test]
+fn change_hub_pushes_only_a_topic_and_monotonic_revision() {
+    let (app, _pool) = common::test_app();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    app.changes.subscribe(17, tx);
+    app.changes.publish(ChangeTopic::Players);
+    app.changes.publish(ChangeTopic::Nodes);
+
+    let first = decode_event_envelope(&rx.try_recv().unwrap()).unwrap();
+    let second = decode_event_envelope(&rx.try_recv().unwrap()).unwrap();
+    let first = decode_data_change(&first.payload).unwrap();
+    let second = decode_data_change(&second.payload).unwrap();
+    assert_eq!(first.topic, ChangeTopic::Players);
+    assert_eq!(second.topic, ChangeTopic::Nodes);
+    assert!(second.revision > first.revision);
 }
 
 #[test]

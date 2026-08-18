@@ -191,7 +191,7 @@ and player_state = {
 
 and list_players_request = { kind : player_kind option }
 and list_players_response = { players : player list }
-and subscribe_request = { player_id : player_id }
+and subscribe_request = { player_id : player_id; active : bool option }
 
 and cmd_enqueue = {
   op : Csil_cbor.t;
@@ -459,3 +459,19 @@ and cancel_import_request = { transfer_id : string }
 and settings = { entries : (string * string) list }
 and set_setting_request = { key : string; value : string }
 and library_resync_status = { running : bool; started : bool }
+
+and change_topic =
+  | Players
+  | Libraries
+  | Playlists
+  | Progress
+  | Session
+  | Accounts
+  | Trust
+  | Nodes
+  | Groups
+  | Settings
+  | Imports
+
+and watch_changes_request = { active : bool option }
+and data_change = { topic : change_topic; revision : int64 }

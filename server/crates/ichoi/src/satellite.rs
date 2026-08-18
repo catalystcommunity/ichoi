@@ -458,15 +458,17 @@ fn stop_player(playback: &mut HashMap<String, PlaybackTask>, player_id: &str) {
     }
 }
 
+type PlaybackChunk = Option<Vec<u8>>;
+
 struct StreamingSource {
-    rx: Mutex<mpsc::UnboundedReceiver<Option<Vec<u8>>>>,
+    rx: Mutex<mpsc::UnboundedReceiver<PlaybackChunk>>,
     buf: Vec<u8>,
     pos: usize,
     done: bool,
 }
 
 impl StreamingSource {
-    fn new(rx: mpsc::UnboundedReceiver<Option<Vec<u8>>>) -> StreamingSource {
+    fn new(rx: mpsc::UnboundedReceiver<PlaybackChunk>) -> StreamingSource {
         StreamingSource {
             rx: Mutex::new(rx),
             buf: Vec::new(),
@@ -477,8 +479,8 @@ impl StreamingSource {
 }
 
 fn playback_stream_channel() -> (
-    mpsc::UnboundedSender<Option<Vec<u8>>>,
-    mpsc::UnboundedReceiver<Option<Vec<u8>>>,
+    mpsc::UnboundedSender<PlaybackChunk>,
+    mpsc::UnboundedReceiver<PlaybackChunk>,
 ) {
     mpsc::unbounded_channel()
 }

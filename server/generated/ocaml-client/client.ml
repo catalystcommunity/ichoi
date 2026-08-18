@@ -273,3 +273,7 @@ module Admin_service = struct
     | Ok payload -> Ok (Codec.decode_library_resync_status_bytes payload)
     | Error _ as e -> e
 end
+
+module Change_service = struct
+  (* channel operation watch is not part of the RPC client *)
+end

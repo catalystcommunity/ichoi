@@ -440,7 +440,8 @@ data class ListPlayersResponse(
 /** SubscribeRequest record. */
 data class SubscribeRequest(
     // wire key: player_id
-    val playerId: PlayerId
+    val playerId: PlayerId,
+    val active: Boolean? = true
 )
 
 /** CmdEnqueue record. */
@@ -1079,5 +1080,19 @@ data class SetSettingRequest(
 data class LibraryResyncStatus(
     val running: Boolean,
     val started: Boolean = false
+)
+
+/** ChangeTopic enum (bare-literal wire). */
+enum class ChangeTopic { Players, Libraries, Playlists, Progress, Session, Accounts, Trust, Nodes, Groups, Settings, Imports }
+
+/** WatchChangesRequest record. */
+data class WatchChangesRequest(
+    val active: Boolean? = true
+)
+
+/** DataChange record. */
+data class DataChange(
+    val topic: ChangeTopic,
+    val revision: ULong
 )
 

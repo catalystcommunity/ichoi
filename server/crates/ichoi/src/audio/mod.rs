@@ -37,6 +37,27 @@ pub fn state_label() -> &'static str {
     }
 }
 
+/// Verify that satellite playback can open the selected system output. This check does not
+/// install packages or change audio configuration.
+pub fn validate_satellite_output() -> anyhow::Result<()> {
+    #[cfg(target_os = "linux")]
+    {
+        linux::validate_satellite_output()
+    }
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    {
+        if native::enumerate().is_empty() {
+            anyhow::bail!("Ichoi did not find a default audio output")
+        }
+        let _sink = native::NativeSink::open(48_000, 2)?;
+        Ok(())
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        anyhow::bail!("satellite audio is not supported on this platform")
+    }
+}
+
 pub struct PcmSink {
     #[cfg(target_os = "linux")]
     inner: linux::AlsaSink,
@@ -295,6 +316,39 @@ mod linux {
     const SND_PCM_ACCESS_RW_INTERLEAVED: c_int = 3;
     const SND_PCM_FORMAT_S16_LE: c_int = 2;
     const EPIPE: c_int = 32;
+
+    pub fn validate_satellite_output() -> anyhow::Result<()> {
+        if let Err(error) = unsafe { libloading::Library::new("libasound.so.2") } {
+            let detail = error.to_string();
+            if detail.contains("Dynamic loading not supported") {
+                anyhow::bail!(
+                    "this is the static core build and cannot load ALSA; download the GNU satellite release for this architecture"
+                );
+            }
+            anyhow::bail!(
+                "Ichoi cannot load libasound.so.2 ({detail}). Install it, then run this command again. {}",
+                alsa_install_command()
+            );
+        }
+        AlsaSink::open(48_000, 2).map(|_| ()).map_err(|error| {
+            anyhow::anyhow!(
+                "Ichoi cannot open the ALSA default output: {error}. Select a working default output, then run this command again"
+            )
+        })
+    }
+
+    fn alsa_install_command() -> &'static str {
+        let release = std::fs::read_to_string("/etc/os-release").unwrap_or_default();
+        if release.contains("ID=arch") || release.contains("ID_LIKE=arch") {
+            "Run: sudo pacman -S alsa-lib"
+        } else if release.contains("ID=fedora") || release.contains("ID_LIKE=\"rhel fedora\"") {
+            "Run: sudo dnf install alsa-lib"
+        } else if release.contains("ID=opensuse") || release.contains("ID_LIKE=\"suse") {
+            "Run: sudo zypper install libasound2"
+        } else {
+            "For Debian or Ubuntu, run: sudo apt install libasound2"
+        }
+    }
 
     /// Probe for `libasound.so.2` at runtime. Its presence tells us this host can output
     /// audio; its absence (scratch container) yields zero outputs — no crash, no link-time

@@ -1563,6 +1563,7 @@ class SubscribeRequest
 
   def csil_to_tree
     csil_map = {}
+    csil_map["active"] = active unless active.nil?
     csil_map["player_id"] = player_id
     csil_map
   end
@@ -1573,7 +1574,8 @@ class SubscribeRequest
 
   def self.csil_from_tree(node)
     new(
-      player_id: node["player_id"]
+      player_id: node["player_id"],
+      active: (node.key?("active") ? node["active"] : nil)
     )
   end
 end
@@ -3455,6 +3457,70 @@ class LibraryResyncStatus
     new(
       running: node["running"],
       started: node["started"]
+    )
+  end
+end
+
+# CBOR codec for WatchChangesRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class WatchChangesRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["active"] = active unless active.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      active: (node.key?("active") ? node["active"] : nil)
+    )
+  end
+end
+
+# CBOR codec for DataChange: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class DataChange
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["topic"] = (topic)
+    csil_map["revision"] = revision
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      topic: (case (node["topic"])
+when "players" then "players"
+when "libraries" then "libraries"
+when "playlists" then "playlists"
+when "progress" then "progress"
+when "session" then "session"
+when "accounts" then "accounts"
+when "trust" then "trust"
+when "nodes" then "nodes"
+when "groups" then "groups"
+when "settings" then "settings"
+when "imports" then "imports"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["topic"]).inspect}"
+end),
+      revision: node["revision"]
     )
   end
 end

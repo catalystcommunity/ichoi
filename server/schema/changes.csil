@@ -1,0 +1,13 @@
+;; Ichoi — authenticated catalog invalidations.
+;;
+;; Events contain a topic and revision only. A client retrieves the applicable resource again,
+;; so normal request authorization remains the source of truth for visible data.
+
+ChangeTopic = "players" / "libraries" / "playlists" / "progress" / "session" / "accounts" / "trust" / "nodes" / "groups" / "settings" / "imports"
+
+WatchChangesRequest = { ? active: bool .default true }
+DataChange = { topic: ChangeTopic, revision: uint }
+
+service ChangeService {
+    watch: WatchChangesRequest <-> DataChange
+}

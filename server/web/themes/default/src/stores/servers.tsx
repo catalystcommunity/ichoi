@@ -18,6 +18,7 @@ import { ServerApi } from "../lib/services.ts";
 import type { SessionInfo } from "../lib/schema.ts";
 import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 import { reloadSatelliteForUpdate } from "../lib/app-update.ts";
+import { ServerDataStore } from "./server-data.ts";
 
 export interface ServerRecord {
   id: string;
@@ -34,6 +35,7 @@ export interface ServerRecord {
 interface LiveConn {
   conn: CsilConnection;
   api: ServerApi;
+  data: ServerDataStore;
 }
 
 interface PersistedServer {
@@ -51,10 +53,13 @@ interface ServersContextValue {
   active: Accessor<ServerRecord | undefined>;
   /** The service API for the active server, or undefined if none is connected. */
   api: Accessor<ServerApi | undefined>;
+  /** Central domain data for the active server. */
+  data: Accessor<ServerDataStore | undefined>;
   addServer: (name: string, url: string) => Promise<string>;
   removeServer: (id: string) => void;
   setActive: (id: string) => void;
   apiFor: (id: string) => ServerApi | undefined;
+  dataFor: (id: string) => ServerDataStore | undefined;
   reconnect: (id: string) => Promise<void>;
   completeLinkkeysExchange: (code: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -150,6 +155,12 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     servers.find((s) => s.id === id)?.state;
     return live.get(id)?.api;
   };
+  const data = () => {
+    const id = activeId();
+    if (!id) return undefined;
+    servers.find((s) => s.id === id)?.state;
+    return live.get(id)?.data;
+  };
   const active = () => servers.find((s) => s.id === activeId());
 
   function patch(id: string, patchObj: Partial<ServerRecord>): void {
@@ -161,7 +172,11 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     );
   }
 
-  async function provisionSatellite(rec: ServerRecord, api: ServerApi): Promise<void> {
+  async function provisionSatellite(
+    rec: ServerRecord,
+    api: ServerApi,
+    dataStore: ServerDataStore,
+  ): Promise<void> {
     const output = satelliteOutput();
     const registered = await api.node.register({
       hostname: typeof location === "undefined" ? "browser-pwa" : location.hostname,
@@ -183,7 +198,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     // A node-session report is also the server-side presence claim. Mirror the persisted
     // player state instead of resetting it when this PWA reconnects.
     let off: (() => void) | undefined;
-    off = api.player.subscribe({ player_id: player.id }, (state) => {
+    off = dataStore.playerStates.watch(player.id, (state) => {
       api.node.report({
         player_id: player.id,
         status: state.status,
@@ -198,16 +213,19 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     let initialProvisionComplete = false;
     let reprovisioning = false;
     let api: ServerApi;
+    let dataStore: ServerDataStore;
     const conn = new CsilConnection({
       url: rec.url,
       auth: nodeToken ? undefined : rec.token,
       nodeToken,
       onState: (state, detail) => {
         patch(rec.id, { state, detail });
+        if (state === "ready") dataStore?.connectionReady();
+        if (state === "closed" || state === "error") dataStore?.connectionClosed();
         if (state === "ready" && nodeToken && initialProvisionComplete && !reprovisioning) {
           reprovisioning = true;
           void reloadSatelliteForUpdate(rec.url)
-            .then((reloading) => reloading ? undefined : provisionSatellite(rec, api))
+            .then((reloading) => reloading ? undefined : provisionSatellite(rec, api, dataStore))
             .catch((e) => patch(rec.id, { state: "error", detail: String(e) }))
             .finally(() => {
               reprovisioning = false;
@@ -216,10 +234,11 @@ export function ServersProvider(props: ParentProps): JSX.Element {
       },
     });
     api = new ServerApi(conn);
-    live.set(rec.id, { conn, api });
+    dataStore = new ServerDataStore(api);
+    live.set(rec.id, { conn, api, data: dataStore });
     await conn.connect();
     if (nodeToken) {
-      await provisionSatellite(rec, api);
+      await provisionSatellite(rec, api, dataStore);
       initialProvisionComplete = true;
       await reloadSatelliteForUpdate(rec.url);
       return;
@@ -250,6 +269,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
   }
 
   function removeServer(id: string): void {
+    live.get(id)?.data.dispose();
     live.get(id)?.conn.close("removed by user");
     live.delete(id);
     setServers((list) => list.filter((s) => s.id !== id));
@@ -265,9 +285,14 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     return live.get(id)?.api;
   }
 
+  function dataFor(id: string): ServerDataStore | undefined {
+    return live.get(id)?.data;
+  }
+
   async function reconnect(id: string): Promise<void> {
     const rec = servers.find((s) => s.id === id);
     if (!rec) return;
+    live.get(id)?.data.dispose();
     live.get(id)?.conn.close("reconnecting");
     live.delete(id);
     await openConnection(rec);
@@ -335,7 +360,10 @@ export function ServersProvider(props: ParentProps): JSX.Element {
   }
 
   onCleanup(() => {
-    for (const { conn } of live.values()) conn.close("app closing");
+    for (const { conn, data: dataStore } of live.values()) {
+      dataStore.dispose();
+      conn.close("app closing");
+    }
     live.clear();
   });
 
@@ -344,10 +372,12 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     activeId,
     active,
     api,
+    data,
     addServer,
     removeServer,
     setActive,
     apiFor,
+    dataFor,
     reconnect,
     completeLinkkeysExchange,
     signOut,

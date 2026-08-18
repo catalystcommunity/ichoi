@@ -71,6 +71,29 @@ class MuslBuildPackagesTest(unittest.TestCase):
         )
 
 
+class ReleaseArtifactTargetTest(unittest.TestCase):
+    """The release must not install a scratch/static binary on an audio satellite."""
+
+    def test_core_artifacts_are_static_musl(self):
+        self.assertTrue(
+            all(triple.endswith("-musl") for _, triple in release_plugin.CORE_ARCHITECTURES)
+        )
+
+    def test_satellite_artifacts_are_dynamic_gnu(self):
+        self.assertTrue(
+            all(triple.endswith("-gnu") for _, triple in release_plugin.SATELLITE_ARCHITECTURES)
+        )
+
+    def test_satellites_have_an_explicit_old_glibc_baseline(self):
+        self.assertEqual(release_plugin.SATELLITE_GLIBC_VERSION, "2.17")
+
+    def test_satellites_cover_the_same_architectures_as_the_core(self):
+        self.assertEqual(
+            {architecture for architecture, _ in release_plugin.CORE_ARCHITECTURES},
+            {architecture for architecture, _ in release_plugin.SATELLITE_ARCHITECTURES},
+        )
+
+
 class RecoverUnreleasedTargetsTest(unittest.TestCase):
     """The recovery pass after a release job died between the tag and the release."""
 

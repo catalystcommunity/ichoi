@@ -15,10 +15,9 @@ Status: **design**. Nothing here is implemented yet.
 
 ### Goals
 
-- **Single static binary, zero system-library dependencies at build or link time.** Audio
-  output is loaded at *runtime* (§6.1), so the binary runs unchanged in a scratch
-  container — it simply reports "no audio outputs." Cross-compiled for **amd64 and arm64**
-  (Raspberry Pi satellites are first-class), plus darwin/windows for clients.
+- **One source with role-specific Linux artifacts.** The core is a static musl binary for a
+  scratch container. A native satellite is a GNU libc binary that can load the host audio
+  system. Both artifacts support **amd64 and arm64**. Raspberry Pi satellites are first-class.
 - **CSIL-native.** The real API is a CSIL service; everything Ichoi does is expressible
   over it.
 - **Browser clients first-class**, served by the same binary over a WebSocket carrier.
@@ -277,23 +276,21 @@ playback, but nothing needs it to satisfy "read Opus files."
 
 ### 6.1 Audio output, loaded at runtime
 
-The host audio library is **loaded at runtime**, never linked at build time. This is a
-hard requirement, and it is *why we cannot use stock cpal on Linux*: cpal's `alsa-sys`
+The GNU satellite loads the host audio library at run time. The core does not use audio.
+This separation is required because a static musl process cannot load a shared ALSA library.
+We cannot use stock cpal on Linux because cpal's `alsa-sys`
 creates a `DT_NEEDED` dependency on `libasound`, which the dynamic loader resolves **before
-`main`** — so a cpal-linked binary would fail to start in a scratch container, before any
-"no audio" detection could run.
+`main`. Such a binary cannot start in a scratch container.
 
-Instead, on **Linux** we `dlopen` `libasound.so.2` ourselves (via `dlopen2`) and call its
+On **Linux satellites**, we `dlopen` `libasound.so.2` and call its
 small PCM surface directly (`snd_pcm_open` / `hw_params` / `writei` / `drain` / `recover`,
 `snd_device_name_hint` for enumeration). On **macOS/Windows** the system audio frameworks
 (CoreAudio/WASAPI) always exist, so cpal (or a native backend) is fine there. Consequences:
 
-- The binary starts anywhere, including a **scratch container** with no audio stack: the
-  `dlopen` fails, we catch it, enumerate zero devices, and report `audio_outputs: none`.
-- No build- or link-time system dependency; only **major-version ABI** (`libasound.so.2`)
-  compatibility, resolved at load.
-- "Single static binary, no system libraries" is literally true; audio output is an
-  optional runtime capability.
+- The static core starts in a **scratch container** and reports `audio_outputs: none`.
+- The GNU satellite starts on systems with GNU libc 2.17 or later.
+- The satellite installer checks for `libasound.so.2` and a working default output. It does
+  not install system packages. It gives the user the required package command when necessary.
 
 Linux JACK/PipeWire backends can be added later behind the same runtime-load pattern.
 

@@ -431,6 +431,8 @@ pub struct ListPlayersResponse {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubscribeRequest {
     pub player_id: PlayerId,
+    /// default: true
+    pub active: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1048,4 +1050,32 @@ pub struct LibraryResyncStatus {
     pub running: bool,
     /// default: false
     pub started: bool,
+}
+
+/// ChangeTopic variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChangeTopic {
+    Players,
+    Libraries,
+    Playlists,
+    Progress,
+    Session,
+    Accounts,
+    Trust,
+    Nodes,
+    Groups,
+    Settings,
+    Imports,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct WatchChangesRequest {
+    /// default: true
+    pub active: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DataChange {
+    pub topic: ChangeTopic,
+    pub revision: u64,
 }

@@ -343,6 +343,7 @@ type ListPlayersResponse struct {
 // SubscribeRequest represents a structured data type
 type SubscribeRequest struct {
 	PlayerId PlayerId `json:"player_id" yaml:"player_id"`
+	Active   *bool    `json:"active,omitempty" yaml:"active,omitempty"`
 }
 
 // CmdEnqueue represents a structured data type
@@ -801,4 +802,18 @@ type SetSettingRequest struct {
 type LibraryResyncStatus struct {
 	Running bool `json:"running" yaml:"running"`
 	Started bool `json:"started" yaml:"started"`
+}
+
+// ChangeTopic is a type alias
+type ChangeTopic string
+
+// WatchChangesRequest represents a structured data type
+type WatchChangesRequest struct {
+	Active *bool `json:"active,omitempty" yaml:"active,omitempty"`
+}
+
+// DataChange represents a structured data type
+type DataChange struct {
+	Topic    ChangeTopic `json:"topic" yaml:"topic"`
+	Revision uint64      `json:"revision" yaml:"revision"`
 }

@@ -441,6 +441,7 @@ and encode_subscribe_request (v : subscribe_request) : Cbor.t =
     (List.filter_map
        (fun x -> x)
        [
+         (match v.active with Some csil_x -> Some (Cbor.Text "active", (Cbor.Bool csil_x)) | None -> None);
          Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
        ])
 
@@ -1106,6 +1107,26 @@ and encode_library_resync_status (v : library_resync_status) : Cbor.t =
          Some (Cbor.Text "started", (Cbor.Bool v.started));
        ])
 
+and encode_change_topic (v : change_topic) : Cbor.t =
+  match v with Players -> Cbor.Text "players" | Libraries -> Cbor.Text "libraries" | Playlists -> Cbor.Text "playlists" | Progress -> Cbor.Text "progress" | Session -> Cbor.Text "session" | Accounts -> Cbor.Text "accounts" | Trust -> Cbor.Text "trust" | Nodes -> Cbor.Text "nodes" | Groups -> Cbor.Text "groups" | Settings -> Cbor.Text "settings" | Imports -> Cbor.Text "imports"
+
+and encode_watch_changes_request (v : watch_changes_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         (match v.active with Some csil_x -> Some (Cbor.Text "active", (Cbor.Bool csil_x)) | None -> None);
+       ])
+
+and encode_data_change (v : data_change) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "topic", (encode_change_topic v.topic));
+         Some (Cbor.Text "revision", (Cbor.int64 v.revision));
+       ])
+
 let rec decode_role (csil_c : Cbor.t) : role =
   match Cbor.to_text csil_c with "admin" -> Admin | "member" -> Member | "guest" -> Guest | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
 
@@ -1749,6 +1770,7 @@ and decode_subscribe_request (csil_c : Cbor.t) : subscribe_request =
       in
       ignore csil_req;
       {
+        active = (match csil_field "active" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
         player_id = (Cbor.to_text (csil_req "player_id"));
       }
   | _ -> failwith "csilgen: expected map for subscribe_request"
@@ -2763,6 +2785,36 @@ and decode_library_resync_status (csil_c : Cbor.t) : library_resync_status =
       }
   | _ -> failwith "csilgen: expected map for library_resync_status"
 
+and decode_change_topic (csil_c : Cbor.t) : change_topic =
+  match Cbor.to_text csil_c with "players" -> Players | "libraries" -> Libraries | "playlists" -> Playlists | "progress" -> Progress | "session" -> Session | "accounts" -> Accounts | "trust" -> Trust | "nodes" -> Nodes | "groups" -> Groups | "settings" -> Settings | "imports" -> Imports | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_watch_changes_request (csil_c : Cbor.t) : watch_changes_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        active = (match csil_field "active" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for watch_changes_request"
+
+and decode_data_change (csil_c : Cbor.t) : data_change =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        topic = (decode_change_topic (csil_req "topic"));
+        revision = (Cbor.to_i64 (csil_req "revision"));
+      }
+  | _ -> failwith "csilgen: expected map for data_change"
+
 let encode_role_bytes (v : role) : bytes = Cbor.encode (encode_role v)
 let decode_role_bytes (b : bytes) : role =
   match Cbor.decode b with Ok c -> decode_role c | Error e -> failwith e
@@ -3254,3 +3306,15 @@ let decode_set_setting_request_bytes (b : bytes) : set_setting_request =
 let encode_library_resync_status_bytes (v : library_resync_status) : bytes = Cbor.encode (encode_library_resync_status v)
 let decode_library_resync_status_bytes (b : bytes) : library_resync_status =
   match Cbor.decode b with Ok c -> decode_library_resync_status c | Error e -> failwith e
+
+let encode_change_topic_bytes (v : change_topic) : bytes = Cbor.encode (encode_change_topic v)
+let decode_change_topic_bytes (b : bytes) : change_topic =
+  match Cbor.decode b with Ok c -> decode_change_topic c | Error e -> failwith e
+
+let encode_watch_changes_request_bytes (v : watch_changes_request) : bytes = Cbor.encode (encode_watch_changes_request v)
+let decode_watch_changes_request_bytes (b : bytes) : watch_changes_request =
+  match Cbor.decode b with Ok c -> decode_watch_changes_request c | Error e -> failwith e
+
+let encode_data_change_bytes (v : data_change) : bytes = Cbor.encode (encode_data_change v)
+let decode_data_change_bytes (b : bytes) : data_change =
+  match Cbor.decode b with Ok c -> decode_data_change c | Error e -> failwith e

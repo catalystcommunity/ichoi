@@ -905,4 +905,6 @@ static inline int csil_admin_get_resync_status(const CsilgenTransport *t, const 
     return csil_drc;
 }
 
+/* channel operation watch is not part of the RPC client */
+
 #endif /* CSILGEN_CLIENT_GEN_H */

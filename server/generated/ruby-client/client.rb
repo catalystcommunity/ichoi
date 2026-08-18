@@ -301,3 +301,12 @@ class AdminClient
     LibraryResyncStatus.from_cbor(@transport.call("AdminService", "get-resync-status", req.to_cbor))
   end
 end
+
+# Typed client for the ChangeService service.
+class ChangeClient
+  def initialize(transport)
+    @transport = transport
+  end
+
+  # channel operation watch is not part of the RPC client
+end

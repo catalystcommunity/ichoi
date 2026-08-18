@@ -193,3 +193,9 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     }
 }
 
+/** Typed client for the ChangeService service. The client owns (de)serialization;
+ * the carrier only moves bytes. */
+class ChangeAsyncClient(private val transport: AsyncTransport) {
+    // channel operation 'watch' is not part of the RPC client
+}
+

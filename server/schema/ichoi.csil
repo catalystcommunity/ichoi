@@ -11,6 +11,7 @@
 ;;   MediaService    — the bidi media stream                          (clients + satellites)
 ;;   NodeService     — satellite registration + directive/report loop (dumb; no library)
 ;;   AdminService    — accounts, trust, nodes, settings, cross-server import   (admin)
+;;   ChangeService   — authenticated resource invalidations
 
 include "common.csil"
 include "session.csil"
@@ -19,3 +20,4 @@ include "player.csil"
 include "media.csil"
 include "node.csil"
 include "admin.csil"
+include "changes.csil"

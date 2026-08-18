@@ -462,6 +462,9 @@ public static class Codec
         Settings csilTyped => SettingsToCborValue(csilTyped),
         SetSettingRequest csilTyped => SetSettingRequestToCborValue(csilTyped),
         LibraryResyncStatus csilTyped => LibraryResyncStatusToCborValue(csilTyped),
+        ChangeTopic csilTyped => ChangeTopicToCborValue(csilTyped),
+        WatchChangesRequest csilTyped => WatchChangesRequestToCborValue(csilTyped),
+        DataChange csilTyped => DataChangeToCborValue(csilTyped),
         _ => throw new System.ArgumentException("csilgen: no CSIL codec for the requested type"),
     };
 
@@ -590,6 +593,9 @@ public static class Codec
         if (csilType == typeof(Settings)) return SettingsFromCborValue(value);
         if (csilType == typeof(SetSettingRequest)) return SetSettingRequestFromCborValue(value);
         if (csilType == typeof(LibraryResyncStatus)) return LibraryResyncStatusFromCborValue(value);
+        if (csilType == typeof(ChangeTopic)) return ChangeTopicFromCborValue(value);
+        if (csilType == typeof(WatchChangesRequest)) return WatchChangesRequestFromCborValue(value);
+        if (csilType == typeof(DataChange)) return DataChangeFromCborValue(value);
         throw new System.ArgumentException("csilgen: no CSIL codec for the requested type");
     }
 
@@ -1813,6 +1819,10 @@ public static class Codec
     public static CborValue SubscribeRequestToCborValue(SubscribeRequest value)
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        if (value.Active is { } csilV0)
+        {
+            csilEntries.Add((new CborValue.Text("active"), new CborValue.Bool(csilV0)));
+        }
         csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
         return new CborValue.Map(csilEntries);
     }
@@ -1821,9 +1831,11 @@ public static class Codec
     public static SubscribeRequest SubscribeRequestFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
+        bool? csilField1 = Cbor.MapGet(value, "active") is { } csilRaw1 ? Cbor.AsBool(csilRaw1) : null;
         return new SubscribeRequest
         {
             PlayerId = csilField0,
+            Active = csilField1,
         };
     }
 
@@ -3561,6 +3573,82 @@ public static class Codec
         {
             Running = csilField0,
             Started = csilField1,
+        };
+    }
+
+    /// <summary>The bare-literal CBOR value for a ChangeTopic.</summary>
+    public static CborValue ChangeTopicToCborValue(ChangeTopic value) => value switch
+    {
+        ChangeTopic.Players => new CborValue.Text("players"),
+        ChangeTopic.Libraries => new CborValue.Text("libraries"),
+        ChangeTopic.Playlists => new CborValue.Text("playlists"),
+        ChangeTopic.Progress => new CborValue.Text("progress"),
+        ChangeTopic.Session => new CborValue.Text("session"),
+        ChangeTopic.Accounts => new CborValue.Text("accounts"),
+        ChangeTopic.Trust => new CborValue.Text("trust"),
+        ChangeTopic.Nodes => new CborValue.Text("nodes"),
+        ChangeTopic.Groups => new CborValue.Text("groups"),
+        ChangeTopic.Settings => new CborValue.Text("settings"),
+        ChangeTopic.Imports => new CborValue.Text("imports"),
+        _ => throw new CborException("invalid ChangeTopic"),
+    };
+
+    /// <summary>Reconstruct a ChangeTopic from its bare-literal CBOR value.</summary>
+    public static ChangeTopic ChangeTopicFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "players" => ChangeTopic.Players,
+        "libraries" => ChangeTopic.Libraries,
+        "playlists" => ChangeTopic.Playlists,
+        "progress" => ChangeTopic.Progress,
+        "session" => ChangeTopic.Session,
+        "accounts" => ChangeTopic.Accounts,
+        "trust" => ChangeTopic.Trust,
+        "nodes" => ChangeTopic.Nodes,
+        "groups" => ChangeTopic.Groups,
+        "settings" => ChangeTopic.Settings,
+        "imports" => ChangeTopic.Imports,
+        _ => throw new CborException("invalid ChangeTopic value"),
+    };
+
+    /// <summary>The canonical CBOR value tree for a WatchChangesRequest.</summary>
+    public static CborValue WatchChangesRequestToCborValue(WatchChangesRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        if (value.Active is { } csilV0)
+        {
+            csilEntries.Add((new CborValue.Text("active"), new CborValue.Bool(csilV0)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a WatchChangesRequest from a decoded CBOR value tree.</summary>
+    public static WatchChangesRequest WatchChangesRequestFromCborValue(CborValue value)
+    {
+        bool? csilField0 = Cbor.MapGet(value, "active") is { } csilRaw0 ? Cbor.AsBool(csilRaw0) : null;
+        return new WatchChangesRequest
+        {
+            Active = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a DataChange.</summary>
+    public static CborValue DataChangeToCborValue(DataChange value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("topic"), ChangeTopicToCborValue(value.Topic)));
+        csilEntries.Add((new CborValue.Text("revision"), new CborValue.Uint(value.Revision)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a DataChange from a decoded CBOR value tree.</summary>
+    public static DataChange DataChangeFromCborValue(CborValue value)
+    {
+        var csilField0 = ChangeTopicFromCborValue(Cbor.Require(value, "topic"));
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "revision"));
+        return new DataChange
+        {
+            Topic = csilField0,
+            Revision = csilField1,
         };
     }
 }

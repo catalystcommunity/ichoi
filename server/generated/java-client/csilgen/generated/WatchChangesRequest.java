@@ -2,8 +2,7 @@
 
 package csilgen.generated;
 
-public record SubscribeRequest(
-    PlayerId playerId /* wire: "player_id" */,
+public record WatchChangesRequest(
     Boolean active /* wire: "active" */
 ) {
 }

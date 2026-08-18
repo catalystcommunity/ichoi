@@ -76,6 +76,21 @@ typedef enum AudioOutputsState {
     AUDIO_OUTPUTS_STATE_SOME,
 } AudioOutputsState;
 
+/* ChangeTopic is an enumeration. */
+typedef enum ChangeTopic {
+    CHANGE_TOPIC_PLAYERS,
+    CHANGE_TOPIC_LIBRARIES,
+    CHANGE_TOPIC_PLAYLISTS,
+    CHANGE_TOPIC_PROGRESS,
+    CHANGE_TOPIC_SESSION,
+    CHANGE_TOPIC_ACCOUNTS,
+    CHANGE_TOPIC_TRUST,
+    CHANGE_TOPIC_NODES,
+    CHANGE_TOPIC_GROUPS,
+    CHANGE_TOPIC_SETTINGS,
+    CHANGE_TOPIC_IMPORTS,
+} ChangeTopic;
+
 /* Forward declarations (resolve mutual and out-of-order references). */
 typedef struct StreamPref StreamPref;
 typedef struct Page Page;
@@ -191,6 +206,8 @@ typedef struct CancelImportRequest CancelImportRequest;
 typedef struct Settings Settings;
 typedef struct SetSettingRequest SetSettingRequest;
 typedef struct LibraryResyncStatus LibraryResyncStatus;
+typedef struct WatchChangesRequest WatchChangesRequest;
+typedef struct DataChange DataChange;
 
 /* AccountId is a type alias. */
 typedef char *AccountId;
@@ -526,6 +543,7 @@ typedef struct ListPlayersResponse {
 /* SubscribeRequest is a structured data type. */
 typedef struct SubscribeRequest {
     PlayerId player_id;
+    bool *active;
 } SubscribeRequest;
 
 /* CmdEnqueue is a structured data type. */
@@ -1074,5 +1092,16 @@ typedef struct LibraryResyncStatus {
     bool running;
     bool started;
 } LibraryResyncStatus;
+
+/* WatchChangesRequest is a structured data type. */
+typedef struct WatchChangesRequest {
+    bool *active;
+} WatchChangesRequest;
+
+/* DataChange is a structured data type. */
+typedef struct DataChange {
+    ChangeTopic topic;
+    uint64_t revision;
+} DataChange;
 
 #endif /* CSILGEN_TYPES_GEN_H */

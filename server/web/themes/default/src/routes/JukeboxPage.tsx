@@ -2,9 +2,10 @@
 // strips with live transport, plus this client's private players and a control to
 // share this device (§6.4). Shared-target state streams over PlayerService.subscribe.
 import {
-  createResource,
+  createEffect,
   createSignal,
   For,
+  on,
   onCleanup,
   Show,
   type JSX,
@@ -35,13 +36,27 @@ export function JukeboxPage(): JSX.Element {
   const [suffix, setSuffix] = createSignal("Device");
   const [shareError, setShareError] = createSignal<string>();
 
-  const [players, { refetch }] = createResource(
-    () => servers.api(),
-    (api) => api.player.listPlayers(),
+  const [players, setPlayers] = createSignal<readonly Player[]>([]);
+  const [playersLoading, setPlayersLoading] = createSignal(true);
+  let offCatalog: (() => void) | undefined;
+  createEffect(
+    on([servers.activeId, servers.data], ([, dataStore]) => {
+      offCatalog?.();
+      offCatalog = undefined;
+      setPlayers([]);
+      setPlayersLoading(Boolean(dataStore));
+      if (!dataStore) return;
+      offCatalog = dataStore.playerCatalog.watch((change) => {
+        // This view owns the catalog list, so it reconciles membership and presentation changes.
+        setPlayers(change.players);
+        setPlayersLoading(false);
+      });
+    }),
   );
+  onCleanup(() => offCatalog?.());
 
-  const shared = () => players()?.players.filter((p) => p.kind === "shared") ?? [];
-  const priv = () => players()?.players.filter((p) => p.kind === "private") ?? [];
+  const shared = () => players().filter((p) => p.kind === "shared");
+  const priv = () => players().filter((p) => p.kind === "private");
   const mine = () => shared().filter((player) => pb.owned().includes(player.id));
 
   const enableShare = async (e: Event) => {
@@ -56,7 +71,6 @@ export function JukeboxPage(): JSX.Element {
       pb.markOwned(res.player.id);
       pb.setTarget(res.player.id);
       setShowShare(false);
-      await refetch();
     } catch (err) {
       setShareError(err instanceof CsilServiceError ? err.message : String(err));
     }
@@ -83,9 +97,7 @@ export function JukeboxPage(): JSX.Element {
               type="button"
               class="btn"
               onClick={() => {
-                void Promise.all(mine().map((player) => pb.releaseDevice(player.id))).then(() =>
-                  refetch(),
-                );
+                void Promise.all(mine().map((player) => pb.releaseDevice(player.id)));
               }}
             >
               <IconBroadcast size={16} /> {t("jukebox.stopSharingThisDevice")}
@@ -95,7 +107,7 @@ export function JukeboxPage(): JSX.Element {
       </header>
 
       <Show when={servers.api()} fallback={<EmptyState title={t("errors.connectFirst")} />}>
-        <Show when={!players.loading} fallback={<Spinner label={t("common.loading")} />}>
+        <Show when={!playersLoading()} fallback={<Spinner label={t("common.loading")} />}>
           <div class="section-head">
             <h2>{t("jukebox.shared")}</h2>
             <span class="count">{shared().length}</span>
@@ -106,7 +118,7 @@ export function JukeboxPage(): JSX.Element {
           >
             <div class="strip-grid">
               <For each={shared()}>
-                {(player) => <ChannelStrip player={player} onPlayersChanged={() => void refetch()} />}
+                {(player) => <ChannelStrip player={player} />}
               </For>
             </div>
           </Show>
@@ -169,7 +181,7 @@ export function JukeboxPage(): JSX.Element {
 /** One shared target as a console channel strip: live now-playing, transport, and
  * a volume fader. Subscribes to the target's `PlayerState` stream for the life of
  * the component. */
-function ChannelStrip(props: { player: Player; onPlayersChanged: () => void }): JSX.Element {
+function ChannelStrip(props: { player: Player }): JSX.Element {
   const servers = useServers();
   const pb = usePlayback();
   const { t } = useI18n();
@@ -179,14 +191,14 @@ function ChannelStrip(props: { player: Player; onPlayersChanged: () => void }): 
   const isOutput = () => pb.owned().includes(props.player.id);
   const displayName = () => outputTargetName(props.player.name, isOutput(), t("player.mine"));
 
-  const api = servers.api();
-  if (api) {
-    const off = api.player.subscribe({ player_id: props.player.id }, (s) => {
-      // The channel fans every player's state; keep only this strip's.
-      if (s.player_id === props.player.id) setState(s);
-    });
-    onCleanup(off);
-  }
+  let offState: (() => void) | undefined;
+  createEffect(
+    on([servers.data, () => props.player.id], ([dataStore, playerId]) => {
+      offState?.();
+      offState = dataStore?.playerStates.watch(playerId, setState);
+    }),
+  );
+  onCleanup(() => offState?.());
 
   const status = () => state()?.status ?? "stopped";
   const onAir = () => status() === "playing";
@@ -197,16 +209,15 @@ function ChannelStrip(props: { player: Player; onPlayersChanged: () => void }): 
   };
 
   const send = async (command: PlayerCommand) => {
-    const a = servers.api();
-    if (!a) return;
+    const dataStore = servers.data();
+    if (!dataStore) return;
     // Starting a blocked satellite looks like nothing happening at all, so say what is wrong.
     // The command still goes through: it plays as soon as somebody touches the satellite.
     if (props.player.audio_blocked && command.op === "play") {
       setBlockedName(displayName());
     }
     try {
-      const next = await a.player.control({ player_id: props.player.id, command });
-      setState(next);
+      await dataStore.playerStates.control({ player_id: props.player.id, command });
     } catch (err) {
       console.error("[jukebox] control failed", err);
     }
@@ -302,7 +313,7 @@ function ChannelStrip(props: { player: Player; onPlayersChanged: () => void }): 
           <button
             type="button"
             class="btn btn-ghost"
-            onClick={() => void pb.releaseDevice(props.player.id).then(props.onPlayersChanged)}
+            onClick={() => void pb.releaseDevice(props.player.id)}
           >
             {t("jukebox.stopSharing")}
           </button>

@@ -18,6 +18,7 @@
 import { CborTag, decode as cborDecode, encode as cborEncode } from "./cbor.ts";
 import type { CborValue } from "./cbor.ts";
 import type { ServiceError } from "./schema.ts";
+import { EventRouter } from "./events.ts";
 
 const TRANSPORT_VERSION = 1;
 const TAG_ENCODED_CBOR = 24;
@@ -128,6 +129,7 @@ export type ConnState = "idle" | "connecting" | "ready" | "closed" | "error";
 /** A handler for server-pushed channel events (no correlation id): the bidi
  * `subscribe` / `stream` / `session` streams. */
 type ChannelHandler = (payload: Uint8Array) => void;
+type WireEvents = Record<string, Uint8Array>;
 
 interface Pending {
   resolve: (payload: Uint8Array) => void;
@@ -157,8 +159,9 @@ export class CsilConnection {
   private state: ConnState = "idle";
   private nextId = 1;
   private readonly pending = new Map<number, Pending>();
-  // Channel handlers keyed by `${service}:${event}`.
-  private readonly channels = new Map<string, Set<ChannelHandler>>();
+  // Every pushed CSIL operation enters through one router before a service or store decodes it.
+  private readonly channels = new EventRouter<WireEvents>();
+  private readonly channelSweep = setInterval(() => this.channels.sweep(), 60_000);
   private readyWaiters: { resolve: () => void; reject: (e: unknown) => void }[] = [];
   // Reconnect + keepalive: survive a backgrounded phone tab or a dropped LAN link.
   private closedByClient = false;
@@ -211,6 +214,7 @@ export class CsilConnection {
       this.reconnectTimer = undefined;
     }
     this.stopHeartbeat();
+    clearInterval(this.channelSweep);
     if (this.ws && this.state === "ready") {
       try {
         this.sendControl(CONTROL.CLOSE, { status: 0, reason });
@@ -271,13 +275,7 @@ export class CsilConnection {
    */
   onChannel(service: string, operation: string, handler: ChannelHandler): () => void {
     const key = `${serviceKey(service)}:${wireOp(operation)}`;
-    let set = this.channels.get(key);
-    if (!set) {
-      set = new Set();
-      this.channels.set(key, set);
-    }
-    set.add(handler);
-    return () => set!.delete(handler);
+    return this.channels.on(key, handler);
   }
 
   // --- Internals ---
@@ -359,15 +357,10 @@ export class CsilConnection {
 
     // Fire-and-forget channel event pushed from the server.
     const key = `${serviceKey(env.service ?? "")}:${env.event}`;
-    const handlers = this.channels.get(key);
-    if (handlers && handlers.size) {
-      for (const h of handlers) {
-        try {
-          h(env.payload);
-        } catch (e) {
-          console.error(`[csil] channel handler for ${key} threw`, e);
-        }
-      }
+    try {
+      this.channels.emit(key, env.payload);
+    } catch (e) {
+      console.error(`[csil] channel handler for ${key} threw`, e);
     }
   }
 

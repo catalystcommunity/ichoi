@@ -41,6 +41,8 @@ SEMVER_TAGS_URL = (
     f"{SEMVER_TAGS_VERSION}/semver-tags.tar.gz"
 )
 AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
+CARGO_ZIGBUILD_VERSION = "0.23.0"
+SATELLITE_GLIBC_VERSION = "2.17"
 
 # The runner image ships build-essential, pkg-config and a rust toolchain, but no musl C
 # compiler. cc-rs needs one to build the bundled SQLite for the amd64 musl target, and the
@@ -48,8 +50,16 @@ AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
 # The aarch64 compiler is a separate download, because no Debian package provides it.
 BUILD_PACKAGES = ("musl-tools",)
 
-# Both release targets (DESIGN Sec.12); arm64 (Raspberry Pi satellites) is first-class.
-ARCHITECTURES = (("amd64", "x86_64-unknown-linux-musl"), ("arm64", "aarch64-unknown-linux-musl"))
+# The scratch core and native satellite need different libc models. The core stays static musl.
+# A satellite must be dynamically linked so it can load the host ALSA library and its plugins.
+CORE_ARCHITECTURES = (
+    ("amd64", "x86_64-unknown-linux-musl"),
+    ("arm64", "aarch64-unknown-linux-musl"),
+)
+SATELLITE_ARCHITECTURES = (
+    ("amd64", "x86_64-unknown-linux-gnu"),
+    ("arm64", "aarch64-unknown-linux-gnu"),
+)
 
 GITHUB_API = "https://api.github.com"
 GITHUB_UPLOADS = "https://uploads.github.com"
@@ -430,7 +440,12 @@ def _rust_environment() -> Dict[str, str]:
     home = Path(environment.get("HOME") or "/home/runner")
     environment["HOME"] = str(home)
     environment["PATH"] = os.pathsep.join(
-        ["/usr/local/cargo/bin", str(home / ".cargo" / "bin"), environment.get("PATH", "")]
+        [
+            "/usr/local/cargo/bin",
+            str(home / ".cargo" / "bin"),
+            str(home / ".local" / "bin"),
+            environment.get("PATH", ""),
+        ]
     )
     environment.setdefault("CARGO_TARGET_DIR", "/tmp/ichoi-target")
     return environment
@@ -455,13 +470,29 @@ def _install_aarch64_musl_cross(environment: Dict[str, str], cwd: Path) -> None:
     environment["CC_aarch64_unknown_linux_musl"] = "aarch64-linux-musl-gcc"
 
 
+def _install_cargo_zigbuild(environment: Dict[str, str], cwd: Path) -> None:
+    """Install the pinned GNU cross-linker and its Zig runtime for satellite builds."""
+    _run(
+        [
+            "python3",
+            "-m",
+            "pip",
+            "install",
+            "--user",
+            "--disable-pip-version-check",
+            f"cargo-zigbuild=={CARGO_ZIGBUILD_VERSION}",
+        ],
+        cwd=cwd,
+        env=environment,
+    )
+    environment["CARGO_ZIGBUILD_PYTHON_PATH"] = "python3"
+
+
 def _build_artifacts(code_dir: Path, release: Release, out_dir: Path) -> List[Path]:
     """Build the release archives for one target.
 
-    The server ships as a single static binary with no system-library link dependency
-    (DESIGN Sec.1), so these are the musl builds. The bundled ffmpeg and the web UI travel
-    in the container images, which are the batteries-included artifact; these archives carry
-    just the ichoi binary.
+    The scratch core remains a static musl binary. Native satellites are GNU binaries built
+    against the oldest supported glibc so runtime loading of the host ALSA stack works.
     """
     if release.target != "server":
         log_stdout(
@@ -473,19 +504,50 @@ def _build_artifacts(code_dir: Path, release: Release, out_dir: Path) -> List[Pa
     _apt_install(BUILD_PACKAGES, code_dir)
     environment = _rust_environment()
     _install_aarch64_musl_cross(environment, code_dir)
+    _install_cargo_zigbuild(environment, code_dir)
     server_dir = code_dir / "server"
     target_dir = Path(environment["CARGO_TARGET_DIR"])
 
     archives = []
-    for architecture, triple in ARCHITECTURES:
-        log_stdout(f"=== Building ichoi {release.version} for {architecture} ({triple}) ===")
+    for architecture, triple in CORE_ARCHITECTURES:
+        log_stdout(
+            f"=== Building ichoi core {release.version} for {architecture} ({triple}) ==="
+        )
         _run(["rustup", "target", "add", triple], cwd=server_dir, env=environment)
         _run(
             ["cargo", "build", "--release", "--target", triple, "--bin", "ichoi"],
             cwd=server_dir,
             env=environment,
         )
-        archive = out_dir / f"ichoi-{release.version}-linux-{architecture}.tar.gz"
+        archive = out_dir / f"ichoi-{release.version}-linux-{architecture}-core-musl.tar.gz"
+        binary = target_dir / triple / "release" / "ichoi"
+        with tarfile.open(archive, "w:gz") as tar:
+            tar.add(binary, arcname="ichoi")
+        archives.append(archive)
+
+    for architecture, triple in SATELLITE_ARCHITECTURES:
+        versioned_target = f"{triple}.{SATELLITE_GLIBC_VERSION}"
+        log_stdout(
+            f"=== Building ichoi satellite {release.version} for {architecture} "
+            f"({versioned_target}) ==="
+        )
+        _run(["rustup", "target", "add", triple], cwd=server_dir, env=environment)
+        _run(
+            [
+                "cargo",
+                "zigbuild",
+                "--release",
+                "--target",
+                versioned_target,
+                "--bin",
+                "ichoi",
+            ],
+            cwd=server_dir,
+            env=environment,
+        )
+        archive = out_dir / (
+            f"ichoi-{release.version}-linux-{architecture}-satellite-gnu.tar.gz"
+        )
         binary = target_dir / triple / "release" / "ichoi"
         with tarfile.open(archive, "w:gz") as tar:
             tar.add(binary, arcname="ichoi")

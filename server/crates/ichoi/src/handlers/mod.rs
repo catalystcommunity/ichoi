@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
@@ -43,8 +43,19 @@ impl SubHub {
 
     pub fn unsubscribe_conn(&self, conn_id: u64) {
         let mut map = self.inner.lock().unwrap();
-        for list in map.values_mut() {
+        map.retain(|_, list| {
             list.retain(|(c, _)| *c != conn_id);
+            !list.is_empty()
+        });
+    }
+
+    pub fn unsubscribe(&self, player_id: &str, conn_id: u64) {
+        let mut map = self.inner.lock().unwrap();
+        if let Some(list) = map.get_mut(player_id) {
+            list.retain(|(c, _)| *c != conn_id);
+            if list.is_empty() {
+                map.remove(player_id);
+            }
         }
     }
 
@@ -76,18 +87,23 @@ impl NodeHub {
         NodeHub::default()
     }
 
-    pub fn subscribe(&self, player_id: String, conn_id: u64, tx: UnboundedSender<Vec<u8>>) {
+    pub fn subscribe(&self, player_id: String, conn_id: u64, tx: UnboundedSender<Vec<u8>>) -> bool {
         let mut map = self.inner.lock().unwrap();
         let list = map.entry(player_id).or_default();
+        let was_present = !list.is_empty();
         list.retain(|(c, _)| *c != conn_id);
         list.push((conn_id, tx));
+        !was_present
     }
 
-    pub fn unsubscribe_conn(&self, conn_id: u64) {
+    pub fn unsubscribe_conn(&self, conn_id: u64) -> bool {
         let mut map = self.inner.lock().unwrap();
-        for list in map.values_mut() {
+        let before = map.values().filter(|list| !list.is_empty()).count();
+        map.retain(|_, list| {
             list.retain(|(c, _)| *c != conn_id);
-        }
+            !list.is_empty()
+        });
+        before != map.len()
     }
 
     pub fn publish(&self, player_id: &str, payload: Vec<u8>) {
@@ -132,14 +148,17 @@ impl OutputHealth {
         OutputHealth::default()
     }
 
-    pub fn set_blocked(&self, player_id: &str, blocked: bool) {
+    pub fn set_blocked(&self, player_id: &str, blocked: bool) -> bool {
         if let Ok(mut map) = self.inner.lock() {
+            let was_blocked = map.get(player_id).copied().unwrap_or(false);
             if blocked {
                 map.insert(player_id.to_string(), true);
             } else {
                 map.remove(player_id);
             }
+            return was_blocked != blocked;
         }
+        false
     }
 
     pub fn is_blocked(&self, player_id: &str) -> bool {
@@ -172,22 +191,23 @@ impl Presence {
     }
 
     /// Register `conn_id` as an output for `player_id` (via a successful EnableShare claim).
-    pub fn attach(&self, player_id: String, conn_id: u64) {
-        self.inner
-            .lock()
-            .unwrap()
-            .entry(player_id)
-            .or_default()
-            .insert(conn_id);
+    pub fn attach(&self, player_id: String, conn_id: u64) -> bool {
+        let mut map = self.inner.lock().unwrap();
+        let set = map.entry(player_id).or_default();
+        let was_present = !set.is_empty();
+        set.insert(conn_id);
+        !was_present
     }
 
     /// Drop a connection from every device it was outputting (on socket close).
-    pub fn detach_conn(&self, conn_id: u64) {
+    pub fn detach_conn(&self, conn_id: u64) -> bool {
         let mut map = self.inner.lock().unwrap();
+        let before = map.len();
         map.retain(|_, set| {
             set.remove(&conn_id);
             !set.is_empty()
         });
+        before != map.len()
     }
 
     pub fn is_present(&self, player_id: &str) -> bool {
@@ -201,6 +221,32 @@ impl Presence {
     pub fn drop_player(&self, player_id: &str) {
         if let Ok(mut map) = self.inner.lock() {
             map.remove(player_id);
+        }
+    }
+}
+
+/// One authenticated invalidation stream per connection. Events contain no resource ids or
+/// records. Each client retrieves its authorized view again and computes its own semantic diff.
+#[derive(Clone, Default)]
+pub struct ChangeHub {
+    subscribers: Arc<Mutex<HashMap<u64, UnboundedSender<Vec<u8>>>>>,
+    revision: Arc<AtomicU64>,
+}
+
+impl ChangeHub {
+    pub fn subscribe(&self, conn_id: u64, tx: UnboundedSender<Vec<u8>>) {
+        self.subscribers.lock().unwrap().insert(conn_id, tx);
+    }
+
+    pub fn unsubscribe(&self, conn_id: u64) {
+        self.subscribers.lock().unwrap().remove(&conn_id);
+    }
+
+    pub fn publish(&self, topic: ChangeTopic) {
+        let revision = self.revision.fetch_add(1, Ordering::Relaxed) + 1;
+        let frame = crate::transport::data_change_frame(&DataChange { topic, revision });
+        if let Ok(mut subscribers) = self.subscribers.lock() {
+            subscribers.retain(|_, tx| tx.send(frame.clone()).is_ok());
         }
     }
 }
@@ -228,6 +274,7 @@ pub struct App {
     pub subs: SubHub,
     pub presence: Presence,
     pub nodes: NodeHub,
+    pub changes: ChangeHub,
     pub output_health: OutputHealth,
     pub scan_running: Arc<AtomicBool>,
     pub imports: crate::federation::ImportHub,
@@ -259,6 +306,7 @@ impl App {
             subs: SubHub::new(),
             presence: Presence::new(),
             nodes: NodeHub::new(),
+            changes: ChangeHub::default(),
             output_health: OutputHealth::new(),
             scan_running: Arc::new(AtomicBool::new(false)),
             imports: crate::federation::ImportHub::default(),
@@ -1061,13 +1109,17 @@ impl App {
         db(store::upsert_state(&mut conn, &row))?;
         // Every report carries the node's current ability to make sound, so this tracks the
         // live value rather than only the moment it changes.
-        self.output_health
+        let health_changed = self
+            .output_health
             .set_blocked(&report.player_id, report.audio_blocked.unwrap_or(false));
         let state = self.load_player_state(&mut conn, &report.player_id)?;
         self.subs.publish(
             &report.player_id,
             &crate::transport::player_state_frame(&state),
         );
+        if health_changed {
+            self.changes.publish(ChangeTopic::Players);
+        }
         Ok(state)
     }
 }
@@ -1475,6 +1527,17 @@ impl MediaService for App {
             );
         }
         std::result::Result::Ok(())
+    }
+}
+
+// ================================================================== ChangeService
+
+impl ChangeService for App {
+    type Context = Ctx;
+
+    fn watch(&self, _ctx: &Ctx, _msg: WatchChangesRequest) -> Result<(), ServiceError> {
+        // The transport owns the connection sender and applies this subscription request.
+        Ok(())
     }
 }
 

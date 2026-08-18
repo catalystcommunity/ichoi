@@ -820,6 +820,12 @@ static inline int csilc_enc_SetSettingRequest(csilc_buf *b, const SetSettingRequ
 static inline int csilc_dec_SetSettingRequest(const csilc_value *m, CsilCodecArena *a, SetSettingRequest *out);
 static inline int csilc_enc_LibraryResyncStatus(csilc_buf *b, const LibraryResyncStatus *v);
 static inline int csilc_dec_LibraryResyncStatus(const csilc_value *m, CsilCodecArena *a, LibraryResyncStatus *out);
+static inline int csilc_enc_ChangeTopic(csilc_buf *b, const ChangeTopic *v);
+static inline int csilc_dec_ChangeTopic(const csilc_value *src, CsilCodecArena *a, ChangeTopic *out);
+static inline int csilc_enc_WatchChangesRequest(csilc_buf *b, const WatchChangesRequest *v);
+static inline int csilc_dec_WatchChangesRequest(const csilc_value *m, CsilCodecArena *a, WatchChangesRequest *out);
+static inline int csilc_enc_DataChange(csilc_buf *b, const DataChange *v);
+static inline int csilc_dec_DataChange(const csilc_value *m, CsilCodecArena *a, DataChange *out);
 
 static CSILC_UNUSED const char *const csilc_Role_names[] = {
     "admin",
@@ -2584,7 +2590,12 @@ static inline int csilc_dec_ListPlayersResponse(const csilc_value *m, CsilCodecA
 /* csilc_enc_SubscribeRequest writes SubscribeRequest as a canonical CBOR map. */
 static inline int csilc_enc_SubscribeRequest(csilc_buf *b, const SubscribeRequest *v) {
     size_t csilc_n = 1;
+    if (v->active) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (v->active) {
+        if (csilc_w_text(b, "active", 6)) return -1;
+        if (csilc_w_bool(b, ((*v->active)))) return -1;
+    }
     if (csilc_w_text(b, "player_id", 9)) return -1;
     if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
     return 0;
@@ -2595,6 +2606,14 @@ static inline int csilc_dec_SubscribeRequest(const csilc_value *m, CsilCodecAren
     (void)a;
     const csilc_value *csilc_f;
     if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "active");
+    out->active = NULL;
+    if (csilc_f) {
+        bool *csilc_p = (bool *)csilc_arena_alloc(a, sizeof(bool));
+        if (!csilc_p) return -1;
+        if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
+        out->active = csilc_p;
+    }
     csilc_f = csilc_map_get(m, "player_id");
     if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
     return 0;
@@ -5030,6 +5049,90 @@ static inline int csilc_dec_LibraryResyncStatus(const csilc_value *m, CsilCodecA
     if (!csilc_as_bool(csilc_f, &(out->running))) return -1;
     csilc_f = csilc_map_get(m, "started");
     if (!csilc_as_bool(csilc_f, &(out->started))) return -1;
+    return 0;
+}
+
+static CSILC_UNUSED const char *const csilc_ChangeTopic_names[] = {
+    "players",
+    "libraries",
+    "playlists",
+    "progress",
+    "session",
+    "accounts",
+    "trust",
+    "nodes",
+    "groups",
+    "settings",
+    "imports",
+};
+/* csilc_enc_ChangeTopic writes the ChangeTopic variant's wire text. */
+static inline int csilc_enc_ChangeTopic(csilc_buf *b, const ChangeTopic *v) {
+    const char *csilc_s = csilc_ChangeTopic_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_ChangeTopic matches the wire text back to a ChangeTopic variant. */
+static inline int csilc_dec_ChangeTopic(const csilc_value *src, CsilCodecArena *a, ChangeTopic *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_ChangeTopic_names) / sizeof(csilc_ChangeTopic_names[0]); csilc_i++) {
+        if (strlen(csilc_ChangeTopic_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_ChangeTopic_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (ChangeTopic)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+/* csilc_enc_WatchChangesRequest writes WatchChangesRequest as a canonical CBOR map. */
+static inline int csilc_enc_WatchChangesRequest(csilc_buf *b, const WatchChangesRequest *v) {
+    size_t csilc_n = 0;
+    if (v->active) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (v->active) {
+        if (csilc_w_text(b, "active", 6)) return -1;
+        if (csilc_w_bool(b, ((*v->active)))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_WatchChangesRequest reads WatchChangesRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_WatchChangesRequest(const csilc_value *m, CsilCodecArena *a, WatchChangesRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "active");
+    out->active = NULL;
+    if (csilc_f) {
+        bool *csilc_p = (bool *)csilc_arena_alloc(a, sizeof(bool));
+        if (!csilc_p) return -1;
+        if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
+        out->active = csilc_p;
+    }
+    return 0;
+}
+
+/* csilc_enc_DataChange writes DataChange as a canonical CBOR map. */
+static inline int csilc_enc_DataChange(csilc_buf *b, const DataChange *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "topic", 5)) return -1;
+    if (csilc_enc_ChangeTopic(b, &(v->topic))) return -1;
+    if (csilc_w_text(b, "revision", 8)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->revision))) return -1;
+    return 0;
+}
+
+/* csilc_dec_DataChange reads DataChange from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_DataChange(const csilc_value *m, CsilCodecArena *a, DataChange *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "topic");
+    if (csilc_dec_ChangeTopic(csilc_f, a, &(out->topic))) return -1;
+    csilc_f = csilc_map_get(m, "revision");
+    if (!csilc_as_u64(csilc_f, &(out->revision))) return -1;
     return 0;
 }
 
@@ -7858,6 +7961,75 @@ static inline int csil_decode_LibraryResyncStatus(const uint8_t *in, size_t len,
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_LibraryResyncStatus(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ChangeTopic to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ChangeTopic(const ChangeTopic *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ChangeTopic(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ChangeTopic. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ChangeTopic(const uint8_t *in, size_t len, ChangeTopic *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ChangeTopic(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a WatchChangesRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_WatchChangesRequest(const WatchChangesRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_WatchChangesRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a WatchChangesRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_WatchChangesRequest(const uint8_t *in, size_t len, WatchChangesRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_WatchChangesRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a DataChange to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_DataChange(const DataChange *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_DataChange(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a DataChange. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_DataChange(const uint8_t *in, size_t len, DataChange *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_DataChange(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

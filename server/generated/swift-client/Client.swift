@@ -328,3 +328,14 @@ public struct AdminClient {
 
 }
 
+/// ChangeClient is a typed client for the ChangeService service. The client owns
+/// (de)serialization; the carrier only moves bytes.
+public struct ChangeClient {
+    public let transport: CsilTransport
+    public init(transport: CsilTransport) {
+        self.transport = transport
+    }
+
+    // channel operation 'watch' is not part of the RPC client
+}
+

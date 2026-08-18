@@ -1527,6 +1527,9 @@ ListPlayersResponse.from_cbor = staticmethod(_list_players_response_from_cbor)
 
 def _encode_subscribe_request_value(v: "SubscribeRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
+    csil_x = v.active
+    if csil_x is not None:
+        csil_m["active"] = csil_x
     csil_m["player_id"] = v.player_id
     return csil_m
 
@@ -1534,6 +1537,7 @@ def _decode_subscribe_request_value(tree: Any) -> "SubscribeRequest":
     tree = _csil_expect_map(tree)
     return SubscribeRequest(
         player_id=_csil_expect_text(tree["player_id"]),
+        active=(None if tree.get("active") is None else _csil_expect_bool(tree["active"])),
     )
 
 
@@ -3346,6 +3350,56 @@ def _library_resync_status_from_cbor(data: bytes) -> "LibraryResyncStatus":
 LibraryResyncStatus.to_cbor = _library_resync_status_to_cbor
 LibraryResyncStatus.from_cbor = staticmethod(_library_resync_status_from_cbor)
 
+def _encode_watch_changes_request_value(v: "WatchChangesRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_x = v.active
+    if csil_x is not None:
+        csil_m["active"] = csil_x
+    return csil_m
+
+def _decode_watch_changes_request_value(tree: Any) -> "WatchChangesRequest":
+    tree = _csil_expect_map(tree)
+    return WatchChangesRequest(
+        active=(None if tree.get("active") is None else _csil_expect_bool(tree["active"])),
+    )
+
+
+def _watch_changes_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_watch_changes_request_value(self))
+
+
+def _watch_changes_request_from_cbor(data: bytes) -> "WatchChangesRequest":
+    return _decode_watch_changes_request_value(cbor_decode(data))
+
+
+WatchChangesRequest.to_cbor = _watch_changes_request_to_cbor
+WatchChangesRequest.from_cbor = staticmethod(_watch_changes_request_from_cbor)
+
+def _encode_data_change_value(v: "DataChange") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["topic"] = v.topic
+    csil_m["revision"] = v.revision
+    return csil_m
+
+def _decode_data_change_value(tree: Any) -> "DataChange":
+    tree = _csil_expect_map(tree)
+    return DataChange(
+        topic=_decode_change_topic_value(tree["topic"]),
+        revision=_csil_expect_uint(tree["revision"]),
+    )
+
+
+def _data_change_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_data_change_value(self))
+
+
+def _data_change_from_cbor(data: bytes) -> "DataChange":
+    return _decode_data_change_value(cbor_decode(data))
+
+
+DataChange.to_cbor = _data_change_to_cbor
+DataChange.from_cbor = staticmethod(_data_change_from_cbor)
+
 def _encode_player_command_value(csil_v):
     if isinstance(csil_v, CmdEnqueue):
         return [0, _encode_cmd_enqueue_value(csil_v)]
@@ -3550,4 +3604,11 @@ def _decode_audio_outputs_state_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("none", "some"):
         raise CsilDecodeError(f"csil cbor: unknown audio_outputs_state value {csil_v!r}")
+    return csil_v
+
+
+def _decode_change_topic_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("players", "libraries", "playlists", "progress", "session", "accounts", "trust", "nodes", "groups", "settings", "imports"):
+        raise CsilDecodeError(f"csil cbor: unknown change_topic value {csil_v!r}")
     return csil_v

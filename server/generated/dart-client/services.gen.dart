@@ -507,3 +507,12 @@ final class AdminClient {
     return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
+
+/// A typed, transport-agnostic client for the ChangeService service. The client owns
+/// (de)serialization; the carrier only moves bytes.
+final class ChangeClient {
+  final CsilTransport transport;
+  const ChangeClient(this.transport);
+
+  // channel operation 'watch' rides the router surface
+}

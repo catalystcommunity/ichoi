@@ -2437,7 +2437,10 @@ pub fn decode_list_players_response(
 
 /// Build the canonical CBOR value tree for a SubscribeRequest.
 fn csil_enc_subscribe_request(csil_v: &SubscribeRequest) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    if let Some(csil_inner) = &csil_v.active {
+        csil_entries.push((cbor_text("active"), cbor_bool(*csil_inner)));
+    }
     csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
     CsilCborValue::Map(csil_entries)
 }
@@ -2451,7 +2454,14 @@ fn csil_dec_subscribe_request(
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
-    Ok(SubscribeRequest { player_id })
+    let active = match cbor_map_get(csil_root, "active") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bool;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(SubscribeRequest { player_id, active })
 }
 
 /// Encode a SubscribeRequest to canonical CSIL CBOR bytes.
@@ -5437,6 +5447,76 @@ pub fn decode_library_resync_status(
     csil_dec_library_resync_status(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a WatchChangesRequest.
+fn csil_enc_watch_changes_request(csil_v: &WatchChangesRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    if let Some(csil_inner) = &csil_v.active {
+        csil_entries.push((cbor_text("active"), cbor_bool(*csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a WatchChangesRequest from a decoded CBOR value tree.
+fn csil_dec_watch_changes_request(
+    csil_root: &CsilCborValue,
+) -> Result<WatchChangesRequest, CsilCborError> {
+    let active = match cbor_map_get(csil_root, "active") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bool;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(WatchChangesRequest { active })
+}
+
+/// Encode a WatchChangesRequest to canonical CSIL CBOR bytes.
+pub fn encode_watch_changes_request(csil_v: &WatchChangesRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_watch_changes_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a WatchChangesRequest.
+pub fn decode_watch_changes_request(
+    csil_data: &[u8],
+) -> Result<WatchChangesRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_watch_changes_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a DataChange.
+fn csil_enc_data_change(csil_v: &DataChange) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("topic"), csil_enc_change_topic(&csil_v.topic)));
+    csil_entries.push((cbor_text("revision"), cbor_uint(csil_v.revision)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a DataChange from a decoded CBOR value tree.
+fn csil_dec_data_change(csil_root: &CsilCborValue) -> Result<DataChange, CsilCborError> {
+    let topic = {
+        let csil_field = cbor_require(csil_root, "topic")?;
+        let csil_decode = csil_dec_change_topic;
+        csil_decode(csil_field)?
+    };
+    let revision = {
+        let csil_field = cbor_require(csil_root, "revision")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(DataChange { topic, revision })
+}
+
+/// Encode a DataChange to canonical CSIL CBOR bytes.
+pub fn encode_data_change(csil_v: &DataChange) -> Vec<u8> {
+    cbor_encode(&csil_enc_data_change(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a DataChange.
+pub fn decode_data_change(csil_data: &[u8]) -> Result<DataChange, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_data_change(&csil_root)
+}
+
 /// Encode a Role enum as its bare literal value.
 fn csil_enc_role(csil_v: &Role) -> CsilCborValue {
     match csil_v {
@@ -5921,6 +6001,44 @@ fn csil_dec_audio_outputs_state(
         "some" => Ok(AudioOutputsState::Some),
         csil_other => Err(CsilCborError(format!(
             "csil cbor: unknown AudioOutputsState value {csil_other:?}"
+        ))),
+    }
+}
+
+/// Encode a ChangeTopic enum as its bare literal value.
+fn csil_enc_change_topic(csil_v: &ChangeTopic) -> CsilCborValue {
+    match csil_v {
+        ChangeTopic::Players => cbor_text("players"),
+        ChangeTopic::Libraries => cbor_text("libraries"),
+        ChangeTopic::Playlists => cbor_text("playlists"),
+        ChangeTopic::Progress => cbor_text("progress"),
+        ChangeTopic::Session => cbor_text("session"),
+        ChangeTopic::Accounts => cbor_text("accounts"),
+        ChangeTopic::Trust => cbor_text("trust"),
+        ChangeTopic::Nodes => cbor_text("nodes"),
+        ChangeTopic::Groups => cbor_text("groups"),
+        ChangeTopic::Settings => cbor_text("settings"),
+        ChangeTopic::Imports => cbor_text("imports"),
+    }
+}
+
+/// Decode a bare literal value into a ChangeTopic enum.
+fn csil_dec_change_topic(csil_v: &CsilCborValue) -> Result<ChangeTopic, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "players" => Ok(ChangeTopic::Players),
+        "libraries" => Ok(ChangeTopic::Libraries),
+        "playlists" => Ok(ChangeTopic::Playlists),
+        "progress" => Ok(ChangeTopic::Progress),
+        "session" => Ok(ChangeTopic::Session),
+        "accounts" => Ok(ChangeTopic::Accounts),
+        "trust" => Ok(ChangeTopic::Trust),
+        "nodes" => Ok(ChangeTopic::Nodes),
+        "groups" => Ok(ChangeTopic::Groups),
+        "settings" => Ok(ChangeTopic::Settings),
+        "imports" => Ok(ChangeTopic::Imports),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown ChangeTopic value {csil_other:?}"
         ))),
     }
 }

@@ -596,3 +596,17 @@ impl<T: Transport> AdminClient<T> {
         decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 }
+
+/// Typed client for the ChangeService service.
+pub struct ChangeClient<T: Transport> {
+    #[allow(dead_code)]
+    transport: T,
+}
+
+impl<T: Transport> ChangeClient<T> {
+    pub fn new(transport: T) -> Self {
+        Self { transport }
+    }
+
+    // channel operation `watch` is not part of the RPC client
+}

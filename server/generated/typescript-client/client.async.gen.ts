@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-client
 
-import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DeleteGroupRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, UpdateAudiobookProgressRequest } from "./types.gen.ts";
+import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteGroupRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, UpdateAudiobookProgressRequest, WatchChangesRequest } from "./types.gen.ts";
 import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromBeginImportResultCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromExportChunkCbor, fromExportManifestCbor, fromGroupInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromLibraryResyncStatusCbor, fromListAccountsResponseCbor, fromListGroupsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromListSatelliteTokensResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, fromTrustedIdentitiesCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBeginImportRequestCbor, toBrowseRequestCbor, toCancelImportRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateGroupRequestCbor, toCreateNodeTokenRequestCbor, toDeleteGroupRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toExportChunkRequestCbor, toExportManifestRequestCbor, toFinishImportRequestCbor, toImportChunkRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toRevokeSatelliteTokenRequestCbor, toRevokeTrustedIdentityRequestCbor, toSearchRequestCbor, toSetDeviceAccessRequestCbor, toSetGroupMembersRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toSubscribeRequestCbor, toTrustDomainRequestCbor, toTrustIdentityRequestCbor, toUpdateAudiobookProgressRequestCbor } from "./codec.gen.ts";
 
 export interface AsyncServiceTransport {
@@ -259,6 +259,39 @@ export class AdminAsyncClient {
     const csilResp = await this.t.call("AdminService", "get-resync-status", toPageCbor(req));
     return fromLibraryResyncStatusCbor(csilResp);
   }
+}
+
+export interface ChangeAsyncChannelHandlers {
+  watch(msg: DataChange): void | Promise<void>;
+}
+
+/**
+ * Dispatch one inbound frame for the ChangeService channel. The implementer
+ * (WebSocket adapter etc.) calls this for each message it pulls off the wire;
+ * this generator never owns the connection itself.
+ */
+export async function routeChangeAsyncChannel(
+  handlers: ChangeAsyncChannelHandlers,
+  codec: AsyncCodec,
+  method: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  switch (method) {
+    case "watch":
+      await handlers.watch(codec.decode<DataChange>(bytes));
+      return;
+    default:
+      throw { code: 404, message: `unknown channel ${method}` } satisfies ServiceError;
+  }
+}
+
+/**
+ * Encode an outbound `watch` message; hand the resulting bytes to
+ * your connection. Returns `{method, bytes}` so the implementer can frame
+ * both pieces however its protocol requires.
+ */
+export function encodeChangeAsyncWatch(codec: AsyncCodec, msg: WatchChangesRequest): { method: string; bytes: Uint8Array } {
+  return { method: "watch", bytes: codec.encode(msg) };
 }
 
 export class LibraryAsyncClient {

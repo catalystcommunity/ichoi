@@ -397,3 +397,43 @@ pub trait AdminService {
         input: Page,
     ) -> Result<LibraryResyncStatus, ServiceError>;
 }
+
+/// ChangeService service trait
+pub trait ChangeService {
+    type Context;
+    /// watch (channel inbound (bidirectional)).
+    fn watch(&self, ctx: &Self::Context, msg: WatchChangesRequest) -> Result<(), ServiceError>;
+}
+
+/// Decode one inbound channel frame for ChangeService (with the generated
+/// per-type codec) and dispatch to the matching trait method. The implementer
+/// feeds raw bytes from its connection here; we never own the wire.
+pub fn route_change_service_channel<H>(
+    handlers: &H,
+    ctx: &H::Context,
+    method: &str,
+    bytes: &[u8],
+) -> Result<(), ServiceError>
+where
+    H: ChangeService,
+{
+    match method {
+        "watch" => {
+            let msg = decode_watch_changes_request(bytes).map_err(|err| ServiceError {
+                code: 400,
+                message: err.to_string(),
+            })?;
+            handlers.watch(ctx, msg)
+        }
+        other => Err(ServiceError {
+            code: 404,
+            message: format!("unknown channel {other}"),
+        }),
+    }
+}
+
+/// Encode a `watch` message pushed from ChangeService's server
+/// side; the implementer frames `(method, bytes)` onto its connection.
+pub fn encode_change_service_watch(msg: &DataChange) -> (String, Vec<u8>) {
+    ("watch".to_string(), encode_data_change(msg))
+}
