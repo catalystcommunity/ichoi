@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, NamedTuple, Opt
 
 from src.logging import log_stdout
 from src.plugins import Plugin, PluginContext, PluginPhase
+from src.workflow import workflow_vars
 
 
 TARGETS = ("server",)
@@ -591,11 +592,7 @@ def _git_tree(code_dir: Path) -> str:
 
 
 def _workflow_vars() -> Mapping[str, Any]:
-    path = _required("RC_WF_VARS_FILE")
-    value = json.loads(Path(path).read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise RuntimeError("The workflow variables are invalid")
-    return value
+    return workflow_vars()
 
 
 def _set_workflow_vars(values: Mapping[str, Any]) -> None:

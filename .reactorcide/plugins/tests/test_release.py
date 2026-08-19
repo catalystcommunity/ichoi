@@ -2,7 +2,8 @@
 
 Run them from the repository root:
 
-    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .reactorcide/plugins/tests
+    PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=../reactorcide/runnerlib \
+        python3 -m unittest discover -s .reactorcide/plugins/tests
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import importlib.util
 import hashlib
 import os
 import sys
+import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
@@ -266,6 +268,35 @@ class ReleaseWorkflowTest(unittest.TestCase):
         for item in document["items"]:
             self.assertEqual(item["spec"]["executionProfiles"], ["standard"])
             self.assertEqual(item["spec"]["ciOrigins"], ["base"])
+
+
+class WorkflowVariablesTest(unittest.TestCase):
+    """Release jobs must read local file input and remote inline input."""
+
+    def test_remote_inline_input_does_not_require_the_local_file(self):
+        environment = {
+            "RC_WF_VARS_FILE": "/job/workflow-vars.json",
+            "RC_WF_VARS_JSON": '{"asset_cache_lane":"v0.8.2"}',
+        }
+        with unittest.mock.patch.dict(os.environ, environment, clear=True):
+            self.assertEqual(
+                release_plugin._workflow_vars(),
+                {"asset_cache_lane": "v0.8.2"},
+            )
+
+    def test_local_input_uses_the_workflow_variables_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "workflow-vars.json"
+            path.write_text('{"asset_cache_lane":"v0.8.2"}', encoding="utf-8")
+            with unittest.mock.patch.dict(
+                os.environ,
+                {"RC_WF_VARS_FILE": str(path)},
+                clear=True,
+            ):
+                self.assertEqual(
+                    release_plugin._workflow_vars(),
+                    {"asset_cache_lane": "v0.8.2"},
+                )
 
 
 class AssetSealTest(unittest.TestCase):
