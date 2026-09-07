@@ -133,7 +133,7 @@ fn cbor_enc(v: &CsilCborValue, out: &mut Vec<u8>) {
 /// exactly one value is an error rather than a silently-truncated read.
 fn cbor_decode(b: &[u8]) -> Result<CsilCborValue, CsilCborError> {
     let mut pos = 0usize;
-    let v = cbor_dec(b, &mut pos)?;
+    let v = cbor_dec(b, &mut pos, 0)?;
     if pos != b.len() {
         return Err(CsilCborError(format!(
             "csil cbor: {} trailing bytes",
@@ -159,7 +159,7 @@ fn cbor_read_arg(b: &[u8], pos: &mut usize, low: u8) -> Result<u64, CsilCborErro
             )))
         }
     };
-    if *pos + 1 + width > b.len() {
+    if *pos >= b.len() || width > b.len() - *pos - 1 {
         return Err(CsilCborError("csil cbor: truncated argument".to_string()));
     }
     let mut v = 0u64;
@@ -170,7 +170,12 @@ fn cbor_read_arg(b: &[u8], pos: &mut usize, low: u8) -> Result<u64, CsilCborErro
     Ok(v)
 }
 
-fn cbor_dec(b: &[u8], pos: &mut usize) -> Result<CsilCborValue, CsilCborError> {
+fn cbor_dec(b: &[u8], pos: &mut usize, depth: usize) -> Result<CsilCborValue, CsilCborError> {
+    if depth > 64 {
+        return Err(CsilCborError(
+            "csil cbor: nesting limit exceeded".to_string(),
+        ));
+    }
     if *pos >= b.len() {
         return Err(CsilCborError(
             "csil cbor: unexpected end of input".to_string(),
@@ -218,23 +223,23 @@ fn cbor_dec(b: &[u8], pos: &mut usize) -> Result<CsilCborValue, CsilCborError> {
             Ok(CsilCborValue::Int(-1 - arg as i64))
         }
         2 => {
-            let n = arg as usize;
-            if *pos + n > b.len() {
+            if arg > (b.len() - *pos) as u64 {
                 return Err(CsilCborError(
                     "csil cbor: truncated byte string".to_string(),
                 ));
             }
+            let n = arg as usize;
             let slice = b[*pos..*pos + n].to_vec();
             *pos += n;
             Ok(CsilCborValue::Bytes(slice))
         }
         3 => {
-            let n = arg as usize;
-            if *pos + n > b.len() {
+            if arg > (b.len() - *pos) as u64 {
                 return Err(CsilCborError(
                     "csil cbor: truncated text string".to_string(),
                 ));
             }
+            let n = arg as usize;
             let s = std::str::from_utf8(&b[*pos..*pos + n])
                 .map_err(|e| CsilCborError(format!("csil cbor: invalid utf-8: {e}")))?
                 .to_string();
@@ -242,25 +247,35 @@ fn cbor_dec(b: &[u8], pos: &mut usize) -> Result<CsilCborValue, CsilCborError> {
             Ok(CsilCborValue::Text(s))
         }
         4 => {
+            if arg > (b.len() - *pos) as u64 {
+                return Err(CsilCborError(
+                    "csil cbor: array length exceeds remaining input".to_string(),
+                ));
+            }
             let n = arg as usize;
             let mut items = Vec::with_capacity(n);
             for _ in 0..n {
-                items.push(cbor_dec(b, pos)?);
+                items.push(cbor_dec(b, pos, depth + 1)?);
             }
             Ok(CsilCborValue::Array(items))
         }
         5 => {
+            if arg > (b.len() - *pos) as u64 {
+                return Err(CsilCborError(
+                    "csil cbor: map length exceeds remaining input".to_string(),
+                ));
+            }
             let n = arg as usize;
             let mut entries = Vec::with_capacity(n);
             for _ in 0..n {
-                let k = cbor_dec(b, pos)?;
-                let val = cbor_dec(b, pos)?;
+                let k = cbor_dec(b, pos, depth + 1)?;
+                let val = cbor_dec(b, pos, depth + 1)?;
                 entries.push((k, val));
             }
             Ok(CsilCborValue::Map(entries))
         }
         6 => {
-            let inner = cbor_dec(b, pos)?;
+            let inner = cbor_dec(b, pos, depth + 1)?;
             Ok(CsilCborValue::Tag(arg, Box::new(inner)))
         }
         _ => Err(CsilCborError(format!(
@@ -714,7 +729,7 @@ pub fn decode_session_info(csil_data: &[u8]) -> Result<SessionInfo, CsilCborErro
 
 /// Build the canonical CBOR value tree for a Track.
 fn csil_enc_track(csil_v: &Track) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(15);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(17);
     csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
     csil_entries.push((cbor_text("codec"), csil_enc_codec(&csil_v.codec)));
     csil_entries.push((cbor_text("title"), cbor_text(&csil_v.title)));
@@ -734,6 +749,12 @@ fn csil_enc_track(csil_v: &Track) -> CsilCborValue {
     }
     if let Some(csil_inner) = &csil_v.bit_depth {
         csil_entries.push((cbor_text("bit_depth"), cbor_uint(*csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.album_title {
+        csil_entries.push((cbor_text("album_title"), cbor_text(csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.artist_name {
+        csil_entries.push((cbor_text("artist_name"), cbor_text(csil_inner)));
     }
     csil_entries.push((cbor_text("duration_ms"), cbor_uint(csil_v.duration_ms)));
     csil_entries.push((cbor_text("sample_rate"), cbor_uint(csil_v.sample_rate)));
@@ -774,7 +795,21 @@ fn csil_dec_track(csil_root: &CsilCborValue) -> Result<Track, CsilCborError> {
         }
         None => None,
     };
+    let artist_name = match cbor_map_get(csil_root, "artist_name") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let album_id = match cbor_map_get(csil_root, "album_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let album_title = match cbor_map_get(csil_root, "album_title") {
         Some(csil_field) => {
             let csil_decode = cbor_as_text;
             Some(csil_decode(csil_field)?)
@@ -846,7 +881,9 @@ fn csil_dec_track(csil_root: &CsilCborValue) -> Result<Track, CsilCborError> {
         library,
         title,
         artist_id,
+        artist_name,
         album_id,
+        album_title,
         track_no,
         disc_no,
         duration_ms,

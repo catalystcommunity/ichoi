@@ -96,6 +96,8 @@ and encode_track (v : track) : Cbor.t =
          (match v.track_no with Some csil_x -> Some (Cbor.Text "track_no", (Cbor.int64 csil_x)) | None -> None);
          (match v.artist_id with Some csil_x -> Some (Cbor.Text "artist_id", (Cbor.Text csil_x)) | None -> None);
          (match v.bit_depth with Some csil_x -> Some (Cbor.Text "bit_depth", (Cbor.int64 csil_x)) | None -> None);
+         (match v.album_title with Some csil_x -> Some (Cbor.Text "album_title", (Cbor.Text csil_x)) | None -> None);
+         (match v.artist_name with Some csil_x -> Some (Cbor.Text "artist_name", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "duration_ms", (Cbor.int64 v.duration_ms));
          Some (Cbor.Text "sample_rate", (Cbor.int64 v.sample_rate));
          (match v.bitrate_kbps with Some csil_x -> Some (Cbor.Text "bitrate_kbps", (Cbor.int64 csil_x)) | None -> None);
@@ -1250,6 +1252,8 @@ and decode_track (csil_c : Cbor.t) : track =
         track_no = (match csil_field "track_no" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
         artist_id = (match csil_field "artist_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         bit_depth = (match csil_field "bit_depth" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        album_title = (match csil_field "album_title" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        artist_name = (match csil_field "artist_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         duration_ms = (Cbor.to_i64 (csil_req "duration_ms"));
         sample_rate = (Cbor.to_i64 (csil_req "sample_rate"));
         bitrate_kbps = (match csil_field "bitrate_kbps" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);

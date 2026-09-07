@@ -51,14 +51,21 @@ export function NowPlayingPage(): JSX.Element {
           <div class="eyebrow">{t("nav.nowPlaying")}</div>
           <h1 class="page-title">{t("nowPlaying.title")}</h1>
         </div>
-        <Show when={pb.queue.length > 0}>
+        <Show when={pb.queue.length > 0 || pb.canUndoQueue()}>
           <div class="row" style={{ gap: "8px" }}>
-            <button type="button" class="btn btn-ghost" onClick={saveQueue}>
-              {t("playlists.saveQueue")}
-            </button>
-            <button type="button" class="btn btn-ghost" onClick={() => pb.stop()}>
-              <IconStop size={16} /> {t("nowPlaying.clear")}
-            </button>
+            <Show when={pb.canUndoQueue()}>
+              <button type="button" class="btn btn-ghost" onClick={() => void pb.undoQueue()}>
+                {t("queue.undo")}
+              </button>
+            </Show>
+            <Show when={pb.queue.length > 0}>
+              <button type="button" class="btn btn-ghost" onClick={saveQueue}>
+                {t("playlists.saveQueue")}
+              </button>
+              <button type="button" class="btn btn-ghost" onClick={() => pb.clearQueue()}>
+                <IconStop size={16} /> {t("nowPlaying.clear")}
+              </button>
+            </Show>
           </div>
         </Show>
       </header>

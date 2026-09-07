@@ -87,11 +87,12 @@ impl Backend for RpcBackend {
                 nonce: nonce.clone(),
                 requested_claims: Some(login_claims()),
                 flow_context: None,
+                authentication_requirements: None,
             }),
         )?;
         let signed = generated::decode_rp_sign_response(&response)?;
         let redirect_url = format!(
-            "{}/auth/authorize?callback_url={}&nonce={}&user_hint={}&relying_party={}&signed_request={}",
+            "{}/auth/authorize?callback_url={}&nonce={}&username={}&relying_party={}&signed_request={}",
             api_base.trim_end_matches('/'),
             percent_encode(callback_url),
             percent_encode(&nonce),

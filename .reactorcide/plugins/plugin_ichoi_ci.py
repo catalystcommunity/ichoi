@@ -14,6 +14,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
@@ -276,55 +277,46 @@ def test_sqlite(code_dir: Path) -> None:
     log_stdout("=== SQLite tests passed ===")
 
 
-def _install_csilgen_rust_generator(environment: Dict[str, str], code_dir: Path) -> None:
-    """Clone csilgen and build the one WASM generator that gen-server needs.
+def _csilgen_release(code_dir: Path) -> str:
+    """Read the one csilgen release pin."""
+    release = (code_dir / ".csilgen-release").read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"csilgen/v\d+\.\d+\.\d+", release):
+        raise RuntimeError(f"Invalid csilgen release pin: {release}")
+    return release
 
-    tools.sh resolves csilgen from PATH, else from a sibling checkout at CSILGEN_REPO. CI
-    has no sibling checkout. csilgen loads its generators as WASM plugins from
-    ~/.csilgen/generators/, and a fresh clone ships none.
-    """
-    if shutil.which("csilgen", path=environment["PATH"]):
-        return
 
-    checkout = Path("/tmp/csilgen")
-    log_stdout("=== Cloning csilgen ===")
-    if not checkout.is_dir():
-        _run(
-            ["git", "clone", "--depth", "1", CSILGEN_REPOSITORY, str(checkout)],
-            cwd=code_dir,
-            env=environment,
-        )
-    environment["CSILGEN_REPO"] = str(checkout)
-
-    log_stdout("=== Installing the Rust server generator ===")
+def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
+    """Build the pinned CLI and all generators in an isolated directory."""
+    release = _csilgen_release(code_dir)
+    version = release.removeprefix("csilgen/v")
+    checkout = Path(tempfile.mkdtemp(prefix=f"csilgen-{version}-", dir="/tmp")) / "source"
+    log_stdout(f"=== Cloning {release} ===")
     _run(
-        ["rustup", "target", "add", "wasm32-unknown-unknown"],
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "--branch",
+            release,
+            CSILGEN_REPOSITORY,
+            str(checkout),
+        ],
         cwd=code_dir,
         env=environment,
     )
-    # This build uses csilgen's own target directory, not the job-wide CARGO_TARGET_DIR.
-    generator_environment = environment.copy()
-    generator_environment["CARGO_TARGET_DIR"] = str(checkout / "target")
-    _run(
-        [
-            "cargo",
-            "build",
-            "--manifest-path",
-            str(checkout / "Cargo.toml"),
-            "--release",
-            "--target",
-            "wasm32-unknown-unknown",
-            "--package",
-            "csilgen-rust-generator",
-        ],
-        cwd=code_dir,
-        env=generator_environment,
-    )
-    generators = Path(environment["HOME"]) / ".csilgen" / "generators"
-    generators.mkdir(parents=True, exist_ok=True)
-    shutil.copy(
-        checkout / "target/wasm32-unknown-unknown/release/csilgen_rust_generator.wasm",
-        generators,
+
+    install_environment = environment.copy()
+    install_environment["CSILGEN_VERSION"] = version
+    install_environment["CSILGEN_BIN_DIR"] = str(checkout / "installed/bin")
+    install_environment["CSILGEN_GENERATOR_DIR"] = str(checkout / "installed/generators")
+    install_environment["CARGO_TARGET_DIR"] = str(checkout / "target")
+    _run(["./tools.sh", "build-install-all"], cwd=checkout, env=install_environment)
+
+    environment["CSILGEN_REPO"] = str(checkout)
+    environment["CSILGEN_GENERATOR_DIR"] = install_environment["CSILGEN_GENERATOR_DIR"]
+    environment["PATH"] = os.pathsep.join(
+        [install_environment["CSILGEN_BIN_DIR"], environment["PATH"]]
     )
 
 
@@ -333,26 +325,26 @@ def csil(code_dir: Path) -> None:
     _apt_install(["git"], code_dir)
     environment = _rust_environment()
     _ensure_cargo(environment, code_dir)
-    _install_csilgen_rust_generator(environment, code_dir)
+    _install_csilgen(environment, code_dir)
 
     # tools.sh is repository-level tooling at the root; it drives the server target under
     # server/. CI runs the same entry point a person runs, so the two cannot drift.
     log_stdout("=== Validating CSIL schema ===")
     _run(["./tools.sh", "csil-validate"], cwd=code_dir, env=environment)
 
-    log_stdout("=== Regenerating the Rust server bindings ===")
-    _run(["./tools.sh", "gen-server"], cwd=code_dir, env=environment)
+    log_stdout("=== Regenerating all bindings ===")
+    _run(["./tools.sh", "gen"], cwd=code_dir, env=environment)
 
-    log_stdout("=== Verifying generated server code is current ===")
+    log_stdout("=== Verifying all generated code is current ===")
     stale = _run(
-        ["git", "diff", "--exit-code", "--", "server/generated/rust-server"],
+        ["git", "diff", "--exit-code", "--", "server/generated"],
         cwd=code_dir,
         env=environment,
         check=False,
     )
     if stale.returncode != 0:
         raise RuntimeError(
-            "Generated server code is stale. Run tools.sh gen-server and commit the result. "
+            "Generated code is stale. Run tools.sh gen and commit the result. "
             "Generated code is never hand-edited (see CONTRIBUTING.md)."
         )
 

@@ -102,8 +102,8 @@
     "audiobooks": "Audiobooks",
     "music": "Music",
     "audiobook": "Audiobooks",
-    "queueArtist": "Add all albums to the queue",
-    "queueAlbum": "Add to the queue",
+    "viewArtist": "View artist",
+    "viewAlbum": "View album",
     "destination": "New items go to {{name}}.",
     "added": "Added {{count}} item(s) to {{name}}.",
     "importAdminRequired": "An administrator on {{name}} must allow this import."
@@ -155,6 +155,14 @@
     "nowPlaying": "Now playing",
     "played": "Played",
     "clear": "Clear queue"
+  },
+  "queue": {
+    "changed": "Queue updated.",
+    "undo": "Undo",
+    "addTrack": "Add {{title}} to queue",
+    "moreActions": "More actions for {{title}}",
+    "playNext": "Play next",
+    "playNow": "Clear queue and play now"
   },
   "settings": {
     "title": "Settings",

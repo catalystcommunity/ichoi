@@ -70,7 +70,9 @@ export interface Track {
   library: Library;
   title: string;
   artistId?: ArtistId;
+  artistName?: string;
   albumId?: AlbumId;
+  albumTitle?: string;
   trackNo?: number;
   discNo?: number;
   durationMs: number;

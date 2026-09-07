@@ -48,7 +48,9 @@ and track = {
   library : library;
   title : string;
   artist_id : artist_id option;
+  artist_name : string option;
   album_id : album_id option;
+  album_title : string option;
   track_no : int64 option;
   disc_no : int64 option;
   duration_ms : int64;

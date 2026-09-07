@@ -84,13 +84,22 @@ public enum CsilCbor {
 
     public static func decode(_ b: [UInt8]) throws -> CsilCborValue {
         var pos = 0
-        let v = try dec(b, &pos)
+        let v = try dec(b, &pos, 0)
         if pos != b.count { throw CsilCborError.trailingBytes }
         return v
     }
 
     static func readArg(_ b: [UInt8], _ pos: inout Int, _ low: UInt8) throws -> UInt64 {
         if low < 24 { pos += 1; return UInt64(low) }
+        let width: Int
+        switch low {
+        case 24: width = 1
+        case 25: width = 2
+        case 26: width = 4
+        case 27: width = 8
+        default: throw CsilCborError.malformed
+        }
+        guard pos < b.count, b.count - pos - 1 >= width else { throw CsilCborError.malformed }
         switch low {
         case 24:
             let v = UInt64(b[pos + 1]); pos += 2; return v
@@ -109,7 +118,8 @@ public enum CsilCbor {
         }
     }
 
-    static func dec(_ b: [UInt8], _ pos: inout Int) throws -> CsilCborValue {
+    static func dec(_ b: [UInt8], _ pos: inout Int, _ depth: Int) throws -> CsilCborValue {
+        guard depth <= 64, pos < b.count else { throw CsilCborError.malformed }
         let ib = b[pos]
         let major = ib >> 5
         let low = ib & 0x1f
@@ -136,29 +146,34 @@ public enum CsilCbor {
             if arg > UInt64(Int64.max) { throw CsilCborError.malformed }
             return .int(-1 - Int64(arg))
         case 2:
+            guard arg <= UInt64(b.count - pos) else { throw CsilCborError.malformed }
             let n = Int(arg)
             let slice = Array(b[pos..<pos + n]); pos += n
             return .bytes(slice)
         case 3:
+            guard arg <= UInt64(b.count - pos) else { throw CsilCborError.malformed }
             let n = Int(arg)
-            let s = String(decoding: b[pos..<pos + n], as: UTF8.self); pos += n
+            guard let s = String(validating: b[pos..<pos + n], as: UTF8.self) else { throw CsilCborError.malformed }
+            pos += n
             return .text(s)
         case 4:
+            guard arg <= UInt64(b.count - pos) else { throw CsilCborError.malformed }
             let n = Int(arg)
             var items: [CsilCborValue] = []
-            for _ in 0..<n { items.append(try dec(b, &pos)) }
+            for _ in 0..<n { items.append(try dec(b, &pos, depth + 1)) }
             return .array(items)
         case 5:
+            guard arg <= UInt64(b.count - pos) else { throw CsilCborError.malformed }
             let n = Int(arg)
             var kvs: [(CsilCborValue, CsilCborValue)] = []
             for _ in 0..<n {
-                let k = try dec(b, &pos)
-                let v = try dec(b, &pos)
+                let k = try dec(b, &pos, depth + 1)
+                let v = try dec(b, &pos, depth + 1)
                 kvs.append((k, v))
             }
             return .map(kvs)
         case 6:
-            let inner = try dec(b, &pos)
+            let inner = try dec(b, &pos, depth + 1)
             return .tag(arg, inner)
         default:
             throw CsilCborError.malformed
@@ -516,6 +531,8 @@ public extension Track {
         if let csilV = self.trackNo { csilEntries.append(("track_no", .uint(csilV))) }
         if let csilV = self.artistId { csilEntries.append(("artist_id", .text(csilV))) }
         if let csilV = self.bitDepth { csilEntries.append(("bit_depth", .uint(csilV))) }
+        if let csilV = self.albumTitle { csilEntries.append(("album_title", .text(csilV))) }
+        if let csilV = self.artistName { csilEntries.append(("artist_name", .text(csilV))) }
         csilEntries.append(("duration_ms", .uint(self.durationMs)))
         csilEntries.append(("sample_rate", .uint(self.sampleRate)))
         if let csilV = self.bitrateKbps { csilEntries.append(("bitrate_kbps", .uint(csilV))) }
@@ -530,7 +547,9 @@ public extension Track {
         let library = try Library(cborValue: (try CsilCbor.require(cborValue, "library")))
         let title = try CsilCbor.asText((try CsilCbor.require(cborValue, "title")))
         let artistId: ArtistId? = if let csilV = CsilCbor.mapGet(cborValue, "artist_id") { try CsilCbor.asText(csilV) } else { nil }
+        let artistName: String? = if let csilV = CsilCbor.mapGet(cborValue, "artist_name") { try CsilCbor.asText(csilV) } else { nil }
         let albumId: AlbumId? = if let csilV = CsilCbor.mapGet(cborValue, "album_id") { try CsilCbor.asText(csilV) } else { nil }
+        let albumTitle: String? = if let csilV = CsilCbor.mapGet(cborValue, "album_title") { try CsilCbor.asText(csilV) } else { nil }
         let trackNo: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "track_no") { try CsilCbor.asU64(csilV) } else { nil }
         let discNo: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "disc_no") { try CsilCbor.asU64(csilV) } else { nil }
         let durationMs = try CsilCbor.asU64((try CsilCbor.require(cborValue, "duration_ms")))
@@ -541,7 +560,7 @@ public extension Track {
         let bitDepth: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "bit_depth") { try CsilCbor.asU64(csilV) } else { nil }
         let rootRelativePath = try CsilCbor.asText((try CsilCbor.require(cborValue, "root_relative_path")))
         let contentHash: String? = if let csilV = CsilCbor.mapGet(cborValue, "content_hash") { try CsilCbor.asText(csilV) } else { nil }
-        self.init(id: id, library: library, title: title, artistId: artistId, albumId: albumId, trackNo: trackNo, discNo: discNo, durationMs: durationMs, codec: codec, bitrateKbps: bitrateKbps, sampleRate: sampleRate, channels: channels, bitDepth: bitDepth, rootRelativePath: rootRelativePath, contentHash: contentHash)
+        self.init(id: id, library: library, title: title, artistId: artistId, artistName: artistName, albumId: albumId, albumTitle: albumTitle, trackNo: trackNo, discNo: discNo, durationMs: durationMs, codec: codec, bitrateKbps: bitrateKbps, sampleRate: sampleRate, channels: channels, bitDepth: bitDepth, rootRelativePath: rootRelativePath, contentHash: contentHash)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.

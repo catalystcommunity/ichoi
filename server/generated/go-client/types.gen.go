@@ -96,7 +96,9 @@ type Track struct {
 	Library          Library   `json:"library" yaml:"library"`
 	Title            string    `json:"title" yaml:"title"`
 	ArtistId         *ArtistId `json:"artist_id,omitempty" yaml:"artist_id,omitempty"`
+	ArtistName       *string   `json:"artist_name,omitempty" yaml:"artist_name,omitempty"`
 	AlbumId          *AlbumId  `json:"album_id,omitempty" yaml:"album_id,omitempty"`
+	AlbumTitle       *string   `json:"album_title,omitempty" yaml:"album_title,omitempty"`
 	TrackNo          *uint64   `json:"track_no,omitempty" yaml:"track_no,omitempty"`
 	DiscNo           *uint64   `json:"disc_no,omitempty" yaml:"disc_no,omitempty"`
 	DurationMs       uint64    `json:"duration_ms" yaml:"duration_ms"`

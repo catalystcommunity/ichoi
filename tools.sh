@@ -20,9 +20,9 @@
 #                   as <data>/{music,audiobooks,database}). Override ICHOI_DATA_DIR; force a
 #                   fresh web build with WEB_BUILD=1. Ctrl-C to stop.
 #
-# csilgen resolution: uses `csilgen` on PATH if present, else `cargo run` from a sibling
-# csilgen checkout (override with CSILGEN_REPO=/path/to/csilgen). The WASM generators must
-# be installed once in that checkout:  cargo run -p xtask install-wasm
+# csilgen resolution uses the release in .csilgen-release. It uses `csilgen` on PATH if
+# the version matches. Otherwise, it uses a checkout at CSILGEN_REPO. That checkout must be
+# at the pinned tag. Install the WASM generators with the csilgen `tools.sh` script.
 
 set -euo pipefail
 
@@ -34,6 +34,12 @@ SCHEMA="$SERVER/schema"
 ENTRY="$SCHEMA/ichoi.csil"
 GEN_ROOT="$SERVER/generated"
 CSILGEN_REPO="${CSILGEN_REPO:-$ROOT/../csilgen}"
+CSILGEN_RELEASE="$(tr -d '[:space:]' < "$ROOT/.csilgen-release")"
+CSILGEN_VERSION="${CSILGEN_RELEASE#csilgen/v}"
+if [[ ! "$CSILGEN_RELEASE" =~ ^csilgen/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "error: invalid csilgen release pin: $CSILGEN_RELEASE" >&2
+  exit 1
+fi
 
 # The Rust server binding we implement against.
 SERVER_TARGET="rust-server"
@@ -56,22 +62,40 @@ CLIENT_TARGETS=(
   zig-client
 )
 
-# Resolve the csilgen invocation into an array command prefix.
-if command -v csilgen >/dev/null 2>&1; then
-  CSILGEN=(csilgen)
-elif [ -f "$CSILGEN_REPO/Cargo.toml" ]; then
-  CSILGEN=(cargo run --quiet --manifest-path "$CSILGEN_REPO/Cargo.toml" -p csilgen --)
-else
-  echo "error: no 'csilgen' on PATH and no csilgen checkout at CSILGEN_REPO=$CSILGEN_REPO" >&2
-  exit 1
-fi
+# Resolve the csilgen invocation only for commands that use it.
+CSILGEN=()
+resolve_csilgen() {
+  if [ "${#CSILGEN[@]}" -gt 0 ]; then return; fi
+  if command -v csilgen >/dev/null 2>&1; then
+    CSILGEN=(csilgen)
+    local installed_version
+    installed_version="$(csilgen --version | awk '{print $NF}')"
+    if [ "$installed_version" != "$CSILGEN_VERSION" ]; then
+      echo "error: csilgen $CSILGEN_VERSION is required; PATH has $installed_version" >&2
+      exit 1
+    fi
+  elif [ -f "$CSILGEN_REPO/Cargo.toml" ]; then
+    local expected_commit actual_commit
+    expected_commit="$(git -C "$CSILGEN_REPO" rev-list -n 1 "$CSILGEN_RELEASE" 2>/dev/null || true)"
+    actual_commit="$(git -C "$CSILGEN_REPO" rev-parse HEAD 2>/dev/null || true)"
+    if [ -z "$expected_commit" ] || [ "$actual_commit" != "$expected_commit" ]; then
+      echo "error: CSILGEN_REPO must be checked out at $CSILGEN_RELEASE" >&2
+      exit 1
+    fi
+    CSILGEN=(env "CSILGEN_VERSION=$CSILGEN_VERSION" cargo run --quiet --manifest-path "$CSILGEN_REPO/Cargo.toml" -p csilgen --)
+  else
+    echo "error: no 'csilgen' on PATH and no csilgen checkout at CSILGEN_REPO=$CSILGEN_REPO" >&2
+    exit 1
+  fi
+}
 
-csil_validate() { "${CSILGEN[@]}" validate --input "$ENTRY"; }
-csil_lint()     { "${CSILGEN[@]}" lint "$SCHEMA"; }
-csil_fmt()      { "${CSILGEN[@]}" format "$SCHEMA"; }
-csil_breaking() { "${CSILGEN[@]}" breaking --current "${BASELINE:?set BASELINE=<dir|file>}" --new "$ENTRY"; }
+csil_validate() { resolve_csilgen; "${CSILGEN[@]}" validate --input "$ENTRY"; }
+csil_lint()     { resolve_csilgen; "${CSILGEN[@]}" lint "$SCHEMA"; }
+csil_fmt()      { resolve_csilgen; "${CSILGEN[@]}" format "$SCHEMA"; }
+csil_breaking() { resolve_csilgen; "${CSILGEN[@]}" breaking --current "${BASELINE:?set BASELINE=<dir|file>}" --new "$ENTRY"; }
 
 gen_one() {
+  resolve_csilgen
   local target="$1"
   local out="$GEN_ROOT/$target"
   mkdir -p "$out"

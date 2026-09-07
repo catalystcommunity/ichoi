@@ -29,7 +29,7 @@ impl Backend for FakeBackend {
         };
         Ok((
             format!(
-                "https://idp.{domain}/auth/authorize?user_hint={}&callback_url={callback_url}",
+                "https://idp.{domain}/auth/authorize?username={}&callback_url={callback_url}",
                 user_hint.unwrap_or("")
             ),
             serde_json::to_string(&pending)?,
@@ -134,7 +134,7 @@ async fn regular_rp_browser_flow_is_mocked_single_use_and_mints_session() {
     let body = start.into_body().collect().await.unwrap().to_bytes();
     let response: serde_json::Value = serde_json::from_slice(&body).unwrap();
     let redirect = response["redirect_url"].as_str().unwrap();
-    assert!(redirect.contains("user_hint=alice"));
+    assert!(redirect.contains("username=alice"));
     let callback = redirect.split("callback_url=").nth(1).unwrap();
     let attempt = callback.split("attempt=").nth(1).unwrap();
 

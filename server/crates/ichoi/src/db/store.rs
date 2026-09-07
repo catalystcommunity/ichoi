@@ -711,6 +711,10 @@ pub fn search_albums(
     limit: i64,
 ) -> QueryResult<Vec<Album>> {
     let pattern = format!("%{query}%");
+    let matching_artist_ids = artists::table
+        .filter(artists::name.like(&pattern))
+        .select(artists::id)
+        .load::<String>(conn)?;
     let album_ids = tracks::table
         .filter(tracks::library_id.eq(library_id))
         .filter(tracks::album_id.is_not_null())
@@ -718,7 +722,11 @@ pub fn search_albums(
         .distinct();
     albums::table
         .filter(albums::id.eq_any(album_ids))
-        .filter(albums::title.like(pattern))
+        .filter(
+            albums::title
+                .like(pattern)
+                .or(albums::artist_id.eq_any(matching_artist_ids)),
+        )
         .order(albums::title.asc())
         .limit(limit)
         .select(Album::as_select())
