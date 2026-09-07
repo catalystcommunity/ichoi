@@ -73,6 +73,60 @@ class MuslBuildPackagesTest(unittest.TestCase):
         )
 
 
+class CsilgenInstallTest(unittest.TestCase):
+    """The CSIL job must install a pinned release where its loader can find it."""
+
+    def setUp(self):
+        self.code_dir_context = tempfile.TemporaryDirectory()
+        self.code_dir = Path(self.code_dir_context.name)
+        (self.code_dir / ".csilgen-release").write_text(
+            "csilgen/v0.2.7\n", encoding="utf-8"
+        )
+
+    def tearDown(self):
+        self.code_dir_context.cleanup()
+
+    @unittest.mock.patch.object(
+        ci_plugin.tempfile, "mkdtemp", return_value="/tmp/csilgen-install-test"
+    )
+    @unittest.mock.patch.object(ci_plugin, "_run")
+    def test_installs_generators_under_the_runtime_home_path(self, run, _mkdtemp):
+        run.return_value = unittest.mock.Mock(
+            stdout="Installed GitHub Release: csilgen/v0.2.7\n", stderr=""
+        )
+        environment = {"HOME": "/home/runner", "PATH": "/usr/bin"}
+
+        ci_plugin._install_csilgen(environment, self.code_dir)
+
+        install_environment = run.call_args_list[1].kwargs["env"]
+        install_home = "/tmp/csilgen-install-test/source/installed/home"
+        self.assertEqual(install_environment["HOME"], install_home)
+        self.assertEqual(
+            install_environment["CSILGEN_GENERATOR_DIR"],
+            f"{install_home}/.csilgen/generators",
+        )
+        self.assertEqual(environment["HOME"], install_home)
+        self.assertTrue(
+            environment["PATH"].startswith(
+                "/tmp/csilgen-install-test/source/installed/bin:"
+            )
+        )
+
+    @unittest.mock.patch.object(
+        ci_plugin.tempfile, "mkdtemp", return_value="/tmp/csilgen-install-test"
+    )
+    @unittest.mock.patch.object(ci_plugin, "_run")
+    def test_rejects_a_release_that_does_not_match_the_pin(self, run, _mkdtemp):
+        run.return_value = unittest.mock.Mock(
+            stdout="Installed GitHub Release: csilgen/v0.2.8\n", stderr=""
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "pinned release csilgen/v0.2.7"):
+            ci_plugin._install_csilgen(
+                {"HOME": "/home/runner", "PATH": "/usr/bin"}, self.code_dir
+            )
+
+
 class ReleaseArtifactTargetTest(unittest.TestCase):
     """The release must not install a scratch/static binary on an audio satellite."""
 
