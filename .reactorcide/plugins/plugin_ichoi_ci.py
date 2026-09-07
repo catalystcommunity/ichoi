@@ -286,7 +286,7 @@ def _csilgen_release(code_dir: Path) -> str:
 
 
 def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
-    """Build the pinned CLI and all generators in an isolated directory."""
+    """Install and verify the pinned release in an isolated directory."""
     release = _csilgen_release(code_dir)
     version = release.removeprefix("csilgen/v")
     checkout = Path(tempfile.mkdtemp(prefix=f"csilgen-{version}-", dir="/tmp")) / "source"
@@ -306,18 +306,37 @@ def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
         env=environment,
     )
 
+    install_root = checkout / "installed"
+    install_home = install_root / "home"
+    cargo_home = install_root / "cargo"
+    bin_dir = install_root / "bin"
+    # csilgen v0.2.7 does not read CSILGEN_GENERATOR_DIR when it loads a target.
+    # Install under the isolated HOME path that the loader searches by default.
+    generator_dir = install_home / ".csilgen/generators"
     install_environment = environment.copy()
-    install_environment["CSILGEN_VERSION"] = version
-    install_environment["CSILGEN_BIN_DIR"] = str(checkout / "installed/bin")
-    install_environment["CSILGEN_GENERATOR_DIR"] = str(checkout / "installed/generators")
-    install_environment["CARGO_TARGET_DIR"] = str(checkout / "target")
-    _run(["./tools.sh", "build-install-all"], cwd=checkout, env=install_environment)
-
-    environment["CSILGEN_REPO"] = str(checkout)
-    environment["CSILGEN_GENERATOR_DIR"] = install_environment["CSILGEN_GENERATOR_DIR"]
-    environment["PATH"] = os.pathsep.join(
-        [install_environment["CSILGEN_BIN_DIR"], environment["PATH"]]
+    install_environment["HOME"] = str(install_home)
+    install_environment["CARGO_HOME"] = str(cargo_home)
+    install_environment["CSILGEN_BIN_DIR"] = str(bin_dir)
+    install_environment["CSILGEN_GENERATOR_DIR"] = str(generator_dir)
+    installed = _run(
+        ["./tools.sh", "install-all"],
+        cwd=checkout,
+        env=install_environment,
+        capture_output=True,
     )
+    log_stdout(installed.stdout)
+    if installed.stderr:
+        log_stdout(installed.stderr)
+    expected_marker = f"Installed GitHub Release: {release}"
+    if expected_marker not in installed.stdout:
+        raise RuntimeError(
+            f"csilgen installer did not install the pinned release {release}"
+        )
+
+    environment["HOME"] = str(install_home)
+    environment["CARGO_HOME"] = str(cargo_home)
+    environment["CSILGEN_GENERATOR_DIR"] = str(generator_dir)
+    environment["PATH"] = os.pathsep.join([str(bin_dir), environment["PATH"]])
 
 
 def csil(code_dir: Path) -> None:
