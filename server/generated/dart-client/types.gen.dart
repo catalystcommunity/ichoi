@@ -444,7 +444,9 @@ final class Track {
   final Library library_;
   final String title;
   final ArtistId? artistId;
+  final String? artistName;
   final AlbumId? albumId;
+  final String? albumTitle;
   final int? trackNo;
   final int? discNo;
   final int durationMs;
@@ -461,7 +463,9 @@ final class Track {
     required this.library_,
     required this.title,
     this.artistId,
+    this.artistName,
     this.albumId,
+    this.albumTitle,
     this.trackNo,
     this.discNo,
     required this.durationMs,
@@ -480,7 +484,9 @@ final class Track {
     map['library'] = library_;
     map['title'] = title;
     if (artistId != null) map['artist_id'] = artistId;
+    if (artistName != null) map['artist_name'] = artistName;
     if (albumId != null) map['album_id'] = albumId;
+    if (albumTitle != null) map['album_title'] = albumTitle;
     if (trackNo != null) map['track_no'] = trackNo;
     if (discNo != null) map['disc_no'] = discNo;
     map['duration_ms'] = durationMs;
@@ -500,7 +506,9 @@ final class Track {
       library_: map['library'] as Library,
       title: map['title'] as String,
       artistId: map['artist_id'] as ArtistId?,
+      artistName: map['artist_name'] as String?,
       albumId: map['album_id'] as AlbumId?,
+      albumTitle: map['album_title'] as String?,
       trackNo: map['track_no'] as int?,
       discNo: map['disc_no'] as int?,
       durationMs: map['duration_ms'] as int,
@@ -521,7 +529,9 @@ final class Track {
         library_ == other.library_ &&
         title == other.title &&
         artistId == other.artistId &&
+        artistName == other.artistName &&
         albumId == other.albumId &&
+        albumTitle == other.albumTitle &&
         trackNo == other.trackNo &&
         discNo == other.discNo &&
         durationMs == other.durationMs &&
@@ -540,7 +550,9 @@ final class Track {
     library_,
     title,
     artistId,
+    artistName,
     albumId,
+    albumTitle,
     trackNo,
     discNo,
     durationMs,
@@ -560,7 +572,9 @@ final class Track {
     map['library'] = library_;
     map['title'] = title;
     if (artistId != null) map['artist_id'] = artistId!;
+    if (artistName != null) map['artist_name'] = artistName!;
     if (albumId != null) map['album_id'] = albumId!;
+    if (albumTitle != null) map['album_title'] = albumTitle!;
     if (trackNo != null) map['track_no'] = trackNo!;
     if (discNo != null) map['disc_no'] = discNo!;
     map['duration_ms'] = durationMs;
@@ -585,7 +599,13 @@ final class Track {
       ]),
       title: map['title'] as String,
       artistId: map['artist_id'] == null ? null : map['artist_id'] as String,
+      artistName: map['artist_name'] == null
+          ? null
+          : map['artist_name'] as String,
       albumId: map['album_id'] == null ? null : map['album_id'] as String,
+      albumTitle: map['album_title'] == null
+          ? null
+          : map['album_title'] as String,
       trackNo: map['track_no'] == null ? null : map['track_no'] as int,
       discNo: map['disc_no'] == null ? null : map['disc_no'] as int,
       durationMs: map['duration_ms'] as int,

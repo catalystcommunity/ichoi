@@ -40,9 +40,11 @@ export function App(): JSX.Element {
               <Router root={Layout}>
                 <Route path="/" component={LibraryPage} />
                 <Route path="/album/:id" component={AlbumPage} />
+                <Route path="/source/:serverId/:library/album/:id" component={AlbumPage} />
                 <Route path="/audiobooks" component={AudiobooksPage} />
                 <Route path="/audiobook/:id" component={AudiobookPage} />
                 <Route path="/artist/:id" component={ArtistPage} />
+                <Route path="/source/:serverId/:library/artist/:id" component={ArtistPage} />
                 <Route path="/search" component={SearchPage} />
                 <Route path="/playlists" component={PlaylistsPage} />
                 <Route path="/jukebox" component={JukeboxPage} />

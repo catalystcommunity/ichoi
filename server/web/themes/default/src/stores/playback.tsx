@@ -30,6 +30,8 @@ import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
 import { finishUpdateReload, updateReloadInProgress } from "../lib/app-update.ts";
 import { onFirstGesture, probeAutoplay } from "../lib/audio-unlock.ts";
 import { planVolumeChange } from "../lib/volume.ts";
+import { appendTracks, insertTrackNext } from "../lib/queue-plan.ts";
+import { useI18n } from "../lib/i18n.tsx";
 import {
   isBrowserShareTarget,
   parseOwnedTargetStore,
@@ -115,7 +117,7 @@ interface PlaybackContextValue {
   setPref: (p: StreamPref) => void;
   playNow: (tracks: Track[], startIndex?: number, startMs?: number) => Promise<void>;
   enqueue: (tracks: Track[]) => void;
-  enqueueAndPlay: (track: Track, startMs?: number) => Promise<void>;
+  playNext: (track: Track) => void;
   playIndex: (index: number) => Promise<void>;
   togglePlay: () => void;
   next: () => Promise<void>;
@@ -123,7 +125,9 @@ interface PlaybackContextValue {
   seek: (ms: number) => void;
   volume: Accessor<number>;
   setVolume: (volume: number) => void;
-  stop: () => void;
+  clearQueue: () => void;
+  canUndoQueue: Accessor<boolean>;
+  undoQueue: () => Promise<void>;
   removeAt: (index: number) => void;
   move: (from: number, to: number) => void;
   saveQueueAsPlaylist: (name: string) => Promise<void>;
@@ -155,6 +159,7 @@ const PlaybackContext = createContext<PlaybackContextValue>();
 export function PlaybackProvider(props: ParentProps): JSX.Element {
   const servers = useServers();
   const toast = useToast();
+  const { t } = useI18n();
   const satelliteMode = Boolean(satelliteToken());
   const [queue, setQueue] = createStore<Track[]>([]);
   const [currentIndex, setCurrentIndex] = createSignal(-1);
@@ -176,6 +181,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   const [shuffle, setShuffle] = createSignal(loadShuffle());
   const [localVolume, setLocalVolume] = createSignal(loadVolume());
   const [remoteVolume, setRemoteVolume] = createSignal(100);
+  const [undoState, setUndoState] = createSignal<{
+    serverId: string | undefined;
+    target: string;
+    tracks: Track[];
+    index: number;
+    snapshot: PlaybackSnapshot;
+  }>();
   let lastProgressTrack = "";
   let lastProgressPosition = -1;
   let lastSatelliteReportSecond = -1;
@@ -558,6 +570,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     id = resolveOutputTarget(id, sharedTargets(), owned());
     if (satelliteMode && id !== satellitePlayerId()) return;
     const prev = target();
+    if (prev === id) return;
+    setUndoState(undefined);
     if (prev === LOCAL_TARGET && id !== LOCAL_TARGET) {
       savedLocal = { tracks: queue.slice(), index: currentIndex() };
       audio?.pause();
@@ -735,6 +749,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   async function playNow(tracks: Track[], startIndex = 0, startMs = 0): Promise<void> {
+    rememberQueue();
     if (isLocal()) {
       setQueue(tracks.slice());
       if (tracks.length) await openIndex(startIndex, startMs);
@@ -749,29 +764,25 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   function enqueue(tracks: Track[]): void {
     if (!tracks.length) return;
-    const startQueue = queue.length === 0;
+    rememberQueue();
     if (isLocal()) {
-      setQueue((q) => [...q, ...tracks]);
-      if (startQueue) void openIndex(0);
+      const plan = appendTracks(queue, currentIndex(), tracks);
+      setQueue(plan.tracks);
+      setCurrentIndex(plan.currentIndex);
     } else {
-      void (async () => {
-        const state = await control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
-        const previousLength = state ? state.queue.length - tracks.length : queue.length;
-        if (previousLength === 0) await control({ op: "play", index: 0 });
-      })();
+      void control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
     }
   }
 
-  async function enqueueAndPlay(track: Track, startMs = 0): Promise<void> {
-    const appendedIndex = queue.length;
+  function playNext(track: Track): void {
+    rememberQueue();
+    const insertionIndex = currentIndex() >= 0 ? currentIndex() + 1 : 0;
     if (isLocal()) {
-      setQueue((current) => [...current, track]);
-      await openIndex(appendedIndex, startMs);
+      const plan = insertTrackNext(queue, currentIndex(), track);
+      setQueue(plan.tracks);
+      setCurrentIndex(plan.currentIndex);
     } else {
-      const state = await control({ op: "enqueue", track_ids: [track.id] });
-      const newIndex = state ? state.queue.length - 1 : appendedIndex;
-      await control({ op: "play", index: newIndex });
-      if (startMs > 0) await control({ op: "seek", position_ms: startMs });
+      void control({ op: "enqueue", track_ids: [track.id], at_index: insertionIndex });
     }
   }
 
@@ -803,7 +814,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     } else if (repeatMode() === "all") {
       await playIndex(0);
     } else if (isLocal()) {
-      stop();
+      stopLocalPlayback();
     }
   }
 
@@ -872,11 +883,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
   }
 
-  function stop(): void {
-    if (!isLocal()) {
-      void control({ op: "clear" });
-      return;
-    }
+  function stopLocalPlayback(): void {
     if (audio) {
       audio.pause();
       audio.removeAttribute("src");
@@ -884,6 +891,17 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     }
     setCurrentIndex(-1);
     setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "idle", positionMs: 0 }));
+  }
+
+  function clearQueue(): void {
+    if (!queue.length) return;
+    rememberQueue();
+    if (!isLocal()) {
+      void control({ op: "clear" });
+      return;
+    }
+    stopLocalPlayback();
+    setQueue([]);
   }
 
   async function saveQueueAsPlaylist(name: string): Promise<void> {
@@ -906,17 +924,21 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   function removeAt(index: number): void {
+    if (index < 0 || index >= queue.length) return;
+    rememberQueue();
     if (!isLocal()) {
       void control({ op: "remove", index });
       return;
     }
-    if (index < 0 || index >= queue.length) return;
     const cur = currentIndex();
     const wasCurrent = index === cur;
     const beforeLen = queue.length;
     setQueue((q) => q.filter((_, i) => i !== index));
     if (wasCurrent) {
-      if (beforeLen <= 1) stop();
+      if (beforeLen <= 1) {
+        stopLocalPlayback();
+        setQueue([]);
+      }
       else void openIndex(Math.min(index, beforeLen - 2));
     } else if (index < cur) {
       setCurrentIndex(cur - 1);
@@ -924,11 +946,12 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   function move(from: number, to: number): void {
+    if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
+    rememberQueue();
     if (!isLocal()) {
       void control({ op: "reorder", from_index: from, to_index: to });
       return;
     }
-    if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
     const cur = currentIndex();
     setQueue((q) => {
       const arr = [...q];
@@ -939,6 +962,59 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     if (from === cur) setCurrentIndex(to);
     else if (from < cur && to >= cur) setCurrentIndex(cur - 1);
     else if (from > cur && to <= cur) setCurrentIndex(cur + 1);
+  }
+
+  function rememberQueue(): void {
+    setUndoState({
+      serverId: servers.activeId(),
+      target: target(),
+      tracks: queue.slice(),
+      index: currentIndex(),
+      snapshot: { ...snapshot() },
+    });
+    toast.show(t("queue.changed"), { label: t("queue.undo"), run: () => void undoQueue() });
+  }
+
+  const canUndoQueue = () =>
+    undoState()?.target === target() && undoState()?.serverId === servers.activeId();
+
+  async function undoQueue(): Promise<void> {
+    const saved = undoState();
+    if (!saved || saved.target !== target() || saved.serverId !== servers.activeId()) return;
+    setUndoState(undefined);
+
+    if (!isLocal()) {
+      await control({ op: "clear" });
+      if (!saved.tracks.length) return;
+      await control({ op: "enqueue", track_ids: saved.tracks.map((track) => track.id) });
+      if (saved.index >= 0 && (saved.snapshot.status === "playing" || saved.snapshot.status === "paused")) {
+        await control({ op: "play", index: saved.index });
+        if (saved.snapshot.positionMs > 0) {
+          await control({ op: "seek", position_ms: Math.round(saved.snapshot.positionMs) });
+        }
+        if (saved.snapshot.status !== "playing") await control({ op: "pause" });
+      }
+      return;
+    }
+
+    audio?.pause();
+    audio?.removeAttribute("src");
+    audio?.load();
+    setQueue(saved.tracks);
+    setCurrentIndex(saved.index);
+    setSnapshot(saved.snapshot);
+    const track = saved.tracks[saved.index];
+    const url = track ? mediaUrl(track.id) : undefined;
+    if (!audio || !url) return;
+    audio.src = url;
+    if (saved.snapshot.positionMs > 0) {
+      const restorePosition = () => {
+        audio.currentTime = saved.snapshot.positionMs / 1000;
+        audio.removeEventListener("loadedmetadata", restorePosition);
+      };
+      audio.addEventListener("loadedmetadata", restorePosition);
+    }
+    if (saved.snapshot.status === "playing") await audio.play();
   }
 
   onCleanup(() => {
@@ -956,7 +1032,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     setPref,
     playNow,
     enqueue,
-    enqueueAndPlay,
+    playNext,
     playIndex,
     togglePlay,
     next,
@@ -964,7 +1040,9 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     seek,
     volume,
     setVolume,
-    stop,
+    clearQueue,
+    canUndoQueue,
+    undoQueue,
     removeAt,
     move,
     saveQueueAsPlaylist,

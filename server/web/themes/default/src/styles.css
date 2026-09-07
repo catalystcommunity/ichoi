@@ -691,7 +691,7 @@ h3 {
 .tracklist {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
   background: var(--surface);
 }
 .track-row {
@@ -725,6 +725,14 @@ h3 {
 }
 .track-main {
   min-width: 0;
+}
+.track-context {
+  display: block;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .track-title {
   font-weight: 500;
@@ -1255,6 +1263,35 @@ h3 {
 }
 .icon-btn:hover { background: var(--surface); border-color: var(--line-strong); }
 .icon-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.track-menu { position: relative; flex: 0 0 auto; }
+.track-menu[open] { z-index: 30; }
+.track-menu > summary { list-style: none; }
+.track-menu > summary::-webkit-details-marker { display: none; }
+.track-menu-popover {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 4px);
+  width: max-content;
+  min-width: 190px;
+  padding: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.track-menu-popover button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.track-menu-popover button:hover { background: var(--surface-2); }
 .queue-item.is-over { outline: 2px dashed var(--cyan); outline-offset: -2px; }
 .drag-handle {
   color: var(--text-faint); cursor: grab; padding: 0 4px;
@@ -1379,6 +1416,9 @@ h3 {
   max-width: min(360px, calc(100vw - 36px));
 }
 .toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-align: left;
   color: var(--text);
   background: var(--panel);
@@ -1386,9 +1426,21 @@ h3 {
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   box-shadow: var(--shadow);
-  cursor: pointer;
 }
-.toast:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.toast > span { flex: 1 1 auto; }
+.toast-action,
+.toast-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--cyan);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  padding: 3px 5px;
+}
+.toast-dismiss { color: var(--text-muted); font-size: 18px; }
+.toast-action:focus-visible,
+.toast-dismiss:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
 /* --- Installed PWA satellite console ------------------------------------ */
 .satellite-page {

@@ -67,6 +67,37 @@ fn search_finds_track_by_title() {
 
     assert_eq!(resp.tracks.len(), 1);
     assert_eq!(resp.tracks[0].title, "Rare Gem");
+    assert_eq!(resp.tracks[0].artist_name.as_deref(), Some("Test Artist"));
+    assert_eq!(resp.tracks[0].album_title.as_deref(), Some("Test Album"));
+}
+
+#[test]
+fn search_includes_albums_by_a_matching_artist() {
+    let (app, pool) = common::test_app();
+    {
+        let mut conn = pool.get().unwrap();
+        let mut artist = DataMap::new();
+        artist.insert("name".into(), "Madonna".into());
+        common::create_artist(&mut conn, &artist);
+        let mut album = DataMap::new();
+        album.insert("title".into(), "Ray of Light".into());
+        common::create_album(&mut conn, &album);
+        common::create_track(&mut conn, &DataMap::new());
+    }
+
+    let resp = app
+        .search(
+            &common::ctx_anon(),
+            SearchRequest {
+                query: "Madonna".to_string(),
+                library: None,
+                limit: None,
+            },
+        )
+        .expect("search");
+
+    assert_eq!(resp.albums.len(), 1);
+    assert_eq!(resp.albums[0].title, "Ray of Light");
 }
 
 #[test]
@@ -257,6 +288,8 @@ fn control_enqueues_and_plays() {
     let state = app.control(&common::ctx_anon(), enqueue).expect("enqueue");
     assert_eq!(state.queue.len(), 1);
     assert_eq!(state.queue[0].track_id, "track-1");
+    assert!(matches!(state.status, PlayerStatus::Stopped));
+    assert_eq!(state.current_index, Some(0));
 
     // Play it.
     let play = CommandRequest {

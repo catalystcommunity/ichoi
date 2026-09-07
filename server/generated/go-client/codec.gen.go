@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	"unicode/utf8"
 )
 
 // cborValue is a minimal canonical-CBOR value tree: a closed set of variants the
@@ -168,7 +169,7 @@ func cborEnc(v cborValue, out *[]byte) {
 // is not exactly one value is an error rather than a silently-truncated read.
 func cborDecode(b []byte) (cborValue, error) {
 	pos := 0
-	v, err := cborDec(b, &pos)
+	v, err := cborDec(b, &pos, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -185,21 +186,21 @@ func cborReadArg(b []byte, pos *int, low byte) (uint64, error) {
 	}
 	switch low {
 	case 24:
-		if *pos+2 > len(b) {
+		if len(b)-*pos < 2 {
 			return 0, fmt.Errorf("csil cbor: truncated argument")
 		}
 		v := uint64(b[*pos+1])
 		*pos += 2
 		return v, nil
 	case 25:
-		if *pos+3 > len(b) {
+		if len(b)-*pos < 3 {
 			return 0, fmt.Errorf("csil cbor: truncated argument")
 		}
 		v := uint64(b[*pos+1])<<8 | uint64(b[*pos+2])
 		*pos += 3
 		return v, nil
 	case 26:
-		if *pos+5 > len(b) {
+		if len(b)-*pos < 5 {
 			return 0, fmt.Errorf("csil cbor: truncated argument")
 		}
 		var v uint64
@@ -209,7 +210,7 @@ func cborReadArg(b []byte, pos *int, low byte) (uint64, error) {
 		*pos += 5
 		return v, nil
 	case 27:
-		if *pos+9 > len(b) {
+		if len(b)-*pos < 9 {
 			return 0, fmt.Errorf("csil cbor: truncated argument")
 		}
 		var v uint64
@@ -223,7 +224,10 @@ func cborReadArg(b []byte, pos *int, low byte) (uint64, error) {
 	}
 }
 
-func cborDec(b []byte, pos *int) (cborValue, error) {
+func cborDec(b []byte, pos *int, depth int) (cborValue, error) {
+	if depth > 64 {
+		return nil, fmt.Errorf("csil cbor: nesting limit exceeded")
+	}
 	if *pos >= len(b) {
 		return nil, fmt.Errorf("csil cbor: unexpected end of input")
 	}
@@ -270,27 +274,33 @@ func cborDec(b []byte, pos *int) (cborValue, error) {
 		}
 		return cborInt(-1 - int64(arg)), nil
 	case 2:
-		n := int(arg)
-		if *pos+n > len(b) {
+		if arg > uint64(len(b)-*pos) {
 			return nil, fmt.Errorf("csil cbor: truncated byte string")
 		}
+		n := int(arg)
 		slice := make([]byte, n)
 		copy(slice, b[*pos:*pos+n])
 		*pos += n
 		return cborBytes(slice), nil
 	case 3:
-		n := int(arg)
-		if *pos+n > len(b) {
+		if arg > uint64(len(b)-*pos) {
 			return nil, fmt.Errorf("csil cbor: truncated text string")
+		}
+		n := int(arg)
+		if !utf8.Valid(b[*pos : *pos+n]) {
+			return nil, fmt.Errorf("csil cbor: invalid utf-8")
 		}
 		s := string(b[*pos : *pos+n])
 		*pos += n
 		return cborText(s), nil
 	case 4:
+		if arg > uint64(len(b)-*pos) {
+			return nil, fmt.Errorf("csil cbor: array length exceeds remaining input")
+		}
 		n := int(arg)
 		items := make(cborArray, 0, n)
 		for i := 0; i < n; i++ {
-			item, err := cborDec(b, pos)
+			item, err := cborDec(b, pos, depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -298,14 +308,17 @@ func cborDec(b []byte, pos *int) (cborValue, error) {
 		}
 		return items, nil
 	case 5:
+		if arg > uint64(len(b)-*pos) {
+			return nil, fmt.Errorf("csil cbor: map length exceeds remaining input")
+		}
 		n := int(arg)
 		entries := make(cborMap, 0, n)
 		for i := 0; i < n; i++ {
-			k, err := cborDec(b, pos)
+			k, err := cborDec(b, pos, depth+1)
 			if err != nil {
 				return nil, err
 			}
-			val, err := cborDec(b, pos)
+			val, err := cborDec(b, pos, depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -313,7 +326,7 @@ func cborDec(b []byte, pos *int) (cborValue, error) {
 		}
 		return entries, nil
 	case 6:
-		inner, err := cborDec(b, pos)
+		inner, err := cborDec(b, pos, depth+1)
 		if err != nil {
 			return nil, err
 		}
@@ -878,7 +891,7 @@ func DecodeSessionInfo(csilData []byte) (SessionInfo, error) {
 
 // csilEncTrack builds the canonical CBOR value tree for a Track.
 func csilEncTrack(csilV Track) cborValue {
-	csilEntries := make(cborMap, 0, 15)
+	csilEntries := make(cborMap, 0, 17)
 	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
 	csilEntries = append(csilEntries, cborEntry{cborText("codec"), cborText(csilV.Codec)})
 	csilEntries = append(csilEntries, cborEntry{cborText("title"), cborText(csilV.Title)})
@@ -898,6 +911,12 @@ func csilEncTrack(csilV Track) cborValue {
 	}
 	if csilV.BitDepth != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("bit_depth"), cborUint((*csilV.BitDepth))})
+	}
+	if csilV.AlbumTitle != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("album_title"), cborText((*csilV.AlbumTitle))})
+	}
+	if csilV.ArtistName != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("artist_name"), cborText((*csilV.ArtistName))})
 	}
 	csilEntries = append(csilEntries, cborEntry{cborText("duration_ms"), cborUint(csilV.DurationMs)})
 	csilEntries = append(csilEntries, cborEntry{cborText("sample_rate"), cborUint(csilV.SampleRate)})
@@ -974,6 +993,13 @@ func csilDecTrack(csilRoot cborValue) (Track, error) {
 		}
 		csilOut.ArtistId = &csilVal
 	}
+	if csilField, csilOk := cborMapGet(csilRoot, "artist_name"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ArtistName = &csilVal
+	}
 	if csilField, csilOk := cborMapGet(csilRoot, "album_id"); csilOk {
 		csilVal, csilErr := (func(csilV cborValue) (AlbumId, error) {
 			csilInner, csilErr := (cborAsText)(csilV)
@@ -983,6 +1009,13 @@ func csilDecTrack(csilRoot cborValue) (Track, error) {
 			return csilOut, csilErr
 		}
 		csilOut.AlbumId = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "album_title"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AlbumTitle = &csilVal
 	}
 	if csilField, csilOk := cborMapGet(csilRoot, "track_no"); csilOk {
 		csilVal, csilErr := (cborAsU64)(csilField)

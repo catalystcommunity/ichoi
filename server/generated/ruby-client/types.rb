@@ -81,7 +81,9 @@ end
 # library [Library]
 # title [String]
 # artist_id [ArtistId]
+# artist_name [String]
 # album_id [AlbumId]
+# album_title [String]
 # track_no [Integer]
 # disc_no [Integer]
 # duration_ms [Integer]
@@ -92,8 +94,8 @@ end
 # bit_depth [Integer]
 # root_relative_path [String]
 # content_hash [String]
-Track = Data.define(:id, :library, :title, :artist_id, :album_id, :track_no, :disc_no, :duration_ms, :codec, :bitrate_kbps, :sample_rate, :channels, :bit_depth, :root_relative_path, :content_hash) do
-  def initialize(id:, library:, title:, duration_ms:, codec:, sample_rate:, channels:, root_relative_path:, artist_id: nil, album_id: nil, track_no: nil, disc_no: nil, bitrate_kbps: nil, bit_depth: nil, content_hash: nil)
+Track = Data.define(:id, :library, :title, :artist_id, :artist_name, :album_id, :album_title, :track_no, :disc_no, :duration_ms, :codec, :bitrate_kbps, :sample_rate, :channels, :bit_depth, :root_relative_path, :content_hash) do
+  def initialize(id:, library:, title:, duration_ms:, codec:, sample_rate:, channels:, root_relative_path:, artist_id: nil, artist_name: nil, album_id: nil, album_title: nil, track_no: nil, disc_no: nil, bitrate_kbps: nil, bit_depth: nil, content_hash: nil)
     super
   end
 end

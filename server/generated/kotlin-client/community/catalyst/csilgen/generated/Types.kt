@@ -118,8 +118,12 @@ data class Track(
     val title: String,
     // wire key: artist_id
     val artistId: ArtistId? = null,
+    // wire key: artist_name
+    val artistName: String? = null,
     // wire key: album_id
     val albumId: AlbumId? = null,
+    // wire key: album_title
+    val albumTitle: String? = null,
     // wire key: track_no
     val trackNo: ULong? = null,
     // wire key: disc_no

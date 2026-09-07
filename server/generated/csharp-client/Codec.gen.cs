@@ -120,7 +120,7 @@ public static partial class Cbor
     public static CborValue Decode(byte[] b)
     {
         int csilPos = 0;
-        var v = Dec(b, ref csilPos);
+        var v = Dec(b, ref csilPos, 0);
         if (csilPos != b.Length) { throw new CborException("trailing bytes"); }
         return v;
     }
@@ -128,6 +128,11 @@ public static partial class Cbor
     static ulong ReadArg(byte[] b, ref int csilPos, byte low)
     {
         if (low < 24) { csilPos += 1; return low; }
+        int csilWidth = low == 24 ? 1 : low == 25 ? 2 : low == 26 ? 4 : low == 27 ? 8 : 0;
+        if (csilWidth == 0 || csilPos >= b.Length || b.Length - csilPos - 1 < csilWidth)
+        {
+            throw new CborException("truncated argument");
+        }
         switch (low)
         {
             case 24:
@@ -161,8 +166,10 @@ public static partial class Cbor
         }
     }
 
-    static CborValue Dec(byte[] b, ref int csilPos)
+    static CborValue Dec(byte[] b, ref int csilPos, int csilDepth)
     {
+        if (csilDepth > 64) { throw new CborException("nesting limit exceeded"); }
+        if (csilPos >= b.Length) { throw new CborException("unexpected end of input"); }
         var ib = b[csilPos];
         var major = (byte)(ib >> 5);
         var low = (byte)(ib & 0x1f);
@@ -198,6 +205,7 @@ public static partial class Cbor
                 return new CborValue.Int(-1 - (long)arg);
             case 2:
             {
+                if (arg > (ulong)(b.Length - csilPos)) { throw new CborException("truncated byte string"); }
                 var n = (int)arg;
                 var slice = new byte[n];
                 System.Array.Copy(b, csilPos, slice, 0, n);
@@ -206,33 +214,38 @@ public static partial class Cbor
             }
             case 3:
             {
+                if (arg > (ulong)(b.Length - csilPos)) { throw new CborException("truncated text string"); }
                 var n = (int)arg;
-                var s = System.Text.Encoding.UTF8.GetString(b, csilPos, n);
+                string s;
+                try { s = new System.Text.UTF8Encoding(false, true).GetString(b, csilPos, n); }
+                catch (System.Text.DecoderFallbackException) { throw new CborException("invalid utf-8"); }
                 csilPos += n;
                 return new CborValue.Text(s);
             }
             case 4:
             {
+                if (arg > (ulong)(b.Length - csilPos)) { throw new CborException("array length exceeds remaining input"); }
                 var n = (int)arg;
                 var items = new System.Collections.Generic.List<CborValue>(n);
-                for (int csilI = 0; csilI < n; csilI++) { items.Add(Dec(b, ref csilPos)); }
+                for (int csilI = 0; csilI < n; csilI++) { items.Add(Dec(b, ref csilPos, csilDepth + 1)); }
                 return new CborValue.Array(items);
             }
             case 5:
             {
+                if (arg > (ulong)(b.Length - csilPos)) { throw new CborException("map length exceeds remaining input"); }
                 var n = (int)arg;
                 var kvs = new System.Collections.Generic.List<(CborValue, CborValue)>(n);
                 for (int csilI = 0; csilI < n; csilI++)
                 {
-                    var k = Dec(b, ref csilPos);
-                    var val = Dec(b, ref csilPos);
+                    var k = Dec(b, ref csilPos, csilDepth + 1);
+                    var val = Dec(b, ref csilPos, csilDepth + 1);
                     kvs.Add((k, val));
                 }
                 return new CborValue.Map(kvs);
             }
             case 6:
             {
-                var inner = Dec(b, ref csilPos);
+                var inner = Dec(b, ref csilPos, csilDepth + 1);
                 return new CborValue.Tag(arg, inner);
             }
             default:
@@ -895,15 +908,23 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("bit_depth"), new CborValue.Uint(csilV9)));
         }
+        if (value.AlbumTitle is { } csilV10)
+        {
+            csilEntries.Add((new CborValue.Text("album_title"), new CborValue.Text(csilV10)));
+        }
+        if (value.ArtistName is { } csilV11)
+        {
+            csilEntries.Add((new CborValue.Text("artist_name"), new CborValue.Text(csilV11)));
+        }
         csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(value.DurationMs)));
         csilEntries.Add((new CborValue.Text("sample_rate"), new CborValue.Uint(value.SampleRate)));
-        if (value.BitrateKbps is { } csilV12)
+        if (value.BitrateKbps is { } csilV14)
         {
-            csilEntries.Add((new CborValue.Text("bitrate_kbps"), new CborValue.Uint(csilV12)));
+            csilEntries.Add((new CborValue.Text("bitrate_kbps"), new CborValue.Uint(csilV14)));
         }
-        if (value.ContentHash is { } csilV13)
+        if (value.ContentHash is { } csilV15)
         {
-            csilEntries.Add((new CborValue.Text("content_hash"), new CborValue.Text(csilV13)));
+            csilEntries.Add((new CborValue.Text("content_hash"), new CborValue.Text(csilV15)));
         }
         csilEntries.Add((new CborValue.Text("root_relative_path"), new CborValue.Text(value.RootRelativePath)));
         return new CborValue.Map(csilEntries);
@@ -916,34 +937,38 @@ public static class Codec
         var csilField1 = LibraryFromCborValue(Cbor.Require(value, "library"));
         var csilField2 = Cbor.AsText(Cbor.Require(value, "title"));
         ArtistId? csilField3 = Cbor.MapGet(value, "artist_id") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
-        AlbumId? csilField4 = Cbor.MapGet(value, "album_id") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
-        ulong? csilField5 = Cbor.MapGet(value, "track_no") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
-        ulong? csilField6 = Cbor.MapGet(value, "disc_no") is { } csilRaw6 ? Cbor.AsU64(csilRaw6) : null;
-        var csilField7 = Cbor.AsU64(Cbor.Require(value, "duration_ms"));
-        var csilField8 = CodecFromCborValue(Cbor.Require(value, "codec"));
-        ulong? csilField9 = Cbor.MapGet(value, "bitrate_kbps") is { } csilRaw9 ? Cbor.AsU64(csilRaw9) : null;
-        var csilField10 = Cbor.AsU64(Cbor.Require(value, "sample_rate"));
-        var csilField11 = Cbor.AsU64(Cbor.Require(value, "channels"));
-        ulong? csilField12 = Cbor.MapGet(value, "bit_depth") is { } csilRaw12 ? Cbor.AsU64(csilRaw12) : null;
-        var csilField13 = Cbor.AsText(Cbor.Require(value, "root_relative_path"));
-        string? csilField14 = Cbor.MapGet(value, "content_hash") is { } csilRaw14 ? Cbor.AsText(csilRaw14) : null;
+        string? csilField4 = Cbor.MapGet(value, "artist_name") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
+        AlbumId? csilField5 = Cbor.MapGet(value, "album_id") is { } csilRaw5 ? Cbor.AsText(csilRaw5) : null;
+        string? csilField6 = Cbor.MapGet(value, "album_title") is { } csilRaw6 ? Cbor.AsText(csilRaw6) : null;
+        ulong? csilField7 = Cbor.MapGet(value, "track_no") is { } csilRaw7 ? Cbor.AsU64(csilRaw7) : null;
+        ulong? csilField8 = Cbor.MapGet(value, "disc_no") is { } csilRaw8 ? Cbor.AsU64(csilRaw8) : null;
+        var csilField9 = Cbor.AsU64(Cbor.Require(value, "duration_ms"));
+        var csilField10 = CodecFromCborValue(Cbor.Require(value, "codec"));
+        ulong? csilField11 = Cbor.MapGet(value, "bitrate_kbps") is { } csilRaw11 ? Cbor.AsU64(csilRaw11) : null;
+        var csilField12 = Cbor.AsU64(Cbor.Require(value, "sample_rate"));
+        var csilField13 = Cbor.AsU64(Cbor.Require(value, "channels"));
+        ulong? csilField14 = Cbor.MapGet(value, "bit_depth") is { } csilRaw14 ? Cbor.AsU64(csilRaw14) : null;
+        var csilField15 = Cbor.AsText(Cbor.Require(value, "root_relative_path"));
+        string? csilField16 = Cbor.MapGet(value, "content_hash") is { } csilRaw16 ? Cbor.AsText(csilRaw16) : null;
         return new Track
         {
             Id = csilField0,
             Library = csilField1,
             Title = csilField2,
             ArtistId = csilField3,
-            AlbumId = csilField4,
-            TrackNo = csilField5,
-            DiscNo = csilField6,
-            DurationMs = csilField7,
-            Codec = csilField8,
-            BitrateKbps = csilField9,
-            SampleRate = csilField10,
-            Channels = csilField11,
-            BitDepth = csilField12,
-            RootRelativePath = csilField13,
-            ContentHash = csilField14,
+            ArtistName = csilField4,
+            AlbumId = csilField5,
+            AlbumTitle = csilField6,
+            TrackNo = csilField7,
+            DiscNo = csilField8,
+            DurationMs = csilField9,
+            Codec = csilField10,
+            BitrateKbps = csilField11,
+            SampleRate = csilField12,
+            Channels = csilField13,
+            BitDepth = csilField14,
+            RootRelativePath = csilField15,
+            ContentHash = csilField16,
         };
     }
 

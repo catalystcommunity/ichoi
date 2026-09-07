@@ -116,7 +116,7 @@ object CsilCbor {
 
     fun decode(b: ByteArray): CborValue {
         val cur = Cursor(b)
-        val v = dec(cur)
+        val v = dec(cur, 0)
         if (cur.pos != b.size) throw CborError("trailing bytes after CBOR value")
         return v
     }
@@ -125,6 +125,10 @@ object CsilCbor {
         if (low < 24) {
             cur.pos += 1
             return low.toULong()
+        }
+        val width = when (low) { 24 -> 1; 25 -> 2; 26 -> 4; 27 -> 8; else -> 0 }
+        if (width == 0 || cur.pos >= cur.b.size || cur.b.size - cur.pos - 1 < width) {
+            throw CborError("truncated CBOR argument")
         }
         return when (low) {
             24 -> {
@@ -153,7 +157,18 @@ object CsilCbor {
         }
     }
 
-    private fun dec(cur: Cursor): CborValue {
+    private fun decodeUtf8(b: ByteArray, off: Int, len: Int): String = try {
+        Charsets.UTF_8.newDecoder()
+            .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+            .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+            .decode(java.nio.ByteBuffer.wrap(b, off, len)).toString()
+    } catch (_: java.nio.charset.CharacterCodingException) {
+        throw CborError("invalid UTF-8 text string")
+    }
+
+    private fun dec(cur: Cursor, depth: Int): CborValue {
+        if (depth > 64) throw CborError("CBOR nesting limit exceeded")
+        if (cur.pos >= cur.b.size) throw CborError("unexpected end of CBOR input")
         val ib = cur.b[cur.pos].toUByte().toInt()
         val major = ib shr 5
         val low = ib and 0x1f
@@ -190,34 +205,38 @@ object CsilCbor {
                 CborValue.CInt(-1L - arg.toLong())
             }
             2 -> {
+                if (arg > (cur.b.size - cur.pos).toULong()) throw CborError("truncated byte string")
                 val n = arg.toInt()
                 val slice = cur.b.copyOfRange(cur.pos, cur.pos + n)
                 cur.pos += n
                 CborValue.CBytes(slice)
             }
             3 -> {
+                if (arg > (cur.b.size - cur.pos).toULong()) throw CborError("truncated text string")
                 val n = arg.toInt()
-                val s = String(cur.b, cur.pos, n, Charsets.UTF_8)
+                val s = decodeUtf8(cur.b, cur.pos, n)
                 cur.pos += n
                 CborValue.CText(s)
             }
             4 -> {
+                if (arg > (cur.b.size - cur.pos).toULong()) throw CborError("array length exceeds remaining input")
                 val n = arg.toInt()
                 val items = ArrayList<CborValue>(n)
-                repeat(n) { items.add(dec(cur)) }
+                repeat(n) { items.add(dec(cur, depth + 1)) }
                 CborValue.CArray(items)
             }
             5 -> {
+                if (arg > (cur.b.size - cur.pos).toULong()) throw CborError("map length exceeds remaining input")
                 val n = arg.toInt()
                 val entries = ArrayList<Pair<CborValue, CborValue>>(n)
                 repeat(n) {
-                    val k = dec(cur)
-                    val value = dec(cur)
+                    val k = dec(cur, depth + 1)
+                    val value = dec(cur, depth + 1)
                     entries.add(k to value)
                 }
                 CborValue.CMap(entries)
             }
-            6 -> CborValue.CTag(arg, dec(cur))
+            6 -> CborValue.CTag(arg, dec(cur, depth + 1))
             else -> throw CborError("malformed CBOR major type")
         }
     }
@@ -529,6 +548,8 @@ fun Track.toCborValue(): CborValue {
     this.trackNo?.let { csilV -> csilEntries.add(CborValue.CText("track_no") to CborValue.CUint(csilV)) }
     this.artistId?.let { csilV -> csilEntries.add(CborValue.CText("artist_id") to CborValue.CText(csilV)) }
     this.bitDepth?.let { csilV -> csilEntries.add(CborValue.CText("bit_depth") to CborValue.CUint(csilV)) }
+    this.albumTitle?.let { csilV -> csilEntries.add(CborValue.CText("album_title") to CborValue.CText(csilV)) }
+    this.artistName?.let { csilV -> csilEntries.add(CborValue.CText("artist_name") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("duration_ms") to CborValue.CUint(this.durationMs))
     csilEntries.add(CborValue.CText("sample_rate") to CborValue.CUint(this.sampleRate))
     this.bitrateKbps?.let { csilV -> csilEntries.add(CborValue.CText("bitrate_kbps") to CborValue.CUint(csilV)) }
@@ -546,7 +567,9 @@ fun trackFromCborValue(cbor: CborValue): Track {
     val library = libraryFromCborValue(CsilCbor.require(cbor, "library"))
     val title = CsilCbor.asText(CsilCbor.require(cbor, "title"))
     val artistId = CsilCbor.mapGet(cbor, "artist_id")?.let { csilV -> CsilCbor.asText(csilV) }
+    val artistName = CsilCbor.mapGet(cbor, "artist_name")?.let { csilV -> CsilCbor.asText(csilV) }
     val albumId = CsilCbor.mapGet(cbor, "album_id")?.let { csilV -> CsilCbor.asText(csilV) }
+    val albumTitle = CsilCbor.mapGet(cbor, "album_title")?.let { csilV -> CsilCbor.asText(csilV) }
     val trackNo = CsilCbor.mapGet(cbor, "track_no")?.let { csilV -> CsilCbor.asULong(csilV) }
     val discNo = CsilCbor.mapGet(cbor, "disc_no")?.let { csilV -> CsilCbor.asULong(csilV) }
     val durationMs = CsilCbor.asULong(CsilCbor.require(cbor, "duration_ms"))
@@ -557,7 +580,7 @@ fun trackFromCborValue(cbor: CborValue): Track {
     val bitDepth = CsilCbor.mapGet(cbor, "bit_depth")?.let { csilV -> CsilCbor.asULong(csilV) }
     val rootRelativePath = CsilCbor.asText(CsilCbor.require(cbor, "root_relative_path"))
     val contentHash = CsilCbor.mapGet(cbor, "content_hash")?.let { csilV -> CsilCbor.asText(csilV) }
-    return Track(id = id, library = library, title = title, artistId = artistId, albumId = albumId, trackNo = trackNo, discNo = discNo, durationMs = durationMs, codec = codec, bitrateKbps = bitrateKbps, sampleRate = sampleRate, channels = channels, bitDepth = bitDepth, rootRelativePath = rootRelativePath, contentHash = contentHash)
+    return Track(id = id, library = library, title = title, artistId = artistId, artistName = artistName, albumId = albumId, albumTitle = albumTitle, trackNo = trackNo, discNo = discNo, durationMs = durationMs, codec = codec, bitrateKbps = bitrateKbps, sampleRate = sampleRate, channels = channels, bitDepth = bitDepth, rootRelativePath = rootRelativePath, contentHash = contentHash)
 }
 
 /** Decode CSIL CBOR bytes into a Track. */

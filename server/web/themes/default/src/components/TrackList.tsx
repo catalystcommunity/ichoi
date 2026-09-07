@@ -1,18 +1,18 @@
-// A keyboard-navigable list of tracks. Activating a row appends it to the queue;
-// the trailing play button appends it and immediately moves playback to that new entry.
+// A keyboard-navigable list of tracks. Activating a row appends it to the queue.
 import { For, Show, type JSX } from "solid-js";
 import type { AudiobookProgress, Track } from "../lib/schema.ts";
 import { codecLabel, formatDuration, isLossless, trackTechSummary } from "../lib/format.ts";
 import { useI18n } from "../lib/i18n.tsx";
 import { Meter } from "./common.tsx";
-import { IconPlay } from "./Icons.tsx";
+import { IconMoreVertical } from "./Icons.tsx";
 
 interface Props {
   tracks: Track[];
   currentTrackId?: string;
   playing?: boolean;
-  onPlay: (index: number) => void;
   onQueue: (index: number) => void;
+  onPlayNext: (index: number) => void;
+  onPlayNow: (index: number) => void;
   audiobookProgress?: Map<string, AudiobookProgress>;
 }
 
@@ -35,6 +35,8 @@ export function TrackList(props: Props): JSX.Element {
                 type="button"
                 class="track-row"
                 aria-current={isCurrent() ? "true" : undefined}
+                aria-label={t("queue.addTrack", { title: track.title })}
+                title={t("queue.addTrack", { title: track.title })}
                 onClick={() => props.onQueue(i())}
               >
                 <span class="track-no" aria-hidden="true">
@@ -44,6 +46,11 @@ export function TrackList(props: Props): JSX.Element {
                 </span>
                 <span class="track-main">
                   <span class="track-title">{track.title}</span>
+                  <Show when={track.artist_name || track.album_title}>
+                    <span class="track-context">
+                      {[track.artist_name, track.album_title].filter(Boolean).join(" · ")}
+                    </span>
+                  </Show>
                   <span class="track-tech">{trackTechSummary(track)}</span>
                   <Show when={progress()}>
                     {(p) => (
@@ -61,15 +68,37 @@ export function TrackList(props: Props): JSX.Element {
                 </Show>
                 <span class="track-dur">{formatDuration(track.duration_ms)}</span>
               </button>
-              <button
-                type="button"
-                class="icon-btn track-play-btn"
-                aria-label={t("player.playTrack", { title: track.title })}
-                title={t("player.playTrack", { title: track.title })}
-                onClick={() => props.onPlay(i())}
-              >
-                <IconPlay size={16} />
-              </button>
+              <details class="track-menu">
+                <summary
+                  class="icon-btn"
+                  aria-label={t("queue.moreActions", { title: track.title })}
+                  title={t("queue.moreActions", { title: track.title })}
+                >
+                  <IconMoreVertical size={16} />
+                </summary>
+                <div class="track-menu-popover" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(event) => {
+                      props.onPlayNext(i());
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >
+                    {t("queue.playNext")}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={(event) => {
+                      props.onPlayNow(i());
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    }}
+                  >
+                    {t("queue.playNow")}
+                  </button>
+                </div>
+              </details>
             </li>
           );
         }}

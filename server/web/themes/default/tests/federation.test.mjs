@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   copyTrackToInstance,
+  federatedDetailRoute,
   importedTrackPath,
   searchAllInstances,
 } from "../src/lib/federation.ts";
@@ -16,6 +17,13 @@ const track = {
   channels: 2,
   root_relative_path: "Artist/Album/01.flac",
 };
+
+test("search detail routes preserve the source server and library", () => {
+  assert.equal(
+    federatedDetailRoute("friend/server", "music", "album", "album one"),
+    "/source/friend%2Fserver/music/album/album%20one",
+  );
+});
 
 test("searches both libraries on every connected instance", async () => {
   const calls = [];

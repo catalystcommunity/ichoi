@@ -1,4 +1,5 @@
-import { createResource, createSignal, For, Show, type JSX } from "solid-js";
+import { createResource, createSignal, For, onCleanup, Show, type JSX } from "solid-js";
+import { useNavigate, useSearchParams } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { usePlayback } from "../stores/playback.tsx";
@@ -7,8 +8,8 @@ import { TrackList } from "../components/TrackList.tsx";
 import { EmptyState, Spinner } from "../components/common.tsx";
 import {
   copyTracksToInstance,
+  federatedDetailRoute,
   searchAllInstances,
-  type FederatedSearchResult,
   type FederationServer,
 } from "../lib/federation.ts";
 import type { Track } from "../lib/schema.ts";
@@ -18,15 +19,23 @@ export function SearchPage(): JSX.Element {
   const playback = usePlayback();
   const toast = useToast();
   const { t } = useI18n();
-  const [query, setQuery] = createSignal("");
-  const [debounced, setDebounced] = createSignal("");
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = typeof searchParams.q === "string" ? searchParams.q : "";
+  const [query, setQuery] = createSignal(initialQuery);
+  const [debounced, setDebounced] = createSignal(initialQuery.trim());
   const [busy, setBusy] = createSignal<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => clearTimeout(timer));
 
   const onInput = (value: string) => {
     setQuery(value);
     clearTimeout(timer);
-    timer = setTimeout(() => setDebounced(value.trim()), 220);
+    timer = setTimeout(() => {
+      const next = value.trim();
+      setDebounced(next);
+      setSearchParams({ q: next || undefined }, { replace: true });
+    }, 220);
   };
 
   const connectedInstances = (): FederationServer[] =>
@@ -56,16 +65,21 @@ export function SearchPage(): JSX.Element {
       return response && (response.artists.length || response.albums.length || response.tracks.length);
     });
 
-  async function addTracks(source: FederationServer, tracks: Track[], play = false): Promise<void> {
+  async function addTracks(
+    source: FederationServer,
+    tracks: Track[],
+    action: "queue" | "next" | "now",
+  ): Promise<void> {
     const target = destination();
     if (!target) throw new Error(t("errors.connectFirst"));
     if (source.id !== target.id && servers.active()?.session?.can_admin !== true) {
       throw new Error(t("search.importAdminRequired", { name: target.name }));
     }
     const localTracks = await copyTracksToInstance(source, target, tracks);
-    if (play && localTracks[0]) await playback.enqueueAndPlay(localTracks[0]);
+    const first = localTracks[0];
+    if (action === "now" && first) await playback.playNow([first], 0);
+    else if (action === "next" && first) playback.playNext(first);
     else playback.enqueue(localTracks);
-    toast.show(t("search.added", { count: localTracks.length, name: target.name }));
   }
 
   async function runAction(key: string, action: () => Promise<void>): Promise<void> {
@@ -78,24 +92,6 @@ export function SearchPage(): JSX.Element {
     } finally {
       setBusy(undefined);
     }
-  }
-
-  async function addAlbum(result: FederatedSearchResult, albumId: string): Promise<void> {
-    const detail = await result.server.api.library.getAlbum({ album_id: albumId });
-    await addTracks(result.server, detail.tracks);
-  }
-
-  async function addArtist(result: FederatedSearchResult, artistId: string): Promise<void> {
-    const artist = await result.server.api.library.getArtist({
-      artist_id: artistId,
-      library: result.library,
-    });
-    const tracks: Track[] = [];
-    for (const album of artist.albums) {
-      const detail = await result.server.api.library.getAlbum({ album_id: album.id });
-      tracks.push(...detail.tracks);
-    }
-    await addTracks(result.server, tracks);
   }
 
   return (
@@ -141,15 +137,16 @@ export function SearchPage(): JSX.Element {
                             <button
                               type="button"
                               class="tile"
-                              disabled={Boolean(busy())}
-                              onClick={() => void runAction(
-                                `${result.server.id}:artist:${artist.id}`,
-                                () => addArtist(result, artist.id),
-                              )}
+                              onClick={() => navigate(federatedDetailRoute(
+                                result.server.id,
+                                result.library,
+                                "artist",
+                                artist.id,
+                              ))}
                             >
                               <span class="cover"><span class="cover-fallback">{artist.name[0]?.toUpperCase()}</span></span>
                               <span class="tile-title">{artist.name}</span>
-                              <span class="tile-sub">{t("search.queueArtist")}</span>
+                              <span class="tile-sub">{t("search.viewArtist")}</span>
                             </button>
                           )}
                         </For>
@@ -164,16 +161,17 @@ export function SearchPage(): JSX.Element {
                             <button
                               type="button"
                               class="tile"
-                              disabled={Boolean(busy())}
-                              onClick={() => void runAction(
-                                `${result.server.id}:album:${album.id}`,
-                                () => addAlbum(result, album.id),
-                              )}
+                              onClick={() => navigate(federatedDetailRoute(
+                                result.server.id,
+                                result.library,
+                                "album",
+                                album.id,
+                              ))}
                             >
                               <span class="cover"><span class="cover-fallback">{album.title[0]?.toUpperCase()}</span></span>
                               <span class="tile-title">{album.title}</span>
                               <Show when={album.artist_name}><span class="tile-sub">{album.artist_name}</span></Show>
-                              <span class="tile-sub">{t("search.queueAlbum")}</span>
+                              <span class="tile-sub">{t("search.viewAlbum")}</span>
                             </button>
                           )}
                         </For>
@@ -186,13 +184,17 @@ export function SearchPage(): JSX.Element {
                         tracks={result.response!.tracks}
                         currentTrackId={playback.current()?.id}
                         playing={playback.snapshot().status === "playing"}
-                        onPlay={(index) => void runAction(
-                          `${result.server.id}:play:${result.response!.tracks[index]!.id}`,
-                          () => addTracks(result.server, [result.response!.tracks[index]!], true),
-                        )}
                         onQueue={(index) => void runAction(
                           `${result.server.id}:track:${result.response!.tracks[index]!.id}`,
-                          () => addTracks(result.server, [result.response!.tracks[index]!]),
+                          () => addTracks(result.server, [result.response!.tracks[index]!], "queue"),
+                        )}
+                        onPlayNext={(index) => void runAction(
+                          `${result.server.id}:next:${result.response!.tracks[index]!.id}`,
+                          () => addTracks(result.server, [result.response!.tracks[index]!], "next"),
+                        )}
+                        onPlayNow={(index) => void runAction(
+                          `${result.server.id}:now:${result.response!.tracks[index]!.id}`,
+                          () => addTracks(result.server, [result.response!.tracks[index]!], "now"),
                         )}
                       />
                     </Show>

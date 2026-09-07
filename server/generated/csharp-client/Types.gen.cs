@@ -139,8 +139,12 @@ public sealed record Track
     public required string Title { get; init; }
     // CBOR key: artist_id
     public ArtistId? ArtistId { get; init; }
+    // CBOR key: artist_name
+    public string? ArtistName { get; init; }
     // CBOR key: album_id
     public AlbumId? AlbumId { get; init; }
+    // CBOR key: album_title
+    public string? AlbumTitle { get; init; }
     // CBOR key: track_no
     public ulong? TrackNo { get; init; }
     // CBOR key: disc_no

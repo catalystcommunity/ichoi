@@ -14,6 +14,15 @@ export interface FederatedSearchResult {
   error?: string;
 }
 
+export function federatedDetailRoute(
+  serverId: string,
+  library: Library,
+  kind: "artist" | "album",
+  id: string,
+): string {
+  return `/source/${encodeURIComponent(serverId)}/${library}/${kind}/${encodeURIComponent(id)}`;
+}
+
 export async function searchAllInstances(
   instances: FederationServer[],
   query: string,

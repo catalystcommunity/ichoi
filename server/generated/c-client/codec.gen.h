@@ -271,12 +271,36 @@ static inline int csilc_read_arg(const uint8_t *b, size_t len, uint8_t low, uint
 
 static inline const uint8_t *csilc_arena_copy(CsilCodecArena *a, const uint8_t *src, size_t n,
                                        bool as_text) {
+    if (as_text && n == SIZE_MAX) return NULL;
     size_t total = as_text ? n + 1 : (n ? n : 1);
     uint8_t *dst = (uint8_t *)csilc_arena_alloc(a, total);
     if (!dst) return NULL;
     if (n) memcpy(dst, src, n);
     if (as_text) dst[n] = 0;
     return dst;
+}
+
+static inline bool csilc_valid_utf8(const uint8_t *s, size_t n) {
+    size_t i = 0;
+    while (i < n) {
+        uint8_t c = s[i++];
+        if (c < 0x80) continue;
+        size_t need;
+        uint32_t cp;
+        if (c >= 0xc2 && c <= 0xdf) { need = 1; cp = c & 0x1f; }
+        else if (c >= 0xe0 && c <= 0xef) { need = 2; cp = c & 0x0f; }
+        else if (c >= 0xf0 && c <= 0xf4) { need = 3; cp = c & 0x07; }
+        else return false;
+        if (need > n - i) return false;
+        for (size_t j = 0; j < need; j++) {
+            uint8_t d = s[i++];
+            if ((d & 0xc0) != 0x80) return false;
+            cp = (cp << 6) | (uint32_t)(d & 0x3f);
+        }
+        if ((need == 2 && cp < 0x800) || (need == 3 && cp < 0x10000) ||
+            (cp >= 0xd800 && cp <= 0xdfff) || cp > 0x10ffff) return false;
+    }
+    return true;
 }
 
 /* Decode a half-precision float (only ever seen on decode; encode never emits one). */
@@ -305,7 +329,8 @@ static inline double csilc_half_to_double(uint16_t h) {
 }
 
 static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t len,
-                              csilc_value *out, size_t *consumed) {
+                              csilc_value *out, size_t *consumed, size_t depth) {
+    if (depth > 64) return -1;
     if (len == 0) return -1;
     uint8_t ib = b[0];
     uint8_t major = ib >> 5;
@@ -329,6 +354,7 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
     case 3: {
         if (arg > len - head) return -1;
         bool as_text = major == 3;
+        if (as_text && !csilc_valid_utf8(b + head, (size_t)arg)) return -1;
         const uint8_t *copy = csilc_arena_copy(a, b + head, (size_t)arg, as_text);
         if (!copy) return -1;
         out->kind = as_text ? CSILC_TEXT : CSILC_BYTES;
@@ -338,6 +364,7 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
         return 0;
     }
     case 4: {
+        if (arg > len - head || arg > SIZE_MAX / sizeof(csilc_value)) return -1;
         csilc_value *items = NULL;
         if (arg) {
             items = (csilc_value *)csilc_arena_alloc(a, (size_t)arg * sizeof(*items));
@@ -346,7 +373,7 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
         size_t off = head;
         for (uint64_t i = 0; i < arg; i++) {
             size_t m = 0;
-            if (csilc_decode_value(a, b + off, len - off, &items[i], &m)) return -1;
+            if (csilc_decode_value(a, b + off, len - off, &items[i], &m, depth + 1)) return -1;
             off += m;
         }
         out->kind = CSILC_ARRAY;
@@ -356,6 +383,7 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
         return 0;
     }
     case 5: {
+        if (arg > len - head || arg > SIZE_MAX / sizeof(csilc_pair)) return -1;
         csilc_pair *pairs = NULL;
         if (arg) {
             pairs = (csilc_pair *)csilc_arena_alloc(a, (size_t)arg * sizeof(*pairs));
@@ -367,9 +395,9 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
             csilc_value *v = (csilc_value *)csilc_arena_alloc(a, sizeof(*v));
             if (!k || !v) return -1;
             size_t m = 0;
-            if (csilc_decode_value(a, b + off, len - off, k, &m)) return -1;
+            if (csilc_decode_value(a, b + off, len - off, k, &m, depth + 1)) return -1;
             off += m;
-            if (csilc_decode_value(a, b + off, len - off, v, &m)) return -1;
+            if (csilc_decode_value(a, b + off, len - off, v, &m, depth + 1)) return -1;
             off += m;
             pairs[i].key = k;
             pairs[i].val = v;
@@ -384,7 +412,7 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
         csilc_value *content = (csilc_value *)csilc_arena_alloc(a, sizeof(*content));
         if (!content) return -1;
         size_t m = 0;
-        if (csilc_decode_value(a, b + head, len - head, content, &m)) return -1;
+        if (csilc_decode_value(a, b + head, len - head, content, &m, depth + 1)) return -1;
         out->kind = CSILC_TAG;
         out->as.tag.num = arg;
         out->as.tag.content = content;
@@ -450,7 +478,7 @@ static inline int csilc_decode(const uint8_t *b, size_t len, CsilCodecArena **ou
         return -1;
     }
     size_t consumed = 0;
-    if (csilc_decode_value(a, b, len, root, &consumed)) {
+    if (csilc_decode_value(a, b, len, root, &consumed, 0)) {
         csil_codec_arena_free(a);
         return -1;
     }
@@ -1187,6 +1215,8 @@ static inline int csilc_enc_Track(csilc_buf *b, const Track *v) {
     if (v->track_no) csilc_n++;
     if (v->artist_id) csilc_n++;
     if (v->bit_depth) csilc_n++;
+    if (v->album_title) csilc_n++;
+    if (v->artist_name) csilc_n++;
     if (v->bitrate_kbps) csilc_n++;
     if (v->content_hash) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
@@ -1219,6 +1249,14 @@ static inline int csilc_enc_Track(csilc_buf *b, const Track *v) {
     if (v->bit_depth) {
         if (csilc_w_text(b, "bit_depth", 9)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->bit_depth)))) return -1;
+    }
+    if (v->album_title) {
+        if (csilc_w_text(b, "album_title", 11)) return -1;
+        if (csilc_w_text(b, (v->album_title), (v->album_title) ? strlen(v->album_title) : 0)) return -1;
+    }
+    if (v->artist_name) {
+        if (csilc_w_text(b, "artist_name", 11)) return -1;
+        if (csilc_w_text(b, (v->artist_name), (v->artist_name) ? strlen(v->artist_name) : 0)) return -1;
     }
     if (csilc_w_text(b, "duration_ms", 11)) return -1;
     if (csilc_w_uint(b, (uint64_t)(v->duration_ms))) return -1;
@@ -1292,6 +1330,10 @@ static inline int csilc_dec_Track(const csilc_value *m, CsilCodecArena *a, Track
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->bit_depth = csilc_p;
     }
+    csilc_f = csilc_map_get(m, "album_title");
+    out->album_title = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "artist_name");
+    out->artist_name = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
     csilc_f = csilc_map_get(m, "duration_ms");
     if (!csilc_as_u64(csilc_f, &(out->duration_ms))) return -1;
     csilc_f = csilc_map_get(m, "sample_rate");

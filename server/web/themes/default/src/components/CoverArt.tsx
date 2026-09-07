@@ -10,6 +10,7 @@ interface Props {
   album: Pick<Album, "id" | "title" | "has_cover_art">;
   maxSize?: number;
   class?: string;
+  serverId?: string;
 }
 
 export function CoverArt(props: Props): JSX.Element {
@@ -18,10 +19,15 @@ export function CoverArt(props: Props): JSX.Element {
   let disposed = false;
 
   const [data] = createResource(
-    () =>
-      props.album.has_cover_art
-        ? { id: props.album.id, maxSize: props.maxSize ?? 512, api: servers.api() }
-        : null,
+    () => {
+      if (!props.album.has_cover_art) return null;
+      if (props.serverId) servers.servers.find((server) => server.id === props.serverId)?.state;
+      return {
+        id: props.album.id,
+        maxSize: props.maxSize ?? 512,
+        api: props.serverId ? servers.apiFor(props.serverId) : servers.api(),
+      };
+    },
     async (input) => {
       if (!input?.api) return undefined;
       try {

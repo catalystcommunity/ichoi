@@ -283,7 +283,9 @@ typedef struct Track {
     Library library;
     char *title;
     ArtistId *artist_id;
+    char *artist_name;
     AlbumId *album_id;
+    char *album_title;
     uint64_t *track_no;
     uint64_t *disc_no;
     uint64_t duration_ms;

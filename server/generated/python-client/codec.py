@@ -94,6 +94,9 @@ def cbor_encode(value: Any) -> bytes:
 def _csil_read_arg(b: bytes, pos: int, low: int):
     if low < 24:
         return low, pos + 1
+    width = {24: 1, 25: 2, 26: 4, 27: 8}.get(low)
+    if width is None or len(b) - pos - 1 < width:
+        raise ValueError("csilgen: truncated argument")
     if low == 24:
         return b[pos + 1], pos + 2
     if low == 25:
@@ -105,7 +108,11 @@ def _csil_read_arg(b: bytes, pos: int, low: int):
     raise ValueError("csilgen: bad head")
 
 
-def _csil_dec(b: bytes, pos: int):
+def _csil_dec(b: bytes, pos: int, depth: int):
+    if depth > 64:
+        raise ValueError("csilgen: nesting limit exceeded")
+    if pos >= len(b):
+        raise ValueError("csilgen: unexpected end of input")
     ib = b[pos]
     major = ib >> 5
     low = ib & 0x1F
@@ -127,31 +134,39 @@ def _csil_dec(b: bytes, pos: int):
     if major == 1:
         return -1 - arg, pos
     if major == 2:
+        if arg > len(b) - pos:
+            raise ValueError("csilgen: truncated byte string")
         return bytes(b[pos : pos + arg]), pos + arg
     if major == 3:
+        if arg > len(b) - pos:
+            raise ValueError("csilgen: truncated text string")
         return b[pos : pos + arg].decode("utf-8"), pos + arg
     if major == 4:
+        if arg > len(b) - pos:
+            raise ValueError("csilgen: array length exceeds remaining input")
         items = []
         for _ in range(arg):
-            item, pos = _csil_dec(b, pos)
+            item, pos = _csil_dec(b, pos, depth + 1)
             items.append(item)
         return items, pos
     if major == 5:
+        if arg > len(b) - pos:
+            raise ValueError("csilgen: map length exceeds remaining input")
         result: Dict[Any, Any] = {}
         for _ in range(arg):
-            key, pos = _csil_dec(b, pos)
-            val, pos = _csil_dec(b, pos)
+            key, pos = _csil_dec(b, pos, depth + 1)
+            val, pos = _csil_dec(b, pos, depth + 1)
             result[key] = val
         return result, pos
     if major == 6:
-        inner, pos = _csil_dec(b, pos)
+        inner, pos = _csil_dec(b, pos, depth + 1)
         return CborTag(arg, inner), pos
     raise ValueError("csilgen: bad major type")
 
 
 def cbor_decode(data: bytes) -> Any:
     """Decode canonical CBOR bytes into a value tree."""
-    value, pos = _csil_dec(data, 0)
+    value, pos = _csil_dec(data, 0, 0)
     if pos != len(data):
         raise ValueError("csilgen: trailing bytes")
     return value
@@ -540,6 +555,12 @@ def _encode_track_value(v: "Track") -> Dict[Any, Any]:
     csil_x = v.bit_depth
     if csil_x is not None:
         csil_m["bit_depth"] = csil_x
+    csil_x = v.album_title
+    if csil_x is not None:
+        csil_m["album_title"] = csil_x
+    csil_x = v.artist_name
+    if csil_x is not None:
+        csil_m["artist_name"] = csil_x
     csil_m["duration_ms"] = v.duration_ms
     csil_m["sample_rate"] = v.sample_rate
     csil_x = v.bitrate_kbps
@@ -558,7 +579,9 @@ def _decode_track_value(tree: Any) -> "Track":
         library=_decode_library_value(tree["library"]),
         title=_csil_expect_text(tree["title"]),
         artist_id=(None if tree.get("artist_id") is None else _csil_expect_text(tree["artist_id"])),
+        artist_name=(None if tree.get("artist_name") is None else _csil_expect_text(tree["artist_name"])),
         album_id=(None if tree.get("album_id") is None else _csil_expect_text(tree["album_id"])),
+        album_title=(None if tree.get("album_title") is None else _csil_expect_text(tree["album_title"])),
         track_no=(None if tree.get("track_no") is None else _csil_expect_uint(tree["track_no"])),
         disc_no=(None if tree.get("disc_no") is None else _csil_expect_uint(tree["disc_no"])),
         duration_ms=_csil_expect_uint(tree["duration_ms"]),

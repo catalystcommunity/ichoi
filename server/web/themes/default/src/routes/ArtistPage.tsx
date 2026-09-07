@@ -14,15 +14,27 @@ export function ArtistPage(): JSX.Element {
 
   const [detail] = createResource(
     () => {
-      const api = servers.api();
+      const sourceRecord = params.serverId
+        ? servers.servers.find((server) => server.id === params.serverId)
+        : servers.active();
+      const api = sourceRecord?.state === "ready"
+        ? params.serverId ? servers.apiFor(params.serverId) : servers.api()
+        : undefined;
       return api && params.id ? { api, id: params.id } : undefined;
     },
-    (input) => input.api.library.getArtist({ artist_id: input.id }),
+    (input) => input.api.library.getArtist({
+      artist_id: input.id,
+      library: params.library === "audiobook" ? "audiobook" : "music",
+    }),
   );
 
   return (
     <div class="page">
-      <button type="button" class="btn btn-ghost" onClick={() => navigate("/")}>
+      <button
+        type="button"
+        class="btn btn-ghost"
+        onClick={() => params.serverId ? navigate(-1) : navigate("/")}
+      >
         <IconChevronLeft size={16} /> {t("library.artists")}
       </button>
 
@@ -40,7 +52,17 @@ export function ArtistPage(): JSX.Element {
                 fallback={<EmptyState title={t("library.noAlbums")} />}
               >
                 <div class="grid">
-                  <For each={d().albums}>{(album) => <AlbumTile album={album} />}</For>
+                  <For each={d().albums}>
+                    {(album) => (
+                      <AlbumTile
+                        album={album}
+                        serverId={params.serverId}
+                        href={params.serverId
+                          ? `/source/${encodeURIComponent(params.serverId)}/${params.library === "audiobook" ? "audiobook" : "music"}/album/${encodeURIComponent(album.id)}`
+                          : undefined}
+                      />
+                    )}
+                  </For>
                 </div>
               </Show>
             </>

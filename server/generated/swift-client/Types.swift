@@ -196,8 +196,12 @@ public struct Track: Equatable, Sendable {
     public let title: String
     /// wire key: artist_id
     public let artistId: ArtistId?
+    /// wire key: artist_name
+    public let artistName: String?
     /// wire key: album_id
     public let albumId: AlbumId?
+    /// wire key: album_title
+    public let albumTitle: String?
     /// wire key: track_no
     public let trackNo: UInt64?
     /// wire key: disc_no
@@ -217,12 +221,14 @@ public struct Track: Equatable, Sendable {
     /// wire key: content_hash
     public let contentHash: String?
 
-    public init(id: TrackId, library: Library, title: String, artistId: ArtistId? = nil, albumId: AlbumId? = nil, trackNo: UInt64? = nil, discNo: UInt64? = nil, durationMs: UInt64, codec: Codec, bitrateKbps: UInt64? = nil, sampleRate: UInt64, channels: UInt64, bitDepth: UInt64? = nil, rootRelativePath: String, contentHash: String? = nil) {
+    public init(id: TrackId, library: Library, title: String, artistId: ArtistId? = nil, artistName: String? = nil, albumId: AlbumId? = nil, albumTitle: String? = nil, trackNo: UInt64? = nil, discNo: UInt64? = nil, durationMs: UInt64, codec: Codec, bitrateKbps: UInt64? = nil, sampleRate: UInt64, channels: UInt64, bitDepth: UInt64? = nil, rootRelativePath: String, contentHash: String? = nil) {
         self.id = id
         self.library = library
         self.title = title
         self.artistId = artistId
+        self.artistName = artistName
         self.albumId = albumId
+        self.albumTitle = albumTitle
         self.trackNo = trackNo
         self.discNo = discNo
         self.durationMs = durationMs
@@ -241,7 +247,9 @@ public struct Track: Equatable, Sendable {
         "library": "library",
         "title": "title",
         "artistId": "artist_id",
+        "artistName": "artist_name",
         "albumId": "album_id",
+        "albumTitle": "album_title",
         "trackNo": "track_no",
         "discNo": "disc_no",
         "durationMs": "duration_ms",

@@ -137,6 +137,15 @@ export const IconPlus = (p: IconProps) =>
     </>
   ));
 
+export const IconMoreVertical = (p: IconProps) =>
+  base(p, (
+    <>
+      <circle cx="12" cy="5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none" />
+    </>
+  ));
+
 export const IconChevronLeft = (p: IconProps) => base(p, <path d="m14 6-6 6 6 6" />);
 export const IconVolume = (p: IconProps) =>
   base(p, (

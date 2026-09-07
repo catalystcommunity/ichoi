@@ -1,13 +1,19 @@
-import { createContext, For, onCleanup, useContext, type JSX, type ParentProps } from "solid-js";
+import { createContext, For, onCleanup, Show, useContext, type JSX, type ParentProps } from "solid-js";
 import { createStore } from "solid-js/store";
+
+interface ToastAction {
+  label: string;
+  run: () => void;
+}
 
 interface Toast {
   id: number;
   message: string;
+  action?: ToastAction;
 }
 
 interface ToastContextValue {
-  show: (message: string) => void;
+  show: (message: string, action?: ToastAction) => void;
 }
 
 const ToastContext = createContext<ToastContextValue>();
@@ -24,10 +30,10 @@ export function ToastProvider(props: ParentProps): JSX.Element {
     setToasts((list) => list.filter((t) => t.id !== id));
   }
 
-  function show(message: string): void {
+  function show(message: string, action?: ToastAction): void {
     const id = nextId++;
-    setToasts((list) => [...list, { id, message }]);
-    timers.set(id, window.setTimeout(() => dismiss(id), 4200));
+    setToasts((list) => [...list, { id, message, action }]);
+    timers.set(id, window.setTimeout(() => dismiss(id), action ? 8000 : 4200));
   }
 
   onCleanup(() => {
@@ -41,9 +47,31 @@ export function ToastProvider(props: ParentProps): JSX.Element {
       <div class="toast-stack" role="status" aria-live="polite">
         <For each={toasts}>
           {(toast) => (
-            <button type="button" class="toast" onClick={() => dismiss(toast.id)}>
-              {toast.message}
-            </button>
+            <div class="toast">
+              <span>{toast.message}</span>
+              <Show when={toast.action}>
+                {(action) => (
+                  <button
+                    type="button"
+                    class="toast-action"
+                    onClick={() => {
+                      dismiss(toast.id);
+                      action().run();
+                    }}
+                  >
+                    {action().label}
+                  </button>
+                )}
+              </Show>
+              <button
+                type="button"
+                class="toast-dismiss"
+                aria-label="Dismiss"
+                onClick={() => dismiss(toast.id)}
+              >
+                ×
+              </button>
+            </div>
           )}
         </For>
       </div>

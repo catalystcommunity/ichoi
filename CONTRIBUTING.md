@@ -49,6 +49,9 @@ Everything under `generated/` is emitted by `csilgen` and **must never be edited
   Generated files are checked in but must be reproducible — CI
   (`.reactorcide/jobs/csil.yaml`) validates the schema and fails if the checked-in output
   is stale.
+- `.csilgen-release` specifies the required release. `tools.sh` rejects a different CLI
+  version. The `gen` command writes code and `ichoi.csil-schema.cbor` for every target. CI
+  regenerates and checks every target.
 - If the generator lacks a capability you need, or emits something wrong, **do not paper
   over it here.** File a request in the csilgen repo's inbox —
   `~/repos/catalystcommunity/csilgen/docs/csilgen-requests/` — one markdown file per

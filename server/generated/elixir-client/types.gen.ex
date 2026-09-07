@@ -488,7 +488,9 @@ defmodule Csilgen.Generated.Track do
     :library,
     :title,
     :artist_id,
+    :artist_name,
     :album_id,
+    :album_title,
     :track_no,
     :disc_no,
     :duration_ms,
@@ -506,7 +508,9 @@ defmodule Csilgen.Generated.Track do
           library: Csilgen.Generated.Library.t(),
           title: String.t(),
           artist_id: Csilgen.Generated.ArtistId.t() | nil,
+          artist_name: String.t() | nil,
           album_id: Csilgen.Generated.AlbumId.t() | nil,
+          album_title: String.t() | nil,
           track_no: integer() | nil,
           disc_no: integer() | nil,
           duration_ms: integer(),
@@ -524,7 +528,9 @@ defmodule Csilgen.Generated.Track do
     library: "library",
     title: "title",
     artist_id: "artist_id",
+    artist_name: "artist_name",
     album_id: "album_id",
+    album_title: "album_title",
     track_no: "track_no",
     disc_no: "disc_no",
     duration_ms: "duration_ms",
@@ -556,6 +562,14 @@ defmodule Csilgen.Generated.Track do
          if(is_nil(v.track_no), do: nil, else: {{:text, "track_no"}, {:int, v.track_no}}),
          if(is_nil(v.artist_id), do: nil, else: {{:text, "artist_id"}, {:text, v.artist_id}}),
          if(is_nil(v.bit_depth), do: nil, else: {{:text, "bit_depth"}, {:int, v.bit_depth}}),
+         if(is_nil(v.album_title),
+           do: nil,
+           else: {{:text, "album_title"}, {:text, v.album_title}}
+         ),
+         if(is_nil(v.artist_name),
+           do: nil,
+           else: {{:text, "artist_name"}, {:text, v.artist_name}}
+         ),
          {{:text, "duration_ms"}, {:int, v.duration_ms}},
          {{:text, "sample_rate"}, {:int, v.sample_rate}},
          if(is_nil(v.bitrate_kbps),
@@ -623,6 +637,16 @@ defmodule Csilgen.Generated.Track do
         case Map.get(csil_fields, {:text, "bit_depth"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end,
+      album_title:
+        case Map.get(csil_fields, {:text, "album_title"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
+        end,
+      artist_name:
+        case Map.get(csil_fields, {:text, "artist_name"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
         end,
       duration_ms: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "duration_ms"})),
       sample_rate: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "sample_rate"})),

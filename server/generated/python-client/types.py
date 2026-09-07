@@ -230,7 +230,9 @@ class Track:
     channels: int
     root_relative_path: str
     artist_id: Optional[ArtistId] = None
+    artist_name: Optional[str] = None
     album_id: Optional[AlbumId] = None
+    album_title: Optional[str] = None
     track_no: Optional[int] = None
     disc_no: Optional[int] = None
     bitrate_kbps: Optional[int] = None
@@ -247,8 +249,12 @@ class Track:
             result['title'] = self.title
         if hasattr(self, 'artist_id') and self.artist_id is not None:
             result['artist_id'] = self.artist_id
+        if hasattr(self, 'artist_name') and self.artist_name is not None:
+            result['artist_name'] = self.artist_name
         if hasattr(self, 'album_id') and self.album_id is not None:
             result['album_id'] = self.album_id
+        if hasattr(self, 'album_title') and self.album_title is not None:
+            result['album_title'] = self.album_title
         if hasattr(self, 'track_no') and self.track_no is not None:
             result['track_no'] = self.track_no
         if hasattr(self, 'disc_no') and self.disc_no is not None:
@@ -274,7 +280,7 @@ class Track:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Track':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), library=data.get('library'), title=data.get('title'), artist_id=data.get('artist_id'), album_id=data.get('album_id'), track_no=data.get('track_no'), disc_no=data.get('disc_no'), duration_ms=data.get('duration_ms'), codec=data.get('codec'), bitrate_kbps=data.get('bitrate_kbps'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), bit_depth=data.get('bit_depth'), root_relative_path=data.get('root_relative_path'), content_hash=data.get('content_hash'))
+        return cls(id=data.get('id'), library=data.get('library'), title=data.get('title'), artist_id=data.get('artist_id'), artist_name=data.get('artist_name'), album_id=data.get('album_id'), album_title=data.get('album_title'), track_no=data.get('track_no'), disc_no=data.get('disc_no'), duration_ms=data.get('duration_ms'), codec=data.get('codec'), bitrate_kbps=data.get('bitrate_kbps'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), bit_depth=data.get('bit_depth'), root_relative_path=data.get('root_relative_path'), content_hash=data.get('content_hash'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""

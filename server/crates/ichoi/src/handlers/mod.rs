@@ -477,7 +477,9 @@ pub(crate) fn track_from_model(t: &models::Track) -> Track {
         },
         title: t.title.clone(),
         artist_id: t.artist_id.clone(),
+        artist_name: None,
         album_id: t.album_id.clone(),
+        album_title: None,
         track_no: t.track_no.map(|n| n as u64),
         disc_no: t.disc_no.map(|n| n as u64),
         duration_ms: t.duration_ms.max(0) as u64,
@@ -493,6 +495,28 @@ pub(crate) fn track_from_model(t: &models::Track) -> Track {
 
 fn map_track(t: &models::Track) -> Track {
     track_from_model(t)
+}
+
+fn map_search_track(
+    conn: &mut diesel::SqliteConnection,
+    model: &models::Track,
+) -> Result<Track, ServiceError> {
+    let mut track = map_track(model);
+    track.artist_name = model
+        .artist_id
+        .as_deref()
+        .map(|id| db(store::get_artist(conn, id)))
+        .transpose()?
+        .flatten()
+        .map(|artist| artist.name);
+    track.album_title = model
+        .album_id
+        .as_deref()
+        .map(|id| db(store::get_album(conn, id)))
+        .transpose()?
+        .flatten()
+        .map(|album| album.title);
+    Ok(track)
 }
 
 fn transfer_owner(ctx: &Ctx) -> String {
@@ -824,15 +848,16 @@ impl LibraryService for App {
             &input.query,
             lim,
         ))?;
-        let tracks = db(store::search_tracks(
+        let track_rows = db(store::search_tracks(
             &mut conn,
             library_id,
             &input.query,
             lim,
-        ))?
-        .iter()
-        .map(map_track)
-        .collect();
+        ))?;
+        let tracks = track_rows
+            .iter()
+            .map(|track| map_search_track(&mut conn, track))
+            .collect::<Result<Vec<_>, _>>()?;
         let artists = artist_rows
             .iter()
             .map(|a| map_artist(&mut conn, library_id, a))
@@ -1395,10 +1420,15 @@ impl PlayerService for App {
 fn apply_command(cmd: &PlayerCommand, st: &mut models::PlayerStateRow, queue: &mut Vec<String>) {
     match cmd {
         PlayerCommand::Variant0(enq) => {
+            let was_empty = queue.is_empty();
             let at = enq.at_index.map(|i| i as usize).unwrap_or(queue.len());
             let at = at.min(queue.len());
             for (i, tid) in enq.track_ids.iter().enumerate() {
                 queue.insert((at + i).min(queue.len()), tid.clone());
+            }
+            if was_empty && !queue.is_empty() {
+                st.current_index = Some(0);
+                st.position_ms = Some(0);
             }
         }
         PlayerCommand::Variant1(rem) => {
