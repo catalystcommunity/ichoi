@@ -538,6 +538,53 @@ public final class CsilCbor {
         return decOk(decode(data));
     }
 
+    static CborValue encContentReport(ContentReport v) {
+        List<CborEntry> csilEntries = new ArrayList<>(9);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));
+        csilEntries.add(new CborEntry(new CborText("reason"), encContentReportReason(v.reason())));
+        csilEntries.add(new CborEntry(new CborText("status"), encContentReportStatus(v.status())));
+        if (v.details() != null) {
+            csilEntries.add(new CborEntry(new CborText("details"), new CborText(v.details())));
+        }
+        csilEntries.add(new CborEntry(new CborText("target_id"), new CborText(v.targetId())));
+        csilEntries.add(new CborEntry(new CborText("created_at"), encTimestamp(v.createdAt())));
+        if (v.resolvedAt() != null) {
+            csilEntries.add(new CborEntry(new CborText("resolved_at"), encTimestamp(v.resolvedAt())));
+        }
+        csilEntries.add(new CborEntry(new CborText("target_type"), encContentReportTargetType(v.targetType())));
+        csilEntries.add(new CborEntry(new CborText("reporter_account_id"), new CborText((v.reporterAccountId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static ContentReport decContentReport(CborValue csilRoot) {
+        ContentReportId id = new ContentReportId(asText(require(csilRoot, "id")));
+        AccountId reporterAccountId = new AccountId(asText(require(csilRoot, "reporter_account_id")));
+        ContentReportTargetType targetType = decContentReportTargetType(require(csilRoot, "target_type"));
+        String targetId = asText(require(csilRoot, "target_id"));
+        ContentReportReason reason = decContentReportReason(require(csilRoot, "reason"));
+        String details;
+        {
+            CborValue csilField = mapGet(csilRoot, "details");
+            details = csilField != null ? asText(csilField) : null;
+        }
+        ContentReportStatus status = decContentReportStatus(require(csilRoot, "status"));
+        Instant createdAt = asTimestamp(require(csilRoot, "created_at"));
+        Instant resolvedAt;
+        {
+            CborValue csilField = mapGet(csilRoot, "resolved_at");
+            resolvedAt = csilField != null ? asTimestamp(csilField) : null;
+        }
+        return new ContentReport(id, reporterAccountId, targetType, targetId, reason, details, status, createdAt, resolvedAt);
+    }
+
+    public static byte[] encodeContentReport(ContentReport v) {
+        return encode(encContentReport(v));
+    }
+
+    public static ContentReport decodeContentReport(byte[] data) {
+        return decContentReport(decode(data));
+    }
+
     static CborValue encServiceError(ServiceError v) {
         List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("code"), new CborInt(v.code())));
@@ -639,6 +686,25 @@ public final class CsilCbor {
 
     public static SessionInfo decodeSessionInfo(byte[] data) {
         return decSessionInfo(decode(data));
+    }
+
+    static CborValue encDeleteAccountRequest(DeleteAccountRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("confirmation_handle"), new CborText((v.confirmationHandle()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static DeleteAccountRequest decDeleteAccountRequest(CborValue csilRoot) {
+        Handle confirmationHandle = new Handle(asText(require(csilRoot, "confirmation_handle")));
+        return new DeleteAccountRequest(confirmationHandle);
+    }
+
+    public static byte[] encodeDeleteAccountRequest(DeleteAccountRequest v) {
+        return encode(encDeleteAccountRequest(v));
+    }
+
+    public static DeleteAccountRequest decodeDeleteAccountRequest(byte[] data) {
+        return decDeleteAccountRequest(decode(data));
     }
 
     static CborValue encTrack(Track v) {
@@ -1380,6 +1446,25 @@ public final class CsilCbor {
         return decPlaylistRequest(decode(data));
     }
 
+    static CborValue encDeletePlaylistRequest(DeletePlaylistRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("playlist_id"), new CborText((v.playlistId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static DeletePlaylistRequest decDeletePlaylistRequest(CborValue csilRoot) {
+        PlaylistId playlistId = new PlaylistId(asText(require(csilRoot, "playlist_id")));
+        return new DeletePlaylistRequest(playlistId);
+    }
+
+    public static byte[] encodeDeletePlaylistRequest(DeletePlaylistRequest v) {
+        return encode(encDeletePlaylistRequest(v));
+    }
+
+    public static DeletePlaylistRequest decodeDeletePlaylistRequest(byte[] data) {
+        return decDeletePlaylistRequest(decode(data));
+    }
+
     static CborValue encPlaylistDetail(PlaylistDetail v) {
         List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("tracks"), encArray(v.tracks(), csilElem0 -> encTrack(csilElem0))));
@@ -1447,6 +1532,37 @@ public final class CsilCbor {
 
     public static CoverArt decodeCoverArt(byte[] data) {
         return decCoverArt(decode(data));
+    }
+
+    static CborValue encReportContentRequest(ReportContentRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("reason"), encContentReportReason(v.reason())));
+        if (v.details() != null) {
+            csilEntries.add(new CborEntry(new CborText("details"), new CborText(v.details())));
+        }
+        csilEntries.add(new CborEntry(new CborText("target_id"), new CborText(v.targetId())));
+        csilEntries.add(new CborEntry(new CborText("target_type"), encContentReportTargetType(v.targetType())));
+        return new CborMap(csilEntries);
+    }
+
+    static ReportContentRequest decReportContentRequest(CborValue csilRoot) {
+        ContentReportTargetType targetType = decContentReportTargetType(require(csilRoot, "target_type"));
+        String targetId = asText(require(csilRoot, "target_id"));
+        ContentReportReason reason = decContentReportReason(require(csilRoot, "reason"));
+        String details;
+        {
+            CborValue csilField = mapGet(csilRoot, "details");
+            details = csilField != null ? asText(csilField) : null;
+        }
+        return new ReportContentRequest(targetType, targetId, reason, details);
+    }
+
+    public static byte[] encodeReportContentRequest(ReportContentRequest v) {
+        return encode(encReportContentRequest(v));
+    }
+
+    public static ReportContentRequest decodeReportContentRequest(byte[] data) {
+        return decReportContentRequest(decode(data));
     }
 
     static CborValue encPlayer(Player v) {
@@ -2504,6 +2620,27 @@ public final class CsilCbor {
         return decSetRoleRequest(decode(data));
     }
 
+    static CborValue encAdminDeleteAccountRequest(AdminDeleteAccountRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
+        csilEntries.add(new CborEntry(new CborText("confirmation_handle"), new CborText((v.confirmationHandle()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static AdminDeleteAccountRequest decAdminDeleteAccountRequest(CborValue csilRoot) {
+        AccountId accountId = new AccountId(asText(require(csilRoot, "account_id")));
+        Handle confirmationHandle = new Handle(asText(require(csilRoot, "confirmation_handle")));
+        return new AdminDeleteAccountRequest(accountId, confirmationHandle);
+    }
+
+    public static byte[] encodeAdminDeleteAccountRequest(AdminDeleteAccountRequest v) {
+        return encode(encAdminDeleteAccountRequest(v));
+    }
+
+    public static AdminDeleteAccountRequest decodeAdminDeleteAccountRequest(byte[] data) {
+        return decAdminDeleteAccountRequest(decode(data));
+    }
+
     static CborValue encTrustDomainRequest(TrustDomainRequest v) {
         List<CborEntry> csilEntries = new ArrayList<>(1);
         csilEntries.add(new CborEntry(new CborText("domain"), new CborText(v.domain())));
@@ -3273,6 +3410,48 @@ public final class CsilCbor {
         return decLibraryResyncStatus(decode(data));
     }
 
+    static CborValue encListContentReportsResponse(ListContentReportsResponse v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("total"), new CborUint(v.total())));
+        csilEntries.add(new CborEntry(new CborText("reports"), encArray(v.reports(), csilElem0 -> encContentReport(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static ListContentReportsResponse decListContentReportsResponse(CborValue csilRoot) {
+        List<ContentReport> reports = decArray(require(csilRoot, "reports"), csilE0 -> decContentReport(csilE0));
+        long total = asU64(require(csilRoot, "total"));
+        return new ListContentReportsResponse(reports, total);
+    }
+
+    public static byte[] encodeListContentReportsResponse(ListContentReportsResponse v) {
+        return encode(encListContentReportsResponse(v));
+    }
+
+    public static ListContentReportsResponse decodeListContentReportsResponse(byte[] data) {
+        return decListContentReportsResponse(decode(data));
+    }
+
+    static CborValue encUpdateContentReportStatusRequest(UpdateContentReportStatusRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("status"), encContentReportStatus(v.status())));
+        csilEntries.add(new CborEntry(new CborText("report_id"), new CborText((v.reportId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static UpdateContentReportStatusRequest decUpdateContentReportStatusRequest(CborValue csilRoot) {
+        ContentReportId reportId = new ContentReportId(asText(require(csilRoot, "report_id")));
+        ContentReportStatus status = decContentReportStatus(require(csilRoot, "status"));
+        return new UpdateContentReportStatusRequest(reportId, status);
+    }
+
+    public static byte[] encodeUpdateContentReportStatusRequest(UpdateContentReportStatusRequest v) {
+        return encode(encUpdateContentReportStatusRequest(v));
+    }
+
+    public static UpdateContentReportStatusRequest decodeUpdateContentReportStatusRequest(byte[] data) {
+        return decUpdateContentReportStatusRequest(decode(data));
+    }
+
     static CborValue encWatchChangesRequest(WatchChangesRequest v) {
         List<CborEntry> csilEntries = new ArrayList<>(1);
         if (v.active() != null) {
@@ -3365,6 +3544,42 @@ public final class CsilCbor {
             throw new CsilCborException("csil cbor: TranscodeCodec value " + csilVal + " is not a member of the declared enum");
         }
         return new TranscodeCodec(csilVal);
+    }
+
+    static CborValue encContentReportTargetType(ContentReportTargetType v) {
+        return new CborText((String) v.value());
+    }
+
+    static ContentReportTargetType decContentReportTargetType(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "playlist") || Objects.equals(csilVal, "account"))) {
+            throw new CsilCborException("csil cbor: ContentReportTargetType value " + csilVal + " is not a member of the declared enum");
+        }
+        return new ContentReportTargetType(csilVal);
+    }
+
+    static CborValue encContentReportReason(ContentReportReason v) {
+        return new CborText((String) v.value());
+    }
+
+    static ContentReportReason decContentReportReason(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "objectionable-content") || Objects.equals(csilVal, "harassment") || Objects.equals(csilVal, "spam") || Objects.equals(csilVal, "other"))) {
+            throw new CsilCborException("csil cbor: ContentReportReason value " + csilVal + " is not a member of the declared enum");
+        }
+        return new ContentReportReason(csilVal);
+    }
+
+    static CborValue encContentReportStatus(ContentReportStatus v) {
+        return new CborText((String) v.value());
+    }
+
+    static ContentReportStatus decContentReportStatus(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "open") || Objects.equals(csilVal, "resolved") || Objects.equals(csilVal, "dismissed"))) {
+            throw new CsilCborException("csil cbor: ContentReportStatus value " + csilVal + " is not a member of the declared enum");
+        }
+        return new ContentReportStatus(csilVal);
     }
 
     static CborValue encLibrary(Library v) {

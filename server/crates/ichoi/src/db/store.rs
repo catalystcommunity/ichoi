@@ -79,6 +79,17 @@ pub fn list_accounts(
         .load(conn)
 }
 
+pub fn count_admin_accounts(conn: &mut SqliteConnection) -> QueryResult<i64> {
+    accounts::table
+        .filter(accounts::role.eq("admin"))
+        .count()
+        .get_result(conn)
+}
+
+pub fn delete_account_row(conn: &mut SqliteConnection, id: &str) -> QueryResult<usize> {
+    diesel::delete(accounts::table.find(id)).execute(conn)
+}
+
 // ---------------------------------------------------------------------------- sessions
 
 pub fn create_session(
@@ -106,6 +117,7 @@ pub fn account_for_token(
     sessions::table
         .inner_join(accounts::table.on(accounts::id.eq(sessions::account_id)))
         .filter(sessions::token_sha256.eq(token_sha256))
+        .filter(sessions::expires_at.gt(chrono::Utc::now().to_rfc3339()))
         .select(Account::as_select())
         .first(conn)
         .optional()
@@ -786,6 +798,73 @@ pub fn upsert_audiobook_progress(
     Ok(())
 }
 
+// -------------------------------------------------------------------- content reports
+
+pub fn insert_content_report(conn: &mut SqliteConnection, row: &ContentReport) -> QueryResult<()> {
+    diesel::insert_into(content_reports::table)
+        .values(row)
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn get_content_report(
+    conn: &mut SqliteConnection,
+    id: &str,
+) -> QueryResult<Option<ContentReport>> {
+    content_reports::table
+        .find(id)
+        .select(ContentReport::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn list_content_reports(
+    conn: &mut SqliteConnection,
+    offset: i64,
+    limit: i64,
+) -> QueryResult<Vec<ContentReport>> {
+    content_reports::table
+        .order((
+            content_reports::created_at.desc(),
+            content_reports::id.asc(),
+        ))
+        .offset(offset)
+        .limit(limit)
+        .select(ContentReport::as_select())
+        .load(conn)
+}
+
+pub fn count_content_reports(conn: &mut SqliteConnection) -> QueryResult<i64> {
+    content_reports::table.count().get_result(conn)
+}
+
+pub fn update_content_report_status(
+    conn: &mut SqliteConnection,
+    id: &str,
+    status: &str,
+    resolved_at: Option<&str>,
+) -> QueryResult<usize> {
+    diesel::update(content_reports::table.find(id))
+        .set((
+            content_reports::status.eq(status),
+            content_reports::resolved_at.eq(resolved_at),
+        ))
+        .execute(conn)
+}
+
+pub fn delete_content_reports_for_target(
+    conn: &mut SqliteConnection,
+    target_type: &str,
+    target_id: &str,
+) -> QueryResult<usize> {
+    diesel::delete(
+        content_reports::table
+            .filter(content_reports::target_type.eq(target_type))
+            .filter(content_reports::target_id.eq(target_id)),
+    )
+    .execute(conn)
+}
+
 // --------------------------------------------------------------------------- playlists
 
 pub fn list_playlists(conn: &mut SqliteConnection) -> QueryResult<Vec<Playlist>> {
@@ -816,6 +895,31 @@ pub fn upsert_playlist(conn: &mut SqliteConnection, row: &Playlist) -> QueryResu
         ))
         .execute(conn)?;
     Ok(())
+}
+
+pub fn private_playlists_for_owner(
+    conn: &mut SqliteConnection,
+    owner: &str,
+) -> QueryResult<Vec<Playlist>> {
+    playlists::table
+        .filter(playlists::owner.eq(owner))
+        .filter(playlists::visibility.eq("private"))
+        .select(Playlist::as_select())
+        .load(conn)
+}
+
+pub fn clear_public_playlist_owner(conn: &mut SqliteConnection, owner: &str) -> QueryResult<usize> {
+    diesel::update(
+        playlists::table
+            .filter(playlists::owner.eq(owner))
+            .filter(playlists::visibility.ne("private")),
+    )
+    .set(playlists::owner.eq::<Option<String>>(None))
+    .execute(conn)
+}
+
+pub fn delete_playlist_row(conn: &mut SqliteConnection, id: &str) -> QueryResult<usize> {
+    diesel::delete(playlists::table.find(id)).execute(conn)
 }
 
 // ------------------------------------------------------------------- nodes / devices

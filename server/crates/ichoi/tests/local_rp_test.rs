@@ -167,6 +167,22 @@ async fn browser_flow_is_offline_single_use_and_mints_normal_session() {
         .unwrap();
     assert_eq!(cross_origin.status(), StatusCode::FORBIDDEN);
 
+    let unsafe_return = router
+        .clone()
+        .oneshot(
+            Request::post("/auth/linkkeys/local/start")
+                .header(header::HOST, "ichoi-box:4042")
+                .header(header::ORIGIN, "http://ichoi-box:4042")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"identity":"alice@family.example","return_url":"https://attacker.example"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(unsafe_return.status(), StatusCode::BAD_REQUEST);
+
     let start = router
         .clone()
         .oneshot(

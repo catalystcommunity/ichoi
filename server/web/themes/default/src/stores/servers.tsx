@@ -63,6 +63,7 @@ interface ServersContextValue {
   reconnect: (id: string) => Promise<void>;
   completeLinkkeysExchange: (code: string) => Promise<void>;
   signOut: () => Promise<void>;
+  clearLocalSession: () => Promise<void>;
 }
 
 const ServersContext = createContext<ServersContextValue>();
@@ -318,13 +319,19 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     } catch {
       /* clearing the local credential still completes the explicit sign-out */
     }
+    await clearLocalSession();
+  }
+
+  async function clearLocalSession(): Promise<void> {
+    const id = activeId();
+    if (!id) return;
     const record = servers.find((server) => server.id === id);
-    if (record) {
-      await syncMediaSession(record.url).catch(() => undefined);
-    }
+    if (record) await syncMediaSession(record.url).catch(() => undefined);
     patch(id, { token: undefined, session: undefined });
     savePersisted(servers);
-    await reconnect(id);
+    await reconnect(id).catch((error) => {
+      patch(id, { state: "error", detail: String(error) });
+    });
   }
 
   // Restore persisted servers on boot and auto-connect them.
@@ -381,6 +388,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     reconnect,
     completeLinkkeysExchange,
     signOut,
+    clearLocalSession,
   };
 
   return <ServersContext.Provider value={value}>{props.children}</ServersContext.Provider>;

@@ -29,6 +29,11 @@ class SessionClient
   def logout(req)
     Ok.from_cbor(@transport.call("SessionService", "logout", req.to_cbor))
   end
+
+  # delete-account: -> Ok
+  def delete_account(req)
+    Ok.from_cbor(@transport.call("SessionService", "delete-account", req.to_cbor))
+  end
 end
 
 # Typed client for the LibraryService service.
@@ -87,6 +92,11 @@ class LibraryClient
     PlaylistDetail.from_cbor(@transport.call("LibraryService", "get-playlist", req.to_cbor))
   end
 
+  # delete-playlist: -> Ok
+  def delete_playlist(req)
+    Ok.from_cbor(@transport.call("LibraryService", "delete-playlist", req.to_cbor))
+  end
+
   # get-cover-art: -> CoverArt
   def get_cover_art(req)
     CoverArt.from_cbor(@transport.call("LibraryService", "get-cover-art", req.to_cbor))
@@ -100,6 +110,11 @@ class LibraryClient
   # update-audiobook-progress: -> AudiobookProgress
   def update_audiobook_progress(req)
     AudiobookProgress.from_cbor(@transport.call("LibraryService", "update-audiobook-progress", req.to_cbor))
+  end
+
+  # report-content: -> ContentReport
+  def report_content(req)
+    ContentReport.from_cbor(@transport.call("LibraryService", "report-content", req.to_cbor))
   end
 end
 
@@ -174,6 +189,11 @@ class AdminClient
   # set-role: -> Account
   def set_role(req)
     Account.from_cbor(@transport.call("AdminService", "set-role", req.to_cbor))
+  end
+
+  # delete-account: -> Ok
+  def delete_account(req)
+    Ok.from_cbor(@transport.call("AdminService", "delete-account", req.to_cbor))
   end
 
   # trust-domain: -> TrustedDomains
@@ -299,6 +319,16 @@ class AdminClient
   # get-resync-status: -> LibraryResyncStatus
   def get_resync_status(req)
     LibraryResyncStatus.from_cbor(@transport.call("AdminService", "get-resync-status", req.to_cbor))
+  end
+
+  # list-content-reports: -> ListContentReportsResponse
+  def list_content_reports(req)
+    ListContentReportsResponse.from_cbor(@transport.call("AdminService", "list-content-reports", req.to_cbor))
+  end
+
+  # update-content-report-status: -> ContentReport
+  def update_content_report_status(req)
+    ContentReport.from_cbor(@transport.call("AdminService", "update-content-report-status", req.to_cbor))
   end
 end
 

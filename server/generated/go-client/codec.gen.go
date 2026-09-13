@@ -666,6 +666,185 @@ func DecodeOk(csilData []byte) (Ok, error) {
 	return csilDecOk(csilRoot)
 }
 
+// csilEncContentReport builds the canonical CBOR value tree for a ContentReport.
+func csilEncContentReport(csilV ContentReport) cborValue {
+	csilEntries := make(cborMap, 0, 9)
+	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
+	csilEntries = append(csilEntries, cborEntry{cborText("reason"), cborText(csilV.Reason)})
+	csilEntries = append(csilEntries, cborEntry{cborText("status"), cborText(csilV.Status)})
+	if csilV.Details != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("details"), cborText((*csilV.Details))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("target_id"), cborText(csilV.TargetId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("created_at"), csilEncTimestamp(csilV.CreatedAt)})
+	if csilV.ResolvedAt != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("resolved_at"), csilEncTimestamp((*csilV.ResolvedAt))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("target_type"), cborText(csilV.TargetType)})
+	csilEntries = append(csilEntries, cborEntry{cborText("reporter_account_id"), cborText(csilV.ReporterAccountId)})
+	return csilEntries
+}
+
+// csilDecContentReport reconstructs a ContentReport from a decoded CBOR value tree.
+func csilDecContentReport(csilRoot cborValue) (ContentReport, error) {
+	var csilOut ContentReport
+	{
+		csilField, csilErr := cborRequire(csilRoot, "id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return ContentReportId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Id = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "reporter_account_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (AccountId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return AccountId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ReporterAccountId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "target_type")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportTargetType, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "playlist" || csilInner == "account") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ContentReportTargetType(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TargetType = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "target_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TargetId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "reason")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportReason, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "objectionable-content" || csilInner == "harassment" || csilInner == "spam" || csilInner == "other") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ContentReportReason(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Reason = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "details"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Details = &csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "status")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportStatus, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "open" || csilInner == "resolved" || csilInner == "dismissed") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ContentReportStatus(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Status = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "created_at")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (csilAsTimestamp)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CreatedAt = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "resolved_at"); csilOk {
+		csilVal, csilErr := (csilAsTimestamp)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ResolvedAt = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeContentReport encodes a ContentReport to canonical CSIL CBOR bytes.
+func EncodeContentReport(csilV ContentReport) []byte {
+	return cborEncode(csilEncContentReport(csilV))
+}
+
+// DecodeContentReport decodes canonical CSIL CBOR bytes into a ContentReport.
+func DecodeContentReport(csilData []byte) (ContentReport, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ContentReport
+		return csilZero, csilErr
+	}
+	return csilDecContentReport(csilRoot)
+}
+
 // csilEncServiceError builds the canonical CBOR value tree for a ServiceError.
 func csilEncServiceError(csilV ServiceError) cborValue {
 	csilEntries := make(cborMap, 0, 2)
@@ -887,6 +1066,48 @@ func DecodeSessionInfo(csilData []byte) (SessionInfo, error) {
 		return csilZero, csilErr
 	}
 	return csilDecSessionInfo(csilRoot)
+}
+
+// csilEncDeleteAccountRequest builds the canonical CBOR value tree for a DeleteAccountRequest.
+func csilEncDeleteAccountRequest(csilV DeleteAccountRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("confirmation_handle"), cborText(csilV.ConfirmationHandle)})
+	return csilEntries
+}
+
+// csilDecDeleteAccountRequest reconstructs a DeleteAccountRequest from a decoded CBOR value tree.
+func csilDecDeleteAccountRequest(csilRoot cborValue) (DeleteAccountRequest, error) {
+	var csilOut DeleteAccountRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "confirmation_handle")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (Handle, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return Handle(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ConfirmationHandle = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeDeleteAccountRequest encodes a DeleteAccountRequest to canonical CSIL CBOR bytes.
+func EncodeDeleteAccountRequest(csilV DeleteAccountRequest) []byte {
+	return cborEncode(csilEncDeleteAccountRequest(csilV))
+}
+
+// DecodeDeleteAccountRequest decodes canonical CSIL CBOR bytes into a DeleteAccountRequest.
+func DecodeDeleteAccountRequest(csilData []byte) (DeleteAccountRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero DeleteAccountRequest
+		return csilZero, csilErr
+	}
+	return csilDecDeleteAccountRequest(csilRoot)
 }
 
 // csilEncTrack builds the canonical CBOR value tree for a Track.
@@ -2712,6 +2933,48 @@ func DecodePlaylistRequest(csilData []byte) (PlaylistRequest, error) {
 	return csilDecPlaylistRequest(csilRoot)
 }
 
+// csilEncDeletePlaylistRequest builds the canonical CBOR value tree for a DeletePlaylistRequest.
+func csilEncDeletePlaylistRequest(csilV DeletePlaylistRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("playlist_id"), cborText(csilV.PlaylistId)})
+	return csilEntries
+}
+
+// csilDecDeletePlaylistRequest reconstructs a DeletePlaylistRequest from a decoded CBOR value tree.
+func csilDecDeletePlaylistRequest(csilRoot cborValue) (DeletePlaylistRequest, error) {
+	var csilOut DeletePlaylistRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "playlist_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (PlaylistId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return PlaylistId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaylistId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeDeletePlaylistRequest encodes a DeletePlaylistRequest to canonical CSIL CBOR bytes.
+func EncodeDeletePlaylistRequest(csilV DeletePlaylistRequest) []byte {
+	return cborEncode(csilEncDeletePlaylistRequest(csilV))
+}
+
+// DecodeDeletePlaylistRequest decodes canonical CSIL CBOR bytes into a DeletePlaylistRequest.
+func DecodeDeletePlaylistRequest(csilData []byte) (DeletePlaylistRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero DeletePlaylistRequest
+		return csilZero, csilErr
+	}
+	return csilDecDeletePlaylistRequest(csilRoot)
+}
+
 // csilEncPlaylistDetail builds the canonical CBOR value tree for a PlaylistDetail.
 func csilEncPlaylistDetail(csilV PlaylistDetail) cborValue {
 	csilEntries := make(cborMap, 0, 2)
@@ -2864,6 +3127,107 @@ func DecodeCoverArt(csilData []byte) (CoverArt, error) {
 		return csilZero, csilErr
 	}
 	return csilDecCoverArt(csilRoot)
+}
+
+// csilEncReportContentRequest builds the canonical CBOR value tree for a ReportContentRequest.
+func csilEncReportContentRequest(csilV ReportContentRequest) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("reason"), cborText(csilV.Reason)})
+	if csilV.Details != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("details"), cborText((*csilV.Details))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("target_id"), cborText(csilV.TargetId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("target_type"), cborText(csilV.TargetType)})
+	return csilEntries
+}
+
+// csilDecReportContentRequest reconstructs a ReportContentRequest from a decoded CBOR value tree.
+func csilDecReportContentRequest(csilRoot cborValue) (ReportContentRequest, error) {
+	var csilOut ReportContentRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "target_type")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportTargetType, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "playlist" || csilInner == "account") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ContentReportTargetType(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TargetType = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "target_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TargetId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "reason")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportReason, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "objectionable-content" || csilInner == "harassment" || csilInner == "spam" || csilInner == "other") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ContentReportReason(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Reason = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "details"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Details = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeReportContentRequest encodes a ReportContentRequest to canonical CSIL CBOR bytes.
+func EncodeReportContentRequest(csilV ReportContentRequest) []byte {
+	return cborEncode(csilEncReportContentRequest(csilV))
+}
+
+// DecodeReportContentRequest decodes canonical CSIL CBOR bytes into a ReportContentRequest.
+func DecodeReportContentRequest(csilData []byte) (ReportContentRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ReportContentRequest
+		return csilZero, csilErr
+	}
+	return csilDecReportContentRequest(csilRoot)
 }
 
 // csilEncPlayer builds the canonical CBOR value tree for a Player.
@@ -5550,6 +5914,63 @@ func DecodeSetRoleRequest(csilData []byte) (SetRoleRequest, error) {
 	return csilDecSetRoleRequest(csilRoot)
 }
 
+// csilEncAdminDeleteAccountRequest builds the canonical CBOR value tree for a AdminDeleteAccountRequest.
+func csilEncAdminDeleteAccountRequest(csilV AdminDeleteAccountRequest) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("account_id"), cborText(csilV.AccountId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("confirmation_handle"), cborText(csilV.ConfirmationHandle)})
+	return csilEntries
+}
+
+// csilDecAdminDeleteAccountRequest reconstructs a AdminDeleteAccountRequest from a decoded CBOR value tree.
+func csilDecAdminDeleteAccountRequest(csilRoot cborValue) (AdminDeleteAccountRequest, error) {
+	var csilOut AdminDeleteAccountRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "account_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (AccountId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return AccountId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AccountId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "confirmation_handle")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (Handle, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return Handle(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ConfirmationHandle = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeAdminDeleteAccountRequest encodes a AdminDeleteAccountRequest to canonical CSIL CBOR bytes.
+func EncodeAdminDeleteAccountRequest(csilV AdminDeleteAccountRequest) []byte {
+	return cborEncode(csilEncAdminDeleteAccountRequest(csilV))
+}
+
+// DecodeAdminDeleteAccountRequest decodes canonical CSIL CBOR bytes into a AdminDeleteAccountRequest.
+func DecodeAdminDeleteAccountRequest(csilData []byte) (AdminDeleteAccountRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero AdminDeleteAccountRequest
+		return csilZero, csilErr
+	}
+	return csilDecAdminDeleteAccountRequest(csilRoot)
+}
+
 // csilEncTrustDomainRequest builds the canonical CBOR value tree for a TrustDomainRequest.
 func csilEncTrustDomainRequest(csilV TrustDomainRequest) cborValue {
 	csilEntries := make(cborMap, 0, 1)
@@ -7469,6 +7890,125 @@ func DecodeLibraryResyncStatus(csilData []byte) (LibraryResyncStatus, error) {
 		return csilZero, csilErr
 	}
 	return csilDecLibraryResyncStatus(csilRoot)
+}
+
+// csilEncListContentReportsResponse builds the canonical CBOR value tree for a ListContentReportsResponse.
+func csilEncListContentReportsResponse(csilV ListContentReportsResponse) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("total"), cborUint(csilV.Total)})
+	csilEntries = append(csilEntries, cborEntry{cborText("reports"), cborEncArray(csilV.Reports, func(csilElem ContentReport) cborValue { return csilEncContentReport(csilElem) })})
+	return csilEntries
+}
+
+// csilDecListContentReportsResponse reconstructs a ListContentReportsResponse from a decoded CBOR value tree.
+func csilDecListContentReportsResponse(csilRoot cborValue) (ListContentReportsResponse, error) {
+	var csilOut ListContentReportsResponse
+	{
+		csilField, csilErr := cborRequire(csilRoot, "reports")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]ContentReport, error) { return cborDecArray(csilV, csilDecContentReport) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Reports = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "total")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Total = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeListContentReportsResponse encodes a ListContentReportsResponse to canonical CSIL CBOR bytes.
+func EncodeListContentReportsResponse(csilV ListContentReportsResponse) []byte {
+	return cborEncode(csilEncListContentReportsResponse(csilV))
+}
+
+// DecodeListContentReportsResponse decodes canonical CSIL CBOR bytes into a ListContentReportsResponse.
+func DecodeListContentReportsResponse(csilData []byte) (ListContentReportsResponse, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ListContentReportsResponse
+		return csilZero, csilErr
+	}
+	return csilDecListContentReportsResponse(csilRoot)
+}
+
+// csilEncUpdateContentReportStatusRequest builds the canonical CBOR value tree for a UpdateContentReportStatusRequest.
+func csilEncUpdateContentReportStatusRequest(csilV UpdateContentReportStatusRequest) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("status"), cborText(csilV.Status)})
+	csilEntries = append(csilEntries, cborEntry{cborText("report_id"), cborText(csilV.ReportId)})
+	return csilEntries
+}
+
+// csilDecUpdateContentReportStatusRequest reconstructs a UpdateContentReportStatusRequest from a decoded CBOR value tree.
+func csilDecUpdateContentReportStatusRequest(csilRoot cborValue) (UpdateContentReportStatusRequest, error) {
+	var csilOut UpdateContentReportStatusRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "report_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return ContentReportId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.ReportId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "status")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ContentReportStatus, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "open" || csilInner == "resolved" || csilInner == "dismissed") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ContentReportStatus(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Status = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeUpdateContentReportStatusRequest encodes a UpdateContentReportStatusRequest to canonical CSIL CBOR bytes.
+func EncodeUpdateContentReportStatusRequest(csilV UpdateContentReportStatusRequest) []byte {
+	return cborEncode(csilEncUpdateContentReportStatusRequest(csilV))
+}
+
+// DecodeUpdateContentReportStatusRequest decodes canonical CSIL CBOR bytes into a UpdateContentReportStatusRequest.
+func DecodeUpdateContentReportStatusRequest(csilData []byte) (UpdateContentReportStatusRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero UpdateContentReportStatusRequest
+		return csilZero, csilErr
+	}
+	return csilDecUpdateContentReportStatusRequest(csilRoot)
 }
 
 // csilEncWatchChangesRequest builds the canonical CBOR value tree for a WatchChangesRequest.

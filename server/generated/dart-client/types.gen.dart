@@ -17,6 +17,8 @@ typedef ArtistId = String;
 
 typedef PlaylistId = String;
 
+typedef ContentReportId = String;
+
 typedef NodeId = String;
 
 typedef DeviceId = String;
@@ -200,6 +202,143 @@ final class Ok {
   /// Decode a CSIL CBOR byte payload into this record.
   factory Ok.fromCbor(List<int> bytes) =>
       Ok.fromCborValue(CsilCbor.decode(bytes));
+}
+
+typedef ContentReportTargetType = String;
+
+typedef ContentReportReason = String;
+
+typedef ContentReportStatus = String;
+
+final class ContentReport {
+  final ContentReportId id;
+  final AccountId reporterAccountId;
+  final ContentReportTargetType targetType;
+  final String targetId;
+  final ContentReportReason reason;
+  final String? details;
+  final ContentReportStatus status;
+  final DateTime createdAt;
+  final DateTime? resolvedAt;
+
+  const ContentReport({
+    required this.id,
+    required this.reporterAccountId,
+    required this.targetType,
+    required this.targetId,
+    required this.reason,
+    this.details,
+    required this.status,
+    required this.createdAt,
+    this.resolvedAt,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['id'] = id;
+    map['reporter_account_id'] = reporterAccountId;
+    map['target_type'] = targetType;
+    map['target_id'] = targetId;
+    map['reason'] = reason;
+    if (details != null) map['details'] = details;
+    map['status'] = status;
+    map['created_at'] = createdAt;
+    if (resolvedAt != null) map['resolved_at'] = resolvedAt;
+    return map;
+  }
+
+  factory ContentReport.fromMap(Map<String, Object?> map) {
+    return ContentReport(
+      id: map['id'] as ContentReportId,
+      reporterAccountId: map['reporter_account_id'] as AccountId,
+      targetType: map['target_type'] as ContentReportTargetType,
+      targetId: map['target_id'] as String,
+      reason: map['reason'] as ContentReportReason,
+      details: map['details'] as String?,
+      status: map['status'] as ContentReportStatus,
+      createdAt: map['created_at'] as DateTime,
+      resolvedAt: map['resolved_at'] as DateTime?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ContentReport) return false;
+    return id == other.id &&
+        reporterAccountId == other.reporterAccountId &&
+        targetType == other.targetType &&
+        targetId == other.targetId &&
+        reason == other.reason &&
+        details == other.details &&
+        status == other.status &&
+        createdAt == other.createdAt &&
+        resolvedAt == other.resolvedAt;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    reporterAccountId,
+    targetType,
+    targetId,
+    reason,
+    details,
+    status,
+    createdAt,
+    resolvedAt,
+  ]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['id'] = id;
+    map['reporter_account_id'] = reporterAccountId;
+    map['target_type'] = targetType;
+    map['target_id'] = targetId;
+    map['reason'] = reason;
+    if (details != null) map['details'] = details!;
+    map['status'] = status;
+    map['created_at'] = createdAt;
+    if (resolvedAt != null) map['resolved_at'] = resolvedAt!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ContentReport.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ContentReport(
+      id: map['id'] as String,
+      reporterAccountId: map['reporter_account_id'] as String,
+      targetType: CsilCbor.expectOneOf<String>(map['target_type'], const [
+        'playlist',
+        'account',
+      ]),
+      targetId: map['target_id'] as String,
+      reason: CsilCbor.expectOneOf<String>(map['reason'], const [
+        'objectionable-content',
+        'harassment',
+        'spam',
+        'other',
+      ]),
+      details: map['details'] == null ? null : map['details'] as String,
+      status: CsilCbor.expectOneOf<String>(map['status'], const [
+        'open',
+        'resolved',
+        'dismissed',
+      ]),
+      createdAt: map['created_at'] as DateTime,
+      resolvedAt: map['resolved_at'] == null
+          ? null
+          : map['resolved_at'] as DateTime,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ContentReport.fromCbor(List<int> bytes) =>
+      ContentReport.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class ServiceError {
@@ -435,6 +574,55 @@ final class SessionInfo {
   /// Decode a CSIL CBOR byte payload into this record.
   factory SessionInfo.fromCbor(List<int> bytes) =>
       SessionInfo.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class DeleteAccountRequest {
+  final Handle confirmationHandle;
+
+  const DeleteAccountRequest({required this.confirmationHandle});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['confirmation_handle'] = confirmationHandle;
+    return map;
+  }
+
+  factory DeleteAccountRequest.fromMap(Map<String, Object?> map) {
+    return DeleteAccountRequest(
+      confirmationHandle: map['confirmation_handle'] as Handle,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! DeleteAccountRequest) return false;
+    return confirmationHandle == other.confirmationHandle;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([confirmationHandle]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['confirmation_handle'] = confirmationHandle;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory DeleteAccountRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return DeleteAccountRequest(
+      confirmationHandle: map['confirmation_handle'] as String,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory DeleteAccountRequest.fromCbor(List<int> bytes) =>
+      DeleteAccountRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 typedef Library = String;
@@ -2275,6 +2463,51 @@ final class PlaylistRequest {
       PlaylistRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
+final class DeletePlaylistRequest {
+  final PlaylistId playlistId;
+
+  const DeletePlaylistRequest({required this.playlistId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['playlist_id'] = playlistId;
+    return map;
+  }
+
+  factory DeletePlaylistRequest.fromMap(Map<String, Object?> map) {
+    return DeletePlaylistRequest(playlistId: map['playlist_id'] as PlaylistId);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! DeletePlaylistRequest) return false;
+    return playlistId == other.playlistId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([playlistId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['playlist_id'] = playlistId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory DeletePlaylistRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return DeletePlaylistRequest(playlistId: map['playlist_id'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory DeletePlaylistRequest.fromCbor(List<int> bytes) =>
+      DeletePlaylistRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
 final class PlaylistDetail {
   final Playlist playlist;
   final List<Track> tracks;
@@ -2447,6 +2680,86 @@ final class CoverArt {
   /// Decode a CSIL CBOR byte payload into this record.
   factory CoverArt.fromCbor(List<int> bytes) =>
       CoverArt.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ReportContentRequest {
+  final ContentReportTargetType targetType;
+  final String targetId;
+  final ContentReportReason reason;
+  final String? details;
+
+  const ReportContentRequest({
+    required this.targetType,
+    required this.targetId,
+    required this.reason,
+    this.details,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['target_type'] = targetType;
+    map['target_id'] = targetId;
+    map['reason'] = reason;
+    if (details != null) map['details'] = details;
+    return map;
+  }
+
+  factory ReportContentRequest.fromMap(Map<String, Object?> map) {
+    return ReportContentRequest(
+      targetType: map['target_type'] as ContentReportTargetType,
+      targetId: map['target_id'] as String,
+      reason: map['reason'] as ContentReportReason,
+      details: map['details'] as String?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ReportContentRequest) return false;
+    return targetType == other.targetType &&
+        targetId == other.targetId &&
+        reason == other.reason &&
+        details == other.details;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([targetType, targetId, reason, details]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['target_type'] = targetType;
+    map['target_id'] = targetId;
+    map['reason'] = reason;
+    if (details != null) map['details'] = details!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ReportContentRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ReportContentRequest(
+      targetType: CsilCbor.expectOneOf<String>(map['target_type'], const [
+        'playlist',
+        'account',
+      ]),
+      targetId: map['target_id'] as String,
+      reason: CsilCbor.expectOneOf<String>(map['reason'], const [
+        'objectionable-content',
+        'harassment',
+        'spam',
+        'other',
+      ]),
+      details: map['details'] == null ? null : map['details'] as String,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ReportContentRequest.fromCbor(List<int> bytes) =>
+      ReportContentRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 typedef PlayerKind = String;
@@ -5188,6 +5501,64 @@ final class SetRoleRequest {
       SetRoleRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
+final class AdminDeleteAccountRequest {
+  final AccountId accountId;
+  final Handle confirmationHandle;
+
+  const AdminDeleteAccountRequest({
+    required this.accountId,
+    required this.confirmationHandle,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['confirmation_handle'] = confirmationHandle;
+    return map;
+  }
+
+  factory AdminDeleteAccountRequest.fromMap(Map<String, Object?> map) {
+    return AdminDeleteAccountRequest(
+      accountId: map['account_id'] as AccountId,
+      confirmationHandle: map['confirmation_handle'] as Handle,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! AdminDeleteAccountRequest) return false;
+    return accountId == other.accountId &&
+        confirmationHandle == other.confirmationHandle;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([accountId, confirmationHandle]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['confirmation_handle'] = confirmationHandle;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory AdminDeleteAccountRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return AdminDeleteAccountRequest(
+      accountId: map['account_id'] as String,
+      confirmationHandle: map['confirmation_handle'] as String,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory AdminDeleteAccountRequest.fromCbor(List<int> bytes) =>
+      AdminDeleteAccountRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
 final class TrustDomainRequest {
   final String domain;
 
@@ -7263,6 +7634,127 @@ final class LibraryResyncStatus {
   /// Decode a CSIL CBOR byte payload into this record.
   factory LibraryResyncStatus.fromCbor(List<int> bytes) =>
       LibraryResyncStatus.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ListContentReportsResponse {
+  final List<ContentReport> reports;
+  final int total;
+
+  const ListContentReportsResponse({
+    required this.reports,
+    required this.total,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['reports'] = reports;
+    map['total'] = total;
+    return map;
+  }
+
+  factory ListContentReportsResponse.fromMap(Map<String, Object?> map) {
+    return ListContentReportsResponse(
+      reports: map['reports'] as List<ContentReport>,
+      total: map['total'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ListContentReportsResponse) return false;
+    return reports == other.reports && total == other.total;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([reports, total]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['reports'] = reports.map((csilE) => csilE.toCborValue()).toList();
+    map['total'] = total;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ListContentReportsResponse.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ListContentReportsResponse(
+      reports: (map['reports'] as List)
+          .map((csilE) => ContentReport.fromCborValue(csilE))
+          .cast<ContentReport>()
+          .toList(),
+      total: map['total'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ListContentReportsResponse.fromCbor(List<int> bytes) =>
+      ListContentReportsResponse.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class UpdateContentReportStatusRequest {
+  final ContentReportId reportId;
+  final ContentReportStatus status;
+
+  const UpdateContentReportStatusRequest({
+    required this.reportId,
+    required this.status,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['report_id'] = reportId;
+    map['status'] = status;
+    return map;
+  }
+
+  factory UpdateContentReportStatusRequest.fromMap(Map<String, Object?> map) {
+    return UpdateContentReportStatusRequest(
+      reportId: map['report_id'] as ContentReportId,
+      status: map['status'] as ContentReportStatus,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! UpdateContentReportStatusRequest) return false;
+    return reportId == other.reportId && status == other.status;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([reportId, status]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['report_id'] = reportId;
+    map['status'] = status;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory UpdateContentReportStatusRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return UpdateContentReportStatusRequest(
+      reportId: map['report_id'] as String,
+      status: CsilCbor.expectOneOf<String>(map['status'], const [
+        'open',
+        'resolved',
+        'dismissed',
+      ]),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory UpdateContentReportStatusRequest.fromCbor(List<int> bytes) =>
+      UpdateContentReportStatusRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 typedef ChangeTopic = String;

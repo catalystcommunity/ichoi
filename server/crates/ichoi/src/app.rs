@@ -21,6 +21,9 @@ pub fn prepare_db(config: &Config) -> anyhow::Result<db::SqlitePool> {
     let pool = db::establish_pool(&config.database_url())?;
     let mut conn = pool.get()?;
     db::run_migrations(&mut conn)?;
+    if let Some(music_dir) = &config.music_dir {
+        crate::deletion::reconcile_playlist_staging(&mut conn, music_dir)?;
+    }
     db::run_transforms(&mut conn, &hostname())?;
     drop(conn);
     crate::auth::local_rp::initialize_database(&pool, config)?;

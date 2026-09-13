@@ -449,6 +449,86 @@ fun okFromCborValue(cbor: CborValue): Ok {
 /** Decode CSIL CBOR bytes into a Ok. */
 fun okFromCbor(bytes: ByteArray): Ok = okFromCborValue(CsilCbor.decode(bytes))
 
+/** Encode a ContentReportTargetType enum as its bare literal value. */
+fun ContentReportTargetType.toCborValue(): CborValue = when (this) {
+    ContentReportTargetType.Playlist -> CborValue.CText("playlist")
+    ContentReportTargetType.Account -> CborValue.CText("account")
+}
+
+/** Decode a bare literal value into a ContentReportTargetType enum. */
+fun contentReportTargetTypeFromCborValue(cbor: CborValue): ContentReportTargetType = when (CsilCbor.asText(cbor)) {
+    "playlist" -> ContentReportTargetType.Playlist
+    "account" -> ContentReportTargetType.Account
+    else -> throw CborError("unknown ContentReportTargetType value")
+}
+
+/** Encode a ContentReportReason enum as its bare literal value. */
+fun ContentReportReason.toCborValue(): CborValue = when (this) {
+    ContentReportReason.ObjectionableContent -> CborValue.CText("objectionable-content")
+    ContentReportReason.Harassment -> CborValue.CText("harassment")
+    ContentReportReason.Spam -> CborValue.CText("spam")
+    ContentReportReason.Other -> CborValue.CText("other")
+}
+
+/** Decode a bare literal value into a ContentReportReason enum. */
+fun contentReportReasonFromCborValue(cbor: CborValue): ContentReportReason = when (CsilCbor.asText(cbor)) {
+    "objectionable-content" -> ContentReportReason.ObjectionableContent
+    "harassment" -> ContentReportReason.Harassment
+    "spam" -> ContentReportReason.Spam
+    "other" -> ContentReportReason.Other
+    else -> throw CborError("unknown ContentReportReason value")
+}
+
+/** Encode a ContentReportStatus enum as its bare literal value. */
+fun ContentReportStatus.toCborValue(): CborValue = when (this) {
+    ContentReportStatus.Open -> CborValue.CText("open")
+    ContentReportStatus.Resolved -> CborValue.CText("resolved")
+    ContentReportStatus.Dismissed -> CborValue.CText("dismissed")
+}
+
+/** Decode a bare literal value into a ContentReportStatus enum. */
+fun contentReportStatusFromCborValue(cbor: CborValue): ContentReportStatus = when (CsilCbor.asText(cbor)) {
+    "open" -> ContentReportStatus.Open
+    "resolved" -> ContentReportStatus.Resolved
+    "dismissed" -> ContentReportStatus.Dismissed
+    else -> throw CborError("unknown ContentReportStatus value")
+}
+
+/** The CBOR value tree for a ContentReport (deep, canonical key order). */
+fun ContentReport.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("reason") to this.reason.toCborValue())
+    csilEntries.add(CborValue.CText("status") to this.status.toCborValue())
+    this.details?.let { csilV -> csilEntries.add(CborValue.CText("details") to CborValue.CText(csilV)) }
+    csilEntries.add(CborValue.CText("target_id") to CborValue.CText(this.targetId))
+    csilEntries.add(CborValue.CText("created_at") to CborValue.CTag(0uL, CborValue.CText((this.createdAt).toString())))
+    this.resolvedAt?.let { csilV -> csilEntries.add(CborValue.CText("resolved_at") to CborValue.CTag(0uL, CborValue.CText((csilV).toString()))) }
+    csilEntries.add(CborValue.CText("target_type") to this.targetType.toCborValue())
+    csilEntries.add(CborValue.CText("reporter_account_id") to CborValue.CText(this.reporterAccountId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ContentReport to canonical CSIL CBOR bytes. */
+fun ContentReport.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ContentReport from a decoded CBOR value tree. */
+fun contentReportFromCborValue(cbor: CborValue): ContentReport {
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val reporterAccountId = CsilCbor.asText(CsilCbor.require(cbor, "reporter_account_id"))
+    val targetType = contentReportTargetTypeFromCborValue(CsilCbor.require(cbor, "target_type"))
+    val targetId = CsilCbor.asText(CsilCbor.require(cbor, "target_id"))
+    val reason = contentReportReasonFromCborValue(CsilCbor.require(cbor, "reason"))
+    val details = CsilCbor.mapGet(cbor, "details")?.let { csilV -> CsilCbor.asText(csilV) }
+    val status = contentReportStatusFromCborValue(CsilCbor.require(cbor, "status"))
+    val createdAt = java.time.Instant.parse(CsilCbor.asTaggedText(CsilCbor.require(cbor, "created_at"), 0uL))
+    val resolvedAt = CsilCbor.mapGet(cbor, "resolved_at")?.let { csilV -> java.time.Instant.parse(CsilCbor.asTaggedText(csilV, 0uL)) }
+    return ContentReport(id = id, reporterAccountId = reporterAccountId, targetType = targetType, targetId = targetId, reason = reason, details = details, status = status, createdAt = createdAt, resolvedAt = resolvedAt)
+}
+
+/** Decode CSIL CBOR bytes into a ContentReport. */
+fun contentReportFromCbor(bytes: ByteArray): ContentReport = contentReportFromCborValue(CsilCbor.decode(bytes))
+
 /** The CBOR value tree for a ServiceError (deep, canonical key order). */
 fun ServiceError.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
@@ -521,6 +601,25 @@ fun sessionInfoFromCborValue(cbor: CborValue): SessionInfo {
 
 /** Decode CSIL CBOR bytes into a SessionInfo. */
 fun sessionInfoFromCbor(bytes: ByteArray): SessionInfo = sessionInfoFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a DeleteAccountRequest (deep, canonical key order). */
+fun DeleteAccountRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("confirmation_handle") to CborValue.CText(this.confirmationHandle))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a DeleteAccountRequest to canonical CSIL CBOR bytes. */
+fun DeleteAccountRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a DeleteAccountRequest from a decoded CBOR value tree. */
+fun deleteAccountRequestFromCborValue(cbor: CborValue): DeleteAccountRequest {
+    val confirmationHandle = CsilCbor.asText(CsilCbor.require(cbor, "confirmation_handle"))
+    return DeleteAccountRequest(confirmationHandle = confirmationHandle)
+}
+
+/** Decode CSIL CBOR bytes into a DeleteAccountRequest. */
+fun deleteAccountRequestFromCbor(bytes: ByteArray): DeleteAccountRequest = deleteAccountRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** Encode a Library enum as its bare literal value. */
 fun Library.toCborValue(): CborValue = when (this) {
@@ -1160,6 +1259,25 @@ fun playlistRequestFromCborValue(cbor: CborValue): PlaylistRequest {
 /** Decode CSIL CBOR bytes into a PlaylistRequest. */
 fun playlistRequestFromCbor(bytes: ByteArray): PlaylistRequest = playlistRequestFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a DeletePlaylistRequest (deep, canonical key order). */
+fun DeletePlaylistRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("playlist_id") to CborValue.CText(this.playlistId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a DeletePlaylistRequest to canonical CSIL CBOR bytes. */
+fun DeletePlaylistRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a DeletePlaylistRequest from a decoded CBOR value tree. */
+fun deletePlaylistRequestFromCborValue(cbor: CborValue): DeletePlaylistRequest {
+    val playlistId = CsilCbor.asText(CsilCbor.require(cbor, "playlist_id"))
+    return DeletePlaylistRequest(playlistId = playlistId)
+}
+
+/** Decode CSIL CBOR bytes into a DeletePlaylistRequest. */
+fun deletePlaylistRequestFromCbor(bytes: ByteArray): DeletePlaylistRequest = deletePlaylistRequestFromCborValue(CsilCbor.decode(bytes))
+
 /** The CBOR value tree for a PlaylistDetail (deep, canonical key order). */
 fun PlaylistDetail.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
@@ -1222,6 +1340,31 @@ fun coverArtFromCborValue(cbor: CborValue): CoverArt {
 
 /** Decode CSIL CBOR bytes into a CoverArt. */
 fun coverArtFromCbor(bytes: ByteArray): CoverArt = coverArtFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ReportContentRequest (deep, canonical key order). */
+fun ReportContentRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("reason") to this.reason.toCborValue())
+    this.details?.let { csilV -> csilEntries.add(CborValue.CText("details") to CborValue.CText(csilV)) }
+    csilEntries.add(CborValue.CText("target_id") to CborValue.CText(this.targetId))
+    csilEntries.add(CborValue.CText("target_type") to this.targetType.toCborValue())
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ReportContentRequest to canonical CSIL CBOR bytes. */
+fun ReportContentRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ReportContentRequest from a decoded CBOR value tree. */
+fun reportContentRequestFromCborValue(cbor: CborValue): ReportContentRequest {
+    val targetType = contentReportTargetTypeFromCborValue(CsilCbor.require(cbor, "target_type"))
+    val targetId = CsilCbor.asText(CsilCbor.require(cbor, "target_id"))
+    val reason = contentReportReasonFromCborValue(CsilCbor.require(cbor, "reason"))
+    val details = CsilCbor.mapGet(cbor, "details")?.let { csilV -> CsilCbor.asText(csilV) }
+    return ReportContentRequest(targetType = targetType, targetId = targetId, reason = reason, details = details)
+}
+
+/** Decode CSIL CBOR bytes into a ReportContentRequest. */
+fun reportContentRequestFromCbor(bytes: ByteArray): ReportContentRequest = reportContentRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** Encode a PlayerKind enum as its bare literal value. */
 fun PlayerKind.toCborValue(): CborValue = when (this) {
@@ -2260,6 +2403,27 @@ fun setRoleRequestFromCborValue(cbor: CborValue): SetRoleRequest {
 /** Decode CSIL CBOR bytes into a SetRoleRequest. */
 fun setRoleRequestFromCbor(bytes: ByteArray): SetRoleRequest = setRoleRequestFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a AdminDeleteAccountRequest (deep, canonical key order). */
+fun AdminDeleteAccountRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
+    csilEntries.add(CborValue.CText("confirmation_handle") to CborValue.CText(this.confirmationHandle))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a AdminDeleteAccountRequest to canonical CSIL CBOR bytes. */
+fun AdminDeleteAccountRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a AdminDeleteAccountRequest from a decoded CBOR value tree. */
+fun adminDeleteAccountRequestFromCborValue(cbor: CborValue): AdminDeleteAccountRequest {
+    val accountId = CsilCbor.asText(CsilCbor.require(cbor, "account_id"))
+    val confirmationHandle = CsilCbor.asText(CsilCbor.require(cbor, "confirmation_handle"))
+    return AdminDeleteAccountRequest(accountId = accountId, confirmationHandle = confirmationHandle)
+}
+
+/** Decode CSIL CBOR bytes into a AdminDeleteAccountRequest. */
+fun adminDeleteAccountRequestFromCbor(bytes: ByteArray): AdminDeleteAccountRequest = adminDeleteAccountRequestFromCborValue(CsilCbor.decode(bytes))
+
 /** The CBOR value tree for a TrustDomainRequest (deep, canonical key order). */
 fun TrustDomainRequest.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
@@ -3009,6 +3173,48 @@ fun libraryResyncStatusFromCborValue(cbor: CborValue): LibraryResyncStatus {
 /** Decode CSIL CBOR bytes into a LibraryResyncStatus. */
 fun libraryResyncStatusFromCbor(bytes: ByteArray): LibraryResyncStatus = libraryResyncStatusFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a ListContentReportsResponse (deep, canonical key order). */
+fun ListContentReportsResponse.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("total") to CborValue.CUint(this.total))
+    csilEntries.add(CborValue.CText("reports") to CborValue.CArray((this.reports).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ListContentReportsResponse to canonical CSIL CBOR bytes. */
+fun ListContentReportsResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ListContentReportsResponse from a decoded CBOR value tree. */
+fun listContentReportsResponseFromCborValue(cbor: CborValue): ListContentReportsResponse {
+    val reports = CsilCbor.asArray(CsilCbor.require(cbor, "reports")).map { csilE -> contentReportFromCborValue(csilE) }
+    val total = CsilCbor.asULong(CsilCbor.require(cbor, "total"))
+    return ListContentReportsResponse(reports = reports, total = total)
+}
+
+/** Decode CSIL CBOR bytes into a ListContentReportsResponse. */
+fun listContentReportsResponseFromCbor(bytes: ByteArray): ListContentReportsResponse = listContentReportsResponseFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a UpdateContentReportStatusRequest (deep, canonical key order). */
+fun UpdateContentReportStatusRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("status") to this.status.toCborValue())
+    csilEntries.add(CborValue.CText("report_id") to CborValue.CText(this.reportId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a UpdateContentReportStatusRequest to canonical CSIL CBOR bytes. */
+fun UpdateContentReportStatusRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a UpdateContentReportStatusRequest from a decoded CBOR value tree. */
+fun updateContentReportStatusRequestFromCborValue(cbor: CborValue): UpdateContentReportStatusRequest {
+    val reportId = CsilCbor.asText(CsilCbor.require(cbor, "report_id"))
+    val status = contentReportStatusFromCborValue(CsilCbor.require(cbor, "status"))
+    return UpdateContentReportStatusRequest(reportId = reportId, status = status)
+}
+
+/** Decode CSIL CBOR bytes into a UpdateContentReportStatusRequest. */
+fun updateContentReportStatusRequestFromCbor(bytes: ByteArray): UpdateContentReportStatusRequest = updateContentReportStatusRequestFromCborValue(CsilCbor.decode(bytes))
+
 /** Encode a ChangeTopic enum as its bare literal value. */
 fun ChangeTopic.toCborValue(): CborValue = when (this) {
     ChangeTopic.Players -> CborValue.CText("players")
@@ -3088,9 +3294,11 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is StreamPref -> value.toCborValue()
     is Page -> value.toCborValue()
     is Ok -> value.toCborValue()
+    is ContentReport -> value.toCborValue()
     is ServiceError -> value.toCborValue()
     is AuthRequest -> value.toCborValue()
     is SessionInfo -> value.toCborValue()
+    is DeleteAccountRequest -> value.toCborValue()
     is Track -> value.toCborValue()
     is Album -> value.toCborValue()
     is Artist -> value.toCborValue()
@@ -3118,9 +3326,11 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is UpdateAudiobookProgressRequest -> value.toCborValue()
     is PlaylistsResponse -> value.toCborValue()
     is PlaylistRequest -> value.toCborValue()
+    is DeletePlaylistRequest -> value.toCborValue()
     is PlaylistDetail -> value.toCborValue()
     is CoverArtRequest -> value.toCborValue()
     is CoverArt -> value.toCborValue()
+    is ReportContentRequest -> value.toCborValue()
     is Player -> value.toCborValue()
     is QueueItem -> value.toCborValue()
     is PlayerState -> value.toCborValue()
@@ -3162,6 +3372,7 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is Account -> value.toCborValue()
     is ListAccountsResponse -> value.toCborValue()
     is SetRoleRequest -> value.toCborValue()
+    is AdminDeleteAccountRequest -> value.toCborValue()
     is TrustDomainRequest -> value.toCborValue()
     is TrustedDomains -> value.toCborValue()
     is TrustedIdentity -> value.toCborValue()
@@ -3195,6 +3406,8 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is Settings -> value.toCborValue()
     is SetSettingRequest -> value.toCborValue()
     is LibraryResyncStatus -> value.toCborValue()
+    is ListContentReportsResponse -> value.toCborValue()
+    is UpdateContentReportStatusRequest -> value.toCborValue()
     is WatchChangesRequest -> value.toCborValue()
     is DataChange -> value.toCborValue()
     else -> throw CborError("no CSIL CBOR codec for ${value::class}")
@@ -3208,9 +3421,11 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     StreamPref::class -> streamPrefFromCborValue(cbor)
     Page::class -> pageFromCborValue(cbor)
     Ok::class -> okFromCborValue(cbor)
+    ContentReport::class -> contentReportFromCborValue(cbor)
     ServiceError::class -> serviceErrorFromCborValue(cbor)
     AuthRequest::class -> authRequestFromCborValue(cbor)
     SessionInfo::class -> sessionInfoFromCborValue(cbor)
+    DeleteAccountRequest::class -> deleteAccountRequestFromCborValue(cbor)
     Track::class -> trackFromCborValue(cbor)
     Album::class -> albumFromCborValue(cbor)
     Artist::class -> artistFromCborValue(cbor)
@@ -3238,9 +3453,11 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     UpdateAudiobookProgressRequest::class -> updateAudiobookProgressRequestFromCborValue(cbor)
     PlaylistsResponse::class -> playlistsResponseFromCborValue(cbor)
     PlaylistRequest::class -> playlistRequestFromCborValue(cbor)
+    DeletePlaylistRequest::class -> deletePlaylistRequestFromCborValue(cbor)
     PlaylistDetail::class -> playlistDetailFromCborValue(cbor)
     CoverArtRequest::class -> coverArtRequestFromCborValue(cbor)
     CoverArt::class -> coverArtFromCborValue(cbor)
+    ReportContentRequest::class -> reportContentRequestFromCborValue(cbor)
     Player::class -> playerFromCborValue(cbor)
     QueueItem::class -> queueItemFromCborValue(cbor)
     PlayerState::class -> playerStateFromCborValue(cbor)
@@ -3282,6 +3499,7 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     Account::class -> accountFromCborValue(cbor)
     ListAccountsResponse::class -> listAccountsResponseFromCborValue(cbor)
     SetRoleRequest::class -> setRoleRequestFromCborValue(cbor)
+    AdminDeleteAccountRequest::class -> adminDeleteAccountRequestFromCborValue(cbor)
     TrustDomainRequest::class -> trustDomainRequestFromCborValue(cbor)
     TrustedDomains::class -> trustedDomainsFromCborValue(cbor)
     TrustedIdentity::class -> trustedIdentityFromCborValue(cbor)
@@ -3315,6 +3533,8 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     Settings::class -> settingsFromCborValue(cbor)
     SetSettingRequest::class -> setSettingRequestFromCborValue(cbor)
     LibraryResyncStatus::class -> libraryResyncStatusFromCborValue(cbor)
+    ListContentReportsResponse::class -> listContentReportsResponseFromCborValue(cbor)
+    UpdateContentReportStatusRequest::class -> updateContentReportStatusRequestFromCborValue(cbor)
     WatchChangesRequest::class -> watchChangesRequestFromCborValue(cbor)
     DataChange::class -> dataChangeFromCborValue(cbor)
     else -> throw CborError("no CSIL CBOR codec for $type")

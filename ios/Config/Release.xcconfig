@@ -1,0 +1,6 @@
+# IOS-00 is blocked until the owner selects this permanent ID.
+#include "Base.xcconfig"
+# Keep the value unset. verify-release.sh rejects an unresolved or development ID.
+ICHOI_PERMANENT_BUNDLE_ID =
+PRODUCT_BUNDLE_IDENTIFIER = $(ICHOI_PERMANENT_BUNDLE_ID)
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = RELEASE

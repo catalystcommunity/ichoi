@@ -431,6 +431,7 @@ Precedence: **env (`ICHOI_`-prefixed) → TOML config → defaults.**
 | core key fingerprints (satellite) | `ICHOI_CORE_KEYS` | *(required, satellite)* |
 | node token (satellite) | `ICHOI_NODE_TOKEN` | *(required, satellite)* |
 | admin bootstrap token | `ICHOI_ADMIN_TOKEN` | unset |
+| session lifetime in hours | `ICHOI_SESSION_LIFETIME_HOURS` | `720` |
 | guest access policy | `ICHOI_ACCESS_MODE` | `open` |
 | trusted HTTP proxy CIDRs | `ICHOI_TRUSTED_PROXY_CIDRS` | unset |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → PATH |

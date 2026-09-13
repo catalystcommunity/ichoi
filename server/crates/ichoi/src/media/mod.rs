@@ -190,6 +190,7 @@ mod tests {
             linkkeys_trusted_identities: vec![],
             access_mode: crate::config::AccessMode::Open,
             trusted_proxy_cidrs: vec![],
+            session_lifetime_hours: 720,
         };
         let pref = StreamPref {
             max_bitrate_kbps: None,

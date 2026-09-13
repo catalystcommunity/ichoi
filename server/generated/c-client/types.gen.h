@@ -45,6 +45,27 @@ typedef enum TranscodeCodec {
     TRANSCODE_CODEC_MP3,
 } TranscodeCodec;
 
+/* ContentReportTargetType is an enumeration. */
+typedef enum ContentReportTargetType {
+    CONTENT_REPORT_TARGET_TYPE_PLAYLIST,
+    CONTENT_REPORT_TARGET_TYPE_ACCOUNT,
+} ContentReportTargetType;
+
+/* ContentReportReason is an enumeration. */
+typedef enum ContentReportReason {
+    CONTENT_REPORT_REASON_OBJECTIONABLE_CONTENT,
+    CONTENT_REPORT_REASON_HARASSMENT,
+    CONTENT_REPORT_REASON_SPAM,
+    CONTENT_REPORT_REASON_OTHER,
+} ContentReportReason;
+
+/* ContentReportStatus is an enumeration. */
+typedef enum ContentReportStatus {
+    CONTENT_REPORT_STATUS_OPEN,
+    CONTENT_REPORT_STATUS_RESOLVED,
+    CONTENT_REPORT_STATUS_DISMISSED,
+} ContentReportStatus;
+
 /* Library is an enumeration. */
 typedef enum Library {
     LIBRARY_MUSIC,
@@ -95,9 +116,11 @@ typedef enum ChangeTopic {
 typedef struct StreamPref StreamPref;
 typedef struct Page Page;
 typedef struct Ok Ok;
+typedef struct ContentReport ContentReport;
 typedef struct ServiceError ServiceError;
 typedef struct AuthRequest AuthRequest;
 typedef struct SessionInfo SessionInfo;
+typedef struct DeleteAccountRequest DeleteAccountRequest;
 typedef struct Track Track;
 typedef struct Album Album;
 typedef struct Artist Artist;
@@ -125,9 +148,11 @@ typedef struct AudiobookProgressResponse AudiobookProgressResponse;
 typedef struct UpdateAudiobookProgressRequest UpdateAudiobookProgressRequest;
 typedef struct PlaylistsResponse PlaylistsResponse;
 typedef struct PlaylistRequest PlaylistRequest;
+typedef struct DeletePlaylistRequest DeletePlaylistRequest;
 typedef struct PlaylistDetail PlaylistDetail;
 typedef struct CoverArtRequest CoverArtRequest;
 typedef struct CoverArt CoverArt;
+typedef struct ReportContentRequest ReportContentRequest;
 typedef struct Player Player;
 typedef struct QueueItem QueueItem;
 typedef struct PlayerState PlayerState;
@@ -173,6 +198,7 @@ typedef struct NodeReport NodeReport;
 typedef struct Account Account;
 typedef struct ListAccountsResponse ListAccountsResponse;
 typedef struct SetRoleRequest SetRoleRequest;
+typedef struct AdminDeleteAccountRequest AdminDeleteAccountRequest;
 typedef struct TrustDomainRequest TrustDomainRequest;
 typedef struct TrustedDomains TrustedDomains;
 typedef struct TrustedIdentity TrustedIdentity;
@@ -206,6 +232,8 @@ typedef struct CancelImportRequest CancelImportRequest;
 typedef struct Settings Settings;
 typedef struct SetSettingRequest SetSettingRequest;
 typedef struct LibraryResyncStatus LibraryResyncStatus;
+typedef struct ListContentReportsResponse ListContentReportsResponse;
+typedef struct UpdateContentReportStatusRequest UpdateContentReportStatusRequest;
 typedef struct WatchChangesRequest WatchChangesRequest;
 typedef struct DataChange DataChange;
 
@@ -226,6 +254,9 @@ typedef char *ArtistId;
 
 /* PlaylistId is a type alias. */
 typedef char *PlaylistId;
+
+/* ContentReportId is a type alias. */
+typedef char *ContentReportId;
 
 /* NodeId is a type alias. */
 typedef char *NodeId;
@@ -254,6 +285,19 @@ typedef struct Ok {
     bool ok;
 } Ok;
 
+/* ContentReport is a structured data type. */
+typedef struct ContentReport {
+    ContentReportId id;
+    AccountId reporter_account_id;
+    ContentReportTargetType target_type;
+    char *target_id;
+    ContentReportReason reason;
+    char *details;
+    ContentReportStatus status;
+    CsilTimestamp created_at;
+    CsilTimestamp *resolved_at;
+} ContentReport;
+
 /* ServiceError is a structured data type. */
 typedef struct ServiceError {
     int64_t code;
@@ -276,6 +320,11 @@ typedef struct SessionInfo {
     bool can_admin;
     char *token;
 } SessionInfo;
+
+/* DeleteAccountRequest is a structured data type. */
+typedef struct DeleteAccountRequest {
+    Handle confirmation_handle;
+} DeleteAccountRequest;
 
 /* Track is a structured data type. */
 typedef struct Track {
@@ -481,6 +530,11 @@ typedef struct PlaylistRequest {
     PlaylistId playlist_id;
 } PlaylistRequest;
 
+/* DeletePlaylistRequest is a structured data type. */
+typedef struct DeletePlaylistRequest {
+    PlaylistId playlist_id;
+} DeletePlaylistRequest;
+
 /* PlaylistDetail is a structured data type. */
 typedef struct PlaylistDetail {
     Playlist playlist;
@@ -499,6 +553,14 @@ typedef struct CoverArt {
     char *content_type;
     CsilBytes data;
 } CoverArt;
+
+/* ReportContentRequest is a structured data type. */
+typedef struct ReportContentRequest {
+    ContentReportTargetType target_type;
+    char *target_id;
+    ContentReportReason reason;
+    char *details;
+} ReportContentRequest;
 
 /* Player is a structured data type. */
 typedef struct Player {
@@ -866,6 +928,12 @@ typedef struct SetRoleRequest {
     Role role;
 } SetRoleRequest;
 
+/* AdminDeleteAccountRequest is a structured data type. */
+typedef struct AdminDeleteAccountRequest {
+    AccountId account_id;
+    Handle confirmation_handle;
+} AdminDeleteAccountRequest;
+
 /* TrustDomainRequest is a structured data type. */
 typedef struct TrustDomainRequest {
     char *domain;
@@ -1094,6 +1162,19 @@ typedef struct LibraryResyncStatus {
     bool running;
     bool started;
 } LibraryResyncStatus;
+
+/* ListContentReportsResponse is a structured data type. */
+typedef struct ListContentReportsResponse {
+    ContentReport *reports;
+    size_t reports_count;
+    uint64_t total;
+} ListContentReportsResponse;
+
+/* UpdateContentReportStatusRequest is a structured data type. */
+typedef struct UpdateContentReportStatusRequest {
+    ContentReportId report_id;
+    ContentReportStatus status;
+} UpdateContentReportStatusRequest;
 
 /* WatchChangesRequest is a structured data type. */
 typedef struct WatchChangesRequest {

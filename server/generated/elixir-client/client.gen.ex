@@ -68,6 +68,20 @@ defmodule Csilgen.Generated.SessionClient do
 
     Csilgen.Generated.Ok.from_cbor(resp)
   end
+
+  @spec delete_account(t(), Csilgen.Generated.DeleteAccountRequest.t()) ::
+          Csilgen.Generated.Ok.t()
+  def delete_account(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "SessionService",
+        "delete-account",
+        Csilgen.Generated.DeleteAccountRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
 end
 
 defmodule Csilgen.Generated.LibraryClient do
@@ -216,6 +230,20 @@ defmodule Csilgen.Generated.LibraryClient do
     Csilgen.Generated.PlaylistDetail.from_cbor(resp)
   end
 
+  @spec delete_playlist(t(), Csilgen.Generated.DeletePlaylistRequest.t()) ::
+          Csilgen.Generated.Ok.t()
+  def delete_playlist(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "delete-playlist",
+        Csilgen.Generated.DeletePlaylistRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
   @spec get_cover_art(t(), Csilgen.Generated.CoverArtRequest.t()) ::
           Csilgen.Generated.CoverArt.t()
   def get_cover_art(%__MODULE__{transport: transport}, req) do
@@ -256,6 +284,20 @@ defmodule Csilgen.Generated.LibraryClient do
       )
 
     Csilgen.Generated.AudiobookProgress.from_cbor(resp)
+  end
+
+  @spec report_content(t(), Csilgen.Generated.ReportContentRequest.t()) ::
+          Csilgen.Generated.ContentReport.t()
+  def report_content(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "report-content",
+        Csilgen.Generated.ReportContentRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ContentReport.from_cbor(resp)
   end
 end
 
@@ -415,6 +457,20 @@ defmodule Csilgen.Generated.AdminClient do
       )
 
     Csilgen.Generated.Account.from_cbor(resp)
+  end
+
+  @spec delete_account(t(), Csilgen.Generated.AdminDeleteAccountRequest.t()) ::
+          Csilgen.Generated.Ok.t()
+  def delete_account(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "delete-account",
+        Csilgen.Generated.AdminDeleteAccountRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
   end
 
   @spec trust_domain(t(), Csilgen.Generated.TrustDomainRequest.t()) ::
@@ -759,6 +815,34 @@ defmodule Csilgen.Generated.AdminClient do
       )
 
     Csilgen.Generated.LibraryResyncStatus.from_cbor(resp)
+  end
+
+  @spec list_content_reports(t(), Csilgen.Generated.Page.t()) ::
+          Csilgen.Generated.ListContentReportsResponse.t()
+  def list_content_reports(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "list-content-reports",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.ListContentReportsResponse.from_cbor(resp)
+  end
+
+  @spec update_content_report_status(t(), Csilgen.Generated.UpdateContentReportStatusRequest.t()) ::
+          Csilgen.Generated.ContentReport.t()
+  def update_content_report_status(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "update-content-report-status",
+        Csilgen.Generated.UpdateContentReportStatusRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ContentReport.from_cbor(resp)
   end
 end
 

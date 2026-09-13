@@ -564,6 +564,115 @@ pub fn decode_ok(csil_data: &[u8]) -> Result<Ok, CsilCborError> {
     csil_dec_ok(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a ContentReport.
+fn csil_enc_content_report(csil_v: &ContentReport) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(9);
+    csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
+    csil_entries.push((
+        cbor_text("reason"),
+        csil_enc_content_report_reason(&csil_v.reason),
+    ));
+    csil_entries.push((
+        cbor_text("status"),
+        csil_enc_content_report_status(&csil_v.status),
+    ));
+    if let Some(csil_inner) = &csil_v.details {
+        csil_entries.push((cbor_text("details"), cbor_text(csil_inner)));
+    }
+    csil_entries.push((cbor_text("target_id"), cbor_text(&csil_v.target_id)));
+    csil_entries.push((
+        cbor_text("created_at"),
+        csil_enc_timestamp(&csil_v.created_at),
+    ));
+    if let Some(csil_inner) = &csil_v.resolved_at {
+        csil_entries.push((cbor_text("resolved_at"), csil_enc_timestamp(csil_inner)));
+    }
+    csil_entries.push((
+        cbor_text("target_type"),
+        csil_enc_content_report_target_type(&csil_v.target_type),
+    ));
+    csil_entries.push((
+        cbor_text("reporter_account_id"),
+        cbor_text(&csil_v.reporter_account_id),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ContentReport from a decoded CBOR value tree.
+fn csil_dec_content_report(csil_root: &CsilCborValue) -> Result<ContentReport, CsilCborError> {
+    let id = {
+        let csil_field = cbor_require(csil_root, "id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let reporter_account_id = {
+        let csil_field = cbor_require(csil_root, "reporter_account_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let target_type = {
+        let csil_field = cbor_require(csil_root, "target_type")?;
+        let csil_decode = csil_dec_content_report_target_type;
+        csil_decode(csil_field)?
+    };
+    let target_id = {
+        let csil_field = cbor_require(csil_root, "target_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let reason = {
+        let csil_field = cbor_require(csil_root, "reason")?;
+        let csil_decode = csil_dec_content_report_reason;
+        csil_decode(csil_field)?
+    };
+    let details = match cbor_map_get(csil_root, "details") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let status = {
+        let csil_field = cbor_require(csil_root, "status")?;
+        let csil_decode = csil_dec_content_report_status;
+        csil_decode(csil_field)?
+    };
+    let created_at = {
+        let csil_field = cbor_require(csil_root, "created_at")?;
+        let csil_decode = csil_as_timestamp;
+        csil_decode(csil_field)?
+    };
+    let resolved_at = match cbor_map_get(csil_root, "resolved_at") {
+        Some(csil_field) => {
+            let csil_decode = csil_as_timestamp;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(ContentReport {
+        id,
+        reporter_account_id,
+        target_type,
+        target_id,
+        reason,
+        details,
+        status,
+        created_at,
+        resolved_at,
+    })
+}
+
+/// Encode a ContentReport to canonical CSIL CBOR bytes.
+pub fn encode_content_report(csil_v: &ContentReport) -> Vec<u8> {
+    cbor_encode(&csil_enc_content_report(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ContentReport.
+pub fn decode_content_report(csil_data: &[u8]) -> Result<ContentReport, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_content_report(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a ServiceError.
 fn csil_enc_service_error(csil_v: &ServiceError) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
@@ -725,6 +834,43 @@ pub fn encode_session_info(csil_v: &SessionInfo) -> Vec<u8> {
 pub fn decode_session_info(csil_data: &[u8]) -> Result<SessionInfo, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_session_info(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a DeleteAccountRequest.
+fn csil_enc_delete_account_request(csil_v: &DeleteAccountRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((
+        cbor_text("confirmation_handle"),
+        cbor_text(&csil_v.confirmation_handle),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a DeleteAccountRequest from a decoded CBOR value tree.
+fn csil_dec_delete_account_request(
+    csil_root: &CsilCborValue,
+) -> Result<DeleteAccountRequest, CsilCborError> {
+    let confirmation_handle = {
+        let csil_field = cbor_require(csil_root, "confirmation_handle")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(DeleteAccountRequest {
+        confirmation_handle,
+    })
+}
+
+/// Encode a DeleteAccountRequest to canonical CSIL CBOR bytes.
+pub fn encode_delete_account_request(csil_v: &DeleteAccountRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_delete_account_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a DeleteAccountRequest.
+pub fn decode_delete_account_request(
+    csil_data: &[u8],
+) -> Result<DeleteAccountRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_delete_account_request(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a Track.
@@ -2056,6 +2202,38 @@ pub fn decode_playlist_request(csil_data: &[u8]) -> Result<PlaylistRequest, Csil
     csil_dec_playlist_request(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a DeletePlaylistRequest.
+fn csil_enc_delete_playlist_request(csil_v: &DeletePlaylistRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("playlist_id"), cbor_text(&csil_v.playlist_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a DeletePlaylistRequest from a decoded CBOR value tree.
+fn csil_dec_delete_playlist_request(
+    csil_root: &CsilCborValue,
+) -> Result<DeletePlaylistRequest, CsilCborError> {
+    let playlist_id = {
+        let csil_field = cbor_require(csil_root, "playlist_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(DeletePlaylistRequest { playlist_id })
+}
+
+/// Encode a DeletePlaylistRequest to canonical CSIL CBOR bytes.
+pub fn encode_delete_playlist_request(csil_v: &DeletePlaylistRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_delete_playlist_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a DeletePlaylistRequest.
+pub fn decode_delete_playlist_request(
+    csil_data: &[u8],
+) -> Result<DeletePlaylistRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_delete_playlist_request(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a PlaylistDetail.
 fn csil_enc_playlist_detail(csil_v: &PlaylistDetail) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
@@ -2163,6 +2341,71 @@ pub fn encode_cover_art(csil_v: &CoverArt) -> Vec<u8> {
 pub fn decode_cover_art(csil_data: &[u8]) -> Result<CoverArt, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_cover_art(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ReportContentRequest.
+fn csil_enc_report_content_request(csil_v: &ReportContentRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((
+        cbor_text("reason"),
+        csil_enc_content_report_reason(&csil_v.reason),
+    ));
+    if let Some(csil_inner) = &csil_v.details {
+        csil_entries.push((cbor_text("details"), cbor_text(csil_inner)));
+    }
+    csil_entries.push((cbor_text("target_id"), cbor_text(&csil_v.target_id)));
+    csil_entries.push((
+        cbor_text("target_type"),
+        csil_enc_content_report_target_type(&csil_v.target_type),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ReportContentRequest from a decoded CBOR value tree.
+fn csil_dec_report_content_request(
+    csil_root: &CsilCborValue,
+) -> Result<ReportContentRequest, CsilCborError> {
+    let target_type = {
+        let csil_field = cbor_require(csil_root, "target_type")?;
+        let csil_decode = csil_dec_content_report_target_type;
+        csil_decode(csil_field)?
+    };
+    let target_id = {
+        let csil_field = cbor_require(csil_root, "target_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let reason = {
+        let csil_field = cbor_require(csil_root, "reason")?;
+        let csil_decode = csil_dec_content_report_reason;
+        csil_decode(csil_field)?
+    };
+    let details = match cbor_map_get(csil_root, "details") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(ReportContentRequest {
+        target_type,
+        target_id,
+        reason,
+        details,
+    })
+}
+
+/// Encode a ReportContentRequest to canonical CSIL CBOR bytes.
+pub fn encode_report_content_request(csil_v: &ReportContentRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_report_content_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ReportContentRequest.
+pub fn decode_report_content_request(
+    csil_data: &[u8],
+) -> Result<ReportContentRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_report_content_request(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a Player.
@@ -4016,6 +4259,50 @@ pub fn decode_set_role_request(csil_data: &[u8]) -> Result<SetRoleRequest, CsilC
     csil_dec_set_role_request(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a AdminDeleteAccountRequest.
+fn csil_enc_admin_delete_account_request(csil_v: &AdminDeleteAccountRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("account_id"), cbor_text(&csil_v.account_id)));
+    csil_entries.push((
+        cbor_text("confirmation_handle"),
+        cbor_text(&csil_v.confirmation_handle),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a AdminDeleteAccountRequest from a decoded CBOR value tree.
+fn csil_dec_admin_delete_account_request(
+    csil_root: &CsilCborValue,
+) -> Result<AdminDeleteAccountRequest, CsilCborError> {
+    let account_id = {
+        let csil_field = cbor_require(csil_root, "account_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let confirmation_handle = {
+        let csil_field = cbor_require(csil_root, "confirmation_handle")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(AdminDeleteAccountRequest {
+        account_id,
+        confirmation_handle,
+    })
+}
+
+/// Encode a AdminDeleteAccountRequest to canonical CSIL CBOR bytes.
+pub fn encode_admin_delete_account_request(csil_v: &AdminDeleteAccountRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_admin_delete_account_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a AdminDeleteAccountRequest.
+pub fn decode_admin_delete_account_request(
+    csil_data: &[u8],
+) -> Result<AdminDeleteAccountRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_admin_delete_account_request(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a TrustDomainRequest.
 fn csil_enc_trust_domain_request(csil_v: &TrustDomainRequest) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
@@ -5484,6 +5771,92 @@ pub fn decode_library_resync_status(
     csil_dec_library_resync_status(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a ListContentReportsResponse.
+fn csil_enc_list_content_reports_response(csil_v: &ListContentReportsResponse) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("total"), cbor_uint(csil_v.total)));
+    csil_entries.push((
+        cbor_text("reports"),
+        cbor_enc_array(&csil_v.reports, csil_enc_content_report),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ListContentReportsResponse from a decoded CBOR value tree.
+fn csil_dec_list_content_reports_response(
+    csil_root: &CsilCborValue,
+) -> Result<ListContentReportsResponse, CsilCborError> {
+    let reports = {
+        let csil_field = cbor_require(csil_root, "reports")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_content_report);
+        csil_decode(csil_field)?
+    };
+    let total = {
+        let csil_field = cbor_require(csil_root, "total")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(ListContentReportsResponse { reports, total })
+}
+
+/// Encode a ListContentReportsResponse to canonical CSIL CBOR bytes.
+pub fn encode_list_content_reports_response(csil_v: &ListContentReportsResponse) -> Vec<u8> {
+    cbor_encode(&csil_enc_list_content_reports_response(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ListContentReportsResponse.
+pub fn decode_list_content_reports_response(
+    csil_data: &[u8],
+) -> Result<ListContentReportsResponse, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_list_content_reports_response(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a UpdateContentReportStatusRequest.
+fn csil_enc_update_content_report_status_request(
+    csil_v: &UpdateContentReportStatusRequest,
+) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((
+        cbor_text("status"),
+        csil_enc_content_report_status(&csil_v.status),
+    ));
+    csil_entries.push((cbor_text("report_id"), cbor_text(&csil_v.report_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a UpdateContentReportStatusRequest from a decoded CBOR value tree.
+fn csil_dec_update_content_report_status_request(
+    csil_root: &CsilCborValue,
+) -> Result<UpdateContentReportStatusRequest, CsilCborError> {
+    let report_id = {
+        let csil_field = cbor_require(csil_root, "report_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let status = {
+        let csil_field = cbor_require(csil_root, "status")?;
+        let csil_decode = csil_dec_content_report_status;
+        csil_decode(csil_field)?
+    };
+    Ok(UpdateContentReportStatusRequest { report_id, status })
+}
+
+/// Encode a UpdateContentReportStatusRequest to canonical CSIL CBOR bytes.
+pub fn encode_update_content_report_status_request(
+    csil_v: &UpdateContentReportStatusRequest,
+) -> Vec<u8> {
+    cbor_encode(&csil_enc_update_content_report_status_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a UpdateContentReportStatusRequest.
+pub fn decode_update_content_report_status_request(
+    csil_data: &[u8],
+) -> Result<UpdateContentReportStatusRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_update_content_report_status_request(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a WatchChangesRequest.
 fn csil_enc_watch_changes_request(csil_v: &WatchChangesRequest) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
@@ -5646,6 +6019,78 @@ fn csil_dec_transcode_codec(csil_v: &CsilCborValue) -> Result<TranscodeCodec, Cs
         "mp3" => Ok(TranscodeCodec::Mp3),
         csil_other => Err(CsilCborError(format!(
             "csil cbor: unknown TranscodeCodec value {csil_other:?}"
+        ))),
+    }
+}
+
+/// Encode a ContentReportTargetType enum as its bare literal value.
+fn csil_enc_content_report_target_type(csil_v: &ContentReportTargetType) -> CsilCborValue {
+    match csil_v {
+        ContentReportTargetType::Playlist => cbor_text("playlist"),
+        ContentReportTargetType::Account => cbor_text("account"),
+    }
+}
+
+/// Decode a bare literal value into a ContentReportTargetType enum.
+fn csil_dec_content_report_target_type(
+    csil_v: &CsilCborValue,
+) -> Result<ContentReportTargetType, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "playlist" => Ok(ContentReportTargetType::Playlist),
+        "account" => Ok(ContentReportTargetType::Account),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown ContentReportTargetType value {csil_other:?}"
+        ))),
+    }
+}
+
+/// Encode a ContentReportReason enum as its bare literal value.
+fn csil_enc_content_report_reason(csil_v: &ContentReportReason) -> CsilCborValue {
+    match csil_v {
+        ContentReportReason::ObjectionableContent => cbor_text("objectionable-content"),
+        ContentReportReason::Harassment => cbor_text("harassment"),
+        ContentReportReason::Spam => cbor_text("spam"),
+        ContentReportReason::Other => cbor_text("other"),
+    }
+}
+
+/// Decode a bare literal value into a ContentReportReason enum.
+fn csil_dec_content_report_reason(
+    csil_v: &CsilCborValue,
+) -> Result<ContentReportReason, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "objectionable-content" => Ok(ContentReportReason::ObjectionableContent),
+        "harassment" => Ok(ContentReportReason::Harassment),
+        "spam" => Ok(ContentReportReason::Spam),
+        "other" => Ok(ContentReportReason::Other),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown ContentReportReason value {csil_other:?}"
+        ))),
+    }
+}
+
+/// Encode a ContentReportStatus enum as its bare literal value.
+fn csil_enc_content_report_status(csil_v: &ContentReportStatus) -> CsilCborValue {
+    match csil_v {
+        ContentReportStatus::Open => cbor_text("open"),
+        ContentReportStatus::Resolved => cbor_text("resolved"),
+        ContentReportStatus::Dismissed => cbor_text("dismissed"),
+    }
+}
+
+/// Decode a bare literal value into a ContentReportStatus enum.
+fn csil_dec_content_report_status(
+    csil_v: &CsilCborValue,
+) -> Result<ContentReportStatus, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "open" => Ok(ContentReportStatus::Open),
+        "resolved" => Ok(ContentReportStatus::Resolved),
+        "dismissed" => Ok(ContentReportStatus::Dismissed),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown ContentReportStatus value {csil_other:?}"
         ))),
     }
 }

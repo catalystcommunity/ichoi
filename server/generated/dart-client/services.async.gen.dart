@@ -47,6 +47,15 @@ final class SessionAsyncClient {
     );
     return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
+
+  Future<Ok> deleteAccount(DeleteAccountRequest request) async {
+    final csilResp = await transport.call(
+      'SessionService',
+      'delete-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
 }
 
 /// A typed, transport-agnostic client for the LibraryService service. The client owns
@@ -145,6 +154,15 @@ final class LibraryAsyncClient {
     return PlaylistDetail.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<Ok> deletePlaylist(DeletePlaylistRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'delete-playlist',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<CoverArt> getCoverArt(CoverArtRequest request) async {
     final csilResp = await transport.call(
       'LibraryService',
@@ -174,6 +192,15 @@ final class LibraryAsyncClient {
       request.toCbor(),
     );
     return AudiobookProgress.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ContentReport> reportContent(ReportContentRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'report-content',
+      request.toCbor(),
+    );
+    return ContentReport.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 
@@ -279,6 +306,15 @@ final class AdminAsyncClient {
       request.toCbor(),
     );
     return Account.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> deleteAccount(AdminDeleteAccountRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'delete-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   Future<TrustedDomains> trustDomain(TrustDomainRequest request) async {
@@ -508,6 +544,26 @@ final class AdminAsyncClient {
       request.toCbor(),
     );
     return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ListContentReportsResponse> listContentReports(Page request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'list-content-reports',
+      request.toCbor(),
+    );
+    return ListContentReportsResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ContentReport> updateContentReportStatus(
+    UpdateContentReportStatusRequest request,
+  ) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'update-content-report-status',
+      request.toCbor(),
+    );
+    return ContentReport.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 

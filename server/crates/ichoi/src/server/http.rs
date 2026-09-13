@@ -200,16 +200,19 @@ async fn set_session_cookie(State(s): State<AppState>, headers: HeaderMap) -> Re
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
     match crate::db::store::account_for_token(&mut conn, &crate::auth::sha256_hex(token)) {
-        Ok(Some(_)) => (
-            StatusCode::NO_CONTENT,
-            [(
-                header::SET_COOKIE,
-                "__Host-ichoi_session=".to_string()
-                    + token
-                    + "; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Strict",
-            )],
-        )
-            .into_response(),
+        Ok(Some(_)) => {
+            let max_age = s.app.config.session_lifetime_hours * 3_600;
+            (
+                StatusCode::NO_CONTENT,
+                [(
+                    header::SET_COOKIE,
+                    format!(
+                        "__Host-ichoi_session={token}; Path=/; Max-Age={max_age}; HttpOnly; Secure; SameSite=Strict"
+                    ),
+                )],
+            )
+                .into_response()
+        }
         Ok(None) => StatusCode::UNAUTHORIZED.into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
@@ -226,7 +229,11 @@ async fn clear_session_cookie() -> impl IntoResponse {
 }
 
 pub(crate) fn request_has_session(app: &App, headers: &HeaderMap) -> bool {
-    let token = headers
+    request_account(app, headers).is_some()
+}
+
+fn request_account(app: &App, headers: &HeaderMap) -> Option<crate::db::models::Account> {
+    let cookie_token = headers
         .get(header::COOKIE)
         .and_then(|value| value.to_str().ok())
         .and_then(|cookies| {
@@ -237,18 +244,17 @@ pub(crate) fn request_has_session(app: &App, headers: &HeaderMap) -> bool {
                     .filter(|token| !token.is_empty())
             })
         });
-    let Some(token) = token else {
-        return false;
-    };
-    app.pool
-        .get()
-        .ok()
-        .and_then(|mut conn| {
-            crate::db::store::account_for_token(&mut conn, &crate::auth::sha256_hex(token))
-                .ok()
-                .flatten()
-        })
-        .is_some()
+    let bearer_token = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .filter(|token| !token.is_empty());
+    let token = cookie_token.or(bearer_token)?;
+    app.pool.get().ok().and_then(|mut conn| {
+        crate::db::store::account_for_token(&mut conn, &crate::auth::sha256_hex(token))
+            .ok()
+            .flatten()
+    })
 }
 
 pub(crate) fn request_allowed(
@@ -265,11 +271,42 @@ pub(crate) fn request_allowed(
 #[derive(Debug, Deserialize)]
 struct LocalRpStartRequest {
     identity: String,
+    #[serde(default)]
+    return_url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct LocalRpStartResponse {
     redirect_url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StoredLinkKeysAttempt {
+    pending_login: String,
+    #[serde(default)]
+    return_url: Option<String>,
+}
+
+fn native_return_url(value: Option<String>) -> Result<Option<String>, (StatusCode, &'static str)> {
+    match value {
+        None => Ok(None),
+        Some(value) if value == "ichoi://linkkeys" => Ok(Some(value)),
+        Some(_) => Err((StatusCode::BAD_REQUEST, "invalid native return URL")),
+    }
+}
+
+fn store_linkkeys_attempt(pending_login: String, return_url: Option<String>) -> String {
+    serde_json::to_string(&StoredLinkKeysAttempt {
+        pending_login,
+        return_url,
+    })
+    .expect("LinkKeys attempt wrapper is serializable")
+}
+
+fn load_linkkeys_attempt(value: &str) -> (String, Option<String>) {
+    serde_json::from_str::<StoredLinkKeysAttempt>(value)
+        .map(|stored| (stored.pending_login, stored.return_url))
+        .unwrap_or_else(|_| (value.to_string(), None))
 }
 
 async fn local_rp_start(
@@ -283,6 +320,10 @@ async fn local_rp_start(
     let selector = match crate::auth::local_rp::parse_selector(&req.identity) {
         Ok(value) => value,
         Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+    };
+    let return_url = match native_return_url(req.return_url) {
+        Ok(value) => value,
+        Err(error) => return error.into_response(),
     };
     let origin = match validated_origin(&headers) {
         Ok(value) => value,
@@ -321,7 +362,7 @@ async fn local_rp_start(
     let now = chrono::Utc::now();
     let row = crate::db::models::LinkkeysLoginAttempt {
         attempt_sha256: attempt.sha256_hex,
-        pending_login,
+        pending_login: store_linkkeys_attempt(pending_login, return_url),
         expected_handle: selector.handle,
         created_at: now.to_rfc3339(),
         expires_at: (now + chrono::Duration::minutes(5)).to_rfc3339(),
@@ -367,15 +408,15 @@ async fn local_rp_callback(
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
     drop(conn);
-    let callback_url =
-        serde_json::from_str::<linkkeys_local_rp::PendingLogin>(&attempt.pending_login)
-            .map(|pending| pending.callback_url);
+    let (pending_login, return_url) = load_linkkeys_attempt(&attempt.pending_login);
+    let callback_url = serde_json::from_str::<linkkeys_local_rp::PendingLogin>(&pending_login)
+        .map(|pending| pending.callback_url);
     let callback_url = match callback_url {
         Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
     let arrived_url = format!("{callback_url}&encrypted_token={}", query.encrypted_token);
-    let pending = attempt.pending_login.clone();
+    let pending = pending_login;
     let encrypted = query.encrypted_token.clone();
     let completed =
         tokio::task::spawn_blocking(move || backend.complete(&pending, &encrypted, &arrived_url))
@@ -385,7 +426,7 @@ async fn local_rp_callback(
         Ok(Err(e)) => return (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    finish_linkkeys_login(&s.app, verified)
+    finish_linkkeys_login(&s.app, verified, return_url.as_deref())
 }
 
 async fn regular_rp_start(
@@ -399,6 +440,10 @@ async fn regular_rp_start(
     let selector = match crate::auth::local_rp::parse_selector(&req.identity) {
         Ok(value) => value,
         Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
+    };
+    let return_url = match native_return_url(req.return_url) {
+        Ok(value) => value,
+        Err(error) => return error.into_response(),
     };
     if let Err(error) = validated_origin(&headers) {
         return error.into_response();
@@ -446,7 +491,7 @@ async fn regular_rp_start(
     let now = chrono::Utc::now();
     let row = crate::db::models::LinkkeysLoginAttempt {
         attempt_sha256: attempt.sha256_hex,
-        pending_login,
+        pending_login: store_linkkeys_attempt(pending_login, return_url),
         expected_handle: selector.handle,
         created_at: now.to_rfc3339(),
         expires_at: (now + chrono::Duration::minutes(5)).to_rfc3339(),
@@ -486,7 +531,7 @@ async fn regular_rp_callback(
     };
     drop(conn);
 
-    let pending = attempt.pending_login.clone();
+    let (pending, return_url) = load_linkkeys_attempt(&attempt.pending_login);
     let encrypted = query.encrypted_token.clone();
     let completed =
         tokio::task::spawn_blocking(move || backend.complete(&pending, &encrypted)).await;
@@ -495,10 +540,14 @@ async fn regular_rp_callback(
         Ok(Err(e)) => return (StatusCode::UNAUTHORIZED, e.to_string()).into_response(),
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    finish_linkkeys_login(&s.app, verified)
+    finish_linkkeys_login(&s.app, verified, return_url.as_deref())
 }
 
-fn finish_linkkeys_login(app: &App, verified: crate::auth::local_rp::VerifiedIdentity) -> Response {
+fn finish_linkkeys_login(
+    app: &App,
+    verified: crate::auth::local_rp::VerifiedIdentity,
+    return_url: Option<&str>,
+) -> Response {
     let mut conn = match app.pool.get() {
         Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
@@ -551,7 +600,12 @@ fn finish_linkkeys_login(app: &App, verified: crate::auth::local_rp::VerifiedIde
     if crate::db::store::create_linkkeys_exchange(&mut conn, &row).is_err() {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
-    Redirect::to(&format!("/#linkkeys_exchange={}", exchange.token)).into_response()
+    let destination = return_url.unwrap_or("/");
+    Redirect::to(&format!(
+        "{destination}#linkkeys_exchange={}",
+        exchange.token
+    ))
+    .into_response()
 }
 
 fn validated_origin(headers: &HeaderMap) -> Result<String, (StatusCode, &'static str)> {
@@ -585,8 +639,6 @@ struct SaveQueuePlaylistRequest {
     track_ids: Vec<String>,
     #[serde(default)]
     visibility: Option<String>,
-    #[serde(default)]
-    owner: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -604,10 +656,15 @@ async fn save_queue_playlist(
     connect: Option<ConnectInfo<SocketAddr>>,
     Json(req): Json<SaveQueuePlaylistRequest>,
 ) -> impl IntoResponse {
-    if !request_allowed(&s.app, &headers, connect) {
-        return (StatusCode::UNAUTHORIZED, "sign in required").into_response();
-    }
-    let result = tokio::task::spawn_blocking(move || save_queue_playlist_sync(&s.app, req)).await;
+    let account = request_account(&s.app, &headers);
+    let guest_allowed = s
+        .app
+        .config
+        .guest_allowed_from(client_address(&s.app, &headers, connect));
+    let result = tokio::task::spawn_blocking(move || {
+        save_queue_playlist_sync(&s.app, req, account, guest_allowed)
+    })
+    .await;
     match result {
         Ok(Ok(saved)) => (StatusCode::OK, Json(saved)).into_response(),
         Ok(Err((status, message))) => (status, message).into_response(),
@@ -618,6 +675,8 @@ async fn save_queue_playlist(
 fn save_queue_playlist_sync(
     app: &App,
     req: SaveQueuePlaylistRequest,
+    account: Option<crate::db::models::Account>,
+    guest_allowed: bool,
 ) -> Result<SaveQueuePlaylistResponse, (StatusCode, String)> {
     let name = req.name.trim();
     if name.is_empty() {
@@ -629,13 +688,28 @@ fn save_queue_playlist_sync(
     if req.track_ids.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "queue is empty".to_string()));
     }
+    let mut conn = app
+        .pool
+        .get()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
+    let owner = match account {
+        Some(account) => Some(account.id),
+        None if guest_allowed => {
+            let count = crate::db::store::count_accounts(&mut conn)
+                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
+            if count != 0 {
+                return Err((StatusCode::UNAUTHORIZED, "sign in required".to_string()));
+            }
+            None
+        }
+        None => return Err((StatusCode::UNAUTHORIZED, "sign in required".to_string())),
+    };
     let root = app.config.music_dir.as_ref().ok_or_else(|| {
         (
             StatusCode::SERVICE_UNAVAILABLE,
             "no music directory configured".to_string(),
         )
     })?;
-    let owner = req.owner.filter(|s| !s.trim().is_empty());
     let visibility = if req.visibility.as_deref() == Some("private") && owner.is_some() {
         "private"
     } else {
@@ -643,10 +717,6 @@ fn save_queue_playlist_sync(
     }
     .to_string();
 
-    let mut conn = app
-        .pool
-        .get()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
     let mut entries = Vec::new();
     for id in &req.track_ids {
         let track = crate::db::store::get_track(&mut conn, id)

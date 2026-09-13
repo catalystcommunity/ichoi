@@ -16,6 +16,12 @@ pub trait SessionService {
     fn whoami(&self, ctx: &Self::Context, input: Page) -> Result<SessionInfo, ServiceError>;
     /// logout (request/response).
     fn logout(&self, ctx: &Self::Context, input: Page) -> Result<Ok, ServiceError>;
+    /// delete-account (request/response).
+    fn delete_account(
+        &self,
+        ctx: &Self::Context,
+        input: DeleteAccountRequest,
+    ) -> Result<Ok, ServiceError>;
 }
 
 /// LibraryService service trait
@@ -81,6 +87,12 @@ pub trait LibraryService {
         ctx: &Self::Context,
         input: PlaylistRequest,
     ) -> Result<PlaylistDetail, ServiceError>;
+    /// delete-playlist (request/response).
+    fn delete_playlist(
+        &self,
+        ctx: &Self::Context,
+        input: DeletePlaylistRequest,
+    ) -> Result<Ok, ServiceError>;
     /// get-cover-art (request/response).
     fn get_cover_art(
         &self,
@@ -99,6 +111,12 @@ pub trait LibraryService {
         ctx: &Self::Context,
         input: UpdateAudiobookProgressRequest,
     ) -> Result<AudiobookProgress, ServiceError>;
+    /// report-content (request/response).
+    fn report_content(
+        &self,
+        ctx: &Self::Context,
+        input: ReportContentRequest,
+    ) -> Result<ContentReport, ServiceError>;
 }
 
 /// PlayerService service trait
@@ -196,7 +214,6 @@ where
     })
 }
 
-
 /// NodeService service trait
 pub trait NodeService {
     type Context;
@@ -237,7 +254,6 @@ where
     }
 }
 
-
 /// AdminService service trait
 pub trait AdminService {
     type Context;
@@ -250,6 +266,12 @@ pub trait AdminService {
     /// set-role (request/response).
     fn set_role(&self, ctx: &Self::Context, input: SetRoleRequest)
         -> Result<Account, ServiceError>;
+    /// delete-account (request/response).
+    fn delete_account(
+        &self,
+        ctx: &Self::Context,
+        input: AdminDeleteAccountRequest,
+    ) -> Result<Ok, ServiceError>;
     /// trust-domain (request/response).
     fn trust_domain(
         &self,
@@ -396,6 +418,18 @@ pub trait AdminService {
         ctx: &Self::Context,
         input: Page,
     ) -> Result<LibraryResyncStatus, ServiceError>;
+    /// list-content-reports (request/response).
+    fn list_content_reports(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<ListContentReportsResponse, ServiceError>;
+    /// update-content-report-status (request/response).
+    fn update_content_report_status(
+        &self,
+        ctx: &Self::Context,
+        input: UpdateContentReportStatusRequest,
+    ) -> Result<ContentReport, ServiceError>;
 }
 
 /// ChangeService service trait

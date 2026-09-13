@@ -248,3 +248,18 @@ pub struct AudiobookProgress {
     pub completed: i32,
     pub updated_at: String,
 }
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]
+#[diesel(table_name = content_reports)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct ContentReport {
+    pub id: String,
+    pub reporter_account_id: String,
+    pub target_type: String,
+    pub target_id: String,
+    pub reason: String,
+    pub details: Option<String>,
+    pub status: String,
+    pub created_at: String,
+    pub resolved_at: Option<String>,
+}

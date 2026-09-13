@@ -1,0 +1,45 @@
+# Development template for a public demonstration server. Do not deploy this file
+# until a person approves the host, contacts, secrets, and media licences.
+services:
+  ichoi:
+    image: containers.catalystsquad.com/public/catalystcommunity/ichoi:latest
+    restart: unless-stopped
+    environment:
+      ICHOI_ROLE: core
+      ICHOI_MUSIC_DIR: /music
+      ICHOI_DB_DIR: /data
+      ICHOI_REQUIRE_MUSIC: "1"
+      ICHOI_ACCESS_MODE: open
+      ICHOI_PUBLIC_URL: https://demo.ichoi.invalid
+      ICHOI_SESSION_LIFETIME_HOURS: "24"
+      ICHOI_LINKKEYS_RP: "true"
+      ICHOI_LINKKEYS_RP_ADDR: linkkeys.ichoi.invalid:4987
+      ICHOI_LINKKEYS_RP_FINGERPRINTS: REPLACE-ME
+      ICHOI_LINKKEYS_RP_API_KEY_FILE: /run/secrets/linkkeys_rp_api_key
+      ICHOI_LINKKEYS_RP_DOMAIN: demo.ichoi.invalid
+      ICHOI_LINKKEYS_TRUSTED_IDENTITIES: REPLACE-ME-EXACT-HANDLE@REPLACE-ME-DOMAIN
+      ICHOI_ADMIN_TOKEN: REPLACE-ME-ONE-TIME-BOOTSTRAP
+      ICHOI_LOG: info
+    volumes:
+      - ./music:/music:ro
+      - ./data:/data
+      - ./secrets/linkkeys_rp_api_key:/run/secrets/linkkeys_rp_api_key:ro
+    expose:
+      - "4042"
+
+  caddy:
+    image: caddy:2.9.1
+    restart: unless-stopped
+    depends_on:
+      - ichoi
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -419,6 +419,100 @@ public extension Ok {
     static func fromCbor(_ bytes: [UInt8]) throws -> Ok { try Ok(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension ContentReportTargetType {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = ContentReportTargetType(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ContentReportTargetType { try ContentReportTargetType(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ContentReportReason {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = ContentReportReason(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ContentReportReason { try ContentReportReason(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ContentReportStatus {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = ContentReportStatus(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ContentReportStatus { try ContentReportStatus(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ContentReport {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("id", .text(self.id)))
+        csilEntries.append(("reason", self.reason.toCborValue()))
+        csilEntries.append(("status", self.status.toCborValue()))
+        if let csilV = self.details { csilEntries.append(("details", .text(csilV))) }
+        csilEntries.append(("target_id", .text(self.targetId)))
+        csilEntries.append(("created_at", .tag(0, .text(self.createdAt))))
+        if let csilV = self.resolvedAt { csilEntries.append(("resolved_at", .tag(0, .text(csilV)))) }
+        csilEntries.append(("target_type", self.targetType.toCborValue()))
+        csilEntries.append(("reporter_account_id", .text(self.reporterAccountId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let reporterAccountId = try CsilCbor.asText((try CsilCbor.require(cborValue, "reporter_account_id")))
+        let targetType = try ContentReportTargetType(cborValue: (try CsilCbor.require(cborValue, "target_type")))
+        let targetId = try CsilCbor.asText((try CsilCbor.require(cborValue, "target_id")))
+        let reason = try ContentReportReason(cborValue: (try CsilCbor.require(cborValue, "reason")))
+        let details: String? = if let csilV = CsilCbor.mapGet(cborValue, "details") { try CsilCbor.asText(csilV) } else { nil }
+        let status = try ContentReportStatus(cborValue: (try CsilCbor.require(cborValue, "status")))
+        let createdAt = try CsilCbor.asTaggedText((try CsilCbor.require(cborValue, "created_at")), 0)
+        let resolvedAt: String? = if let csilV = CsilCbor.mapGet(cborValue, "resolved_at") { try CsilCbor.asTaggedText(csilV, 0) } else { nil }
+        self.init(id: id, reporterAccountId: reporterAccountId, targetType: targetType, targetId: targetId, reason: reason, details: details, status: status, createdAt: createdAt, resolvedAt: resolvedAt)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ContentReport { try ContentReport(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension ServiceError {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
@@ -496,6 +590,27 @@ public extension SessionInfo {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> SessionInfo { try SessionInfo(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension DeleteAccountRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("confirmation_handle", .text(self.confirmationHandle)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let confirmationHandle = try CsilCbor.asText((try CsilCbor.require(cborValue, "confirmation_handle")))
+        self.init(confirmationHandle: confirmationHandle)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> DeleteAccountRequest { try DeleteAccountRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension Library {
@@ -1196,6 +1311,27 @@ public extension PlaylistRequest {
     static func fromCbor(_ bytes: [UInt8]) throws -> PlaylistRequest { try PlaylistRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension DeletePlaylistRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("playlist_id", .text(self.playlistId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let playlistId = try CsilCbor.asText((try CsilCbor.require(cborValue, "playlist_id")))
+        self.init(playlistId: playlistId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> DeletePlaylistRequest { try DeletePlaylistRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension PlaylistDetail {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
@@ -1263,6 +1399,33 @@ public extension CoverArt {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> CoverArt { try CoverArt(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ReportContentRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("reason", self.reason.toCborValue()))
+        if let csilV = self.details { csilEntries.append(("details", .text(csilV))) }
+        csilEntries.append(("target_id", .text(self.targetId)))
+        csilEntries.append(("target_type", self.targetType.toCborValue()))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let targetType = try ContentReportTargetType(cborValue: (try CsilCbor.require(cborValue, "target_type")))
+        let targetId = try CsilCbor.asText((try CsilCbor.require(cborValue, "target_id")))
+        let reason = try ContentReportReason(cborValue: (try CsilCbor.require(cborValue, "reason")))
+        let details: String? = if let csilV = CsilCbor.mapGet(cborValue, "details") { try CsilCbor.asText(csilV) } else { nil }
+        self.init(targetType: targetType, targetId: targetId, reason: reason, details: details)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ReportContentRequest { try ReportContentRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension PlayerKind {
@@ -2472,6 +2635,29 @@ public extension SetRoleRequest {
     static func fromCbor(_ bytes: [UInt8]) throws -> SetRoleRequest { try SetRoleRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension AdminDeleteAccountRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("account_id", .text(self.accountId)))
+        csilEntries.append(("confirmation_handle", .text(self.confirmationHandle)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let accountId = try CsilCbor.asText((try CsilCbor.require(cborValue, "account_id")))
+        let confirmationHandle = try CsilCbor.asText((try CsilCbor.require(cborValue, "confirmation_handle")))
+        self.init(accountId: accountId, confirmationHandle: confirmationHandle)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> AdminDeleteAccountRequest { try AdminDeleteAccountRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension TrustDomainRequest {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
@@ -3295,6 +3481,52 @@ public extension LibraryResyncStatus {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> LibraryResyncStatus { try LibraryResyncStatus(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ListContentReportsResponse {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("total", .uint(self.total)))
+        csilEntries.append(("reports", CsilCborValue.array(self.reports.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let reports = try CsilCbor.asArray((try CsilCbor.require(cborValue, "reports"))).map { try ContentReport(cborValue: $0) }
+        let total = try CsilCbor.asU64((try CsilCbor.require(cborValue, "total")))
+        self.init(reports: reports, total: total)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ListContentReportsResponse { try ListContentReportsResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension UpdateContentReportStatusRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("status", self.status.toCborValue()))
+        csilEntries.append(("report_id", .text(self.reportId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let reportId = try CsilCbor.asText((try CsilCbor.require(cborValue, "report_id")))
+        let status = try ContentReportStatus(cborValue: (try CsilCbor.require(cborValue, "status")))
+        self.init(reportId: reportId, status: status)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> UpdateContentReportStatusRequest { try UpdateContentReportStatusRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension ChangeTopic {

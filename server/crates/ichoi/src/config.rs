@@ -72,6 +72,7 @@ struct FileConfig {
     linkkeys_trusted_identities: Option<Vec<String>>,
     access_mode: Option<String>,
     trusted_proxy_cidrs: Option<Vec<String>>,
+    session_lifetime_hours: Option<u64>,
 }
 
 #[derive(Clone)]
@@ -132,6 +133,8 @@ pub struct Config {
     pub access_mode: AccessMode,
     /// Immediate peers whose X-Forwarded-For header may be used for LAN classification.
     pub trusted_proxy_cidrs: Vec<IpNet>,
+    /// Session lifetime. The default is 720 hours (30 days).
+    pub session_lifetime_hours: u64,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -178,6 +181,19 @@ fn album_subfolder_words(value: Option<String>) -> Vec<String> {
         })
 }
 
+fn session_lifetime_hours(value: Option<String>, file_value: Option<u64>) -> anyhow::Result<u64> {
+    let hours = match value {
+        Some(value) => value.parse::<u64>().map_err(|_| {
+            anyhow::anyhow!("ICHOI_SESSION_LIFETIME_HOURS must be a positive integer")
+        })?,
+        None => file_value.unwrap_or(720),
+    };
+    if hours == 0 || hours > (i64::MAX as u64 / 3_600) {
+        anyhow::bail!("ICHOI_SESSION_LIFETIME_HOURS must be a positive integer");
+    }
+    Ok(hours)
+}
+
 impl Config {
     /// Resolve config: env → file (`ICHOI_CONFIG` path or `./ichoi.toml`) → defaults.
     pub fn load() -> anyhow::Result<Config> {
@@ -222,6 +238,10 @@ impl Config {
             "ICHOI_ALBUM_SUBFOLDER_WORDS",
             file.album_subfolder_words.map(|words| words.join(",")),
         ));
+        let session_lifetime_hours = session_lifetime_hours(
+            env("ICHOI_SESSION_LIFETIME_HOURS"),
+            file.session_lifetime_hours,
+        )?;
 
         Ok(Config {
             role,
@@ -325,6 +345,7 @@ impl Config {
             })
             .transpose()?
             .unwrap_or_default(),
+            session_lifetime_hours,
         })
     }
 
@@ -382,7 +403,7 @@ mod tests {
 
     use super::{
         album_subfolder_words, configurable_bool, exactly_true, is_lan_address, read_secret_file,
-        AccessMode, FileConfig,
+        session_lifetime_hours, AccessMode, FileConfig,
     };
 
     #[test]
@@ -503,5 +524,18 @@ album_subfolder_words = ["part", "supplement"]
             album_subfolder_words(Some("part, supplement ".to_string())),
             vec!["part", "supplement"]
         );
+    }
+
+    #[test]
+    fn session_lifetime_uses_default_file_and_environment_values() {
+        assert_eq!(session_lifetime_hours(None, None).unwrap(), 720);
+        assert_eq!(session_lifetime_hours(None, Some(48)).unwrap(), 48);
+        assert_eq!(
+            session_lifetime_hours(Some("24".into()), Some(48)).unwrap(),
+            24
+        );
+        assert!(session_lifetime_hours(Some("0".into()), None).is_err());
+        assert!(session_lifetime_hours(Some("one-day".into()), None).is_err());
+        assert!(session_lifetime_hours(None, Some(0)).is_err());
     }
 }

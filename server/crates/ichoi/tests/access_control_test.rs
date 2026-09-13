@@ -85,6 +85,7 @@ async fn login_required_blocks_media_until_the_browser_session_cookie_is_set() {
     let (mut app, pool) = common::test_app();
     let mut config = common::test_config();
     config.access_mode = AccessMode::LoginRequired;
+    config.session_lifetime_hours = 24;
     app.config = Arc::new(config);
     let router = ichoi::server::http::router(app.clone(), ".".into());
 
@@ -140,9 +141,11 @@ async fn login_required_blocks_media_until_the_browser_session_cookie_is_set() {
         .unwrap()
         .to_str()
         .unwrap();
+    assert!(set_cookie.contains("Max-Age=86400"));
     let cookie_pair = set_cookie.split(';').next().unwrap();
 
     let allowed = router
+        .clone()
         .oneshot(
             Request::builder()
                 .uri("/media/missing")
@@ -153,6 +156,18 @@ async fn login_required_blocks_media_until_the_browser_session_cookie_is_set() {
         .await
         .unwrap();
     assert_eq!(allowed.status(), StatusCode::NOT_FOUND);
+
+    let native_allowed = router
+        .oneshot(
+            Request::builder()
+                .uri("/media/missing")
+                .header(header::AUTHORIZATION, "Bearer browser-secret")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(native_allowed.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

@@ -8,6 +8,7 @@ and track_id = string
 and album_id = string
 and artist_id = string
 and playlist_id = string
+and content_report_id = string
 and node_id = string
 and device_id = string
 and player_id = string
@@ -24,6 +25,24 @@ and stream_pref = {
 
 and page = { offset : int64 option; limit : int64 option }
 and ok = { ok : bool }
+and content_report_target_type = Playlist | Account
+and content_report_reason = Objectionable_content | Harassment | Spam | Other
+and content_report_status = Open | Resolved | Dismissed
+
+and content_report = {
+  id : content_report_id;
+  reporter_account_id : account_id;
+  target_type : content_report_target_type;
+  target_id : string;
+  reason : content_report_reason;
+  details : string option;
+  status : content_report_status;
+  (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
+  created_at : string;
+  (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
+  resolved_at : string option;
+}
+
 and service_error = { code : int64; message : string }
 
 and auth_request = {
@@ -41,6 +60,7 @@ and session_info = {
   token : string option;
 }
 
+and delete_account_request = { confirmation_handle : handle }
 and library = Music | Audiobook
 
 and track = {
@@ -159,9 +179,18 @@ and update_audiobook_progress_request = {
 
 and playlists_response = { playlists : playlist list }
 and playlist_request = { playlist_id : playlist_id }
+and delete_playlist_request = { playlist_id : playlist_id }
 and playlist_detail = { playlist : playlist; tracks : track list }
 and cover_art_request = { album_id : album_id; max_size : int64 option }
 and cover_art = { content_type : string; data : bytes }
+
+and report_content_request = {
+  target_type : content_report_target_type;
+  target_id : string;
+  reason : content_report_reason;
+  details : string option;
+}
+
 and player_kind = Shared | Private
 
 and player = {
@@ -331,6 +360,12 @@ and account = {
 
 and list_accounts_response = { accounts : account list }
 and set_role_request = { account_id : account_id; role : role }
+
+and admin_delete_account_request = {
+  account_id : account_id;
+  confirmation_handle : handle;
+}
+
 and trust_domain_request = { domain : string }
 and trusted_domains = { domains : string list }
 
@@ -461,6 +496,16 @@ and cancel_import_request = { transfer_id : string }
 and settings = { entries : (string * string) list }
 and set_setting_request = { key : string; value : string }
 and library_resync_status = { running : bool; started : bool }
+
+and list_content_reports_response = {
+  reports : content_report list;
+  total : int64;
+}
+
+and update_content_report_status_request = {
+  report_id : content_report_id;
+  status : content_report_status;
+}
 
 and change_topic =
   | Players

@@ -16,6 +16,8 @@ require "time"
 
 # PlaylistId is an alias for String.
 
+# ContentReportId is an alias for String.
+
 # NodeId is an alias for String.
 
 # DeviceId is an alias for String.
@@ -50,6 +52,27 @@ end
 # ok [Boolean]
 Ok = Data.define(:ok)
 
+# ContentReportTargetType is an alias for String.
+
+# ContentReportReason is an alias for String.
+
+# ContentReportStatus is an alias for String.
+
+# id [ContentReportId]
+# reporter_account_id [AccountId]
+# target_type [ContentReportTargetType]
+# target_id [String]
+# reason [ContentReportReason]
+# details [String]
+# status [ContentReportStatus]
+# created_at [Time]
+# resolved_at [Time]
+ContentReport = Data.define(:id, :reporter_account_id, :target_type, :target_id, :reason, :details, :status, :created_at, :resolved_at) do
+  def initialize(id:, reporter_account_id:, target_type:, target_id:, reason:, status:, created_at:, details: nil, resolved_at: nil)
+    super
+  end
+end
+
 # code [Integer]
 # message [String]
 ServiceError = Data.define(:code, :message)
@@ -74,6 +97,9 @@ SessionInfo = Data.define(:account_id, :handle, :display_name, :role, :can_admin
     super
   end
 end
+
+# confirmation_handle [Handle]
+DeleteAccountRequest = Data.define(:confirmation_handle)
 
 # Library is an alias for String.
 
@@ -253,6 +279,9 @@ PlaylistsResponse = Data.define(:playlists)
 # playlist_id [PlaylistId]
 PlaylistRequest = Data.define(:playlist_id)
 
+# playlist_id [PlaylistId]
+DeletePlaylistRequest = Data.define(:playlist_id)
+
 # playlist [Playlist]
 # tracks [Array<Track>]
 PlaylistDetail = Data.define(:playlist, :tracks)
@@ -268,6 +297,16 @@ end
 # content_type [String]
 # data [String]
 CoverArt = Data.define(:content_type, :data)
+
+# target_type [ContentReportTargetType]
+# target_id [String]
+# reason [ContentReportReason]
+# details [String]
+ReportContentRequest = Data.define(:target_type, :target_id, :reason, :details) do
+  def initialize(target_type:, target_id:, reason:, details: nil)
+    super
+  end
+end
 
 # PlayerKind is an alias for String.
 
@@ -555,6 +594,10 @@ ListAccountsResponse = Data.define(:accounts)
 # role [Role]
 SetRoleRequest = Data.define(:account_id, :role)
 
+# account_id [AccountId]
+# confirmation_handle [Handle]
+AdminDeleteAccountRequest = Data.define(:account_id, :confirmation_handle)
+
 # domain [String]
 TrustDomainRequest = Data.define(:domain)
 
@@ -761,6 +804,14 @@ LibraryResyncStatus = Data.define(:running, :started) do
     super
   end
 end
+
+# reports [Array<ContentReport>]
+# total [Integer]
+ListContentReportsResponse = Data.define(:reports, :total)
+
+# report_id [ContentReportId]
+# status [ContentReportStatus]
+UpdateContentReportStatusRequest = Data.define(:report_id, :status)
 
 # ChangeTopic is an alias for String.
 

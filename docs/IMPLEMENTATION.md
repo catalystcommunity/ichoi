@@ -83,6 +83,12 @@ audio file and returns a local track ID before the queue changes. See
   Windows compile target-gated CPAL backends over CoreAudio and WASAPI, respectively.
   Browser TLS remains expected via a reverse proxy (deploy/Caddyfile).
 
+- **Mobile store prerequisites**: the server now supplies account deletion, playlist
+  deletion, and content reports. Playlist writes use the authenticated account as the owner.
+  A guest can write a public playlist only while the server has no accounts. Android, iOS,
+  website, demo, and store work is tracked in
+  [PLAY_STORE_COMPLIANCE.md](PLAY_STORE_COMPLIANCE.md).
+
 ## Known upstream issue
 
 Resolved: the csilgen `rust-*` clean-build request is `Status: done`; regenerated output is

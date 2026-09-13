@@ -458,6 +458,56 @@ fn map_account(a: models::Account) -> Account {
     }
 }
 
+fn content_report_target_type_str(value: &ContentReportTargetType) -> &'static str {
+    match value {
+        ContentReportTargetType::Playlist => "playlist",
+        ContentReportTargetType::Account => "account",
+    }
+}
+
+fn content_report_reason_str(value: &ContentReportReason) -> &'static str {
+    match value {
+        ContentReportReason::ObjectionableContent => "objectionable-content",
+        ContentReportReason::Harassment => "harassment",
+        ContentReportReason::Spam => "spam",
+        ContentReportReason::Other => "other",
+    }
+}
+
+fn content_report_status_str(value: &ContentReportStatus) -> &'static str {
+    match value {
+        ContentReportStatus::Open => "open",
+        ContentReportStatus::Resolved => "resolved",
+        ContentReportStatus::Dismissed => "dismissed",
+    }
+}
+
+fn map_content_report(row: models::ContentReport) -> ContentReport {
+    ContentReport {
+        id: row.id,
+        reporter_account_id: row.reporter_account_id,
+        target_type: match row.target_type.as_str() {
+            "account" => ContentReportTargetType::Account,
+            _ => ContentReportTargetType::Playlist,
+        },
+        target_id: row.target_id,
+        reason: match row.reason.as_str() {
+            "objectionable-content" => ContentReportReason::ObjectionableContent,
+            "harassment" => ContentReportReason::Harassment,
+            "other" => ContentReportReason::Other,
+            _ => ContentReportReason::Spam,
+        },
+        details: row.details,
+        status: match row.status.as_str() {
+            "resolved" => ContentReportStatus::Resolved,
+            "dismissed" => ContentReportStatus::Dismissed,
+            _ => ContentReportStatus::Open,
+        },
+        created_at: parse_dt(&row.created_at),
+        resolved_at: row.resolved_at.as_deref().map(parse_dt),
+    }
+}
+
 fn map_trusted_identity(row: models::LinkkeysTrustedIdentity) -> TrustedIdentity {
     TrustedIdentity {
         domain: row.domain,
@@ -709,6 +759,28 @@ impl SessionService for App {
         // Token revocation happens at the transport (it holds the presented token). No-op here.
         Ok(Ok { ok: true })
     }
+
+    fn delete_account(&self, ctx: &Ctx, input: DeleteAccountRequest) -> Result<Ok, ServiceError> {
+        let account_id = match &ctx.identity {
+            Identity::User { account_id, .. } => account_id,
+            _ => return Err(err(401, "account authentication required")),
+        };
+        let mut conn = self.conn()?;
+        let account = db(store::get_account(&mut conn, account_id))?
+            .ok_or_else(|| err(404, "account not found"))?;
+        if input.confirmation_handle != account.handle {
+            return Err(err(400, "confirmation handle does not match"));
+        }
+        let music_root = self.config.music_dir.as_deref().unwrap_or(Path::new("."));
+        crate::deletion::delete_account(&mut conn, music_root, account_id).map_err(|error| {
+            match error {
+                crate::deletion::DeletionError::AccountNotFound => err(404, error.to_string()),
+                crate::deletion::DeletionError::LastAdmin => err(409, error.to_string()),
+                _ => internal(error),
+            }
+        })?;
+        Ok(Ok { ok: true })
+    }
 }
 
 impl App {
@@ -718,7 +790,12 @@ impl App {
         acct: models::Account,
     ) -> Result<SessionInfo, ServiceError> {
         let minted = auth::mint_token();
-        let expires = (Utc::now() + chrono::Duration::days(30)).to_rfc3339();
+        let lifetime = chrono::Duration::try_hours(self.config.session_lifetime_hours as i64)
+            .ok_or_else(|| err(500, "invalid configured session lifetime"))?;
+        let expires = Utc::now()
+            .checked_add_signed(lifetime)
+            .ok_or_else(|| err(500, "configured session lifetime is too large"))?
+            .to_rfc3339();
         db(store::create_session(
             conn,
             &minted.sha256_hex,
@@ -953,6 +1030,28 @@ impl LibraryService for App {
         })
     }
 
+    fn delete_playlist(&self, ctx: &Ctx, input: DeletePlaylistRequest) -> Result<Ok, ServiceError> {
+        let (account_id, is_admin) = match &ctx.identity {
+            Identity::User { account_id, role } => (account_id, role == "admin"),
+            Identity::Anonymous => return Err(err(401, "authentication required")),
+            Identity::Node { .. } => return Err(err(403, "account authentication required")),
+        };
+        let mut conn = self.conn()?;
+        let playlist = db(store::get_playlist(&mut conn, &input.playlist_id))?
+            .ok_or_else(|| err(404, "playlist not found"))?;
+        if !is_admin && playlist.owner.as_deref() != Some(account_id.as_str()) {
+            return Err(err(403, "playlist owner or admin role required"));
+        }
+        let music_root = self.config.music_dir.as_deref().unwrap_or(Path::new("."));
+        crate::deletion::delete_playlist(&mut conn, music_root, &input.playlist_id).map_err(
+            |error| match error {
+                crate::deletion::DeletionError::PlaylistNotFound => err(404, error.to_string()),
+                _ => internal(error),
+            },
+        )?;
+        Ok(Ok { ok: true })
+    }
+
     fn get_cover_art(&self, _ctx: &Ctx, input: CoverArtRequest) -> Result<CoverArt, ServiceError> {
         let mut conn = self.conn()?;
         let a = db(store::get_album(&mut conn, &input.album_id))?
@@ -1045,6 +1144,50 @@ impl LibraryService for App {
             completed: input.completed,
             updated_at: now,
         })
+    }
+
+    fn report_content(
+        &self,
+        ctx: &Ctx,
+        input: ReportContentRequest,
+    ) -> Result<ContentReport, ServiceError> {
+        let reporter_account_id = match &ctx.identity {
+            Identity::User { account_id, .. } => account_id.clone(),
+            _ => return Err(err(401, "sign in to report content")),
+        };
+        if input
+            .details
+            .as_ref()
+            .is_some_and(|details| details.chars().count() > 2_000)
+        {
+            return Err(err(400, "report details must not exceed 2,000 characters"));
+        }
+        let mut conn = self.conn()?;
+        let target_exists = match &input.target_type {
+            ContentReportTargetType::Playlist => {
+                db(store::get_playlist(&mut conn, &input.target_id))?.is_some()
+            }
+            ContentReportTargetType::Account => {
+                db(store::get_account(&mut conn, &input.target_id))?.is_some()
+            }
+        };
+        if !target_exists {
+            return Err(err(404, "report target not found"));
+        }
+        let now = Utc::now();
+        let row = models::ContentReport {
+            id: uuid::Uuid::new_v4().to_string(),
+            reporter_account_id,
+            target_type: content_report_target_type_str(&input.target_type).to_string(),
+            target_id: input.target_id,
+            reason: content_report_reason_str(&input.reason).to_string(),
+            details: input.details,
+            status: "open".to_string(),
+            created_at: now.to_rfc3339(),
+            resolved_at: None,
+        };
+        db(store::insert_content_report(&mut conn, &row))?;
+        Ok(map_content_report(row))
     }
 }
 
@@ -1722,6 +1865,34 @@ impl AdminService for App {
         std::result::Result::Ok(map_account(a))
     }
 
+    fn delete_account(
+        &self,
+        ctx: &Ctx,
+        input: AdminDeleteAccountRequest,
+    ) -> Result<Ok, ServiceError> {
+        if !matches!(&ctx.identity, Identity::User { role, .. } if role == "admin") {
+            return Err(match ctx.identity {
+                Identity::Anonymous => err(401, "admin authentication required"),
+                _ => err(403, "admin role required"),
+            });
+        }
+        let mut conn = self.conn()?;
+        let account = db(store::get_account(&mut conn, &input.account_id))?
+            .ok_or_else(|| err(404, "account not found"))?;
+        if input.confirmation_handle != account.handle {
+            return Err(err(400, "confirmation handle does not match"));
+        }
+        let music_root = self.config.music_dir.as_deref().unwrap_or(Path::new("."));
+        crate::deletion::delete_account(&mut conn, music_root, &input.account_id).map_err(
+            |error| match error {
+                crate::deletion::DeletionError::AccountNotFound => err(404, error.to_string()),
+                crate::deletion::DeletionError::LastAdmin => err(409, error.to_string()),
+                _ => internal(error),
+            },
+        )?;
+        Ok(Ok { ok: true })
+    }
+
     fn trust_domain(
         &self,
         ctx: &Ctx,
@@ -2301,5 +2472,54 @@ impl AdminService for App {
             running: self.library_scan_running(),
             started: false,
         })
+    }
+
+    fn list_content_reports(
+        &self,
+        ctx: &Ctx,
+        input: Page,
+    ) -> Result<ListContentReportsResponse, ServiceError> {
+        if !matches!(&ctx.identity, Identity::User { role, .. } if role == "admin") {
+            return Err(match ctx.identity {
+                Identity::Anonymous => err(401, "admin authentication required"),
+                _ => err(403, "admin role required"),
+            });
+        }
+        let mut conn = self.conn()?;
+        let (offset, limit) = page(input.offset, input.limit);
+        let reports = db(store::list_content_reports(&mut conn, offset, limit))?
+            .into_iter()
+            .map(map_content_report)
+            .collect();
+        let total = db(store::count_content_reports(&mut conn))?.max(0) as u64;
+        Ok(ListContentReportsResponse { reports, total })
+    }
+
+    fn update_content_report_status(
+        &self,
+        ctx: &Ctx,
+        input: UpdateContentReportStatusRequest,
+    ) -> Result<ContentReport, ServiceError> {
+        if !matches!(&ctx.identity, Identity::User { role, .. } if role == "admin") {
+            return Err(match ctx.identity {
+                Identity::Anonymous => err(401, "admin authentication required"),
+                _ => err(403, "admin role required"),
+            });
+        }
+        let mut conn = self.conn()?;
+        let resolved_at =
+            (!matches!(input.status, ContentReportStatus::Open)).then(|| Utc::now().to_rfc3339());
+        let changed = db(store::update_content_report_status(
+            &mut conn,
+            &input.report_id,
+            content_report_status_str(&input.status),
+            resolved_at.as_deref(),
+        ))?;
+        if changed == 0 {
+            return Err(err(404, "report not found"));
+        }
+        db(store::get_content_report(&mut conn, &input.report_id))?
+            .map(map_content_report)
+            .ok_or_else(|| err(404, "report not found"))
     }
 }

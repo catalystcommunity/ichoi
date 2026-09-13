@@ -252,6 +252,20 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    content_reports (id) {
+        id -> Text,
+        reporter_account_id -> Text,
+        target_type -> Text,
+        target_id -> Text,
+        reason -> Text,
+        details -> Nullable<Text>,
+        status -> Text,
+        created_at -> Text,
+        resolved_at -> Nullable<Text>,
+    }
+}
+
 diesel::allow_tables_to_appear_in_same_query!(
     accounts,
     sessions,
@@ -279,4 +293,5 @@ diesel::allow_tables_to_appear_in_same_query!(
     listens,
     stars,
     audiobook_progress,
+    content_reports,
 );

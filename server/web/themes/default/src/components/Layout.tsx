@@ -29,6 +29,7 @@ import {
   IconSettings,
 } from "./Icons.tsx";
 import { satelliteToken } from "../lib/satellite-mode.ts";
+import { TermsGate } from "./TermsGate.tsx";
 
 const NAV = [
   { href: "/", key: "nav.library", icon: IconLibrary, end: true },
@@ -189,6 +190,9 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
         <div class="update-reload" role="status" aria-live="assertive">
           Updating Ichoi and restoring this satellite…
         </div>
+      </Show>
+      <Show when={!satelliteMode}>
+        <TermsGate />
       </Show>
     </div>
     </Show>

@@ -51,6 +51,19 @@ impl<T: AsyncTransport> SessionAsyncClient<T> {
             .await?;
         decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
+
+    /// delete-account (request/response).
+    pub async fn delete_account(&self, req: DeleteAccountRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "SessionService",
+                "delete-account",
+                &encode_delete_account_request(&req),
+            )
+            .await?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
 }
 
 /// Typed client for the LibraryService service.
@@ -184,6 +197,19 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
         decode_playlist_detail(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// delete-playlist (request/response).
+    pub async fn delete_playlist(&self, req: DeletePlaylistRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "LibraryService",
+                "delete-playlist",
+                &encode_delete_playlist_request(&req),
+            )
+            .await?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// get-cover-art (request/response).
     pub async fn get_cover_art(&self, req: CoverArtRequest) -> Result<CoverArt, ClientError> {
         let csil_resp = self
@@ -228,6 +254,22 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             )
             .await?;
         decode_audiobook_progress(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// report-content (request/response).
+    pub async fn report_content(
+        &self,
+        req: ReportContentRequest,
+    ) -> Result<ContentReport, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "LibraryService",
+                "report-content",
+                &encode_report_content_request(&req),
+            )
+            .await?;
+        decode_content_report(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 }
 
@@ -380,6 +422,19 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .call("AdminService", "set-role", &encode_set_role_request(&req))
             .await?;
         decode_account(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// delete-account (request/response).
+    pub async fn delete_account(&self, req: AdminDeleteAccountRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "AdminService",
+                "delete-account",
+                &encode_admin_delete_account_request(&req),
+            )
+            .await?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
     /// trust-domain (request/response).
@@ -711,6 +766,35 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .call("AdminService", "get-resync-status", &encode_page(&req))
             .await?;
         decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// list-content-reports (request/response).
+    pub async fn list_content_reports(
+        &self,
+        req: Page,
+    ) -> Result<ListContentReportsResponse, ClientError> {
+        let csil_resp = self
+            .transport
+            .call("AdminService", "list-content-reports", &encode_page(&req))
+            .await?;
+        decode_list_content_reports_response(&csil_resp)
+            .map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// update-content-report-status (request/response).
+    pub async fn update_content_report_status(
+        &self,
+        req: UpdateContentReportStatusRequest,
+    ) -> Result<ContentReport, ClientError> {
+        let csil_resp = self
+            .transport
+            .call(
+                "AdminService",
+                "update-content-report-status",
+                &encode_update_content_report_status_request(&req),
+            )
+            .await?;
+        decode_content_report(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 }
 

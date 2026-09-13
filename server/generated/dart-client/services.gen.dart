@@ -46,6 +46,15 @@ final class SessionClient {
     );
     return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
+
+  Ok deleteAccount(DeleteAccountRequest request) {
+    final csilResp = transport.call(
+      'SessionService',
+      'delete-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
 }
 
 /// A typed, transport-agnostic client for the LibraryService service. The client owns
@@ -144,6 +153,15 @@ final class LibraryClient {
     return PlaylistDetail.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Ok deletePlaylist(DeletePlaylistRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'delete-playlist',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   CoverArt getCoverArt(CoverArtRequest request) {
     final csilResp = transport.call(
       'LibraryService',
@@ -173,6 +191,15 @@ final class LibraryClient {
       request.toCbor(),
     );
     return AudiobookProgress.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ContentReport reportContent(ReportContentRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'report-content',
+      request.toCbor(),
+    );
+    return ContentReport.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 
@@ -278,6 +305,15 @@ final class AdminClient {
       request.toCbor(),
     );
     return Account.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok deleteAccount(AdminDeleteAccountRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'delete-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   TrustedDomains trustDomain(TrustDomainRequest request) {
@@ -505,6 +541,26 @@ final class AdminClient {
       request.toCbor(),
     );
     return LibraryResyncStatus.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ListContentReportsResponse listContentReports(Page request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'list-content-reports',
+      request.toCbor(),
+    );
+    return ListContentReportsResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ContentReport updateContentReportStatus(
+    UpdateContentReportStatusRequest request,
+  ) {
+    final csilResp = transport.call(
+      'AdminService',
+      'update-content-report-status',
+      request.toCbor(),
+    );
+    return ContentReport.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 

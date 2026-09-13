@@ -4,6 +4,7 @@ Account = { id: AccountId, handle: Handle, ? display_name: text, role: Role, cre
 
 ListAccountsResponse = { accounts: [* Account] }
 SetRoleRequest       = { account_id: AccountId, role: Role }
+AdminDeleteAccountRequest = { account_id: AccountId, confirmation_handle: Handle }
 
 TrustDomainRequest = { domain: text }
 TrustedDomains     = { domains: [* text] }
@@ -101,10 +102,16 @@ CancelImportRequest = { transfer_id: text }
 Settings          = { entries: {text => text} }
 SetSettingRequest = { key: text, value: text }
 LibraryResyncStatus = { running: bool, started: bool .default false }
+ListContentReportsResponse = { reports: [* ContentReport], total: uint }
+UpdateContentReportStatusRequest = {
+    report_id: ContentReportId,
+    status: ContentReportStatus
+}
 
 service AdminService {
     list-accounts: Page -> ListAccountsResponse / ServiceError,
     set-role: SetRoleRequest -> Account / ServiceError,
+    delete-account: AdminDeleteAccountRequest -> Ok / ServiceError,
     trust-domain: TrustDomainRequest -> TrustedDomains / ServiceError,
     list-trusted-domains: Page -> TrustedDomains / ServiceError,
     list-trusted-identities: Page -> TrustedIdentities / ServiceError,
@@ -129,5 +136,7 @@ service AdminService {
     get-settings: Page -> Settings / ServiceError,
     set-setting: SetSettingRequest -> Settings / ServiceError,
     resync-library: Page -> LibraryResyncStatus / ServiceError,
-    get-resync-status: Page -> LibraryResyncStatus / ServiceError
+    get-resync-status: Page -> LibraryResyncStatus / ServiceError,
+    list-content-reports: Page -> ListContentReportsResponse / ServiceError,
+    update-content-report-status: UpdateContentReportStatusRequest -> ContentReport / ServiceError
 }

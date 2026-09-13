@@ -15,8 +15,11 @@ SessionInfo = {
     ? token: text                    ;; minted session token, returned once on authenticate
 }
 
+DeleteAccountRequest = { confirmation_handle: Handle }
+
 service SessionService {
     authenticate: AuthRequest -> SessionInfo / ServiceError,
     whoami: Page -> SessionInfo / ServiceError,
-    logout: Page -> Ok / ServiceError
+    logout: Page -> Ok / ServiceError,
+    delete-account: DeleteAccountRequest -> Ok / ServiceError
 }

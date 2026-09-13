@@ -86,10 +86,17 @@ UpdateAudiobookProgressRequest = {
 
 PlaylistsResponse = { playlists: [* Playlist] }
 PlaylistRequest   = { playlist_id: PlaylistId }
+DeletePlaylistRequest = { playlist_id: PlaylistId }
 PlaylistDetail    = { playlist: Playlist, tracks: [* Track] }   ;; resolved; unresolved m3u entries omitted (§7)
 
 CoverArtRequest = { album_id: AlbumId, ? max_size: uint }
 CoverArt        = { content_type: text, data: bytes }
+ReportContentRequest = {
+    target_type: ContentReportTargetType,
+    target_id: text,
+    reason: ContentReportReason,
+    ? details: text
+}
 
 service LibraryService {
     list-libraries: Page -> LibrariesResponse / ServiceError,
@@ -102,7 +109,9 @@ service LibraryService {
     export-chunk: ExportChunkRequest -> ExportChunk / ServiceError,
     list-playlists: BrowseRequest -> PlaylistsResponse / ServiceError,
     get-playlist: PlaylistRequest -> PlaylistDetail / ServiceError,
+    delete-playlist: DeletePlaylistRequest -> Ok / ServiceError,
     get-cover-art: CoverArtRequest -> CoverArt / ServiceError,
     get-audiobook-progress: AudiobookProgressRequest -> AudiobookProgressResponse / ServiceError,
-    update-audiobook-progress: UpdateAudiobookProgressRequest -> AudiobookProgress / ServiceError
+    update-audiobook-progress: UpdateAudiobookProgressRequest -> AudiobookProgress / ServiceError,
+    report-content: ReportContentRequest -> ContentReport / ServiceError
 }

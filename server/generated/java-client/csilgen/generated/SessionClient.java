@@ -24,4 +24,8 @@ public final class SessionClient {
     public Ok logout(Page req) throws ClientException {
         return CsilCbor.decodeOk(transport.call("SessionService", "logout", CsilCbor.encodePage(req)));
     }
+
+    public Ok deleteAccount(DeleteAccountRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("SessionService", "delete-account", CsilCbor.encodeDeleteAccountRequest(req)));
+    }
 }

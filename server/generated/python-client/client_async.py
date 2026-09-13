@@ -44,6 +44,10 @@ class SessionAsyncClient:
         """logout"""
         return Ok.from_cbor(await self._transport.call("SessionService", "logout", req.to_cbor()))
 
+    async def delete_account(self, req: DeleteAccountRequest) -> Ok:
+        """delete-account"""
+        return Ok.from_cbor(await self._transport.call("SessionService", "delete-account", req.to_cbor()))
+
 class LibraryAsyncClient:
     """Typed client for the LibraryService service."""
     def __init__(self, transport: AsyncTransport):
@@ -89,6 +93,10 @@ class LibraryAsyncClient:
         """get-playlist"""
         return PlaylistDetail.from_cbor(await self._transport.call("LibraryService", "get-playlist", req.to_cbor()))
 
+    async def delete_playlist(self, req: DeletePlaylistRequest) -> Ok:
+        """delete-playlist"""
+        return Ok.from_cbor(await self._transport.call("LibraryService", "delete-playlist", req.to_cbor()))
+
     async def get_cover_art(self, req: CoverArtRequest) -> CoverArt:
         """get-cover-art"""
         return CoverArt.from_cbor(await self._transport.call("LibraryService", "get-cover-art", req.to_cbor()))
@@ -100,6 +108,10 @@ class LibraryAsyncClient:
     async def update_audiobook_progress(self, req: UpdateAudiobookProgressRequest) -> AudiobookProgress:
         """update-audiobook-progress"""
         return AudiobookProgress.from_cbor(await self._transport.call("LibraryService", "update-audiobook-progress", req.to_cbor()))
+
+    async def report_content(self, req: ReportContentRequest) -> ContentReport:
+        """report-content"""
+        return ContentReport.from_cbor(await self._transport.call("LibraryService", "report-content", req.to_cbor()))
 
 class PlayerAsyncClient:
     """Typed client for the PlayerService service."""
@@ -158,6 +170,10 @@ class AdminAsyncClient:
     async def set_role(self, req: SetRoleRequest) -> Account:
         """set-role"""
         return Account.from_cbor(await self._transport.call("AdminService", "set-role", req.to_cbor()))
+
+    async def delete_account(self, req: AdminDeleteAccountRequest) -> Ok:
+        """delete-account"""
+        return Ok.from_cbor(await self._transport.call("AdminService", "delete-account", req.to_cbor()))
 
     async def trust_domain(self, req: TrustDomainRequest) -> TrustedDomains:
         """trust-domain"""
@@ -258,6 +274,14 @@ class AdminAsyncClient:
     async def get_resync_status(self, req: Page) -> LibraryResyncStatus:
         """get-resync-status"""
         return LibraryResyncStatus.from_cbor(await self._transport.call("AdminService", "get-resync-status", req.to_cbor()))
+
+    async def list_content_reports(self, req: Page) -> ListContentReportsResponse:
+        """list-content-reports"""
+        return ListContentReportsResponse.from_cbor(await self._transport.call("AdminService", "list-content-reports", req.to_cbor()))
+
+    async def update_content_report_status(self, req: UpdateContentReportStatusRequest) -> ContentReport:
+        """update-content-report-status"""
+        return ContentReport.from_cbor(await self._transport.call("AdminService", "update-content-report-status", req.to_cbor()))
 
 class ChangeAsyncClient:
     """Typed client for the ChangeService service."""

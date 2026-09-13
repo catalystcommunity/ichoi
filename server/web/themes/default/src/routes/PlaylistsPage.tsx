@@ -5,12 +5,22 @@ import { usePlayback } from "../stores/playback.tsx";
 import { TrackList } from "../components/TrackList.tsx";
 import { EmptyState, Spinner } from "../components/common.tsx";
 import { IconPlay, IconPlaylist } from "../components/Icons.tsx";
+import { ReportDialog } from "../components/ReportDialog.tsx";
+import { isSignedIn } from "../lib/compliance.ts";
+import type { ContentReportTargetType } from "../lib/schema.ts";
+
+interface ReportTarget {
+  type: ContentReportTargetType;
+  id: string;
+  label: string;
+}
 
 export function PlaylistsPage(): JSX.Element {
   const servers = useServers();
   const pb = usePlayback();
   const { t } = useI18n();
   const [selected, setSelected] = createSignal<string>();
+  const [reportTarget, setReportTarget] = createSignal<ReportTarget>();
 
   const [list] = createResource(
     () => servers.api(),
@@ -76,14 +86,36 @@ export function PlaylistsPage(): JSX.Element {
                   <>
                     <div class="section-head">
                       <h2>{d().playlist.name}</h2>
-                      <button
-                        type="button"
-                        class="btn btn-primary"
-                        onClick={() => void pb.playNow(d().tracks, 0)}
-                        disabled={d().tracks.length === 0}
-                      >
-                        <IconPlay size={16} /> {t("album.playAll")}
-                      </button>
+                      <div class="row" style={{ gap: "8px", "flex-wrap": "wrap" }}>
+                        <Show when={isSignedIn(servers.active()?.session)}>
+                          <button
+                            type="button"
+                            class="btn btn-ghost"
+                            onClick={() => setReportTarget({ type: "playlist", id: d().playlist.id, label: `playlist ${d().playlist.name}` })}
+                          >
+                            Report playlist
+                          </button>
+                          <Show when={d().playlist.owner}>
+                            {(owner) => (
+                              <button
+                                type="button"
+                                class="btn btn-ghost"
+                                onClick={() => setReportTarget({ type: "account", id: owner(), label: `user ${owner()}` })}
+                              >
+                                Report user
+                              </button>
+                            )}
+                          </Show>
+                        </Show>
+                        <button
+                          type="button"
+                          class="btn btn-primary"
+                          onClick={() => void pb.playNow(d().tracks, 0)}
+                          disabled={d().tracks.length === 0}
+                        >
+                          <IconPlay size={16} /> {t("album.playAll")}
+                        </button>
+                      </div>
                     </div>
                     <TrackList
                       tracks={d().tracks}
@@ -99,6 +131,17 @@ export function PlaylistsPage(): JSX.Element {
             </Show>
           </div>
         </Show>
+      </Show>
+      <Show when={reportTarget()}>
+        {(target) => (
+          <ReportDialog
+            open={true}
+            targetType={target().type}
+            targetId={target().id}
+            targetLabel={target().label}
+            onClose={() => setReportTarget(undefined)}
+          />
+        )}
       </Show>
     </div>
   );

@@ -1,0 +1,7 @@
+# Values for the catalyst-helm/pysocha-site chart.
+# Replace every .invalid value after contact, domain, and legal approval.
+domain: ichoi.invalid
+sitefilePath: "/site/root"
+image:
+  repository: containers.catalystsquad.com/public/catalystcommunity/ichoi-website
+  # tag is set by the release job.

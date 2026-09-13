@@ -659,7 +659,7 @@ fn get_or_try_insert_with<T, E>(
 fn scale_s16le(bytes: &[u8], volume: u8, output: &mut Vec<u8>) {
     output.clear();
     output.reserve(bytes.len());
-    for pair in bytes.chunks_exact(2) {
+    for pair in bytes.as_chunks::<2>().0 {
         let sample = i16::from_le_bytes([pair[0], pair[1]]);
         let scaled = (i32::from(sample) * i32::from(volume.min(100)) / 100) as i16;
         output.extend_from_slice(&scaled.to_le_bytes());
@@ -756,7 +756,9 @@ mod tests {
         scale_s16le(&input, 50, &mut output);
 
         let samples = output
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| i16::from_le_bytes([pair[0], pair[1]]))
             .collect::<Vec<_>>();
         assert_eq!(samples, [-16_384, -5_000, 0, 5_000, 16_383]);

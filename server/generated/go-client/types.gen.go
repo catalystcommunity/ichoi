@@ -25,6 +25,9 @@ type ArtistId string
 // PlaylistId is a type alias
 type PlaylistId string
 
+// ContentReportId is a type alias
+type ContentReportId string
+
 // NodeId is a type alias
 type NodeId string
 
@@ -64,6 +67,28 @@ type Ok struct {
 	Ok bool `json:"ok" yaml:"ok"`
 }
 
+// ContentReportTargetType is a type alias
+type ContentReportTargetType string
+
+// ContentReportReason is a type alias
+type ContentReportReason string
+
+// ContentReportStatus is a type alias
+type ContentReportStatus string
+
+// ContentReport represents a structured data type
+type ContentReport struct {
+	Id                ContentReportId         `json:"id" yaml:"id"`
+	ReporterAccountId AccountId               `json:"reporter_account_id" yaml:"reporter_account_id"`
+	TargetType        ContentReportTargetType `json:"target_type" yaml:"target_type"`
+	TargetId          string                  `json:"target_id" yaml:"target_id"`
+	Reason            ContentReportReason     `json:"reason" yaml:"reason"`
+	Details           *string                 `json:"details,omitempty" yaml:"details,omitempty"`
+	Status            ContentReportStatus     `json:"status" yaml:"status"`
+	CreatedAt         time.Time               `json:"created_at" yaml:"created_at"`
+	ResolvedAt        *time.Time              `json:"resolved_at,omitempty" yaml:"resolved_at,omitempty"`
+}
+
 // ServiceError represents a structured data type
 type ServiceError struct {
 	Code    int64  `json:"code" yaml:"code"`
@@ -85,6 +110,11 @@ type SessionInfo struct {
 	Role        Role      `json:"role" yaml:"role"`
 	CanAdmin    bool      `json:"can_admin" yaml:"can_admin"`
 	Token       *string   `json:"token,omitempty" yaml:"token,omitempty"`
+}
+
+// DeleteAccountRequest represents a structured data type
+type DeleteAccountRequest struct {
+	ConfirmationHandle Handle `json:"confirmation_handle" yaml:"confirmation_handle"`
 }
 
 // Library is a type alias
@@ -281,6 +311,11 @@ type PlaylistRequest struct {
 	PlaylistId PlaylistId `json:"playlist_id" yaml:"playlist_id"`
 }
 
+// DeletePlaylistRequest represents a structured data type
+type DeletePlaylistRequest struct {
+	PlaylistId PlaylistId `json:"playlist_id" yaml:"playlist_id"`
+}
+
 // PlaylistDetail represents a structured data type
 type PlaylistDetail struct {
 	Playlist Playlist `json:"playlist" yaml:"playlist"`
@@ -297,6 +332,14 @@ type CoverArtRequest struct {
 type CoverArt struct {
 	ContentType string `json:"content_type" yaml:"content_type"`
 	Data        []byte `json:"data" yaml:"data"`
+}
+
+// ReportContentRequest represents a structured data type
+type ReportContentRequest struct {
+	TargetType ContentReportTargetType `json:"target_type" yaml:"target_type"`
+	TargetId   string                  `json:"target_id" yaml:"target_id"`
+	Reason     ContentReportReason     `json:"reason" yaml:"reason"`
+	Details    *string                 `json:"details,omitempty" yaml:"details,omitempty"`
 }
 
 // PlayerKind is a type alias
@@ -588,6 +631,12 @@ type SetRoleRequest struct {
 	Role      Role      `json:"role" yaml:"role"`
 }
 
+// AdminDeleteAccountRequest represents a structured data type
+type AdminDeleteAccountRequest struct {
+	AccountId          AccountId `json:"account_id" yaml:"account_id"`
+	ConfirmationHandle Handle    `json:"confirmation_handle" yaml:"confirmation_handle"`
+}
+
 // TrustDomainRequest represents a structured data type
 type TrustDomainRequest struct {
 	Domain string `json:"domain" yaml:"domain"`
@@ -804,6 +853,18 @@ type SetSettingRequest struct {
 type LibraryResyncStatus struct {
 	Running bool `json:"running" yaml:"running"`
 	Started bool `json:"started" yaml:"started"`
+}
+
+// ListContentReportsResponse represents a structured data type
+type ListContentReportsResponse struct {
+	Reports []ContentReport `json:"reports" yaml:"reports"`
+	Total   uint64          `json:"total" yaml:"total"`
+}
+
+// UpdateContentReportStatusRequest represents a structured data type
+type UpdateContentReportStatusRequest struct {
+	ReportId ContentReportId     `json:"report_id" yaml:"report_id"`
+	Status   ContentReportStatus `json:"status" yaml:"status"`
 }
 
 // ChangeTopic is a type alias

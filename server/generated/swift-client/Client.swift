@@ -43,6 +43,11 @@ public struct SessionClient {
         return try Ok.fromCbor(csilResp)
     }
 
+    public func deleteAccount(_ request: DeleteAccountRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "SessionService", op: "delete-account", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
 }
 
 /// LibraryClient is a typed client for the LibraryService service. The client owns
@@ -103,6 +108,11 @@ public struct LibraryClient {
         return try PlaylistDetail.fromCbor(csilResp)
     }
 
+    public func deletePlaylist(_ request: DeletePlaylistRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "LibraryService", op: "delete-playlist", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
     public func getCoverArt(_ request: CoverArtRequest) throws -> CoverArt {
         let csilResp = try transport.call(service: "LibraryService", op: "get-cover-art", request: request.toCbor())
         return try CoverArt.fromCbor(csilResp)
@@ -116,6 +126,11 @@ public struct LibraryClient {
     public func updateAudiobookProgress(_ request: UpdateAudiobookProgressRequest) throws -> AudiobookProgress {
         let csilResp = try transport.call(service: "LibraryService", op: "update-audiobook-progress", request: request.toCbor())
         return try AudiobookProgress.fromCbor(csilResp)
+    }
+
+    public func reportContent(_ request: ReportContentRequest) throws -> ContentReport {
+        let csilResp = try transport.call(service: "LibraryService", op: "report-content", request: request.toCbor())
+        return try ContentReport.fromCbor(csilResp)
     }
 
 }
@@ -199,6 +214,11 @@ public struct AdminClient {
     public func setRole(_ request: SetRoleRequest) throws -> Account {
         let csilResp = try transport.call(service: "AdminService", op: "set-role", request: request.toCbor())
         return try Account.fromCbor(csilResp)
+    }
+
+    public func deleteAccount(_ request: AdminDeleteAccountRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "AdminService", op: "delete-account", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
     }
 
     public func trustDomain(_ request: TrustDomainRequest) throws -> TrustedDomains {
@@ -324,6 +344,16 @@ public struct AdminClient {
     public func getResyncStatus(_ request: Page) throws -> LibraryResyncStatus {
         let csilResp = try transport.call(service: "AdminService", op: "get-resync-status", request: request.toCbor())
         return try LibraryResyncStatus.fromCbor(csilResp)
+    }
+
+    public func listContentReports(_ request: Page) throws -> ListContentReportsResponse {
+        let csilResp = try transport.call(service: "AdminService", op: "list-content-reports", request: request.toCbor())
+        return try ListContentReportsResponse.fromCbor(csilResp)
+    }
+
+    public func updateContentReportStatus(_ request: UpdateContentReportStatusRequest) throws -> ContentReport {
+        let csilResp = try transport.call(service: "AdminService", op: "update-content-report-status", request: request.toCbor())
+        return try ContentReport.fromCbor(csilResp)
     }
 
 }

@@ -438,6 +438,49 @@ def _ok_from_cbor(data: bytes) -> "Ok":
 Ok.to_cbor = _ok_to_cbor
 Ok.from_cbor = staticmethod(_ok_from_cbor)
 
+def _encode_content_report_value(v: "ContentReport") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["reason"] = v.reason
+    csil_m["status"] = v.status
+    csil_x = v.details
+    if csil_x is not None:
+        csil_m["details"] = csil_x
+    csil_m["target_id"] = v.target_id
+    csil_m["created_at"] = CborTag(0, _csil_ts_to_text(v.created_at))
+    csil_x = v.resolved_at
+    if csil_x is not None:
+        csil_m["resolved_at"] = CborTag(0, _csil_ts_to_text(csil_x))
+    csil_m["target_type"] = v.target_type
+    csil_m["reporter_account_id"] = v.reporter_account_id
+    return csil_m
+
+def _decode_content_report_value(tree: Any) -> "ContentReport":
+    tree = _csil_expect_map(tree)
+    return ContentReport(
+        id=_csil_expect_text(tree["id"]),
+        reporter_account_id=_csil_expect_text(tree["reporter_account_id"]),
+        target_type=_decode_content_report_target_type_value(tree["target_type"]),
+        target_id=_csil_expect_text(tree["target_id"]),
+        reason=_decode_content_report_reason_value(tree["reason"]),
+        details=(None if tree.get("details") is None else _csil_expect_text(tree["details"])),
+        status=_decode_content_report_status_value(tree["status"]),
+        created_at=_csil_ts_from_tree(tree["created_at"]),
+        resolved_at=(None if tree.get("resolved_at") is None else _csil_ts_from_tree(tree["resolved_at"])),
+    )
+
+
+def _content_report_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_content_report_value(self))
+
+
+def _content_report_from_cbor(data: bytes) -> "ContentReport":
+    return _decode_content_report_value(cbor_decode(data))
+
+
+ContentReport.to_cbor = _content_report_to_cbor
+ContentReport.from_cbor = staticmethod(_content_report_from_cbor)
+
 def _encode_service_error_value(v: "ServiceError") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["code"] = v.code
@@ -532,6 +575,29 @@ def _session_info_from_cbor(data: bytes) -> "SessionInfo":
 
 SessionInfo.to_cbor = _session_info_to_cbor
 SessionInfo.from_cbor = staticmethod(_session_info_from_cbor)
+
+def _encode_delete_account_request_value(v: "DeleteAccountRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["confirmation_handle"] = v.confirmation_handle
+    return csil_m
+
+def _decode_delete_account_request_value(tree: Any) -> "DeleteAccountRequest":
+    tree = _csil_expect_map(tree)
+    return DeleteAccountRequest(
+        confirmation_handle=_csil_expect_text(tree["confirmation_handle"]),
+    )
+
+
+def _delete_account_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_delete_account_request_value(self))
+
+
+def _delete_account_request_from_cbor(data: bytes) -> "DeleteAccountRequest":
+    return _decode_delete_account_request_value(cbor_decode(data))
+
+
+DeleteAccountRequest.to_cbor = _delete_account_request_to_cbor
+DeleteAccountRequest.from_cbor = staticmethod(_delete_account_request_from_cbor)
 
 def _encode_track_value(v: "Track") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -1304,6 +1370,29 @@ def _playlist_request_from_cbor(data: bytes) -> "PlaylistRequest":
 PlaylistRequest.to_cbor = _playlist_request_to_cbor
 PlaylistRequest.from_cbor = staticmethod(_playlist_request_from_cbor)
 
+def _encode_delete_playlist_request_value(v: "DeletePlaylistRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["playlist_id"] = v.playlist_id
+    return csil_m
+
+def _decode_delete_playlist_request_value(tree: Any) -> "DeletePlaylistRequest":
+    tree = _csil_expect_map(tree)
+    return DeletePlaylistRequest(
+        playlist_id=_csil_expect_text(tree["playlist_id"]),
+    )
+
+
+def _delete_playlist_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_delete_playlist_request_value(self))
+
+
+def _delete_playlist_request_from_cbor(data: bytes) -> "DeletePlaylistRequest":
+    return _decode_delete_playlist_request_value(cbor_decode(data))
+
+
+DeletePlaylistRequest.to_cbor = _delete_playlist_request_to_cbor
+DeletePlaylistRequest.from_cbor = staticmethod(_delete_playlist_request_from_cbor)
+
 def _encode_playlist_detail_value(v: "PlaylistDetail") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["tracks"] = [_encode_track_value(csil_e) for csil_e in v.tracks]
@@ -1380,6 +1469,37 @@ def _cover_art_from_cbor(data: bytes) -> "CoverArt":
 
 CoverArt.to_cbor = _cover_art_to_cbor
 CoverArt.from_cbor = staticmethod(_cover_art_from_cbor)
+
+def _encode_report_content_request_value(v: "ReportContentRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["reason"] = v.reason
+    csil_x = v.details
+    if csil_x is not None:
+        csil_m["details"] = csil_x
+    csil_m["target_id"] = v.target_id
+    csil_m["target_type"] = v.target_type
+    return csil_m
+
+def _decode_report_content_request_value(tree: Any) -> "ReportContentRequest":
+    tree = _csil_expect_map(tree)
+    return ReportContentRequest(
+        target_type=_decode_content_report_target_type_value(tree["target_type"]),
+        target_id=_csil_expect_text(tree["target_id"]),
+        reason=_decode_content_report_reason_value(tree["reason"]),
+        details=(None if tree.get("details") is None else _csil_expect_text(tree["details"])),
+    )
+
+
+def _report_content_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_report_content_request_value(self))
+
+
+def _report_content_request_from_cbor(data: bytes) -> "ReportContentRequest":
+    return _decode_report_content_request_value(cbor_decode(data))
+
+
+ReportContentRequest.to_cbor = _report_content_request_to_cbor
+ReportContentRequest.from_cbor = staticmethod(_report_content_request_from_cbor)
 
 def _encode_player_value(v: "Player") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -2504,6 +2624,31 @@ def _set_role_request_from_cbor(data: bytes) -> "SetRoleRequest":
 SetRoleRequest.to_cbor = _set_role_request_to_cbor
 SetRoleRequest.from_cbor = staticmethod(_set_role_request_from_cbor)
 
+def _encode_admin_delete_account_request_value(v: "AdminDeleteAccountRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["account_id"] = v.account_id
+    csil_m["confirmation_handle"] = v.confirmation_handle
+    return csil_m
+
+def _decode_admin_delete_account_request_value(tree: Any) -> "AdminDeleteAccountRequest":
+    tree = _csil_expect_map(tree)
+    return AdminDeleteAccountRequest(
+        account_id=_csil_expect_text(tree["account_id"]),
+        confirmation_handle=_csil_expect_text(tree["confirmation_handle"]),
+    )
+
+
+def _admin_delete_account_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_admin_delete_account_request_value(self))
+
+
+def _admin_delete_account_request_from_cbor(data: bytes) -> "AdminDeleteAccountRequest":
+    return _decode_admin_delete_account_request_value(cbor_decode(data))
+
+
+AdminDeleteAccountRequest.to_cbor = _admin_delete_account_request_to_cbor
+AdminDeleteAccountRequest.from_cbor = staticmethod(_admin_delete_account_request_from_cbor)
+
 def _encode_trust_domain_request_value(v: "TrustDomainRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["domain"] = v.domain
@@ -3373,6 +3518,56 @@ def _library_resync_status_from_cbor(data: bytes) -> "LibraryResyncStatus":
 LibraryResyncStatus.to_cbor = _library_resync_status_to_cbor
 LibraryResyncStatus.from_cbor = staticmethod(_library_resync_status_from_cbor)
 
+def _encode_list_content_reports_response_value(v: "ListContentReportsResponse") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["total"] = v.total
+    csil_m["reports"] = [_encode_content_report_value(csil_e) for csil_e in v.reports]
+    return csil_m
+
+def _decode_list_content_reports_response_value(tree: Any) -> "ListContentReportsResponse":
+    tree = _csil_expect_map(tree)
+    return ListContentReportsResponse(
+        reports=[_decode_content_report_value(csil_e) for csil_e in _csil_expect_array(tree["reports"])],
+        total=_csil_expect_uint(tree["total"]),
+    )
+
+
+def _list_content_reports_response_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_list_content_reports_response_value(self))
+
+
+def _list_content_reports_response_from_cbor(data: bytes) -> "ListContentReportsResponse":
+    return _decode_list_content_reports_response_value(cbor_decode(data))
+
+
+ListContentReportsResponse.to_cbor = _list_content_reports_response_to_cbor
+ListContentReportsResponse.from_cbor = staticmethod(_list_content_reports_response_from_cbor)
+
+def _encode_update_content_report_status_request_value(v: "UpdateContentReportStatusRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["status"] = v.status
+    csil_m["report_id"] = v.report_id
+    return csil_m
+
+def _decode_update_content_report_status_request_value(tree: Any) -> "UpdateContentReportStatusRequest":
+    tree = _csil_expect_map(tree)
+    return UpdateContentReportStatusRequest(
+        report_id=_csil_expect_text(tree["report_id"]),
+        status=_decode_content_report_status_value(tree["status"]),
+    )
+
+
+def _update_content_report_status_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_update_content_report_status_request_value(self))
+
+
+def _update_content_report_status_request_from_cbor(data: bytes) -> "UpdateContentReportStatusRequest":
+    return _decode_update_content_report_status_request_value(cbor_decode(data))
+
+
+UpdateContentReportStatusRequest.to_cbor = _update_content_report_status_request_to_cbor
+UpdateContentReportStatusRequest.from_cbor = staticmethod(_update_content_report_status_request_from_cbor)
+
 def _encode_watch_changes_request_value(v: "WatchChangesRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_x = v.active
@@ -3592,6 +3787,27 @@ def _decode_transcode_codec_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("aac", "mp3"):
         raise CsilDecodeError(f"csil cbor: unknown transcode_codec value {csil_v!r}")
+    return csil_v
+
+
+def _decode_content_report_target_type_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("playlist", "account"):
+        raise CsilDecodeError(f"csil cbor: unknown content_report_target_type value {csil_v!r}")
+    return csil_v
+
+
+def _decode_content_report_reason_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("objectionable-content", "harassment", "spam", "other"):
+        raise CsilDecodeError(f"csil cbor: unknown content_report_reason value {csil_v!r}")
+    return csil_v
+
+
+def _decode_content_report_status_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("open", "resolved", "dismissed"):
+        raise CsilDecodeError(f"csil cbor: unknown content_report_status value {csil_v!r}")
     return csil_v
 
 

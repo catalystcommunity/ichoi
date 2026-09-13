@@ -73,6 +73,51 @@ pub const TranscodeCodec = enum {
     }
 };
 
+/// ContentReportTargetType is an enumeration.
+pub const ContentReportTargetType = enum {
+    playlist,
+    account,
+
+    pub fn wire_name(self: ContentReportTargetType) []const u8 {
+        return switch (self) {
+            .playlist => "playlist",
+            .account => "account",
+        };
+    }
+};
+
+/// ContentReportReason is an enumeration.
+pub const ContentReportReason = enum {
+    objectionable_content,
+    harassment,
+    spam,
+    other,
+
+    pub fn wire_name(self: ContentReportReason) []const u8 {
+        return switch (self) {
+            .objectionable_content => "objectionable-content",
+            .harassment => "harassment",
+            .spam => "spam",
+            .other => "other",
+        };
+    }
+};
+
+/// ContentReportStatus is an enumeration.
+pub const ContentReportStatus = enum {
+    open,
+    resolved,
+    dismissed,
+
+    pub fn wire_name(self: ContentReportStatus) []const u8 {
+        return switch (self) {
+            .open => "open",
+            .resolved => "resolved",
+            .dismissed => "dismissed",
+        };
+    }
+};
+
 /// Library is an enumeration.
 pub const Library = enum {
     music,
@@ -188,6 +233,9 @@ pub const ArtistId = []const u8;
 
 /// PlaylistId is a type alias.
 pub const PlaylistId = []const u8;
+
+/// ContentReportId is a type alias.
+pub const ContentReportId = []const u8;
 
 /// NodeId is a type alias.
 pub const NodeId = []const u8;
@@ -638,9 +686,28 @@ pub const LibraryResyncStatus = struct {
     started: bool,
 };
 
+/// ListContentReportsResponse is a structured data type.
+pub const ListContentReportsResponse = struct {
+    reports: []ContentReport,
+    total: u64,
+};
+
 /// WatchChangesRequest is a structured data type.
 pub const WatchChangesRequest = struct {
     active: ?bool = null,
+};
+
+/// ContentReport is a structured data type.
+pub const ContentReport = struct {
+    id: ContentReportId,
+    reporter_account_id: AccountId,
+    target_type: ContentReportTargetType,
+    target_id: []const u8,
+    reason: ContentReportReason,
+    details: ?[]const u8 = null,
+    status: ContentReportStatus,
+    created_at: CsilTimestamp,
+    resolved_at: ?CsilTimestamp = null,
 };
 
 /// SessionInfo is a structured data type.
@@ -651,6 +718,11 @@ pub const SessionInfo = struct {
     role: Role,
     can_admin: bool,
     token: ?[]const u8 = null,
+};
+
+/// DeleteAccountRequest is a structured data type.
+pub const DeleteAccountRequest = struct {
+    confirmation_handle: Handle,
 };
 
 /// Track is a structured data type.
@@ -767,6 +839,11 @@ pub const PlaylistRequest = struct {
     playlist_id: PlaylistId,
 };
 
+/// DeletePlaylistRequest is a structured data type.
+pub const DeletePlaylistRequest = struct {
+    playlist_id: PlaylistId,
+};
+
 /// PlaylistDetail is a structured data type.
 pub const PlaylistDetail = struct {
     playlist: Playlist,
@@ -777,6 +854,14 @@ pub const PlaylistDetail = struct {
 pub const CoverArtRequest = struct {
     album_id: AlbumId,
     max_size: ?u64 = null,
+};
+
+/// ReportContentRequest is a structured data type.
+pub const ReportContentRequest = struct {
+    target_type: ContentReportTargetType,
+    target_id: []const u8,
+    reason: ContentReportReason,
+    details: ?[]const u8 = null,
 };
 
 /// Player is a structured data type.
@@ -978,6 +1063,12 @@ pub const SetRoleRequest = struct {
     role: Role,
 };
 
+/// AdminDeleteAccountRequest is a structured data type.
+pub const AdminDeleteAccountRequest = struct {
+    account_id: AccountId,
+    confirmation_handle: Handle,
+};
+
 /// DeviceInfo is a structured data type.
 pub const DeviceInfo = struct {
     id: DeviceId,
@@ -1018,6 +1109,12 @@ pub const SetDeviceAccessRequest = struct {
     device_id: DeviceId,
     enabled: bool,
     group_ids: [][]const u8,
+};
+
+/// UpdateContentReportStatusRequest is a structured data type.
+pub const UpdateContentReportStatusRequest = struct {
+    report_id: ContentReportId,
+    status: ContentReportStatus,
 };
 
 /// DataChange is a structured data type.
