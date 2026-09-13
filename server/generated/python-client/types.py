@@ -20,6 +20,8 @@ ArtistId = str
 
 PlaylistId = str
 
+ContentReportId = str
+
 NodeId = str
 
 DeviceId = str
@@ -114,6 +116,61 @@ class Ok:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'Ok':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+ContentReportTargetType = Union[str, str]
+
+ContentReportReason = Union[str, str, str, str]
+
+ContentReportStatus = Union[str, str, str]
+
+@dataclass
+class ContentReport:
+    id: ContentReportId
+    reporter_account_id: AccountId
+    target_type: ContentReportTargetType
+    target_id: str
+    reason: ContentReportReason
+    status: ContentReportStatus
+    created_at: datetime
+    details: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'id') and self.id is not None:
+            result['id'] = self.id
+        if hasattr(self, 'reporter_account_id') and self.reporter_account_id is not None:
+            result['reporter_account_id'] = self.reporter_account_id
+        if hasattr(self, 'target_type') and self.target_type is not None:
+            result['target_type'] = self.target_type
+        if hasattr(self, 'target_id') and self.target_id is not None:
+            result['target_id'] = self.target_id
+        if hasattr(self, 'reason') and self.reason is not None:
+            result['reason'] = self.reason
+        if hasattr(self, 'details') and self.details is not None:
+            result['details'] = self.details
+        if hasattr(self, 'status') and self.status is not None:
+            result['status'] = self.status
+        if hasattr(self, 'created_at') and self.created_at is not None:
+            result['created_at'] = self.created_at
+        if hasattr(self, 'resolved_at') and self.resolved_at is not None:
+            result['resolved_at'] = self.resolved_at
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ContentReport':
+        """Create instance from dictionary."""
+        return cls(id=data.get('id'), reporter_account_id=data.get('reporter_account_id'), target_type=data.get('target_type'), target_id=data.get('target_id'), reason=data.get('reason'), details=data.get('details'), status=data.get('status'), created_at=data.get('created_at'), resolved_at=data.get('resolved_at'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ContentReport':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -213,6 +270,31 @@ class SessionInfo:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'SessionInfo':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class DeleteAccountRequest:
+    confirmation_handle: Handle
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'confirmation_handle') and self.confirmation_handle is not None:
+            result['confirmation_handle'] = self.confirmation_handle
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'DeleteAccountRequest':
+        """Create instance from dictionary."""
+        return cls(confirmation_handle=data.get('confirmation_handle'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'DeleteAccountRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -1075,6 +1157,31 @@ class PlaylistRequest:
 
 
 @dataclass
+class DeletePlaylistRequest:
+    playlist_id: PlaylistId
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'playlist_id') and self.playlist_id is not None:
+            result['playlist_id'] = self.playlist_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'DeletePlaylistRequest':
+        """Create instance from dictionary."""
+        return cls(playlist_id=data.get('playlist_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'DeletePlaylistRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
 class PlaylistDetail:
     playlist: Playlist
     tracks: List[Track]
@@ -1154,6 +1261,40 @@ class CoverArt:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'CoverArt':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ReportContentRequest:
+    target_type: ContentReportTargetType
+    target_id: str
+    reason: ContentReportReason
+    details: Optional[str] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'target_type') and self.target_type is not None:
+            result['target_type'] = self.target_type
+        if hasattr(self, 'target_id') and self.target_id is not None:
+            result['target_id'] = self.target_id
+        if hasattr(self, 'reason') and self.reason is not None:
+            result['reason'] = self.reason
+        if hasattr(self, 'details') and self.details is not None:
+            result['details'] = self.details
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ReportContentRequest':
+        """Create instance from dictionary."""
+        return cls(target_type=data.get('target_type'), target_id=data.get('target_id'), reason=data.get('reason'), details=data.get('details'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ReportContentRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -2436,6 +2577,34 @@ class SetRoleRequest:
 
 
 @dataclass
+class AdminDeleteAccountRequest:
+    account_id: AccountId
+    confirmation_handle: Handle
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'account_id') and self.account_id is not None:
+            result['account_id'] = self.account_id
+        if hasattr(self, 'confirmation_handle') and self.confirmation_handle is not None:
+            result['confirmation_handle'] = self.confirmation_handle
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'AdminDeleteAccountRequest':
+        """Create instance from dictionary."""
+        return cls(account_id=data.get('account_id'), confirmation_handle=data.get('confirmation_handle'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'AdminDeleteAccountRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
 class TrustDomainRequest:
     domain: str
     def to_dict(self) -> Dict[str, Any]:
@@ -3437,6 +3606,62 @@ class LibraryResyncStatus:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'LibraryResyncStatus':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ListContentReportsResponse:
+    reports: List[ContentReport]
+    total: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'reports') and self.reports is not None:
+            result['reports'] = self.reports
+        if hasattr(self, 'total') and self.total is not None:
+            result['total'] = self.total
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ListContentReportsResponse':
+        """Create instance from dictionary."""
+        return cls(reports=data.get('reports'), total=data.get('total'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ListContentReportsResponse':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class UpdateContentReportStatusRequest:
+    report_id: ContentReportId
+    status: ContentReportStatus
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'report_id') and self.report_id is not None:
+            result['report_id'] = self.report_id
+        if hasattr(self, 'status') and self.status is not None:
+            result['status'] = self.status
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'UpdateContentReportStatusRequest':
+        """Create instance from dictionary."""
+        return cls(report_id=data.get('report_id'), status=data.get('status'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'UpdateContentReportStatusRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 

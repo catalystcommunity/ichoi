@@ -70,6 +70,15 @@ func (c *SessionClient) Logout(ctx context.Context, req Page) (Ok, error) {
 	return DecodeOk(csilResp)
 }
 
+func (c *SessionClient) DeleteAccount(ctx context.Context, req DeleteAccountRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "SessionService", "delete-account", EncodeDeleteAccountRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
 // LibraryClient is a typed client for the LibraryService service. The client owns
 // (de)serialization via the generated codec; the transport only moves bytes.
 type LibraryClient struct {
@@ -170,6 +179,15 @@ func (c *LibraryClient) GetPlaylist(ctx context.Context, req PlaylistRequest) (P
 	return DecodePlaylistDetail(csilResp)
 }
 
+func (c *LibraryClient) DeletePlaylist(ctx context.Context, req DeletePlaylistRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "delete-playlist", EncodeDeletePlaylistRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
 func (c *LibraryClient) GetCoverArt(ctx context.Context, req CoverArtRequest) (CoverArt, error) {
 	var csilZero CoverArt
 	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "get-cover-art", EncodeCoverArtRequest(req))
@@ -195,6 +213,15 @@ func (c *LibraryClient) UpdateAudiobookProgress(ctx context.Context, req UpdateA
 		return csilZero, csilErr
 	}
 	return DecodeAudiobookProgress(csilResp)
+}
+
+func (c *LibraryClient) ReportContent(ctx context.Context, req ReportContentRequest) (ContentReport, error) {
+	var csilZero ContentReport
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "report-content", EncodeReportContentRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeContentReport(csilResp)
 }
 
 // PlayerClient is a typed client for the PlayerService service. The client owns
@@ -313,6 +340,15 @@ func (c *AdminClient) SetRole(ctx context.Context, req SetRoleRequest) (Account,
 		return csilZero, csilErr
 	}
 	return DecodeAccount(csilResp)
+}
+
+func (c *AdminClient) DeleteAccount(ctx context.Context, req AdminDeleteAccountRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "delete-account", EncodeAdminDeleteAccountRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
 }
 
 func (c *AdminClient) TrustDomain(ctx context.Context, req TrustDomainRequest) (TrustedDomains, error) {
@@ -538,6 +574,24 @@ func (c *AdminClient) GetResyncStatus(ctx context.Context, req Page) (LibraryRes
 		return csilZero, csilErr
 	}
 	return DecodeLibraryResyncStatus(csilResp)
+}
+
+func (c *AdminClient) ListContentReports(ctx context.Context, req Page) (ListContentReportsResponse, error) {
+	var csilZero ListContentReportsResponse
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "list-content-reports", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeListContentReportsResponse(csilResp)
+}
+
+func (c *AdminClient) UpdateContentReportStatus(ctx context.Context, req UpdateContentReportStatusRequest) (ContentReport, error) {
+	var csilZero ContentReport
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "update-content-report-status", EncodeUpdateContentReportStatusRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeContentReport(csilResp)
 }
 
 // ChangeClient is a typed client for the ChangeService service. The client owns

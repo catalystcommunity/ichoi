@@ -21,6 +21,10 @@ public final class AdminClient {
         return CsilCbor.decodeAccount(transport.call("AdminService", "set-role", CsilCbor.encodeSetRoleRequest(req)));
     }
 
+    public Ok deleteAccount(AdminDeleteAccountRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("AdminService", "delete-account", CsilCbor.encodeAdminDeleteAccountRequest(req)));
+    }
+
     public TrustedDomains trustDomain(TrustDomainRequest req) throws ClientException {
         return CsilCbor.decodeTrustedDomains(transport.call("AdminService", "trust-domain", CsilCbor.encodeTrustDomainRequest(req)));
     }
@@ -119,5 +123,13 @@ public final class AdminClient {
 
     public LibraryResyncStatus getResyncStatus(Page req) throws ClientException {
         return CsilCbor.decodeLibraryResyncStatus(transport.call("AdminService", "get-resync-status", CsilCbor.encodePage(req)));
+    }
+
+    public ListContentReportsResponse listContentReports(Page req) throws ClientException {
+        return CsilCbor.decodeListContentReportsResponse(transport.call("AdminService", "list-content-reports", CsilCbor.encodePage(req)));
+    }
+
+    public ContentReport updateContentReportStatus(UpdateContentReportStatusRequest req) throws ClientException {
+        return CsilCbor.decodeContentReport(transport.call("AdminService", "update-content-report-status", CsilCbor.encodeUpdateContentReportStatusRequest(req)));
     }
 }

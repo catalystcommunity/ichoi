@@ -42,6 +42,8 @@ services:
       # exist, then is consumed (DESIGN Sec.8). Set to a strong secret, then
       # remove after bootstrapping.
       # ICHOI_ADMIN_TOKEN: change-me-once
+      # Use 24 hours for a public demonstration server.
+      # ICHOI_SESSION_LIFETIME_HOURS: "24"
       # Optional DNS-less LinkKeys login. Only exact lowercase "true" enables it.
       # The RP identity is generated once and stored in ichoi.db with the rest
       # of Ichoi's state under /data.

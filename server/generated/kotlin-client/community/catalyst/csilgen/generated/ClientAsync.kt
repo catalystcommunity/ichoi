@@ -25,6 +25,9 @@ class SessionAsyncClient(private val transport: AsyncTransport) {
     suspend fun logout(request: Page): Ok {
         return decode<Ok>(transport.call("SessionService", "logout", encode(request)))
     }
+    suspend fun deleteAccount(request: DeleteAccountRequest): Ok {
+        return decode<Ok>(transport.call("SessionService", "delete-account", encode(request)))
+    }
 }
 
 /** Typed client for the LibraryService service. The client owns (de)serialization;
@@ -60,6 +63,9 @@ class LibraryAsyncClient(private val transport: AsyncTransport) {
     suspend fun getPlaylist(request: PlaylistRequest): PlaylistDetail {
         return decode<PlaylistDetail>(transport.call("LibraryService", "get-playlist", encode(request)))
     }
+    suspend fun deletePlaylist(request: DeletePlaylistRequest): Ok {
+        return decode<Ok>(transport.call("LibraryService", "delete-playlist", encode(request)))
+    }
     suspend fun getCoverArt(request: CoverArtRequest): CoverArt {
         return decode<CoverArt>(transport.call("LibraryService", "get-cover-art", encode(request)))
     }
@@ -68,6 +74,9 @@ class LibraryAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun updateAudiobookProgress(request: UpdateAudiobookProgressRequest): AudiobookProgress {
         return decode<AudiobookProgress>(transport.call("LibraryService", "update-audiobook-progress", encode(request)))
+    }
+    suspend fun reportContent(request: ReportContentRequest): ContentReport {
+        return decode<ContentReport>(transport.call("LibraryService", "report-content", encode(request)))
     }
 }
 
@@ -115,6 +124,9 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun setRole(request: SetRoleRequest): Account {
         return decode<Account>(transport.call("AdminService", "set-role", encode(request)))
+    }
+    suspend fun deleteAccount(request: AdminDeleteAccountRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "delete-account", encode(request)))
     }
     suspend fun trustDomain(request: TrustDomainRequest): TrustedDomains {
         return decode<TrustedDomains>(transport.call("AdminService", "trust-domain", encode(request)))
@@ -190,6 +202,12 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun getResyncStatus(request: Page): LibraryResyncStatus {
         return decode<LibraryResyncStatus>(transport.call("AdminService", "get-resync-status", encode(request)))
+    }
+    suspend fun listContentReports(request: Page): ListContentReportsResponse {
+        return decode<ListContentReportsResponse>(transport.call("AdminService", "list-content-reports", encode(request)))
+    }
+    suspend fun updateContentReportStatus(request: UpdateContentReportStatusRequest): ContentReport {
+        return decode<ContentReport>(transport.call("AdminService", "update-content-report-status", encode(request)))
     }
 }
 

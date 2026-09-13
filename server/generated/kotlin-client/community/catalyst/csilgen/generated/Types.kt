@@ -21,6 +21,9 @@ typealias ArtistId = String
 /** Type alias for PlaylistId. */
 typealias PlaylistId = String
 
+/** Type alias for ContentReportId. */
+typealias ContentReportId = String
+
 /** Type alias for NodeId. */
 typealias NodeId = String
 
@@ -61,6 +64,33 @@ data class Page(
 /** Ok record. */
 data class Ok(
     val ok: Boolean
+)
+
+/** ContentReportTargetType enum (bare-literal wire). */
+enum class ContentReportTargetType { Playlist, Account }
+
+/** ContentReportReason enum (bare-literal wire). */
+enum class ContentReportReason { ObjectionableContent, Harassment, Spam, Other }
+
+/** ContentReportStatus enum (bare-literal wire). */
+enum class ContentReportStatus { Open, Resolved, Dismissed }
+
+/** ContentReport record. */
+data class ContentReport(
+    val id: ContentReportId,
+    // wire key: reporter_account_id
+    val reporterAccountId: AccountId,
+    // wire key: target_type
+    val targetType: ContentReportTargetType,
+    // wire key: target_id
+    val targetId: String,
+    val reason: ContentReportReason,
+    val details: String? = null,
+    val status: ContentReportStatus,
+    // wire key: created_at
+    val createdAt: java.time.Instant,
+    // wire key: resolved_at
+    val resolvedAt: java.time.Instant? = null
 )
 
 /** ServiceError record. */
@@ -106,6 +136,12 @@ data class SessionInfo(
     // wire key: can_admin
     val canAdmin: Boolean = false,
     val token: String? = null
+)
+
+/** DeleteAccountRequest record. */
+data class DeleteAccountRequest(
+    // wire key: confirmation_handle
+    val confirmationHandle: Handle
 )
 
 /** Library enum (bare-literal wire). */
@@ -355,6 +391,12 @@ data class PlaylistRequest(
     val playlistId: PlaylistId
 )
 
+/** DeletePlaylistRequest record. */
+data class DeletePlaylistRequest(
+    // wire key: playlist_id
+    val playlistId: PlaylistId
+)
+
 /** PlaylistDetail record. */
 data class PlaylistDetail(
     val playlist: Playlist,
@@ -389,6 +431,16 @@ data class CoverArt(
         return result
     }
 }
+
+/** ReportContentRequest record. */
+data class ReportContentRequest(
+    // wire key: target_type
+    val targetType: ContentReportTargetType,
+    // wire key: target_id
+    val targetId: String,
+    val reason: ContentReportReason,
+    val details: String? = null
+)
 
 /** PlayerKind enum (bare-literal wire). */
 enum class PlayerKind { Shared, Private }
@@ -791,6 +843,14 @@ data class SetRoleRequest(
     val role: Role
 )
 
+/** AdminDeleteAccountRequest record. */
+data class AdminDeleteAccountRequest(
+    // wire key: account_id
+    val accountId: AccountId,
+    // wire key: confirmation_handle
+    val confirmationHandle: Handle
+)
+
 /** TrustDomainRequest record. */
 data class TrustDomainRequest(
     val domain: String
@@ -1084,6 +1144,19 @@ data class SetSettingRequest(
 data class LibraryResyncStatus(
     val running: Boolean,
     val started: Boolean = false
+)
+
+/** ListContentReportsResponse record. */
+data class ListContentReportsResponse(
+    val reports: List<ContentReport>,
+    val total: ULong
+)
+
+/** UpdateContentReportStatusRequest record. */
+data class UpdateContentReportStatusRequest(
+    // wire key: report_id
+    val reportId: ContentReportId,
+    val status: ContentReportStatus
 )
 
 /** ChangeTopic enum (bare-literal wire). */

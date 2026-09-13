@@ -2,8 +2,8 @@
 // Source: <csil spec>
 // Target: typescript-client
 
-import type { Account, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, CommandRequest, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteGroupRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, UpdateAudiobookProgressRequest, WatchChangesRequest } from "./types.gen.ts";
-import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromBeginImportResultCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromExportChunkCbor, fromExportManifestCbor, fromGroupInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromLibraryResyncStatusCbor, fromListAccountsResponseCbor, fromListGroupsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromListSatelliteTokensResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, fromTrustedIdentitiesCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBeginImportRequestCbor, toBrowseRequestCbor, toCancelImportRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateGroupRequestCbor, toCreateNodeTokenRequestCbor, toDeleteGroupRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toExportChunkRequestCbor, toExportManifestRequestCbor, toFinishImportRequestCbor, toImportChunkRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toRevokeSatelliteTokenRequestCbor, toRevokeTrustedIdentityRequestCbor, toSearchRequestCbor, toSetDeviceAccessRequestCbor, toSetGroupMembersRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toSubscribeRequestCbor, toTrustDomainRequestCbor, toTrustIdentityRequestCbor, toUpdateAudiobookProgressRequestCbor } from "./codec.gen.ts";
+import type { Account, AdminDeleteAccountRequest, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, CommandRequest, ContentReport, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, SubscribeRequest, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
+import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromBeginImportResultCbor, fromContentReportCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromExportChunkCbor, fromExportManifestCbor, fromGroupInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromLibraryResyncStatusCbor, fromListAccountsResponseCbor, fromListContentReportsResponseCbor, fromListGroupsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromListSatelliteTokensResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareResultCbor, fromTrustedDomainsCbor, fromTrustedIdentitiesCbor, toAdminDeleteAccountRequestCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBeginImportRequestCbor, toBrowseRequestCbor, toCancelImportRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateGroupRequestCbor, toCreateNodeTokenRequestCbor, toDeleteAccountRequestCbor, toDeleteGroupRequestCbor, toDeletePlaylistRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toExportChunkRequestCbor, toExportManifestRequestCbor, toFinishImportRequestCbor, toImportChunkRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toReportContentRequestCbor, toRevokeSatelliteTokenRequestCbor, toRevokeTrustedIdentityRequestCbor, toSearchRequestCbor, toSetDeviceAccessRequestCbor, toSetGroupMembersRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toSubscribeRequestCbor, toTrustDomainRequestCbor, toTrustIdentityRequestCbor, toUpdateAudiobookProgressRequestCbor, toUpdateContentReportStatusRequestCbor } from "./codec.gen.ts";
 
 export interface AsyncServiceTransport {
   call(service: string, op: string, req: Uint8Array): Promise<Uint8Array>;
@@ -33,6 +33,15 @@ export class AdminAsyncClient {
   async setRole(req: SetRoleRequest): Promise<Account> {
     const csilResp = await this.t.call("AdminService", "set-role", toSetRoleRequestCbor(req));
     return fromAccountCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async deleteAccount(req: AdminDeleteAccountRequest): Promise<Ok> {
+    const csilResp = await this.t.call("AdminService", "delete-account", toAdminDeleteAccountRequestCbor(req));
+    return fromOkCbor(csilResp);
   }
 
   /**
@@ -259,6 +268,24 @@ export class AdminAsyncClient {
     const csilResp = await this.t.call("AdminService", "get-resync-status", toPageCbor(req));
     return fromLibraryResyncStatusCbor(csilResp);
   }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async listContentReports(req: Page): Promise<ListContentReportsResponse> {
+    const csilResp = await this.t.call("AdminService", "list-content-reports", toPageCbor(req));
+    return fromListContentReportsResponseCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async updateContentReportStatus(req: UpdateContentReportStatusRequest): Promise<ContentReport> {
+    const csilResp = await this.t.call("AdminService", "update-content-report-status", toUpdateContentReportStatusRequestCbor(req));
+    return fromContentReportCbor(csilResp);
+  }
 }
 
 export interface ChangeAsyncChannelHandlers {
@@ -391,6 +418,15 @@ export class LibraryAsyncClient {
    * @throws {ServiceError} when the API returns an error response
    * @throws transport errors (network, timeout) raised by the transport
    */
+  async deletePlaylist(req: DeletePlaylistRequest): Promise<Ok> {
+    const csilResp = await this.t.call("LibraryService", "delete-playlist", toDeletePlaylistRequestCbor(req));
+    return fromOkCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
   async getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
     const csilResp = await this.t.call("LibraryService", "get-cover-art", toCoverArtRequestCbor(req));
     return fromCoverArtCbor(csilResp);
@@ -412,6 +448,15 @@ export class LibraryAsyncClient {
   async updateAudiobookProgress(req: UpdateAudiobookProgressRequest): Promise<AudiobookProgress> {
     const csilResp = await this.t.call("LibraryService", "update-audiobook-progress", toUpdateAudiobookProgressRequestCbor(req));
     return fromAudiobookProgressCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async reportContent(req: ReportContentRequest): Promise<ContentReport> {
+    const csilResp = await this.t.call("LibraryService", "report-content", toReportContentRequestCbor(req));
+    return fromContentReportCbor(csilResp);
   }
 }
 
@@ -603,6 +648,15 @@ export class SessionAsyncClient {
    */
   async logout(req: Page): Promise<Ok> {
     const csilResp = await this.t.call("SessionService", "logout", toPageCbor(req));
+    return fromOkCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async deleteAccount(req: DeleteAccountRequest): Promise<Ok> {
+    const csilResp = await this.t.call("SessionService", "delete-account", toDeleteAccountRequestCbor(req));
     return fromOkCbor(csilResp);
   }
 }

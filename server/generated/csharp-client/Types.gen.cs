@@ -9,6 +9,7 @@ global using TrackId = string;
 global using AlbumId = string;
 global using ArtistId = string;
 global using PlaylistId = string;
+global using ContentReportId = string;
 global using NodeId = string;
 global using DeviceId = string;
 global using PlayerId = string;
@@ -87,6 +88,58 @@ public sealed record Ok
     public required bool Ok_ { get; init; }
 }
 
+public enum ContentReportTargetType
+{
+    // wire value: playlist
+    Playlist,
+    // wire value: account
+    Account,
+}
+
+public enum ContentReportReason
+{
+    // wire value: objectionable-content
+    ObjectionableContent,
+    // wire value: harassment
+    Harassment,
+    // wire value: spam
+    Spam,
+    // wire value: other
+    Other,
+}
+
+public enum ContentReportStatus
+{
+    // wire value: open
+    Open,
+    // wire value: resolved
+    Resolved,
+    // wire value: dismissed
+    Dismissed,
+}
+
+public sealed record ContentReport
+{
+    // CBOR key: id
+    public required ContentReportId Id { get; init; }
+    // CBOR key: reporter_account_id
+    public required AccountId ReporterAccountId { get; init; }
+    // CBOR key: target_type
+    public required ContentReportTargetType TargetType { get; init; }
+    // CBOR key: target_id
+    public required string TargetId { get; init; }
+    // CBOR key: reason
+    public required ContentReportReason Reason { get; init; }
+    // CBOR key: details
+    public string? Details { get; init; }
+    // CBOR key: status
+    public required ContentReportStatus Status { get; init; }
+    // CBOR key: created_at
+    public required System.DateTimeOffset CreatedAt { get; init; }
+    // CBOR key: resolved_at
+    public System.DateTimeOffset? ResolvedAt { get; init; }
+}
+
 public sealed record ServiceError
 {
     // CBOR key: code
@@ -119,6 +172,12 @@ public sealed record SessionInfo
     public required bool CanAdmin { get; init; }
     // CBOR key: token
     public string? Token { get; init; }
+}
+
+public sealed record DeleteAccountRequest
+{
+    // CBOR key: confirmation_handle
+    public required Handle ConfirmationHandle { get; init; }
 }
 
 public enum Library
@@ -416,6 +475,12 @@ public sealed record PlaylistRequest
     public required PlaylistId PlaylistId { get; init; }
 }
 
+public sealed record DeletePlaylistRequest
+{
+    // CBOR key: playlist_id
+    public required PlaylistId PlaylistId { get; init; }
+}
+
 public sealed record PlaylistDetail
 {
     // CBOR key: playlist
@@ -438,6 +503,18 @@ public sealed record CoverArt
     public required string ContentType { get; init; }
     // CBOR key: data
     public required byte[] Data { get; init; }
+}
+
+public sealed record ReportContentRequest
+{
+    // CBOR key: target_type
+    public required ContentReportTargetType TargetType { get; init; }
+    // CBOR key: target_id
+    public required string TargetId { get; init; }
+    // CBOR key: reason
+    public required ContentReportReason Reason { get; init; }
+    // CBOR key: details
+    public string? Details { get; init; }
 }
 
 public enum PlayerKind
@@ -937,6 +1014,14 @@ public sealed record SetRoleRequest
     public required Role Role { get; init; }
 }
 
+public sealed record AdminDeleteAccountRequest
+{
+    // CBOR key: account_id
+    public required AccountId AccountId { get; init; }
+    // CBOR key: confirmation_handle
+    public required Handle ConfirmationHandle { get; init; }
+}
+
 public sealed record TrustDomainRequest
 {
     // CBOR key: domain
@@ -1284,6 +1369,22 @@ public sealed record LibraryResyncStatus
     public required bool Running { get; init; }
     // CBOR key: started
     public required bool Started { get; init; }
+}
+
+public sealed record ListContentReportsResponse
+{
+    // CBOR key: reports
+    public required System.Collections.Generic.List<ContentReport> Reports { get; init; }
+    // CBOR key: total
+    public required ulong Total { get; init; }
+}
+
+public sealed record UpdateContentReportStatusRequest
+{
+    // CBOR key: report_id
+    public required ContentReportId ReportId { get; init; }
+    // CBOR key: status
+    public required ContentReportStatus Status { get; init; }
 }
 
 public enum ChangeTopic

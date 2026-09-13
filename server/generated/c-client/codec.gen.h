@@ -616,12 +616,22 @@ static inline int csilc_enc_Page(csilc_buf *b, const Page *v);
 static inline int csilc_dec_Page(const csilc_value *m, CsilCodecArena *a, Page *out);
 static inline int csilc_enc_Ok(csilc_buf *b, const Ok *v);
 static inline int csilc_dec_Ok(const csilc_value *m, CsilCodecArena *a, Ok *out);
+static inline int csilc_enc_ContentReportTargetType(csilc_buf *b, const ContentReportTargetType *v);
+static inline int csilc_dec_ContentReportTargetType(const csilc_value *src, CsilCodecArena *a, ContentReportTargetType *out);
+static inline int csilc_enc_ContentReportReason(csilc_buf *b, const ContentReportReason *v);
+static inline int csilc_dec_ContentReportReason(const csilc_value *src, CsilCodecArena *a, ContentReportReason *out);
+static inline int csilc_enc_ContentReportStatus(csilc_buf *b, const ContentReportStatus *v);
+static inline int csilc_dec_ContentReportStatus(const csilc_value *src, CsilCodecArena *a, ContentReportStatus *out);
+static inline int csilc_enc_ContentReport(csilc_buf *b, const ContentReport *v);
+static inline int csilc_dec_ContentReport(const csilc_value *m, CsilCodecArena *a, ContentReport *out);
 static inline int csilc_enc_ServiceError(csilc_buf *b, const ServiceError *v);
 static inline int csilc_dec_ServiceError(const csilc_value *m, CsilCodecArena *a, ServiceError *out);
 static inline int csilc_enc_AuthRequest(csilc_buf *b, const AuthRequest *v);
 static inline int csilc_dec_AuthRequest(const csilc_value *m, CsilCodecArena *a, AuthRequest *out);
 static inline int csilc_enc_SessionInfo(csilc_buf *b, const SessionInfo *v);
 static inline int csilc_dec_SessionInfo(const csilc_value *m, CsilCodecArena *a, SessionInfo *out);
+static inline int csilc_enc_DeleteAccountRequest(csilc_buf *b, const DeleteAccountRequest *v);
+static inline int csilc_dec_DeleteAccountRequest(const csilc_value *m, CsilCodecArena *a, DeleteAccountRequest *out);
 static inline int csilc_enc_Library(csilc_buf *b, const Library *v);
 static inline int csilc_dec_Library(const csilc_value *src, CsilCodecArena *a, Library *out);
 static inline int csilc_enc_Track(csilc_buf *b, const Track *v);
@@ -678,12 +688,16 @@ static inline int csilc_enc_PlaylistsResponse(csilc_buf *b, const PlaylistsRespo
 static inline int csilc_dec_PlaylistsResponse(const csilc_value *m, CsilCodecArena *a, PlaylistsResponse *out);
 static inline int csilc_enc_PlaylistRequest(csilc_buf *b, const PlaylistRequest *v);
 static inline int csilc_dec_PlaylistRequest(const csilc_value *m, CsilCodecArena *a, PlaylistRequest *out);
+static inline int csilc_enc_DeletePlaylistRequest(csilc_buf *b, const DeletePlaylistRequest *v);
+static inline int csilc_dec_DeletePlaylistRequest(const csilc_value *m, CsilCodecArena *a, DeletePlaylistRequest *out);
 static inline int csilc_enc_PlaylistDetail(csilc_buf *b, const PlaylistDetail *v);
 static inline int csilc_dec_PlaylistDetail(const csilc_value *m, CsilCodecArena *a, PlaylistDetail *out);
 static inline int csilc_enc_CoverArtRequest(csilc_buf *b, const CoverArtRequest *v);
 static inline int csilc_dec_CoverArtRequest(const csilc_value *m, CsilCodecArena *a, CoverArtRequest *out);
 static inline int csilc_enc_CoverArt(csilc_buf *b, const CoverArt *v);
 static inline int csilc_dec_CoverArt(const csilc_value *m, CsilCodecArena *a, CoverArt *out);
+static inline int csilc_enc_ReportContentRequest(csilc_buf *b, const ReportContentRequest *v);
+static inline int csilc_dec_ReportContentRequest(const csilc_value *m, CsilCodecArena *a, ReportContentRequest *out);
 static inline int csilc_enc_PlayerKind(csilc_buf *b, const PlayerKind *v);
 static inline int csilc_dec_PlayerKind(const csilc_value *src, CsilCodecArena *a, PlayerKind *out);
 static inline int csilc_enc_Player(csilc_buf *b, const Player *v);
@@ -778,6 +792,8 @@ static inline int csilc_enc_ListAccountsResponse(csilc_buf *b, const ListAccount
 static inline int csilc_dec_ListAccountsResponse(const csilc_value *m, CsilCodecArena *a, ListAccountsResponse *out);
 static inline int csilc_enc_SetRoleRequest(csilc_buf *b, const SetRoleRequest *v);
 static inline int csilc_dec_SetRoleRequest(const csilc_value *m, CsilCodecArena *a, SetRoleRequest *out);
+static inline int csilc_enc_AdminDeleteAccountRequest(csilc_buf *b, const AdminDeleteAccountRequest *v);
+static inline int csilc_dec_AdminDeleteAccountRequest(const csilc_value *m, CsilCodecArena *a, AdminDeleteAccountRequest *out);
 static inline int csilc_enc_TrustDomainRequest(csilc_buf *b, const TrustDomainRequest *v);
 static inline int csilc_dec_TrustDomainRequest(const csilc_value *m, CsilCodecArena *a, TrustDomainRequest *out);
 static inline int csilc_enc_TrustedDomains(csilc_buf *b, const TrustedDomains *v);
@@ -848,6 +864,10 @@ static inline int csilc_enc_SetSettingRequest(csilc_buf *b, const SetSettingRequ
 static inline int csilc_dec_SetSettingRequest(const csilc_value *m, CsilCodecArena *a, SetSettingRequest *out);
 static inline int csilc_enc_LibraryResyncStatus(csilc_buf *b, const LibraryResyncStatus *v);
 static inline int csilc_dec_LibraryResyncStatus(const csilc_value *m, CsilCodecArena *a, LibraryResyncStatus *out);
+static inline int csilc_enc_ListContentReportsResponse(csilc_buf *b, const ListContentReportsResponse *v);
+static inline int csilc_dec_ListContentReportsResponse(const csilc_value *m, CsilCodecArena *a, ListContentReportsResponse *out);
+static inline int csilc_enc_UpdateContentReportStatusRequest(csilc_buf *b, const UpdateContentReportStatusRequest *v);
+static inline int csilc_dec_UpdateContentReportStatusRequest(const csilc_value *m, CsilCodecArena *a, UpdateContentReportStatusRequest *out);
 static inline int csilc_enc_ChangeTopic(csilc_buf *b, const ChangeTopic *v);
 static inline int csilc_dec_ChangeTopic(const csilc_value *src, CsilCodecArena *a, ChangeTopic *out);
 static inline int csilc_enc_WatchChangesRequest(csilc_buf *b, const WatchChangesRequest *v);
@@ -1073,6 +1093,148 @@ static inline int csilc_dec_Ok(const csilc_value *m, CsilCodecArena *a, Ok *out)
     return 0;
 }
 
+static CSILC_UNUSED const char *const csilc_ContentReportTargetType_names[] = {
+    "playlist",
+    "account",
+};
+/* csilc_enc_ContentReportTargetType writes the ContentReportTargetType variant's wire text. */
+static inline int csilc_enc_ContentReportTargetType(csilc_buf *b, const ContentReportTargetType *v) {
+    const char *csilc_s = csilc_ContentReportTargetType_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_ContentReportTargetType matches the wire text back to a ContentReportTargetType variant. */
+static inline int csilc_dec_ContentReportTargetType(const csilc_value *src, CsilCodecArena *a, ContentReportTargetType *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_ContentReportTargetType_names) / sizeof(csilc_ContentReportTargetType_names[0]); csilc_i++) {
+        if (strlen(csilc_ContentReportTargetType_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_ContentReportTargetType_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (ContentReportTargetType)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static CSILC_UNUSED const char *const csilc_ContentReportReason_names[] = {
+    "objectionable-content",
+    "harassment",
+    "spam",
+    "other",
+};
+/* csilc_enc_ContentReportReason writes the ContentReportReason variant's wire text. */
+static inline int csilc_enc_ContentReportReason(csilc_buf *b, const ContentReportReason *v) {
+    const char *csilc_s = csilc_ContentReportReason_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_ContentReportReason matches the wire text back to a ContentReportReason variant. */
+static inline int csilc_dec_ContentReportReason(const csilc_value *src, CsilCodecArena *a, ContentReportReason *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_ContentReportReason_names) / sizeof(csilc_ContentReportReason_names[0]); csilc_i++) {
+        if (strlen(csilc_ContentReportReason_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_ContentReportReason_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (ContentReportReason)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static CSILC_UNUSED const char *const csilc_ContentReportStatus_names[] = {
+    "open",
+    "resolved",
+    "dismissed",
+};
+/* csilc_enc_ContentReportStatus writes the ContentReportStatus variant's wire text. */
+static inline int csilc_enc_ContentReportStatus(csilc_buf *b, const ContentReportStatus *v) {
+    const char *csilc_s = csilc_ContentReportStatus_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_ContentReportStatus matches the wire text back to a ContentReportStatus variant. */
+static inline int csilc_dec_ContentReportStatus(const csilc_value *src, CsilCodecArena *a, ContentReportStatus *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_ContentReportStatus_names) / sizeof(csilc_ContentReportStatus_names[0]); csilc_i++) {
+        if (strlen(csilc_ContentReportStatus_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_ContentReportStatus_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (ContentReportStatus)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+/* csilc_enc_ContentReport writes ContentReport as a canonical CBOR map. */
+static inline int csilc_enc_ContentReport(csilc_buf *b, const ContentReport *v) {
+    size_t csilc_n = 7;
+    if (v->details) csilc_n++;
+    if (v->resolved_at) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "id", 2)) return -1;
+    if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
+    if (csilc_w_text(b, "reason", 6)) return -1;
+    if (csilc_enc_ContentReportReason(b, &(v->reason))) return -1;
+    if (csilc_w_text(b, "status", 6)) return -1;
+    if (csilc_enc_ContentReportStatus(b, &(v->status))) return -1;
+    if (v->details) {
+        if (csilc_w_text(b, "details", 7)) return -1;
+        if (csilc_w_text(b, (v->details), (v->details) ? strlen(v->details) : 0)) return -1;
+    }
+    if (csilc_w_text(b, "target_id", 9)) return -1;
+    if (csilc_w_text(b, (v->target_id), (v->target_id) ? strlen(v->target_id) : 0)) return -1;
+    if (csilc_w_text(b, "created_at", 10)) return -1;
+    if (csilc_w_tag(b, 0)) return -1;
+    if (csilc_w_text(b, (v->created_at).rfc3339, (v->created_at).rfc3339 ? strlen((v->created_at).rfc3339) : 0)) return -1;
+    if (v->resolved_at) {
+        if (csilc_w_text(b, "resolved_at", 11)) return -1;
+        if (csilc_w_tag(b, 0)) return -1;
+        if (csilc_w_text(b, ((*v->resolved_at)).rfc3339, ((*v->resolved_at)).rfc3339 ? strlen(((*v->resolved_at)).rfc3339) : 0)) return -1;
+    }
+    if (csilc_w_text(b, "target_type", 11)) return -1;
+    if (csilc_enc_ContentReportTargetType(b, &(v->target_type))) return -1;
+    if (csilc_w_text(b, "reporter_account_id", 19)) return -1;
+    if (csilc_w_text(b, (v->reporter_account_id), (v->reporter_account_id) ? strlen(v->reporter_account_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ContentReport reads ContentReport from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ContentReport(const csilc_value *m, CsilCodecArena *a, ContentReport *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "id");
+    if (!csilc_get_text(csilc_f, &(out->id))) return -1;
+    csilc_f = csilc_map_get(m, "reason");
+    if (csilc_dec_ContentReportReason(csilc_f, a, &(out->reason))) return -1;
+    csilc_f = csilc_map_get(m, "status");
+    if (csilc_dec_ContentReportStatus(csilc_f, a, &(out->status))) return -1;
+    csilc_f = csilc_map_get(m, "details");
+    out->details = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "target_id");
+    if (!csilc_get_text(csilc_f, &(out->target_id))) return -1;
+    csilc_f = csilc_map_get(m, "created_at");
+    if (!csilc_get_tagged_text(csilc_f, 0, &(out->created_at).rfc3339)) return -1;
+    (out->created_at).epoch_seconds = 0;
+    csilc_f = csilc_map_get(m, "resolved_at");
+    out->resolved_at = NULL;
+    if (csilc_f) {
+        CsilTimestamp *csilc_p = (CsilTimestamp *)csilc_arena_alloc(a, sizeof(CsilTimestamp));
+        if (!csilc_p) return -1;
+        if (!csilc_get_tagged_text(csilc_f, 0, &((*csilc_p)).rfc3339)) return -1;
+        ((*csilc_p)).epoch_seconds = 0;
+        out->resolved_at = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "target_type");
+    if (csilc_dec_ContentReportTargetType(csilc_f, a, &(out->target_type))) return -1;
+    csilc_f = csilc_map_get(m, "reporter_account_id");
+    if (!csilc_get_text(csilc_f, &(out->reporter_account_id))) return -1;
+    return 0;
+}
+
 /* csilc_enc_ServiceError writes ServiceError as a canonical CBOR map. */
 static inline int csilc_enc_ServiceError(csilc_buf *b, const ServiceError *v) {
     size_t csilc_n = 2;
@@ -1180,6 +1342,25 @@ static inline int csilc_dec_SessionInfo(const csilc_value *m, CsilCodecArena *a,
     if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
     csilc_f = csilc_map_get(m, "display_name");
     out->display_name = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    return 0;
+}
+
+/* csilc_enc_DeleteAccountRequest writes DeleteAccountRequest as a canonical CBOR map. */
+static inline int csilc_enc_DeleteAccountRequest(csilc_buf *b, const DeleteAccountRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "confirmation_handle", 19)) return -1;
+    if (csilc_w_text(b, (v->confirmation_handle), (v->confirmation_handle) ? strlen(v->confirmation_handle) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_DeleteAccountRequest reads DeleteAccountRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_DeleteAccountRequest(const csilc_value *m, CsilCodecArena *a, DeleteAccountRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "confirmation_handle");
+    if (!csilc_get_text(csilc_f, &(out->confirmation_handle))) return -1;
     return 0;
 }
 
@@ -2249,6 +2430,25 @@ static inline int csilc_dec_PlaylistRequest(const csilc_value *m, CsilCodecArena
     return 0;
 }
 
+/* csilc_enc_DeletePlaylistRequest writes DeletePlaylistRequest as a canonical CBOR map. */
+static inline int csilc_enc_DeletePlaylistRequest(csilc_buf *b, const DeletePlaylistRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "playlist_id", 11)) return -1;
+    if (csilc_w_text(b, (v->playlist_id), (v->playlist_id) ? strlen(v->playlist_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_DeletePlaylistRequest reads DeletePlaylistRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_DeletePlaylistRequest(const csilc_value *m, CsilCodecArena *a, DeletePlaylistRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "playlist_id");
+    if (!csilc_get_text(csilc_f, &(out->playlist_id))) return -1;
+    return 0;
+}
+
 /* csilc_enc_PlaylistDetail writes PlaylistDetail as a canonical CBOR map. */
 static inline int csilc_enc_PlaylistDetail(csilc_buf *b, const PlaylistDetail *v) {
     size_t csilc_n = 2;
@@ -2336,6 +2536,40 @@ static inline int csilc_dec_CoverArt(const csilc_value *m, CsilCodecArena *a, Co
     if (!csilc_get_bytes(csilc_f, &(out->data).data, &(out->data).len)) return -1;
     csilc_f = csilc_map_get(m, "content_type");
     if (!csilc_get_text(csilc_f, &(out->content_type))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ReportContentRequest writes ReportContentRequest as a canonical CBOR map. */
+static inline int csilc_enc_ReportContentRequest(csilc_buf *b, const ReportContentRequest *v) {
+    size_t csilc_n = 3;
+    if (v->details) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "reason", 6)) return -1;
+    if (csilc_enc_ContentReportReason(b, &(v->reason))) return -1;
+    if (v->details) {
+        if (csilc_w_text(b, "details", 7)) return -1;
+        if (csilc_w_text(b, (v->details), (v->details) ? strlen(v->details) : 0)) return -1;
+    }
+    if (csilc_w_text(b, "target_id", 9)) return -1;
+    if (csilc_w_text(b, (v->target_id), (v->target_id) ? strlen(v->target_id) : 0)) return -1;
+    if (csilc_w_text(b, "target_type", 11)) return -1;
+    if (csilc_enc_ContentReportTargetType(b, &(v->target_type))) return -1;
+    return 0;
+}
+
+/* csilc_dec_ReportContentRequest reads ReportContentRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ReportContentRequest(const csilc_value *m, CsilCodecArena *a, ReportContentRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "reason");
+    if (csilc_dec_ContentReportReason(csilc_f, a, &(out->reason))) return -1;
+    csilc_f = csilc_map_get(m, "details");
+    out->details = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "target_id");
+    if (!csilc_get_text(csilc_f, &(out->target_id))) return -1;
+    csilc_f = csilc_map_get(m, "target_type");
+    if (csilc_dec_ContentReportTargetType(csilc_f, a, &(out->target_type))) return -1;
     return 0;
 }
 
@@ -3974,6 +4208,29 @@ static inline int csilc_dec_SetRoleRequest(const csilc_value *m, CsilCodecArena 
     return 0;
 }
 
+/* csilc_enc_AdminDeleteAccountRequest writes AdminDeleteAccountRequest as a canonical CBOR map. */
+static inline int csilc_enc_AdminDeleteAccountRequest(csilc_buf *b, const AdminDeleteAccountRequest *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "account_id", 10)) return -1;
+    if (csilc_w_text(b, (v->account_id), (v->account_id) ? strlen(v->account_id) : 0)) return -1;
+    if (csilc_w_text(b, "confirmation_handle", 19)) return -1;
+    if (csilc_w_text(b, (v->confirmation_handle), (v->confirmation_handle) ? strlen(v->confirmation_handle) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_AdminDeleteAccountRequest reads AdminDeleteAccountRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_AdminDeleteAccountRequest(const csilc_value *m, CsilCodecArena *a, AdminDeleteAccountRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "account_id");
+    if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
+    csilc_f = csilc_map_get(m, "confirmation_handle");
+    if (!csilc_get_text(csilc_f, &(out->confirmation_handle))) return -1;
+    return 0;
+}
+
 /* csilc_enc_TrustDomainRequest writes TrustDomainRequest as a canonical CBOR map. */
 static inline int csilc_enc_TrustDomainRequest(csilc_buf *b, const TrustDomainRequest *v) {
     size_t csilc_n = 1;
@@ -5094,6 +5351,64 @@ static inline int csilc_dec_LibraryResyncStatus(const csilc_value *m, CsilCodecA
     return 0;
 }
 
+/* csilc_enc_ListContentReportsResponse writes ListContentReportsResponse as a canonical CBOR map. */
+static inline int csilc_enc_ListContentReportsResponse(csilc_buf *b, const ListContentReportsResponse *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "total", 5)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->total))) return -1;
+    if (csilc_w_text(b, "reports", 7)) return -1;
+    if (csilc_w_array_head(b, v->reports_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->reports_count; csilc_i++) {
+        if (csilc_enc_ContentReport(b, &(v->reports[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_ListContentReportsResponse reads ListContentReportsResponse from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ListContentReportsResponse(const csilc_value *m, CsilCodecArena *a, ListContentReportsResponse *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "total");
+    if (!csilc_as_u64(csilc_f, &(out->total))) return -1;
+    csilc_f = csilc_map_get(m, "reports");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->reports_count = csilc_f->as.array.count;
+    out->reports = NULL;
+    if (out->reports_count) {
+        out->reports = (ContentReport *)csilc_arena_alloc(a, out->reports_count * sizeof(ContentReport));
+        if (!out->reports) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->reports_count; csilc_i++) {
+            if (csilc_dec_ContentReport(&csilc_f->as.array.items[csilc_i], a, &(out->reports[csilc_i]))) return -1;
+        }
+    }
+    return 0;
+}
+
+/* csilc_enc_UpdateContentReportStatusRequest writes UpdateContentReportStatusRequest as a canonical CBOR map. */
+static inline int csilc_enc_UpdateContentReportStatusRequest(csilc_buf *b, const UpdateContentReportStatusRequest *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "status", 6)) return -1;
+    if (csilc_enc_ContentReportStatus(b, &(v->status))) return -1;
+    if (csilc_w_text(b, "report_id", 9)) return -1;
+    if (csilc_w_text(b, (v->report_id), (v->report_id) ? strlen(v->report_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_UpdateContentReportStatusRequest reads UpdateContentReportStatusRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_UpdateContentReportStatusRequest(const csilc_value *m, CsilCodecArena *a, UpdateContentReportStatusRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "status");
+    if (csilc_dec_ContentReportStatus(csilc_f, a, &(out->status))) return -1;
+    csilc_f = csilc_map_get(m, "report_id");
+    if (!csilc_get_text(csilc_f, &(out->report_id))) return -1;
+    return 0;
+}
+
 static CSILC_UNUSED const char *const csilc_ChangeTopic_names[] = {
     "players",
     "libraries",
@@ -5339,6 +5654,98 @@ static inline int csil_decode_Ok(const uint8_t *in, size_t len, Ok *out, CsilCod
     return 0;
 }
 
+/* Encode a ContentReportTargetType to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ContentReportTargetType(const ContentReportTargetType *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ContentReportTargetType(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ContentReportTargetType. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ContentReportTargetType(const uint8_t *in, size_t len, ContentReportTargetType *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ContentReportTargetType(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ContentReportReason to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ContentReportReason(const ContentReportReason *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ContentReportReason(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ContentReportReason. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ContentReportReason(const uint8_t *in, size_t len, ContentReportReason *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ContentReportReason(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ContentReportStatus to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ContentReportStatus(const ContentReportStatus *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ContentReportStatus(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ContentReportStatus. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ContentReportStatus(const uint8_t *in, size_t len, ContentReportStatus *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ContentReportStatus(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ContentReport to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ContentReport(const ContentReport *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ContentReport(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ContentReport. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ContentReport(const uint8_t *in, size_t len, ContentReport *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ContentReport(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a ServiceError to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_ServiceError(const ServiceError *v, uint8_t **out, size_t *out_len) {
@@ -5404,6 +5811,29 @@ static inline int csil_decode_SessionInfo(const uint8_t *in, size_t len, Session
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_SessionInfo(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a DeleteAccountRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_DeleteAccountRequest(const DeleteAccountRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_DeleteAccountRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a DeleteAccountRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_DeleteAccountRequest(const uint8_t *in, size_t len, DeleteAccountRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_DeleteAccountRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }
@@ -6052,6 +6482,29 @@ static inline int csil_decode_PlaylistRequest(const uint8_t *in, size_t len, Pla
     return 0;
 }
 
+/* Encode a DeletePlaylistRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_DeletePlaylistRequest(const DeletePlaylistRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_DeletePlaylistRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a DeletePlaylistRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_DeletePlaylistRequest(const uint8_t *in, size_t len, DeletePlaylistRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_DeletePlaylistRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a PlaylistDetail to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_PlaylistDetail(const PlaylistDetail *v, uint8_t **out, size_t *out_len) {
@@ -6117,6 +6570,29 @@ static inline int csil_decode_CoverArt(const uint8_t *in, size_t len, CoverArt *
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_CoverArt(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ReportContentRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ReportContentRequest(const ReportContentRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ReportContentRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ReportContentRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ReportContentRequest(const uint8_t *in, size_t len, ReportContentRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ReportContentRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }
@@ -7202,6 +7678,29 @@ static inline int csil_decode_SetRoleRequest(const uint8_t *in, size_t len, SetR
     return 0;
 }
 
+/* Encode a AdminDeleteAccountRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_AdminDeleteAccountRequest(const AdminDeleteAccountRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_AdminDeleteAccountRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a AdminDeleteAccountRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_AdminDeleteAccountRequest(const uint8_t *in, size_t len, AdminDeleteAccountRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_AdminDeleteAccountRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a TrustDomainRequest to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_TrustDomainRequest(const TrustDomainRequest *v, uint8_t **out, size_t *out_len) {
@@ -8003,6 +8502,52 @@ static inline int csil_decode_LibraryResyncStatus(const uint8_t *in, size_t len,
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_LibraryResyncStatus(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ListContentReportsResponse to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ListContentReportsResponse(const ListContentReportsResponse *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ListContentReportsResponse(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ListContentReportsResponse. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ListContentReportsResponse(const uint8_t *in, size_t len, ListContentReportsResponse *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ListContentReportsResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a UpdateContentReportStatusRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_UpdateContentReportStatusRequest(const UpdateContentReportStatusRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_UpdateContentReportStatusRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a UpdateContentReportStatusRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_UpdateContentReportStatusRequest(const uint8_t *in, size_t len, UpdateContentReportStatusRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_UpdateContentReportStatusRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

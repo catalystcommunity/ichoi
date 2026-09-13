@@ -35,6 +35,8 @@ public sealed class SessionClient(ICsilTransport transport)
         Codec.Decode<SessionInfo>(transport.Call("SessionService", "whoami", Codec.Encode(page)));
     public Ok Logout(Page page) =>
         Codec.Decode<Ok>(transport.Call("SessionService", "logout", Codec.Encode(page)));
+    public Ok DeleteAccount(DeleteAccountRequest deleteAccountRequest) =>
+        Codec.Decode<Ok>(transport.Call("SessionService", "delete-account", Codec.Encode(deleteAccountRequest)));
 }
 
 /// <summary>Typed RPC client for the LibraryService service. The client owns
@@ -61,12 +63,16 @@ public sealed class LibraryClient(ICsilTransport transport)
         Codec.Decode<PlaylistsResponse>(transport.Call("LibraryService", "list-playlists", Codec.Encode(browseRequest)));
     public PlaylistDetail GetPlaylist(PlaylistRequest playlistRequest) =>
         Codec.Decode<PlaylistDetail>(transport.Call("LibraryService", "get-playlist", Codec.Encode(playlistRequest)));
+    public Ok DeletePlaylist(DeletePlaylistRequest deletePlaylistRequest) =>
+        Codec.Decode<Ok>(transport.Call("LibraryService", "delete-playlist", Codec.Encode(deletePlaylistRequest)));
     public CoverArt GetCoverArt(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
     public AudiobookProgressResponse GetAudiobookProgress(AudiobookProgressRequest audiobookProgressRequest) =>
         Codec.Decode<AudiobookProgressResponse>(transport.Call("LibraryService", "get-audiobook-progress", Codec.Encode(audiobookProgressRequest)));
     public AudiobookProgress UpdateAudiobookProgress(UpdateAudiobookProgressRequest updateAudiobookProgressRequest) =>
         Codec.Decode<AudiobookProgress>(transport.Call("LibraryService", "update-audiobook-progress", Codec.Encode(updateAudiobookProgressRequest)));
+    public ContentReport ReportContent(ReportContentRequest reportContentRequest) =>
+        Codec.Decode<ContentReport>(transport.Call("LibraryService", "report-content", Codec.Encode(reportContentRequest)));
 }
 
 /// <summary>Typed RPC client for the PlayerService service. The client owns
@@ -107,6 +113,8 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<ListAccountsResponse>(transport.Call("AdminService", "list-accounts", Codec.Encode(page)));
     public Account SetRole(SetRoleRequest setRoleRequest) =>
         Codec.Decode<Account>(transport.Call("AdminService", "set-role", Codec.Encode(setRoleRequest)));
+    public Ok DeleteAccount(AdminDeleteAccountRequest adminDeleteAccountRequest) =>
+        Codec.Decode<Ok>(transport.Call("AdminService", "delete-account", Codec.Encode(adminDeleteAccountRequest)));
     public TrustedDomains TrustDomain(TrustDomainRequest trustDomainRequest) =>
         Codec.Decode<TrustedDomains>(transport.Call("AdminService", "trust-domain", Codec.Encode(trustDomainRequest)));
     public TrustedDomains ListTrustedDomains(Page page) =>
@@ -157,6 +165,10 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<LibraryResyncStatus>(transport.Call("AdminService", "resync-library", Codec.Encode(page)));
     public LibraryResyncStatus GetResyncStatus(Page page) =>
         Codec.Decode<LibraryResyncStatus>(transport.Call("AdminService", "get-resync-status", Codec.Encode(page)));
+    public ListContentReportsResponse ListContentReports(Page page) =>
+        Codec.Decode<ListContentReportsResponse>(transport.Call("AdminService", "list-content-reports", Codec.Encode(page)));
+    public ContentReport UpdateContentReportStatus(UpdateContentReportStatusRequest updateContentReportStatusRequest) =>
+        Codec.Decode<ContentReport>(transport.Call("AdminService", "update-content-report-status", Codec.Encode(updateContentReportStatusRequest)));
 }
 
 // ChangeService has no unary operation csilgen can put on an RPC client (channel-only,

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ Title }} | Ichoi</title>
+    <meta name="description" content="{{ Description }}">
+    <meta name="theme-color" content="#174b5b">
+    <meta property="og:title" content="{{ Title }} | Ichoi">
+    <meta property="og:description" content="{{ Description }}">
+    <meta property="og:type" content="website">
+    <link rel="icon" href="assets/ichoi-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="Ichoi home">
+        <img src="assets/ichoi-mark.svg" alt="" width="36" height="36">
+        <span>Ichoi</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="product.html">Product</a>
+        <a href="setup.html">Setup</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="support.html">Support</a>
+      </nav>
+    </header>
+    <main id="main" class="content">
+      {{ content }}
+    </main>
+    <footer class="site-footer">
+      <div><strong>Ichoi</strong><p>Free, open source music playback for your server.</p></div>
+      <nav aria-label="Footer navigation">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="account-deletion.html">Delete an account</a>
+        <a href="license.html">Open source</a>
+      </nav>
+      <p class="footer-note">Copyright 2026 Catalyst Community. Apache-2.0.</p>
+    </footer>
+  </body>
+</html>

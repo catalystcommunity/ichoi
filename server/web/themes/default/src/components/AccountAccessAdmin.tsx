@@ -1,11 +1,13 @@
 import { createResource, createSignal, For, Show, type JSX } from "solid-js";
 import type { Role } from "../lib/schema.ts";
 import { useServers } from "../stores/servers.tsx";
+import { ReportDialog } from "./ReportDialog.tsx";
 
 export function AccountAccessAdmin(): JSX.Element {
   const servers = useServers();
   const [identity, setIdentity] = createSignal("");
   const [message, setMessage] = createSignal<string>();
+  const [reportedAccount, setReportedAccount] = createSignal<{ id: string; handle: string }>();
   const [data, { refetch }] = createResource(
     () => servers.active()?.session?.can_admin ? servers.api() : undefined,
     async (api) => {
@@ -108,29 +110,49 @@ export function AccountAccessAdmin(): JSX.Element {
       <div class="settings-list">
         <For each={data()?.accounts ?? []}>
           {(account) => (
-            <div class="row spread settings-row">
+            <div class="row spread settings-row" id={`account-${account.id}`}>
               <span>
                 <strong>{account.display_name ?? account.handle}</strong>
                 <br />
                 <span class="hint">{account.id}</span>
               </span>
-              <select
-                class="select"
-                style={{ "max-width": "150px" }}
-                value={account.role}
-                aria-label={`Role for ${account.handle}`}
-                onChange={(event) =>
-                  void setAccountRole(account.id, event.currentTarget.value as Role)}
-              >
-                <option value="admin">Admin</option>
-                <option value="member">Member</option>
-                <option value="guest">Guest</option>
-              </select>
+              <div class="row" style={{ gap: "8px" }}>
+                <button
+                  class="btn btn-ghost"
+                  type="button"
+                  onClick={() => setReportedAccount({ id: account.id, handle: account.handle })}
+                >
+                  Report user
+                </button>
+                <select
+                  class="select"
+                  style={{ "max-width": "150px" }}
+                  value={account.role}
+                  aria-label={`Role for ${account.handle}`}
+                  onChange={(event) =>
+                    void setAccountRole(account.id, event.currentTarget.value as Role)}
+                >
+                  <option value="admin">Admin</option>
+                  <option value="member">Member</option>
+                  <option value="guest">Guest</option>
+                </select>
+              </div>
             </div>
           )}
         </For>
       </div>
       <Show when={message()}>{(text) => <p class="error">{text()}</p>}</Show>
+      <Show when={reportedAccount()}>
+        {(account) => (
+          <ReportDialog
+            open={true}
+            targetType="account"
+            targetId={account().id}
+            targetLabel={`user ${account().handle}`}
+            onClose={() => setReportedAccount(undefined)}
+          />
+        )}
+      </Show>
     </section>
   );
 }

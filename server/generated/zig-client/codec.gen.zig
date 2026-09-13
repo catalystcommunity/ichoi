@@ -541,6 +541,149 @@ fn dec_Ok(alloc: std.mem.Allocator, m: Value, out: *types.Ok) CodecError!void {
     }
 }
 
+fn enc_ContentReportTargetType(out: *std.ArrayList(u8), v: *const types.ContentReportTargetType) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_ContentReportTargetType(alloc: std.mem.Allocator, src: Value, out: *types.ContentReportTargetType) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "playlist")) {
+        out.* = .playlist;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "account")) {
+        out.* = .account;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_ContentReportReason(out: *std.ArrayList(u8), v: *const types.ContentReportReason) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_ContentReportReason(alloc: std.mem.Allocator, src: Value, out: *types.ContentReportReason) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "objectionable-content")) {
+        out.* = .objectionable_content;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "harassment")) {
+        out.* = .harassment;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "spam")) {
+        out.* = .spam;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "other")) {
+        out.* = .other;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_ContentReportStatus(out: *std.ArrayList(u8), v: *const types.ContentReportStatus) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_ContentReportStatus(alloc: std.mem.Allocator, src: Value, out: *types.ContentReportStatus) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "open")) {
+        out.* = .open;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "resolved")) {
+        out.* = .resolved;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "dismissed")) {
+        out.* = .dismissed;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_ContentReport(out: *std.ArrayList(u8), v: *const types.ContentReport) CodecError!void {
+    var csil_n: usize = 7;
+    if (v.details != null) csil_n += 1;
+    if (v.resolved_at != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "reason");
+    try enc_ContentReportReason(out, &(v.reason));
+    try w_text(out, "status");
+    try enc_ContentReportStatus(out, &(v.status));
+    if (v.details) |csil_x| {
+        try w_text(out, "details");
+        try w_text(out, csil_x);
+    }
+    try w_text(out, "target_id");
+    try w_text(out, v.target_id);
+    try w_text(out, "created_at");
+    try w_tag(out, 0);
+    try w_text(out, (v.created_at).rfc3339);
+    if (v.resolved_at) |csil_x| {
+        try w_text(out, "resolved_at");
+        try w_tag(out, 0);
+        try w_text(out, (csil_x).rfc3339);
+    }
+    try w_text(out, "target_type");
+    try enc_ContentReportTargetType(out, &(v.target_type));
+    try w_text(out, "reporter_account_id");
+    try w_text(out, v.reporter_account_id);
+}
+
+fn dec_ContentReport(alloc: std.mem.Allocator, m: Value, out: *types.ContentReport) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "reason");
+        try dec_ContentReportReason(alloc, csil_fv, &(out.reason));
+    }
+    {
+        const csil_fv = try req(m, "status");
+        try dec_ContentReportStatus(alloc, csil_fv, &(out.status));
+    }
+    {
+        if (mget(m, "details")) |csil_fv| {
+            out.details = try as_text(csil_fv);
+        } else {
+            out.details = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "target_id");
+        out.target_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "created_at");
+        out.created_at = .{ .rfc3339 = try as_tagged_text(csil_fv, 0), .epoch_seconds = 0 };
+    }
+    {
+        if (mget(m, "resolved_at")) |csil_fv| {
+            out.resolved_at = .{ .rfc3339 = try as_tagged_text(csil_fv, 0), .epoch_seconds = 0 };
+        } else {
+            out.resolved_at = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "target_type");
+        try dec_ContentReportTargetType(alloc, csil_fv, &(out.target_type));
+    }
+    {
+        const csil_fv = try req(m, "reporter_account_id");
+        out.reporter_account_id = try as_text(csil_fv);
+    }
+}
+
 fn enc_ServiceError(out: *std.ArrayList(u8), v: *const types.ServiceError) CodecError!void {
     try w_map_head(out, 2);
     try w_text(out, "code");
@@ -662,6 +805,21 @@ fn dec_SessionInfo(alloc: std.mem.Allocator, m: Value, out: *types.SessionInfo) 
         } else {
             out.display_name = null;
         }
+    }
+}
+
+fn enc_DeleteAccountRequest(out: *std.ArrayList(u8), v: *const types.DeleteAccountRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "confirmation_handle");
+    try w_text(out, v.confirmation_handle);
+}
+
+fn dec_DeleteAccountRequest(alloc: std.mem.Allocator, m: Value, out: *types.DeleteAccountRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "confirmation_handle");
+        out.confirmation_handle = try as_text(csil_fv);
     }
 }
 
@@ -1626,6 +1784,21 @@ fn dec_PlaylistRequest(alloc: std.mem.Allocator, m: Value, out: *types.PlaylistR
     }
 }
 
+fn enc_DeletePlaylistRequest(out: *std.ArrayList(u8), v: *const types.DeletePlaylistRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "playlist_id");
+    try w_text(out, v.playlist_id);
+}
+
+fn dec_DeletePlaylistRequest(alloc: std.mem.Allocator, m: Value, out: *types.DeletePlaylistRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "playlist_id");
+        out.playlist_id = try as_text(csil_fv);
+    }
+}
+
 fn enc_PlaylistDetail(out: *std.ArrayList(u8), v: *const types.PlaylistDetail) CodecError!void {
     try w_map_head(out, 2);
     try w_text(out, "tracks");
@@ -1699,6 +1872,45 @@ fn dec_CoverArt(alloc: std.mem.Allocator, m: Value, out: *types.CoverArt) CodecE
     {
         const csil_fv = try req(m, "content_type");
         out.content_type = try as_text(csil_fv);
+    }
+}
+
+fn enc_ReportContentRequest(out: *std.ArrayList(u8), v: *const types.ReportContentRequest) CodecError!void {
+    var csil_n: usize = 3;
+    if (v.details != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "reason");
+    try enc_ContentReportReason(out, &(v.reason));
+    if (v.details) |csil_x| {
+        try w_text(out, "details");
+        try w_text(out, csil_x);
+    }
+    try w_text(out, "target_id");
+    try w_text(out, v.target_id);
+    try w_text(out, "target_type");
+    try enc_ContentReportTargetType(out, &(v.target_type));
+}
+
+fn dec_ReportContentRequest(alloc: std.mem.Allocator, m: Value, out: *types.ReportContentRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "reason");
+        try dec_ContentReportReason(alloc, csil_fv, &(out.reason));
+    }
+    {
+        if (mget(m, "details")) |csil_fv| {
+            out.details = try as_text(csil_fv);
+        } else {
+            out.details = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "target_id");
+        out.target_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "target_type");
+        try dec_ContentReportTargetType(alloc, csil_fv, &(out.target_type));
     }
 }
 
@@ -3312,6 +3524,27 @@ fn dec_SetRoleRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetRoleReq
     }
 }
 
+fn enc_AdminDeleteAccountRequest(out: *std.ArrayList(u8), v: *const types.AdminDeleteAccountRequest) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "account_id");
+    try w_text(out, v.account_id);
+    try w_text(out, "confirmation_handle");
+    try w_text(out, v.confirmation_handle);
+}
+
+fn dec_AdminDeleteAccountRequest(alloc: std.mem.Allocator, m: Value, out: *types.AdminDeleteAccountRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "account_id");
+        out.account_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "confirmation_handle");
+        out.confirmation_handle = try as_text(csil_fv);
+    }
+}
+
 fn enc_TrustDomainRequest(out: *std.ArrayList(u8), v: *const types.TrustDomainRequest) CodecError!void {
     try w_map_head(out, 1);
     try w_text(out, "domain");
@@ -4293,6 +4526,53 @@ fn dec_LibraryResyncStatus(alloc: std.mem.Allocator, m: Value, out: *types.Libra
     }
 }
 
+fn enc_ListContentReportsResponse(out: *std.ArrayList(u8), v: *const types.ListContentReportsResponse) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "total");
+    try w_uint(out, v.total);
+    try w_text(out, "reports");
+    try w_array_head(out, v.reports.len);
+    for (v.reports) |csil_it| {
+        try enc_ContentReport(out, &(csil_it));
+    }
+}
+
+fn dec_ListContentReportsResponse(alloc: std.mem.Allocator, m: Value, out: *types.ListContentReportsResponse) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "total");
+        out.total = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "reports");
+        if (csil_fv != .array) return error.WrongType;
+        out.reports = try alloc.alloc(types.ContentReport, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_ContentReport(alloc, csil_it, &(out.reports[csil_i]));
+        }
+    }
+}
+
+fn enc_UpdateContentReportStatusRequest(out: *std.ArrayList(u8), v: *const types.UpdateContentReportStatusRequest) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "status");
+    try enc_ContentReportStatus(out, &(v.status));
+    try w_text(out, "report_id");
+    try w_text(out, v.report_id);
+}
+
+fn dec_UpdateContentReportStatusRequest(alloc: std.mem.Allocator, m: Value, out: *types.UpdateContentReportStatusRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "status");
+        try dec_ContentReportStatus(alloc, csil_fv, &(out.status));
+    }
+    {
+        const csil_fv = try req(m, "report_id");
+        out.report_id = try as_text(csil_fv);
+    }
+}
+
 fn enc_ChangeTopic(out: *std.ArrayList(u8), v: *const types.ChangeTopic) CodecError!void {
     try w_text(out, v.wire_name());
 }
@@ -4501,6 +4781,70 @@ pub fn decode_Ok(alloc: std.mem.Allocator, bytes: []const u8, out: *types.Ok) Co
     try dec_Ok(alloc, root, out);
 }
 
+/// Encode a ContentReportTargetType to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ContentReportTargetType(alloc: std.mem.Allocator, v: *const types.ContentReportTargetType) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ContentReportTargetType(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ContentReportTargetType. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ContentReportTargetType(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ContentReportTargetType) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ContentReportTargetType(alloc, root, out);
+}
+
+/// Encode a ContentReportReason to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ContentReportReason(alloc: std.mem.Allocator, v: *const types.ContentReportReason) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ContentReportReason(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ContentReportReason. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ContentReportReason(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ContentReportReason) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ContentReportReason(alloc, root, out);
+}
+
+/// Encode a ContentReportStatus to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ContentReportStatus(alloc: std.mem.Allocator, v: *const types.ContentReportStatus) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ContentReportStatus(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ContentReportStatus. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ContentReportStatus(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ContentReportStatus) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ContentReportStatus(alloc, root, out);
+}
+
+/// Encode a ContentReport to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ContentReport(alloc: std.mem.Allocator, v: *const types.ContentReport) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ContentReport(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ContentReport. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ContentReport(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ContentReport) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ContentReport(alloc, root, out);
+}
+
 /// Encode a ServiceError to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_ServiceError(alloc: std.mem.Allocator, v: *const types.ServiceError) CodecError![]u8 {
@@ -4547,6 +4891,22 @@ pub fn encode_SessionInfo(alloc: std.mem.Allocator, v: *const types.SessionInfo)
 pub fn decode_SessionInfo(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SessionInfo) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_SessionInfo(alloc, root, out);
+}
+
+/// Encode a DeleteAccountRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_DeleteAccountRequest(alloc: std.mem.Allocator, v: *const types.DeleteAccountRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_DeleteAccountRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a DeleteAccountRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_DeleteAccountRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.DeleteAccountRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_DeleteAccountRequest(alloc, root, out);
 }
 
 /// Encode a Library to CBOR. The returned slice is owned by the caller
@@ -4997,6 +5357,22 @@ pub fn decode_PlaylistRequest(alloc: std.mem.Allocator, bytes: []const u8, out: 
     try dec_PlaylistRequest(alloc, root, out);
 }
 
+/// Encode a DeletePlaylistRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_DeletePlaylistRequest(alloc: std.mem.Allocator, v: *const types.DeletePlaylistRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_DeletePlaylistRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a DeletePlaylistRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_DeletePlaylistRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.DeletePlaylistRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_DeletePlaylistRequest(alloc, root, out);
+}
+
 /// Encode a PlaylistDetail to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_PlaylistDetail(alloc: std.mem.Allocator, v: *const types.PlaylistDetail) CodecError![]u8 {
@@ -5043,6 +5419,22 @@ pub fn encode_CoverArt(alloc: std.mem.Allocator, v: *const types.CoverArt) Codec
 pub fn decode_CoverArt(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CoverArt) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_CoverArt(alloc, root, out);
+}
+
+/// Encode a ReportContentRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ReportContentRequest(alloc: std.mem.Allocator, v: *const types.ReportContentRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ReportContentRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ReportContentRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ReportContentRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ReportContentRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ReportContentRequest(alloc, root, out);
 }
 
 /// Encode a PlayerKind to CBOR. The returned slice is owned by the caller
@@ -5797,6 +6189,22 @@ pub fn decode_SetRoleRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *
     try dec_SetRoleRequest(alloc, root, out);
 }
 
+/// Encode a AdminDeleteAccountRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_AdminDeleteAccountRequest(alloc: std.mem.Allocator, v: *const types.AdminDeleteAccountRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_AdminDeleteAccountRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a AdminDeleteAccountRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_AdminDeleteAccountRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.AdminDeleteAccountRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_AdminDeleteAccountRequest(alloc, root, out);
+}
+
 /// Encode a TrustDomainRequest to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_TrustDomainRequest(alloc: std.mem.Allocator, v: *const types.TrustDomainRequest) CodecError![]u8 {
@@ -6355,6 +6763,38 @@ pub fn encode_LibraryResyncStatus(alloc: std.mem.Allocator, v: *const types.Libr
 pub fn decode_LibraryResyncStatus(alloc: std.mem.Allocator, bytes: []const u8, out: *types.LibraryResyncStatus) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_LibraryResyncStatus(alloc, root, out);
+}
+
+/// Encode a ListContentReportsResponse to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ListContentReportsResponse(alloc: std.mem.Allocator, v: *const types.ListContentReportsResponse) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ListContentReportsResponse(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ListContentReportsResponse. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ListContentReportsResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ListContentReportsResponse) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ListContentReportsResponse(alloc, root, out);
+}
+
+/// Encode a UpdateContentReportStatusRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_UpdateContentReportStatusRequest(alloc: std.mem.Allocator, v: *const types.UpdateContentReportStatusRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_UpdateContentReportStatusRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a UpdateContentReportStatusRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_UpdateContentReportStatusRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.UpdateContentReportStatusRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_UpdateContentReportStatusRequest(alloc, root, out);
 }
 
 /// Encode a ChangeTopic to CBOR. The returned slice is owned by the caller

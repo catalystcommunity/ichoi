@@ -27,6 +27,11 @@ module Session_service = struct
     match c.call ~service:"SessionService" ~op:"logout" ~payload:(Codec.encode_page_bytes req) with
     | Ok payload -> Ok (Codec.decode_ok_bytes payload)
     | Error _ as e -> e
+
+  let delete_account (c : client) (req : delete_account_request) : (ok, string) result =
+    match c.call ~service:"SessionService" ~op:"delete-account" ~payload:(Codec.encode_delete_account_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
 end
 
 module Library_service = struct
@@ -80,6 +85,11 @@ module Library_service = struct
     | Ok payload -> Ok (Codec.decode_playlist_detail_bytes payload)
     | Error _ as e -> e
 
+  let delete_playlist (c : client) (req : delete_playlist_request) : (ok, string) result =
+    match c.call ~service:"LibraryService" ~op:"delete-playlist" ~payload:(Codec.encode_delete_playlist_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
   let get_cover_art (c : client) (req : cover_art_request) : (cover_art, string) result =
     match c.call ~service:"LibraryService" ~op:"get-cover-art" ~payload:(Codec.encode_cover_art_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
@@ -93,6 +103,11 @@ module Library_service = struct
   let update_audiobook_progress (c : client) (req : update_audiobook_progress_request) : (audiobook_progress, string) result =
     match c.call ~service:"LibraryService" ~op:"update-audiobook-progress" ~payload:(Codec.encode_update_audiobook_progress_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_audiobook_progress_bytes payload)
+    | Error _ as e -> e
+
+  let report_content (c : client) (req : report_content_request) : (content_report, string) result =
+    match c.call ~service:"LibraryService" ~op:"report-content" ~payload:(Codec.encode_report_content_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_content_report_bytes payload)
     | Error _ as e -> e
 end
 
@@ -146,6 +161,11 @@ module Admin_service = struct
   let set_role (c : client) (req : set_role_request) : (account, string) result =
     match c.call ~service:"AdminService" ~op:"set-role" ~payload:(Codec.encode_set_role_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_account_bytes payload)
+    | Error _ as e -> e
+
+  let delete_account (c : client) (req : admin_delete_account_request) : (ok, string) result =
+    match c.call ~service:"AdminService" ~op:"delete-account" ~payload:(Codec.encode_admin_delete_account_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
     | Error _ as e -> e
 
   let trust_domain (c : client) (req : trust_domain_request) : (trusted_domains, string) result =
@@ -271,6 +291,16 @@ module Admin_service = struct
   let get_resync_status (c : client) (req : page) : (library_resync_status, string) result =
     match c.call ~service:"AdminService" ~op:"get-resync-status" ~payload:(Codec.encode_page_bytes req) with
     | Ok payload -> Ok (Codec.decode_library_resync_status_bytes payload)
+    | Error _ as e -> e
+
+  let list_content_reports (c : client) (req : page) : (list_content_reports_response, string) result =
+    match c.call ~service:"AdminService" ~op:"list-content-reports" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_list_content_reports_response_bytes payload)
+    | Error _ as e -> e
+
+  let update_content_report_status (c : client) (req : update_content_report_status_request) : (content_report, string) result =
+    match c.call ~service:"AdminService" ~op:"update-content-report-status" ~payload:(Codec.encode_update_content_report_status_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_content_report_bytes payload)
     | Error _ as e -> e
 end
 

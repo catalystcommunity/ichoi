@@ -34,6 +34,8 @@ pub type ArtistId = String;
 
 pub type PlaylistId = String;
 
+pub type ContentReportId = String;
+
 pub type NodeId = String;
 
 pub type DeviceId = String;
@@ -98,6 +100,43 @@ pub struct Ok {
     pub ok: bool,
 }
 
+/// ContentReportTargetType variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum ContentReportTargetType {
+    Playlist,
+    Account,
+}
+
+/// ContentReportReason variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum ContentReportReason {
+    ObjectionableContent,
+    Harassment,
+    Spam,
+    Other,
+}
+
+/// ContentReportStatus variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum ContentReportStatus {
+    Open,
+    Resolved,
+    Dismissed,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ContentReport {
+    pub id: ContentReportId,
+    pub reporter_account_id: AccountId,
+    pub target_type: ContentReportTargetType,
+    pub target_id: String,
+    pub reason: ContentReportReason,
+    pub details: Option<String>,
+    pub status: ContentReportStatus,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub resolved_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ServiceError {
     pub code: i64,
@@ -120,6 +159,11 @@ pub struct SessionInfo {
     /// default: false
     pub can_admin: bool,
     pub token: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct DeleteAccountRequest {
+    pub confirmation_handle: Handle,
 }
 
 /// Library variants
@@ -347,6 +391,11 @@ pub struct PlaylistRequest {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct DeletePlaylistRequest {
+    pub playlist_id: PlaylistId,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlaylistDetail {
     pub playlist: Playlist,
     pub tracks: Vec<Track>,
@@ -362,6 +411,14 @@ pub struct CoverArtRequest {
 pub struct CoverArt {
     pub content_type: String,
     pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReportContentRequest {
+    pub target_type: ContentReportTargetType,
+    pub target_id: String,
+    pub reason: ContentReportReason,
+    pub details: Option<String>,
 }
 
 /// PlayerKind variants
@@ -769,6 +826,12 @@ pub struct SetRoleRequest {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct AdminDeleteAccountRequest {
+    pub account_id: AccountId,
+    pub confirmation_handle: Handle,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TrustDomainRequest {
     pub domain: String,
 }
@@ -1052,6 +1115,18 @@ pub struct LibraryResyncStatus {
     pub running: bool,
     /// default: false
     pub started: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ListContentReportsResponse {
+    pub reports: Vec<ContentReport>,
+    pub total: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UpdateContentReportStatusRequest {
+    pub report_id: ContentReportId,
+    pub status: ContentReportStatus,
 }
 
 /// ChangeTopic variants

@@ -37,6 +37,7 @@ import {
   parseOwnedTargetStore,
   resolveOutputTarget,
 } from "../lib/output-target.ts";
+import { requireTermsForPlaylist } from "../lib/compliance.ts";
 
 export const LOCAL_TARGET = "local";
 export type RepeatMode = "off" | "all" | "one";
@@ -905,6 +906,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   async function saveQueueAsPlaylist(name: string): Promise<void> {
+    requireTermsForPlaylist();
     const base = mediaBase();
     if (!base) throw new Error("Connect a server first.");
     const session = servers.active()?.session;
@@ -915,7 +917,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       body: JSON.stringify({
         name,
         visibility,
-        owner: visibility === "private" ? session?.account_id : undefined,
         track_ids: queue.map((track) => track.id),
       }),
     });

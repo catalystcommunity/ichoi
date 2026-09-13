@@ -7,6 +7,7 @@ TrackId    = text
 AlbumId    = text
 ArtistId   = text
 PlaylistId = text
+ContentReportId = text
 NodeId     = text
 DeviceId   = text
 PlayerId   = text
@@ -36,6 +37,21 @@ Page = { ? offset: uint .default 0, ? limit: uint .default 100 }
 
 ;; Simple acknowledgement.
 Ok = { ok: bool }
+
+ContentReportTargetType = "playlist" / "account"
+ContentReportReason = "objectionable-content" / "harassment" / "spam" / "other"
+ContentReportStatus = "open" / "resolved" / "dismissed"
+ContentReport = {
+    id: ContentReportId,
+    reporter_account_id: AccountId,
+    target_type: ContentReportTargetType,
+    target_id: text,
+    reason: ContentReportReason,
+    ? details: text,
+    status: ContentReportStatus,
+    created_at: timestamp,
+    ? resolved_at: timestamp
+}
 
 ;; Uniform error channel, carried on the error arm of operations. `ServiceError` is a
 ;; csilgen-reserved type: `code` MUST be an integer (the generated routing scaffolding

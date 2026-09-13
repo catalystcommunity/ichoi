@@ -33,6 +33,22 @@ export interface ServiceError {
   message: string;
 }
 
+export type ContentReportTargetType = "playlist" | "account";
+export type ContentReportReason = "objectionable-content" | "harassment" | "spam" | "other";
+export type ContentReportStatus = "open" | "resolved" | "dismissed";
+
+export interface ContentReport {
+  id: string;
+  reporter_account_id: string;
+  target_type: ContentReportTargetType;
+  target_id: string;
+  reason: ContentReportReason;
+  details?: string;
+  status: ContentReportStatus;
+  created_at: Date;
+  resolved_at?: Date;
+}
+
 // --- session.csil --------------------------------------------------------
 
 export interface AuthRequest {
@@ -49,6 +65,10 @@ export interface SessionInfo {
   can_admin?: boolean;
   /** Minted session token, returned once on `authenticate`. */
   token?: string;
+}
+
+export interface DeleteAccountRequest {
+  confirmation_handle: string;
 }
 
 // --- library.csil --------------------------------------------------------
@@ -201,6 +221,15 @@ export interface PlaylistRequest {
 export interface PlaylistDetail {
   playlist: Playlist;
   tracks: Track[];
+}
+export interface DeletePlaylistRequest {
+  playlist_id: string;
+}
+export interface ReportContentRequest {
+  target_type: ContentReportTargetType;
+  target_id: string;
+  reason: ContentReportReason;
+  details?: string;
 }
 export interface CoverArtRequest {
   album_id: string;
@@ -386,6 +415,18 @@ export interface ListAccountsResponse {
 export interface SetRoleRequest {
   account_id: string;
   role: Role;
+}
+export interface AdminDeleteAccountRequest {
+  account_id: string;
+  confirmation_handle: string;
+}
+export interface ListContentReportsResponse {
+  reports: ContentReport[];
+  total: number;
+}
+export interface UpdateContentReportStatusRequest {
+  report_id: string;
+  status: ContentReportStatus;
 }
 export interface TrustDomainRequest {
   domain: string;

@@ -26,6 +26,9 @@ import type {
   CoverArt,
   CoverArtRequest,
   CreateNodeTokenRequest,
+  ContentReport,
+  DeleteAccountRequest,
+  DeletePlaylistRequest,
   DataChange,
   GroupInfo,
   DeviceInfo,
@@ -43,6 +46,7 @@ import type {
   FinishImportRequest,
   CancelImportRequest,
   ListAccountsResponse,
+  ListContentReportsResponse,
   ListGroupsResponse,
   LibrariesResponse,
   LibraryResyncStatus,
@@ -59,6 +63,7 @@ import type {
   Page,
   RegisterNodeRequest,
   RegisterNodeResponse,
+  ReportContentRequest,
   PlayerState,
   PlaylistDetail,
   PlaylistRequest,
@@ -78,6 +83,8 @@ import type {
   TrustedIdentities,
   RevokeTrustedIdentityRequest,
   UpdateAudiobookProgressRequest,
+  UpdateContentReportStatusRequest,
+  AdminDeleteAccountRequest,
   WatchChangesRequest,
 } from "./schema.ts";
 
@@ -133,6 +140,9 @@ export class SessionService {
   }
   logout(page: Page = {}): Promise<Ok> {
     return this.conn.call(SESSION, "logout", encodeRecord(page), decodeRecord<Ok>);
+  }
+  deleteAccount(req: DeleteAccountRequest): Promise<Ok> {
+    return this.conn.call(SESSION, "delete-account", encodeRecord(req), decodeRecord<Ok>);
   }
 }
 
@@ -190,6 +200,12 @@ export class LibraryService {
   }
   getPlaylist(req: PlaylistRequest): Promise<PlaylistDetail> {
     return this.conn.call(LIBRARY, "get-playlist", encodeRecord(req), decodeRecord<PlaylistDetail>);
+  }
+  deletePlaylist(req: DeletePlaylistRequest): Promise<Ok> {
+    return this.conn.call(LIBRARY, "delete-playlist", encodeRecord(req), decodeRecord<Ok>);
+  }
+  reportContent(req: ReportContentRequest): Promise<ContentReport> {
+    return this.conn.call(LIBRARY, "report-content", encodeRecord(req), decodeRecord<ContentReport>);
   }
   getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
     return this.conn.call(LIBRARY, "get-cover-art", encodeRecord(req), decodeRecord<CoverArt>);
@@ -282,6 +298,9 @@ export class AdminService {
   }
   setRole(req: SetRoleRequest): Promise<Account> {
     return this.conn.call(ADMIN, "set-role", encodeRecord(req), decodeRecord<Account>);
+  }
+  deleteAccount(req: AdminDeleteAccountRequest): Promise<Ok> {
+    return this.conn.call(ADMIN, "delete-account", encodeRecord(req), decodeRecord<Ok>);
   }
   trustDomain(req: TrustDomainRequest): Promise<TrustedDomains> {
     return this.conn.call(ADMIN, "trust-domain", encodeRecord(req), decodeRecord<TrustedDomains>);
@@ -378,6 +397,22 @@ export class AdminService {
       "get-resync-status",
       encodeRecord(page),
       decodeRecord<LibraryResyncStatus>,
+    );
+  }
+  listContentReports(page: Page = {}): Promise<ListContentReportsResponse> {
+    return this.conn.call(
+      ADMIN,
+      "list-content-reports",
+      encodeRecord(page),
+      decodeRecord<ListContentReportsResponse>,
+    );
+  }
+  updateContentReportStatus(req: UpdateContentReportStatusRequest): Promise<ContentReport> {
+    return this.conn.call(
+      ADMIN,
+      "update-content-report-status",
+      encodeRecord(req),
+      decodeRecord<ContentReport>,
     );
   }
 }

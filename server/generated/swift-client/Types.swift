@@ -19,6 +19,8 @@ public typealias ArtistId = String
 
 public typealias PlaylistId = String
 
+public typealias ContentReportId = String
+
 public typealias NodeId = String
 
 public typealias DeviceId = String
@@ -111,6 +113,70 @@ public struct Ok: Equatable, Sendable {
     ]
 }
 
+/// ContentReportTargetType is a generated CSIL string enum (a closed set of wire values).
+public enum ContentReportTargetType: String, Equatable, Sendable, CaseIterable {
+    case playlist = "playlist"
+    case account = "account"
+}
+
+/// ContentReportReason is a generated CSIL string enum (a closed set of wire values).
+public enum ContentReportReason: String, Equatable, Sendable, CaseIterable {
+    case objectionableContent = "objectionable-content"
+    case harassment = "harassment"
+    case spam = "spam"
+    case other = "other"
+}
+
+/// ContentReportStatus is a generated CSIL string enum (a closed set of wire values).
+public enum ContentReportStatus: String, Equatable, Sendable, CaseIterable {
+    case `open` = "open"
+    case resolved = "resolved"
+    case dismissed = "dismissed"
+}
+
+/// ContentReport is a generated CSIL record type.
+public struct ContentReport: Equatable, Sendable {
+    public let id: ContentReportId
+    /// wire key: reporter_account_id
+    public let reporterAccountId: AccountId
+    /// wire key: target_type
+    public let targetType: ContentReportTargetType
+    /// wire key: target_id
+    public let targetId: String
+    public let reason: ContentReportReason
+    public let details: String?
+    public let status: ContentReportStatus
+    /// wire key: created_at
+    public let createdAt: String
+    /// wire key: resolved_at
+    public let resolvedAt: String?
+
+    public init(id: ContentReportId, reporterAccountId: AccountId, targetType: ContentReportTargetType, targetId: String, reason: ContentReportReason, details: String? = nil, status: ContentReportStatus, createdAt: String, resolvedAt: String? = nil) {
+        self.id = id
+        self.reporterAccountId = reporterAccountId
+        self.targetType = targetType
+        self.targetId = targetId
+        self.reason = reason
+        self.details = details
+        self.status = status
+        self.createdAt = createdAt
+        self.resolvedAt = resolvedAt
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "id": "id",
+        "reporterAccountId": "reporter_account_id",
+        "targetType": "target_type",
+        "targetId": "target_id",
+        "reason": "reason",
+        "details": "details",
+        "status": "status",
+        "createdAt": "created_at",
+        "resolvedAt": "resolved_at"
+    ]
+}
+
 /// ServiceError is a generated CSIL record type.
 public struct ServiceError: Equatable, Sendable {
     public let code: Int64
@@ -180,6 +246,21 @@ public struct SessionInfo: Equatable, Sendable {
         "role": "role",
         "canAdmin": "can_admin",
         "token": "token"
+    ]
+}
+
+/// DeleteAccountRequest is a generated CSIL record type.
+public struct DeleteAccountRequest: Equatable, Sendable {
+    /// wire key: confirmation_handle
+    public let confirmationHandle: Handle
+
+    public init(confirmationHandle: Handle) {
+        self.confirmationHandle = confirmationHandle
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "confirmationHandle": "confirmation_handle"
     ]
 }
 
@@ -782,6 +863,21 @@ public struct PlaylistRequest: Equatable, Sendable {
     ]
 }
 
+/// DeletePlaylistRequest is a generated CSIL record type.
+public struct DeletePlaylistRequest: Equatable, Sendable {
+    /// wire key: playlist_id
+    public let playlistId: PlaylistId
+
+    public init(playlistId: PlaylistId) {
+        self.playlistId = playlistId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "playlistId": "playlist_id"
+    ]
+}
+
 /// PlaylistDetail is a generated CSIL record type.
 public struct PlaylistDetail: Equatable, Sendable {
     public let playlist: Playlist
@@ -833,6 +929,31 @@ public struct CoverArt: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "contentType": "content_type",
         "data": "data"
+    ]
+}
+
+/// ReportContentRequest is a generated CSIL record type.
+public struct ReportContentRequest: Equatable, Sendable {
+    /// wire key: target_type
+    public let targetType: ContentReportTargetType
+    /// wire key: target_id
+    public let targetId: String
+    public let reason: ContentReportReason
+    public let details: String?
+
+    public init(targetType: ContentReportTargetType, targetId: String, reason: ContentReportReason, details: String? = nil) {
+        self.targetType = targetType
+        self.targetId = targetId
+        self.reason = reason
+        self.details = details
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "targetType": "target_type",
+        "targetId": "target_id",
+        "reason": "reason",
+        "details": "details"
     ]
 }
 
@@ -1733,6 +1854,25 @@ public struct SetRoleRequest: Equatable, Sendable {
     ]
 }
 
+/// AdminDeleteAccountRequest is a generated CSIL record type.
+public struct AdminDeleteAccountRequest: Equatable, Sendable {
+    /// wire key: account_id
+    public let accountId: AccountId
+    /// wire key: confirmation_handle
+    public let confirmationHandle: Handle
+
+    public init(accountId: AccountId, confirmationHandle: Handle) {
+        self.accountId = accountId
+        self.confirmationHandle = confirmationHandle
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "accountId": "account_id",
+        "confirmationHandle": "confirmation_handle"
+    ]
+}
+
 /// TrustDomainRequest is a generated CSIL record type.
 public struct TrustDomainRequest: Equatable, Sendable {
     public let domain: String
@@ -2415,6 +2555,41 @@ public struct LibraryResyncStatus: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "running": "running",
         "started": "started"
+    ]
+}
+
+/// ListContentReportsResponse is a generated CSIL record type.
+public struct ListContentReportsResponse: Equatable, Sendable {
+    public let reports: [ContentReport]
+    public let total: UInt64
+
+    public init(reports: [ContentReport], total: UInt64) {
+        self.reports = reports
+        self.total = total
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "reports": "reports",
+        "total": "total"
+    ]
+}
+
+/// UpdateContentReportStatusRequest is a generated CSIL record type.
+public struct UpdateContentReportStatusRequest: Equatable, Sendable {
+    /// wire key: report_id
+    public let reportId: ContentReportId
+    public let status: ContentReportStatus
+
+    public init(reportId: ContentReportId, status: ContentReportStatus) {
+        self.reportId = reportId
+        self.status = status
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "reportId": "report_id",
+        "status": "status"
     ]
 }
 

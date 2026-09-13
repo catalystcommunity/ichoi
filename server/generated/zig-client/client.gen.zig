@@ -54,6 +54,17 @@ pub const SessionClient = struct {
         defer alloc.free(csil_respb);
         try codec.decode_Ok(alloc, csil_respb, out);
     }
+
+    /// Invoke SessionService/delete-account with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn delete_account(self: SessionClient, alloc: std.mem.Allocator, req: *const types.DeleteAccountRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_DeleteAccountRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "SessionService", "delete-account", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
 };
 
 /// LibraryClient is a typed client for the LibraryService service over a CsilgenTransport.
@@ -174,6 +185,17 @@ pub const LibraryClient = struct {
         try codec.decode_PlaylistDetail(alloc, csil_respb, out);
     }
 
+    /// Invoke LibraryService/delete-playlist with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn delete_playlist(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.DeletePlaylistRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_DeletePlaylistRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "delete-playlist", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
     /// Invoke LibraryService/get-cover-art with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.
@@ -205,6 +227,17 @@ pub const LibraryClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "update-audiobook-progress", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_AudiobookProgress(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/report-content with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn report_content(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.ReportContentRequest, out: *types.ContentReport) anyerror!void {
+        const csil_reqb = try codec.encode_ReportContentRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "report-content", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ContentReport(alloc, csil_respb, out);
     }
 };
 
@@ -335,6 +368,17 @@ pub const AdminClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "set-role", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_Account(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/delete-account with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn delete_account(self: AdminClient, alloc: std.mem.Allocator, req: *const types.AdminDeleteAccountRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_AdminDeleteAccountRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "delete-account", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
     }
 
     /// Invoke AdminService/trust-domain with a typed request, returning the decoded
@@ -610,6 +654,28 @@ pub const AdminClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "get-resync-status", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_LibraryResyncStatus(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/list-content-reports with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_content_reports(self: AdminClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.ListContentReportsResponse) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "list-content-reports", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ListContentReportsResponse(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/update-content-report-status with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn update_content_report_status(self: AdminClient, alloc: std.mem.Allocator, req: *const types.UpdateContentReportStatusRequest, out: *types.ContentReport) anyerror!void {
+        const csil_reqb = try codec.encode_UpdateContentReportStatusRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "update-content-report-status", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ContentReport(alloc, csil_respb, out);
     }
 };
 

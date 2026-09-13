@@ -8,6 +8,8 @@ import type { TranscodeCodec } from "../lib/schema.ts";
 import { EmptyState } from "../components/common.tsx";
 import { SatelliteAdmin } from "../components/SatelliteAdmin.tsx";
 import { AccountAccessAdmin } from "../components/AccountAccessAdmin.tsx";
+import { AccountSettings } from "../components/AccountSettings.tsx";
+import { ContentReportAdmin } from "../components/ContentReportAdmin.tsx";
 
 export function SettingsPage(): JSX.Element {
   const { t, locale, setLocale } = useI18n();
@@ -240,7 +242,9 @@ export function SettingsPage(): JSX.Element {
           </div>
         </Show>
       </section>
+      <AccountSettings />
       <Show when={isAdmin()}>
+        <ContentReportAdmin />
         <AccountAccessAdmin />
         <SatelliteAdmin />
       </Show>

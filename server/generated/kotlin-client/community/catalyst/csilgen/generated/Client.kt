@@ -35,6 +35,9 @@ class SessionClient(private val transport: Transport) {
     fun logout(request: Page): Ok {
         return decode<Ok>(transport.call("SessionService", "logout", encode(request)))
     }
+    fun deleteAccount(request: DeleteAccountRequest): Ok {
+        return decode<Ok>(transport.call("SessionService", "delete-account", encode(request)))
+    }
 }
 
 /** Typed client for the LibraryService service. The client owns (de)serialization;
@@ -70,6 +73,9 @@ class LibraryClient(private val transport: Transport) {
     fun getPlaylist(request: PlaylistRequest): PlaylistDetail {
         return decode<PlaylistDetail>(transport.call("LibraryService", "get-playlist", encode(request)))
     }
+    fun deletePlaylist(request: DeletePlaylistRequest): Ok {
+        return decode<Ok>(transport.call("LibraryService", "delete-playlist", encode(request)))
+    }
     fun getCoverArt(request: CoverArtRequest): CoverArt {
         return decode<CoverArt>(transport.call("LibraryService", "get-cover-art", encode(request)))
     }
@@ -78,6 +84,9 @@ class LibraryClient(private val transport: Transport) {
     }
     fun updateAudiobookProgress(request: UpdateAudiobookProgressRequest): AudiobookProgress {
         return decode<AudiobookProgress>(transport.call("LibraryService", "update-audiobook-progress", encode(request)))
+    }
+    fun reportContent(request: ReportContentRequest): ContentReport {
+        return decode<ContentReport>(transport.call("LibraryService", "report-content", encode(request)))
     }
 }
 
@@ -125,6 +134,9 @@ class AdminClient(private val transport: Transport) {
     }
     fun setRole(request: SetRoleRequest): Account {
         return decode<Account>(transport.call("AdminService", "set-role", encode(request)))
+    }
+    fun deleteAccount(request: AdminDeleteAccountRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "delete-account", encode(request)))
     }
     fun trustDomain(request: TrustDomainRequest): TrustedDomains {
         return decode<TrustedDomains>(transport.call("AdminService", "trust-domain", encode(request)))
@@ -200,6 +212,12 @@ class AdminClient(private val transport: Transport) {
     }
     fun getResyncStatus(request: Page): LibraryResyncStatus {
         return decode<LibraryResyncStatus>(transport.call("AdminService", "get-resync-status", encode(request)))
+    }
+    fun listContentReports(request: Page): ListContentReportsResponse {
+        return decode<ListContentReportsResponse>(transport.call("AdminService", "list-content-reports", encode(request)))
+    }
+    fun updateContentReportStatus(request: UpdateContentReportStatusRequest): ContentReport {
+        return decode<ContentReport>(transport.call("AdminService", "update-content-report-status", encode(request)))
     }
 }
 

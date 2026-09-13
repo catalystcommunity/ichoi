@@ -1,0 +1,7 @@
+# Development only. Do not use this bundle ID for a store archive.
+#include "Base.xcconfig"
+# IOS-00 must provide a permanent ID in Release.xcconfig before publication.
+# This is the only development bundle ID configuration.
+ICHOI_DEVELOPMENT_BUNDLE_ID = com.catalystcommunity.ichoi.dev
+PRODUCT_BUNDLE_IDENTIFIER = $(ICHOI_DEVELOPMENT_BUNDLE_ID)
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG

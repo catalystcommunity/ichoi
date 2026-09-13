@@ -1,0 +1,9 @@
+:80 {
+  root * /site/root
+  encode gzip
+  file_server
+  log {
+    output file /site/logs/access.log
+    format json
+  }
+}

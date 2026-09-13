@@ -431,6 +431,64 @@ class Ok
   end
 end
 
+# CBOR codec for ContentReport: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ContentReport
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["reason"] = (reason)
+    csil_map["status"] = (status)
+    csil_map["details"] = details unless details.nil?
+    csil_map["target_id"] = target_id
+    csil_map["created_at"] = CsilCbor::Tag.new(0, (created_at).getutc.iso8601)
+    csil_map["resolved_at"] = CsilCbor::Tag.new(0, (resolved_at).getutc.iso8601) unless resolved_at.nil?
+    csil_map["target_type"] = (target_type)
+    csil_map["reporter_account_id"] = reporter_account_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      id: node["id"],
+      reporter_account_id: node["reporter_account_id"],
+      target_type: (case (node["target_type"])
+when "playlist" then "playlist"
+when "account" then "account"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["target_type"]).inspect}"
+end),
+      target_id: node["target_id"],
+      reason: (case (node["reason"])
+when "objectionable-content" then "objectionable-content"
+when "harassment" then "harassment"
+when "spam" then "spam"
+when "other" then "other"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["reason"]).inspect}"
+end),
+      details: (node.key?("details") ? node["details"] : nil),
+      status: (case (node["status"])
+when "open" then "open"
+when "resolved" then "resolved"
+when "dismissed" then "dismissed"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
+end),
+      created_at: Time.iso8601((node["created_at"]).value),
+      resolved_at: (node.key?("resolved_at") ? Time.iso8601((node["resolved_at"]).value) : nil)
+    )
+  end
+end
+
 # CBOR codec for ServiceError: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class ServiceError
@@ -521,6 +579,30 @@ else
 end),
       can_admin: node["can_admin"],
       token: (node.key?("token") ? node["token"] : nil)
+    )
+  end
+end
+
+# CBOR codec for DeleteAccountRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class DeleteAccountRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["confirmation_handle"] = confirmation_handle
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      confirmation_handle: node["confirmation_handle"]
     )
   end
 end
@@ -1321,6 +1403,30 @@ class PlaylistRequest
   end
 end
 
+# CBOR codec for DeletePlaylistRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class DeletePlaylistRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["playlist_id"] = playlist_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      playlist_id: node["playlist_id"]
+    )
+  end
+end
+
 # CBOR codec for PlaylistDetail: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class PlaylistDetail
@@ -1395,6 +1501,48 @@ class CoverArt
     new(
       content_type: node["content_type"],
       data: node["data"]
+    )
+  end
+end
+
+# CBOR codec for ReportContentRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ReportContentRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["reason"] = (reason)
+    csil_map["details"] = details unless details.nil?
+    csil_map["target_id"] = target_id
+    csil_map["target_type"] = (target_type)
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      target_type: (case (node["target_type"])
+when "playlist" then "playlist"
+when "account" then "account"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["target_type"]).inspect}"
+end),
+      target_id: node["target_id"],
+      reason: (case (node["reason"])
+when "objectionable-content" then "objectionable-content"
+when "harassment" then "harassment"
+when "spam" then "spam"
+when "other" then "other"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["reason"]).inspect}"
+end),
+      details: (node.key?("details") ? node["details"] : nil)
     )
   end
 end
@@ -2570,6 +2718,32 @@ end)
   end
 end
 
+# CBOR codec for AdminDeleteAccountRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class AdminDeleteAccountRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["account_id"] = account_id
+    csil_map["confirmation_handle"] = confirmation_handle
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      account_id: node["account_id"],
+      confirmation_handle: node["confirmation_handle"]
+    )
+  end
+end
+
 # CBOR codec for TrustDomainRequest: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class TrustDomainRequest
@@ -3473,6 +3647,64 @@ class LibraryResyncStatus
     new(
       running: node["running"],
       started: node["started"]
+    )
+  end
+end
+
+# CBOR codec for ListContentReportsResponse: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ListContentReportsResponse
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["total"] = total
+    csil_map["reports"] = (reports).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      reports: (node["reports"]).map { |csil_e| ContentReport.csil_from_tree(csil_e) },
+      total: node["total"]
+    )
+  end
+end
+
+# CBOR codec for UpdateContentReportStatusRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class UpdateContentReportStatusRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["status"] = (status)
+    csil_map["report_id"] = report_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      report_id: node["report_id"],
+      status: (case (node["status"])
+when "open" then "open"
+when "resolved" then "resolved"
+when "dismissed" then "dismissed"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
+end)
     )
   end
 end

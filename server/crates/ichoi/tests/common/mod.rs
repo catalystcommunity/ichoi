@@ -53,6 +53,7 @@ pub fn test_config() -> Config {
         linkkeys_trusted_identities: vec![],
         access_mode: AccessMode::Open,
         trusted_proxy_cidrs: vec![],
+        session_lifetime_hours: 720,
     }
 }
 

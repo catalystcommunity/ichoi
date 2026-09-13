@@ -1,0 +1,8 @@
+demo.ichoi.invalid {
+    encode zstd gzip
+    reverse_proxy ichoi:4042
+    log {
+        output stderr
+        format json
+    }
+}

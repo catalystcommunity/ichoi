@@ -24,6 +24,8 @@ public sealed class SessionAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<SessionInfo>(await transport.Call("SessionService", "whoami", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<Ok> LogoutAsync(Page page) =>
         Codec.Decode<Ok>(await transport.Call("SessionService", "logout", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<Ok> DeleteAccountAsync(DeleteAccountRequest deleteAccountRequest) =>
+        Codec.Decode<Ok>(await transport.Call("SessionService", "delete-account", Codec.Encode(deleteAccountRequest)));
 }
 
 /// <summary>Typed RPC client for the LibraryService service. The client owns
@@ -50,12 +52,16 @@ public sealed class LibraryAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<PlaylistsResponse>(await transport.Call("LibraryService", "list-playlists", Codec.Encode(browseRequest)));
     public async System.Threading.Tasks.Task<PlaylistDetail> GetPlaylistAsync(PlaylistRequest playlistRequest) =>
         Codec.Decode<PlaylistDetail>(await transport.Call("LibraryService", "get-playlist", Codec.Encode(playlistRequest)));
+    public async System.Threading.Tasks.Task<Ok> DeletePlaylistAsync(DeletePlaylistRequest deletePlaylistRequest) =>
+        Codec.Decode<Ok>(await transport.Call("LibraryService", "delete-playlist", Codec.Encode(deletePlaylistRequest)));
     public async System.Threading.Tasks.Task<CoverArt> GetCoverArtAsync(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(await transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
     public async System.Threading.Tasks.Task<AudiobookProgressResponse> GetAudiobookProgressAsync(AudiobookProgressRequest audiobookProgressRequest) =>
         Codec.Decode<AudiobookProgressResponse>(await transport.Call("LibraryService", "get-audiobook-progress", Codec.Encode(audiobookProgressRequest)));
     public async System.Threading.Tasks.Task<AudiobookProgress> UpdateAudiobookProgressAsync(UpdateAudiobookProgressRequest updateAudiobookProgressRequest) =>
         Codec.Decode<AudiobookProgress>(await transport.Call("LibraryService", "update-audiobook-progress", Codec.Encode(updateAudiobookProgressRequest)));
+    public async System.Threading.Tasks.Task<ContentReport> ReportContentAsync(ReportContentRequest reportContentRequest) =>
+        Codec.Decode<ContentReport>(await transport.Call("LibraryService", "report-content", Codec.Encode(reportContentRequest)));
 }
 
 /// <summary>Typed RPC client for the PlayerService service. The client owns
@@ -96,6 +102,8 @@ public sealed class AdminAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<ListAccountsResponse>(await transport.Call("AdminService", "list-accounts", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<Account> SetRoleAsync(SetRoleRequest setRoleRequest) =>
         Codec.Decode<Account>(await transport.Call("AdminService", "set-role", Codec.Encode(setRoleRequest)));
+    public async System.Threading.Tasks.Task<Ok> DeleteAccountAsync(AdminDeleteAccountRequest adminDeleteAccountRequest) =>
+        Codec.Decode<Ok>(await transport.Call("AdminService", "delete-account", Codec.Encode(adminDeleteAccountRequest)));
     public async System.Threading.Tasks.Task<TrustedDomains> TrustDomainAsync(TrustDomainRequest trustDomainRequest) =>
         Codec.Decode<TrustedDomains>(await transport.Call("AdminService", "trust-domain", Codec.Encode(trustDomainRequest)));
     public async System.Threading.Tasks.Task<TrustedDomains> ListTrustedDomainsAsync(Page page) =>
@@ -146,6 +154,10 @@ public sealed class AdminAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<LibraryResyncStatus>(await transport.Call("AdminService", "resync-library", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<LibraryResyncStatus> GetResyncStatusAsync(Page page) =>
         Codec.Decode<LibraryResyncStatus>(await transport.Call("AdminService", "get-resync-status", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<ListContentReportsResponse> ListContentReportsAsync(Page page) =>
+        Codec.Decode<ListContentReportsResponse>(await transport.Call("AdminService", "list-content-reports", Codec.Encode(page)));
+    public async System.Threading.Tasks.Task<ContentReport> UpdateContentReportStatusAsync(UpdateContentReportStatusRequest updateContentReportStatusRequest) =>
+        Codec.Decode<ContentReport>(await transport.Call("AdminService", "update-content-report-status", Codec.Encode(updateContentReportStatusRequest)));
 }
 
 // ChangeService has no unary operation csilgen can put on an RPC client (channel-only,

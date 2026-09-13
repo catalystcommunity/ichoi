@@ -359,9 +359,14 @@ public static class Codec
         StreamPref csilTyped => StreamPrefToCborValue(csilTyped),
         Page csilTyped => PageToCborValue(csilTyped),
         Ok csilTyped => OkToCborValue(csilTyped),
+        ContentReportTargetType csilTyped => ContentReportTargetTypeToCborValue(csilTyped),
+        ContentReportReason csilTyped => ContentReportReasonToCborValue(csilTyped),
+        ContentReportStatus csilTyped => ContentReportStatusToCborValue(csilTyped),
+        ContentReport csilTyped => ContentReportToCborValue(csilTyped),
         ServiceError csilTyped => ServiceErrorToCborValue(csilTyped),
         AuthRequest csilTyped => AuthRequestToCborValue(csilTyped),
         SessionInfo csilTyped => SessionInfoToCborValue(csilTyped),
+        DeleteAccountRequest csilTyped => DeleteAccountRequestToCborValue(csilTyped),
         Library csilTyped => LibraryToCborValue(csilTyped),
         Track csilTyped => TrackToCborValue(csilTyped),
         Album csilTyped => AlbumToCborValue(csilTyped),
@@ -390,9 +395,11 @@ public static class Codec
         UpdateAudiobookProgressRequest csilTyped => UpdateAudiobookProgressRequestToCborValue(csilTyped),
         PlaylistsResponse csilTyped => PlaylistsResponseToCborValue(csilTyped),
         PlaylistRequest csilTyped => PlaylistRequestToCborValue(csilTyped),
+        DeletePlaylistRequest csilTyped => DeletePlaylistRequestToCborValue(csilTyped),
         PlaylistDetail csilTyped => PlaylistDetailToCborValue(csilTyped),
         CoverArtRequest csilTyped => CoverArtRequestToCborValue(csilTyped),
         CoverArt csilTyped => CoverArtToCborValue(csilTyped),
+        ReportContentRequest csilTyped => ReportContentRequestToCborValue(csilTyped),
         PlayerKind csilTyped => PlayerKindToCborValue(csilTyped),
         Player csilTyped => PlayerToCborValue(csilTyped),
         QueueItem csilTyped => QueueItemToCborValue(csilTyped),
@@ -440,6 +447,7 @@ public static class Codec
         Account csilTyped => AccountToCborValue(csilTyped),
         ListAccountsResponse csilTyped => ListAccountsResponseToCborValue(csilTyped),
         SetRoleRequest csilTyped => SetRoleRequestToCborValue(csilTyped),
+        AdminDeleteAccountRequest csilTyped => AdminDeleteAccountRequestToCborValue(csilTyped),
         TrustDomainRequest csilTyped => TrustDomainRequestToCborValue(csilTyped),
         TrustedDomains csilTyped => TrustedDomainsToCborValue(csilTyped),
         TrustedIdentity csilTyped => TrustedIdentityToCborValue(csilTyped),
@@ -475,6 +483,8 @@ public static class Codec
         Settings csilTyped => SettingsToCborValue(csilTyped),
         SetSettingRequest csilTyped => SetSettingRequestToCborValue(csilTyped),
         LibraryResyncStatus csilTyped => LibraryResyncStatusToCborValue(csilTyped),
+        ListContentReportsResponse csilTyped => ListContentReportsResponseToCborValue(csilTyped),
+        UpdateContentReportStatusRequest csilTyped => UpdateContentReportStatusRequestToCborValue(csilTyped),
         ChangeTopic csilTyped => ChangeTopicToCborValue(csilTyped),
         WatchChangesRequest csilTyped => WatchChangesRequestToCborValue(csilTyped),
         DataChange csilTyped => DataChangeToCborValue(csilTyped),
@@ -490,9 +500,14 @@ public static class Codec
         if (csilType == typeof(StreamPref)) return StreamPrefFromCborValue(value);
         if (csilType == typeof(Page)) return PageFromCborValue(value);
         if (csilType == typeof(Ok)) return OkFromCborValue(value);
+        if (csilType == typeof(ContentReportTargetType)) return ContentReportTargetTypeFromCborValue(value);
+        if (csilType == typeof(ContentReportReason)) return ContentReportReasonFromCborValue(value);
+        if (csilType == typeof(ContentReportStatus)) return ContentReportStatusFromCborValue(value);
+        if (csilType == typeof(ContentReport)) return ContentReportFromCborValue(value);
         if (csilType == typeof(ServiceError)) return ServiceErrorFromCborValue(value);
         if (csilType == typeof(AuthRequest)) return AuthRequestFromCborValue(value);
         if (csilType == typeof(SessionInfo)) return SessionInfoFromCborValue(value);
+        if (csilType == typeof(DeleteAccountRequest)) return DeleteAccountRequestFromCborValue(value);
         if (csilType == typeof(Library)) return LibraryFromCborValue(value);
         if (csilType == typeof(Track)) return TrackFromCborValue(value);
         if (csilType == typeof(Album)) return AlbumFromCborValue(value);
@@ -521,9 +536,11 @@ public static class Codec
         if (csilType == typeof(UpdateAudiobookProgressRequest)) return UpdateAudiobookProgressRequestFromCborValue(value);
         if (csilType == typeof(PlaylistsResponse)) return PlaylistsResponseFromCborValue(value);
         if (csilType == typeof(PlaylistRequest)) return PlaylistRequestFromCborValue(value);
+        if (csilType == typeof(DeletePlaylistRequest)) return DeletePlaylistRequestFromCborValue(value);
         if (csilType == typeof(PlaylistDetail)) return PlaylistDetailFromCborValue(value);
         if (csilType == typeof(CoverArtRequest)) return CoverArtRequestFromCborValue(value);
         if (csilType == typeof(CoverArt)) return CoverArtFromCborValue(value);
+        if (csilType == typeof(ReportContentRequest)) return ReportContentRequestFromCborValue(value);
         if (csilType == typeof(PlayerKind)) return PlayerKindFromCborValue(value);
         if (csilType == typeof(Player)) return PlayerFromCborValue(value);
         if (csilType == typeof(QueueItem)) return QueueItemFromCborValue(value);
@@ -571,6 +588,7 @@ public static class Codec
         if (csilType == typeof(Account)) return AccountFromCborValue(value);
         if (csilType == typeof(ListAccountsResponse)) return ListAccountsResponseFromCborValue(value);
         if (csilType == typeof(SetRoleRequest)) return SetRoleRequestFromCborValue(value);
+        if (csilType == typeof(AdminDeleteAccountRequest)) return AdminDeleteAccountRequestFromCborValue(value);
         if (csilType == typeof(TrustDomainRequest)) return TrustDomainRequestFromCborValue(value);
         if (csilType == typeof(TrustedDomains)) return TrustedDomainsFromCborValue(value);
         if (csilType == typeof(TrustedIdentity)) return TrustedIdentityFromCborValue(value);
@@ -606,6 +624,8 @@ public static class Codec
         if (csilType == typeof(Settings)) return SettingsFromCborValue(value);
         if (csilType == typeof(SetSettingRequest)) return SetSettingRequestFromCborValue(value);
         if (csilType == typeof(LibraryResyncStatus)) return LibraryResyncStatusFromCborValue(value);
+        if (csilType == typeof(ListContentReportsResponse)) return ListContentReportsResponseFromCborValue(value);
+        if (csilType == typeof(UpdateContentReportStatusRequest)) return UpdateContentReportStatusRequestFromCborValue(value);
         if (csilType == typeof(ChangeTopic)) return ChangeTopicFromCborValue(value);
         if (csilType == typeof(WatchChangesRequest)) return WatchChangesRequestFromCborValue(value);
         if (csilType == typeof(DataChange)) return DataChangeFromCborValue(value);
@@ -770,6 +790,108 @@ public static class Codec
         };
     }
 
+    /// <summary>The bare-literal CBOR value for a ContentReportTargetType.</summary>
+    public static CborValue ContentReportTargetTypeToCborValue(ContentReportTargetType value) => value switch
+    {
+        ContentReportTargetType.Playlist => new CborValue.Text("playlist"),
+        ContentReportTargetType.Account => new CborValue.Text("account"),
+        _ => throw new CborException("invalid ContentReportTargetType"),
+    };
+
+    /// <summary>Reconstruct a ContentReportTargetType from its bare-literal CBOR value.</summary>
+    public static ContentReportTargetType ContentReportTargetTypeFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "playlist" => ContentReportTargetType.Playlist,
+        "account" => ContentReportTargetType.Account,
+        _ => throw new CborException("invalid ContentReportTargetType value"),
+    };
+
+    /// <summary>The bare-literal CBOR value for a ContentReportReason.</summary>
+    public static CborValue ContentReportReasonToCborValue(ContentReportReason value) => value switch
+    {
+        ContentReportReason.ObjectionableContent => new CborValue.Text("objectionable-content"),
+        ContentReportReason.Harassment => new CborValue.Text("harassment"),
+        ContentReportReason.Spam => new CborValue.Text("spam"),
+        ContentReportReason.Other => new CborValue.Text("other"),
+        _ => throw new CborException("invalid ContentReportReason"),
+    };
+
+    /// <summary>Reconstruct a ContentReportReason from its bare-literal CBOR value.</summary>
+    public static ContentReportReason ContentReportReasonFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "objectionable-content" => ContentReportReason.ObjectionableContent,
+        "harassment" => ContentReportReason.Harassment,
+        "spam" => ContentReportReason.Spam,
+        "other" => ContentReportReason.Other,
+        _ => throw new CborException("invalid ContentReportReason value"),
+    };
+
+    /// <summary>The bare-literal CBOR value for a ContentReportStatus.</summary>
+    public static CborValue ContentReportStatusToCborValue(ContentReportStatus value) => value switch
+    {
+        ContentReportStatus.Open => new CborValue.Text("open"),
+        ContentReportStatus.Resolved => new CborValue.Text("resolved"),
+        ContentReportStatus.Dismissed => new CborValue.Text("dismissed"),
+        _ => throw new CborException("invalid ContentReportStatus"),
+    };
+
+    /// <summary>Reconstruct a ContentReportStatus from its bare-literal CBOR value.</summary>
+    public static ContentReportStatus ContentReportStatusFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "open" => ContentReportStatus.Open,
+        "resolved" => ContentReportStatus.Resolved,
+        "dismissed" => ContentReportStatus.Dismissed,
+        _ => throw new CborException("invalid ContentReportStatus value"),
+    };
+
+    /// <summary>The canonical CBOR value tree for a ContentReport.</summary>
+    public static CborValue ContentReportToCborValue(ContentReport value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("reason"), ContentReportReasonToCborValue(value.Reason)));
+        csilEntries.Add((new CborValue.Text("status"), ContentReportStatusToCborValue(value.Status)));
+        if (value.Details is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("details"), new CborValue.Text(csilV3)));
+        }
+        csilEntries.Add((new CborValue.Text("target_id"), new CborValue.Text(value.TargetId)));
+        csilEntries.Add((new CborValue.Text("created_at"), Cbor.EncTimestamp(value.CreatedAt)));
+        if (value.ResolvedAt is { } csilV6)
+        {
+            csilEntries.Add((new CborValue.Text("resolved_at"), Cbor.EncTimestamp(csilV6)));
+        }
+        csilEntries.Add((new CborValue.Text("target_type"), ContentReportTargetTypeToCborValue(value.TargetType)));
+        csilEntries.Add((new CborValue.Text("reporter_account_id"), new CborValue.Text(value.ReporterAccountId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ContentReport from a decoded CBOR value tree.</summary>
+    public static ContentReport ContentReportFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "reporter_account_id"));
+        var csilField2 = ContentReportTargetTypeFromCborValue(Cbor.Require(value, "target_type"));
+        var csilField3 = Cbor.AsText(Cbor.Require(value, "target_id"));
+        var csilField4 = ContentReportReasonFromCborValue(Cbor.Require(value, "reason"));
+        string? csilField5 = Cbor.MapGet(value, "details") is { } csilRaw5 ? Cbor.AsText(csilRaw5) : null;
+        var csilField6 = ContentReportStatusFromCborValue(Cbor.Require(value, "status"));
+        var csilField7 = Cbor.AsTimestamp(Cbor.Require(value, "created_at"));
+        System.DateTimeOffset? csilField8 = Cbor.MapGet(value, "resolved_at") is { } csilRaw8 ? Cbor.AsTimestamp(csilRaw8) : null;
+        return new ContentReport
+        {
+            Id = csilField0,
+            ReporterAccountId = csilField1,
+            TargetType = csilField2,
+            TargetId = csilField3,
+            Reason = csilField4,
+            Details = csilField5,
+            Status = csilField6,
+            CreatedAt = csilField7,
+            ResolvedAt = csilField8,
+        };
+    }
+
     /// <summary>The canonical CBOR value tree for a ServiceError.</summary>
     public static CborValue ServiceErrorToCborValue(ServiceError value)
     {
@@ -860,6 +982,24 @@ public static class Codec
             Role = csilField3,
             CanAdmin = csilField4,
             Token = csilField5,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a DeleteAccountRequest.</summary>
+    public static CborValue DeleteAccountRequestToCborValue(DeleteAccountRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("confirmation_handle"), new CborValue.Text(value.ConfirmationHandle)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a DeleteAccountRequest from a decoded CBOR value tree.</summary>
+    public static DeleteAccountRequest DeleteAccountRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "confirmation_handle"));
+        return new DeleteAccountRequest
+        {
+            ConfirmationHandle = csilField0,
         };
     }
 
@@ -1590,6 +1730,24 @@ public static class Codec
         };
     }
 
+    /// <summary>The canonical CBOR value tree for a DeletePlaylistRequest.</summary>
+    public static CborValue DeletePlaylistRequestToCborValue(DeletePlaylistRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("playlist_id"), new CborValue.Text(value.PlaylistId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a DeletePlaylistRequest from a decoded CBOR value tree.</summary>
+    public static DeletePlaylistRequest DeletePlaylistRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "playlist_id"));
+        return new DeletePlaylistRequest
+        {
+            PlaylistId = csilField0,
+        };
+    }
+
     /// <summary>The canonical CBOR value tree for a PlaylistDetail.</summary>
     public static CborValue PlaylistDetailToCborValue(PlaylistDetail value)
     {
@@ -1653,6 +1811,36 @@ public static class Codec
         {
             ContentType = csilField0,
             Data = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ReportContentRequest.</summary>
+    public static CborValue ReportContentRequestToCborValue(ReportContentRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("reason"), ContentReportReasonToCborValue(value.Reason)));
+        if (value.Details is { } csilV1)
+        {
+            csilEntries.Add((new CborValue.Text("details"), new CborValue.Text(csilV1)));
+        }
+        csilEntries.Add((new CborValue.Text("target_id"), new CborValue.Text(value.TargetId)));
+        csilEntries.Add((new CborValue.Text("target_type"), ContentReportTargetTypeToCborValue(value.TargetType)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ReportContentRequest from a decoded CBOR value tree.</summary>
+    public static ReportContentRequest ReportContentRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = ContentReportTargetTypeFromCborValue(Cbor.Require(value, "target_type"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "target_id"));
+        var csilField2 = ContentReportReasonFromCborValue(Cbor.Require(value, "reason"));
+        string? csilField3 = Cbor.MapGet(value, "details") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
+        return new ReportContentRequest
+        {
+            TargetType = csilField0,
+            TargetId = csilField1,
+            Reason = csilField2,
+            Details = csilField3,
         };
     }
 
@@ -2808,6 +2996,27 @@ public static class Codec
         };
     }
 
+    /// <summary>The canonical CBOR value tree for a AdminDeleteAccountRequest.</summary>
+    public static CborValue AdminDeleteAccountRequestToCborValue(AdminDeleteAccountRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("account_id"), new CborValue.Text(value.AccountId)));
+        csilEntries.Add((new CborValue.Text("confirmation_handle"), new CborValue.Text(value.ConfirmationHandle)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a AdminDeleteAccountRequest from a decoded CBOR value tree.</summary>
+    public static AdminDeleteAccountRequest AdminDeleteAccountRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "account_id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "confirmation_handle"));
+        return new AdminDeleteAccountRequest
+        {
+            AccountId = csilField0,
+            ConfirmationHandle = csilField1,
+        };
+    }
+
     /// <summary>The canonical CBOR value tree for a TrustDomainRequest.</summary>
     public static CborValue TrustDomainRequestToCborValue(TrustDomainRequest value)
     {
@@ -3598,6 +3807,48 @@ public static class Codec
         {
             Running = csilField0,
             Started = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ListContentReportsResponse.</summary>
+    public static CborValue ListContentReportsResponseToCborValue(ListContentReportsResponse value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("total"), new CborValue.Uint(value.Total)));
+        csilEntries.Add((new CborValue.Text("reports"), new CborValue.Array(value.Reports.Select(csilElem => (CborValue)ContentReportToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ListContentReportsResponse from a decoded CBOR value tree.</summary>
+    public static ListContentReportsResponse ListContentReportsResponseFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "reports")).Select(csilElem => ContentReportFromCborValue(csilElem)).ToList();
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "total"));
+        return new ListContentReportsResponse
+        {
+            Reports = csilField0,
+            Total = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a UpdateContentReportStatusRequest.</summary>
+    public static CborValue UpdateContentReportStatusRequestToCborValue(UpdateContentReportStatusRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("status"), ContentReportStatusToCborValue(value.Status)));
+        csilEntries.Add((new CborValue.Text("report_id"), new CborValue.Text(value.ReportId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a UpdateContentReportStatusRequest from a decoded CBOR value tree.</summary>
+    public static UpdateContentReportStatusRequest UpdateContentReportStatusRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "report_id"));
+        var csilField1 = ContentReportStatusFromCborValue(Cbor.Require(value, "status"));
+        return new UpdateContentReportStatusRequest
+        {
+            ReportId = csilField0,
+            Status = csilField1,
         };
     }
 

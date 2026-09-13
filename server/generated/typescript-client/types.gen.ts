@@ -14,6 +14,8 @@ export type ArtistId = string;
 
 export type PlaylistId = string;
 
+export type ContentReportId = string;
+
 export type NodeId = string;
 
 export type DeviceId = string;
@@ -43,6 +45,24 @@ export interface Ok {
   ok: boolean;
 }
 
+export type ContentReportTargetType = "playlist" | "account";
+
+export type ContentReportReason = "objectionable-content" | "harassment" | "spam" | "other";
+
+export type ContentReportStatus = "open" | "resolved" | "dismissed";
+
+export interface ContentReport {
+  id: ContentReportId;
+  reporterAccountId: AccountId;
+  targetType: ContentReportTargetType;
+  targetId: string;
+  reason: ContentReportReason;
+  details?: string;
+  status: ContentReportStatus;
+  createdAt: Date;
+  resolvedAt?: Date;
+}
+
 export interface ServiceError {
   code: number;
   message: string;
@@ -61,6 +81,10 @@ export interface SessionInfo {
   role: Role;
   canAdmin: boolean;
   token?: string;
+}
+
+export interface DeleteAccountRequest {
+  confirmationHandle: Handle;
 }
 
 export type Library = "music" | "audiobook";
@@ -229,6 +253,10 @@ export interface PlaylistRequest {
   playlistId: PlaylistId;
 }
 
+export interface DeletePlaylistRequest {
+  playlistId: PlaylistId;
+}
+
 export interface PlaylistDetail {
   playlist: Playlist;
   tracks: Track[];
@@ -242,6 +270,13 @@ export interface CoverArtRequest {
 export interface CoverArt {
   contentType: string;
   data: Uint8Array;
+}
+
+export interface ReportContentRequest {
+  targetType: ContentReportTargetType;
+  targetId: string;
+  reason: ContentReportReason;
+  details?: string;
 }
 
 export type PlayerKind = "shared" | "private";
@@ -486,6 +521,11 @@ export interface SetRoleRequest {
   role: Role;
 }
 
+export interface AdminDeleteAccountRequest {
+  accountId: AccountId;
+  confirmationHandle: Handle;
+}
+
 export interface TrustDomainRequest {
   domain: string;
 }
@@ -667,6 +707,16 @@ export interface SetSettingRequest {
 export interface LibraryResyncStatus {
   running: boolean;
   started: boolean;
+}
+
+export interface ListContentReportsResponse {
+  reports: ContentReport[];
+  total: number;
+}
+
+export interface UpdateContentReportStatusRequest {
+  reportId: ContentReportId;
+  status: ContentReportStatus;
 }
 
 export type ChangeTopic = "players" | "libraries" | "playlists" | "progress" | "session" | "accounts" | "trust" | "nodes" | "groups" | "settings" | "imports";

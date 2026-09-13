@@ -125,7 +125,9 @@ async fn regular_rp_browser_flow_is_mocked_single_use_and_mints_session() {
                 .header(header::HOST, "ichoi.example")
                 .header(header::ORIGIN, "https://ichoi.example")
                 .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(r#"{"identity":"alice@family.example"}"#))
+                .body(Body::from(
+                    r#"{"identity":"alice@family.example","return_url":"ichoi://linkkeys"}"#,
+                ))
                 .unwrap(),
         )
         .await
@@ -147,6 +149,7 @@ async fn regular_rp_browser_flow_is_mocked_single_use_and_mints_session() {
         .unwrap();
     assert_eq!(completed.status(), StatusCode::SEE_OTHER);
     let location = completed.headers()[header::LOCATION].to_str().unwrap();
+    assert!(location.starts_with("ichoi://linkkeys#"));
     let code = location.split("#linkkeys_exchange=").nth(1).unwrap();
     let info = app
         .authenticate(

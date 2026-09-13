@@ -77,6 +77,7 @@ settings:
 | CSIL/TLS certificate (core) | `ICHOI_TLS_CERT` | `<db-dir>/csil-cert.der` |
 | CSIL/TLS private key (core) | `ICHOI_TLS_KEY` | `<db-dir>/csil-key.der` |
 | Admin bootstrap token | `ICHOI_ADMIN_TOKEN` | unset |
+| Session lifetime in hours | `ICHOI_SESSION_LIFETIME_HOURS` | `720` |
 | DNS-less LinkKeys RP | `ICHOI_LINKKEYS_LOCAL_RP` | disabled; only exact `true` enables |
 | Local RP name | `ICHOI_LINKKEYS_LOCAL_RP_NAME` | unset |
 | Regular LinkKeys RP | `ICHOI_LINKKEYS_RP` | disabled; only exact `true` enables |
@@ -143,6 +144,10 @@ verified handle at that LinkKeys domain; `handle@domain` accepts only that verif
 Users normally enter `handle@domain` in Ichoi's sign-in dialog. Ichoi derives its callback
 from the browser's same-origin LAN address, so no public URL setting or public availability
 is required.
+
+Native clients can send `return_url: "ichoi://linkkeys"` to either LinkKeys start endpoint.
+The server returns the one-time exchange code to that exact callback. The server rejects all
+other native return URLs. A browser login still returns to the selected server.
 
 The first enabled start generates the local RP signing/encryption identity and stores the
 SDK's opaque key bundle in `ichoi.db`. It remains stable across restarts; changing the name

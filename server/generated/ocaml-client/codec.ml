@@ -46,6 +46,31 @@ and encode_ok (v : ok) : Cbor.t =
          Some (Cbor.Text "ok", (Cbor.Bool v.ok));
        ])
 
+and encode_content_report_target_type (v : content_report_target_type) : Cbor.t =
+  match v with Playlist -> Cbor.Text "playlist" | Account -> Cbor.Text "account"
+
+and encode_content_report_reason (v : content_report_reason) : Cbor.t =
+  match v with Objectionable_content -> Cbor.Text "objectionable-content" | Harassment -> Cbor.Text "harassment" | Spam -> Cbor.Text "spam" | Other -> Cbor.Text "other"
+
+and encode_content_report_status (v : content_report_status) : Cbor.t =
+  match v with Open -> Cbor.Text "open" | Resolved -> Cbor.Text "resolved" | Dismissed -> Cbor.Text "dismissed"
+
+and encode_content_report (v : content_report) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "reason", (encode_content_report_reason v.reason));
+         Some (Cbor.Text "status", (encode_content_report_status v.status));
+         (match v.details with Some csil_x -> Some (Cbor.Text "details", (Cbor.Text csil_x)) | None -> None);
+         Some (Cbor.Text "target_id", (Cbor.Text v.target_id));
+         Some (Cbor.Text "created_at", (Cbor.Tag (0, Cbor.Text v.created_at)));
+         (match v.resolved_at with Some csil_x -> Some (Cbor.Text "resolved_at", (Cbor.Tag (0, Cbor.Text csil_x))) | None -> None);
+         Some (Cbor.Text "target_type", (encode_content_report_target_type v.target_type));
+         Some (Cbor.Text "reporter_account_id", (Cbor.Text v.reporter_account_id));
+       ])
+
 and encode_service_error (v : service_error) : Cbor.t =
   Cbor.Map
     (List.filter_map
@@ -76,6 +101,14 @@ and encode_session_info (v : session_info) : Cbor.t =
          Some (Cbor.Text "can_admin", (Cbor.Bool v.can_admin));
          Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
          (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
+       ])
+
+and encode_delete_account_request (v : delete_account_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "confirmation_handle", (Cbor.Text v.confirmation_handle));
        ])
 
 and encode_library (v : library) : Cbor.t =
@@ -353,6 +386,14 @@ and encode_playlist_request (v : playlist_request) : Cbor.t =
          Some (Cbor.Text "playlist_id", (Cbor.Text v.playlist_id));
        ])
 
+and encode_delete_playlist_request (v : delete_playlist_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "playlist_id", (Cbor.Text v.playlist_id));
+       ])
+
 and encode_playlist_detail (v : playlist_detail) : Cbor.t =
   Cbor.Map
     (List.filter_map
@@ -378,6 +419,17 @@ and encode_cover_art (v : cover_art) : Cbor.t =
        [
          Some (Cbor.Text "data", (Cbor.Bytes v.data));
          Some (Cbor.Text "content_type", (Cbor.Text v.content_type));
+       ])
+
+and encode_report_content_request (v : report_content_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "reason", (encode_content_report_reason v.reason));
+         (match v.details with Some csil_x -> Some (Cbor.Text "details", (Cbor.Text csil_x)) | None -> None);
+         Some (Cbor.Text "target_id", (Cbor.Text v.target_id));
+         Some (Cbor.Text "target_type", (encode_content_report_target_type v.target_type));
        ])
 
 and encode_player_kind (v : player_kind) : Cbor.t =
@@ -792,6 +844,15 @@ and encode_set_role_request (v : set_role_request) : Cbor.t =
          Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
        ])
 
+and encode_admin_delete_account_request (v : admin_delete_account_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
+         Some (Cbor.Text "confirmation_handle", (Cbor.Text v.confirmation_handle));
+       ])
+
 and encode_trust_domain_request (v : trust_domain_request) : Cbor.t =
   Cbor.Map
     (List.filter_map
@@ -1109,6 +1170,24 @@ and encode_library_resync_status (v : library_resync_status) : Cbor.t =
          Some (Cbor.Text "started", (Cbor.Bool v.started));
        ])
 
+and encode_list_content_reports_response (v : list_content_reports_response) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "total", (Cbor.int64 v.total));
+         Some (Cbor.Text "reports", (Cbor.Array (List.map (fun csil_e -> (encode_content_report csil_e)) v.reports)));
+       ])
+
+and encode_update_content_report_status_request (v : update_content_report_status_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "status", (encode_content_report_status v.status));
+         Some (Cbor.Text "report_id", (Cbor.Text v.report_id));
+       ])
+
 and encode_change_topic (v : change_topic) : Cbor.t =
   match v with Players -> Cbor.Text "players" | Libraries -> Cbor.Text "libraries" | Playlists -> Cbor.Text "playlists" | Progress -> Cbor.Text "progress" | Session -> Cbor.Text "session" | Accounts -> Cbor.Text "accounts" | Trust -> Cbor.Text "trust" | Nodes -> Cbor.Text "nodes" | Groups -> Cbor.Text "groups" | Settings -> Cbor.Text "settings" | Imports -> Cbor.Text "imports"
 
@@ -1183,6 +1262,36 @@ and decode_ok (csil_c : Cbor.t) : ok =
       }
   | _ -> failwith "csilgen: expected map for ok"
 
+and decode_content_report_target_type (csil_c : Cbor.t) : content_report_target_type =
+  match Cbor.to_text csil_c with "playlist" -> Playlist | "account" -> Account | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_content_report_reason (csil_c : Cbor.t) : content_report_reason =
+  match Cbor.to_text csil_c with "objectionable-content" -> Objectionable_content | "harassment" -> Harassment | "spam" -> Spam | "other" -> Other | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_content_report_status (csil_c : Cbor.t) : content_report_status =
+  match Cbor.to_text csil_c with "open" -> Open | "resolved" -> Resolved | "dismissed" -> Dismissed | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_content_report (csil_c : Cbor.t) : content_report =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        reason = (decode_content_report_reason (csil_req "reason"));
+        status = (decode_content_report_status (csil_req "status"));
+        details = (match csil_field "details" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        target_id = (Cbor.to_text (csil_req "target_id"));
+        created_at = (match (csil_req "created_at") with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp");
+        resolved_at = (match csil_field "resolved_at" with Some csil_v -> Some (match csil_v with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp") | None -> None);
+        target_type = (decode_content_report_target_type (csil_req "target_type"));
+        reporter_account_id = (Cbor.to_text (csil_req "reporter_account_id"));
+      }
+  | _ -> failwith "csilgen: expected map for content_report"
+
 and decode_service_error (csil_c : Cbor.t) : service_error =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -1229,6 +1338,19 @@ and decode_session_info (csil_c : Cbor.t) : session_info =
         display_name = (match csil_field "display_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for session_info"
+
+and decode_delete_account_request (csil_c : Cbor.t) : delete_account_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        confirmation_handle = (Cbor.to_text (csil_req "confirmation_handle"));
+      }
+  | _ -> failwith "csilgen: expected map for delete_account_request"
 
 and decode_library (csil_c : Cbor.t) : library =
   match Cbor.to_text csil_c with "music" -> Music | "audiobook" -> Audiobook | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
@@ -1640,6 +1762,19 @@ and decode_playlist_request (csil_c : Cbor.t) : playlist_request =
       }
   | _ -> failwith "csilgen: expected map for playlist_request"
 
+and decode_delete_playlist_request (csil_c : Cbor.t) : delete_playlist_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        playlist_id = (Cbor.to_text (csil_req "playlist_id"));
+      }
+  | _ -> failwith "csilgen: expected map for delete_playlist_request"
+
 and decode_playlist_detail (csil_c : Cbor.t) : playlist_detail =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -1681,6 +1816,22 @@ and decode_cover_art (csil_c : Cbor.t) : cover_art =
         content_type = (Cbor.to_text (csil_req "content_type"));
       }
   | _ -> failwith "csilgen: expected map for cover_art"
+
+and decode_report_content_request (csil_c : Cbor.t) : report_content_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        reason = (decode_content_report_reason (csil_req "reason"));
+        details = (match csil_field "details" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        target_id = (Cbor.to_text (csil_req "target_id"));
+        target_type = (decode_content_report_target_type (csil_req "target_type"));
+      }
+  | _ -> failwith "csilgen: expected map for report_content_request"
 
 and decode_player_kind (csil_c : Cbor.t) : player_kind =
   match Cbor.to_text csil_c with "shared" -> Shared | "private" -> Private | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
@@ -2307,6 +2458,20 @@ and decode_set_role_request (csil_c : Cbor.t) : set_role_request =
       }
   | _ -> failwith "csilgen: expected map for set_role_request"
 
+and decode_admin_delete_account_request (csil_c : Cbor.t) : admin_delete_account_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        account_id = (Cbor.to_text (csil_req "account_id"));
+        confirmation_handle = (Cbor.to_text (csil_req "confirmation_handle"));
+      }
+  | _ -> failwith "csilgen: expected map for admin_delete_account_request"
+
 and decode_trust_domain_request (csil_c : Cbor.t) : trust_domain_request =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -2789,6 +2954,34 @@ and decode_library_resync_status (csil_c : Cbor.t) : library_resync_status =
       }
   | _ -> failwith "csilgen: expected map for library_resync_status"
 
+and decode_list_content_reports_response (csil_c : Cbor.t) : list_content_reports_response =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        total = (Cbor.to_i64 (csil_req "total"));
+        reports = (match (csil_req "reports") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_content_report csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for list_content_reports_response"
+
+and decode_update_content_report_status_request (csil_c : Cbor.t) : update_content_report_status_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        status = (decode_content_report_status (csil_req "status"));
+        report_id = (Cbor.to_text (csil_req "report_id"));
+      }
+  | _ -> failwith "csilgen: expected map for update_content_report_status_request"
+
 and decode_change_topic (csil_c : Cbor.t) : change_topic =
   match Cbor.to_text csil_c with "players" -> Players | "libraries" -> Libraries | "playlists" -> Playlists | "progress" -> Progress | "session" -> Session | "accounts" -> Accounts | "trust" -> Trust | "nodes" -> Nodes | "groups" -> Groups | "settings" -> Settings | "imports" -> Imports | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
 
@@ -2847,6 +3040,22 @@ let encode_ok_bytes (v : ok) : bytes = Cbor.encode (encode_ok v)
 let decode_ok_bytes (b : bytes) : ok =
   match Cbor.decode b with Ok c -> decode_ok c | Error e -> failwith e
 
+let encode_content_report_target_type_bytes (v : content_report_target_type) : bytes = Cbor.encode (encode_content_report_target_type v)
+let decode_content_report_target_type_bytes (b : bytes) : content_report_target_type =
+  match Cbor.decode b with Ok c -> decode_content_report_target_type c | Error e -> failwith e
+
+let encode_content_report_reason_bytes (v : content_report_reason) : bytes = Cbor.encode (encode_content_report_reason v)
+let decode_content_report_reason_bytes (b : bytes) : content_report_reason =
+  match Cbor.decode b with Ok c -> decode_content_report_reason c | Error e -> failwith e
+
+let encode_content_report_status_bytes (v : content_report_status) : bytes = Cbor.encode (encode_content_report_status v)
+let decode_content_report_status_bytes (b : bytes) : content_report_status =
+  match Cbor.decode b with Ok c -> decode_content_report_status c | Error e -> failwith e
+
+let encode_content_report_bytes (v : content_report) : bytes = Cbor.encode (encode_content_report v)
+let decode_content_report_bytes (b : bytes) : content_report =
+  match Cbor.decode b with Ok c -> decode_content_report c | Error e -> failwith e
+
 let encode_service_error_bytes (v : service_error) : bytes = Cbor.encode (encode_service_error v)
 let decode_service_error_bytes (b : bytes) : service_error =
   match Cbor.decode b with Ok c -> decode_service_error c | Error e -> failwith e
@@ -2858,6 +3067,10 @@ let decode_auth_request_bytes (b : bytes) : auth_request =
 let encode_session_info_bytes (v : session_info) : bytes = Cbor.encode (encode_session_info v)
 let decode_session_info_bytes (b : bytes) : session_info =
   match Cbor.decode b with Ok c -> decode_session_info c | Error e -> failwith e
+
+let encode_delete_account_request_bytes (v : delete_account_request) : bytes = Cbor.encode (encode_delete_account_request v)
+let decode_delete_account_request_bytes (b : bytes) : delete_account_request =
+  match Cbor.decode b with Ok c -> decode_delete_account_request c | Error e -> failwith e
 
 let encode_library_bytes (v : library) : bytes = Cbor.encode (encode_library v)
 let decode_library_bytes (b : bytes) : library =
@@ -2971,6 +3184,10 @@ let encode_playlist_request_bytes (v : playlist_request) : bytes = Cbor.encode (
 let decode_playlist_request_bytes (b : bytes) : playlist_request =
   match Cbor.decode b with Ok c -> decode_playlist_request c | Error e -> failwith e
 
+let encode_delete_playlist_request_bytes (v : delete_playlist_request) : bytes = Cbor.encode (encode_delete_playlist_request v)
+let decode_delete_playlist_request_bytes (b : bytes) : delete_playlist_request =
+  match Cbor.decode b with Ok c -> decode_delete_playlist_request c | Error e -> failwith e
+
 let encode_playlist_detail_bytes (v : playlist_detail) : bytes = Cbor.encode (encode_playlist_detail v)
 let decode_playlist_detail_bytes (b : bytes) : playlist_detail =
   match Cbor.decode b with Ok c -> decode_playlist_detail c | Error e -> failwith e
@@ -2982,6 +3199,10 @@ let decode_cover_art_request_bytes (b : bytes) : cover_art_request =
 let encode_cover_art_bytes (v : cover_art) : bytes = Cbor.encode (encode_cover_art v)
 let decode_cover_art_bytes (b : bytes) : cover_art =
   match Cbor.decode b with Ok c -> decode_cover_art c | Error e -> failwith e
+
+let encode_report_content_request_bytes (v : report_content_request) : bytes = Cbor.encode (encode_report_content_request v)
+let decode_report_content_request_bytes (b : bytes) : report_content_request =
+  match Cbor.decode b with Ok c -> decode_report_content_request c | Error e -> failwith e
 
 let encode_player_kind_bytes (v : player_kind) : bytes = Cbor.encode (encode_player_kind v)
 let decode_player_kind_bytes (b : bytes) : player_kind =
@@ -3171,6 +3392,10 @@ let encode_set_role_request_bytes (v : set_role_request) : bytes = Cbor.encode (
 let decode_set_role_request_bytes (b : bytes) : set_role_request =
   match Cbor.decode b with Ok c -> decode_set_role_request c | Error e -> failwith e
 
+let encode_admin_delete_account_request_bytes (v : admin_delete_account_request) : bytes = Cbor.encode (encode_admin_delete_account_request v)
+let decode_admin_delete_account_request_bytes (b : bytes) : admin_delete_account_request =
+  match Cbor.decode b with Ok c -> decode_admin_delete_account_request c | Error e -> failwith e
+
 let encode_trust_domain_request_bytes (v : trust_domain_request) : bytes = Cbor.encode (encode_trust_domain_request v)
 let decode_trust_domain_request_bytes (b : bytes) : trust_domain_request =
   match Cbor.decode b with Ok c -> decode_trust_domain_request c | Error e -> failwith e
@@ -3310,6 +3535,14 @@ let decode_set_setting_request_bytes (b : bytes) : set_setting_request =
 let encode_library_resync_status_bytes (v : library_resync_status) : bytes = Cbor.encode (encode_library_resync_status v)
 let decode_library_resync_status_bytes (b : bytes) : library_resync_status =
   match Cbor.decode b with Ok c -> decode_library_resync_status c | Error e -> failwith e
+
+let encode_list_content_reports_response_bytes (v : list_content_reports_response) : bytes = Cbor.encode (encode_list_content_reports_response v)
+let decode_list_content_reports_response_bytes (b : bytes) : list_content_reports_response =
+  match Cbor.decode b with Ok c -> decode_list_content_reports_response c | Error e -> failwith e
+
+let encode_update_content_report_status_request_bytes (v : update_content_report_status_request) : bytes = Cbor.encode (encode_update_content_report_status_request v)
+let decode_update_content_report_status_request_bytes (b : bytes) : update_content_report_status_request =
+  match Cbor.decode b with Ok c -> decode_update_content_report_status_request c | Error e -> failwith e
 
 let encode_change_topic_bytes (v : change_topic) : bytes = Cbor.encode (encode_change_topic v)
 let decode_change_topic_bytes (b : bytes) : change_topic =
