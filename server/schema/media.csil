@@ -1,17 +1,18 @@
 ;; Ichoi — media streaming (clients and satellites). Bidi: control up, chunks down (§5).
 
 ;; Client -> server control, discriminated on `kind`.
-MediaOpen   = { kind: "open", track_id: TrackId, pref: StreamPref }
-MediaSeek   = { kind: "seek", position_ms: uint }
-MediaPause  = { kind: "pause" }
-MediaResume = { kind: "resume" }
-MediaStop   = { kind: "stop" }
+MediaOpen   = { kind: "open", stream_id: text, track_id: TrackId, pref: StreamPref }
+MediaSeek   = { kind: "seek", stream_id: text, position_ms: uint }
+MediaPause  = { kind: "pause", stream_id: text }
+MediaResume = { kind: "resume", stream_id: text }
+MediaStop   = { kind: "stop", stream_id: text }
 MediaControl = MediaOpen / MediaSeek / MediaPause / MediaResume / MediaStop
 
 ;; Sent once per (re)open. `codec` is the codec of the packets that follow: the original
 ;; in direct mode, the transcode target otherwise (§5.1).
 MediaHeader = {
     kind: "header",
+    stream_id: text,
     codec: Codec,
     transcoded: bool,
     sample_rate: uint,
@@ -22,9 +23,9 @@ MediaHeader = {
     ? codec_config: bytes                    ;; decoder init (FLAC STREAMINFO, AAC ASC, ...)
 }
 MediaEndReason = "eos" / "stopped"
-MediaChunk = { kind: "chunk", seq: uint, ? timestamp_ms: uint, data: bytes }
-MediaEnd   = { kind: "end", ? reason: MediaEndReason }
-MediaFail  = { kind: "error", error: ServiceError }
+MediaChunk = { kind: "chunk", stream_id: text, seq: uint, ? timestamp_ms: uint, data: bytes }
+MediaEnd   = { kind: "end", stream_id: text, ? reason: MediaEndReason }
+MediaFail  = { kind: "error", stream_id: text, error: ServiceError }
 MediaEvent = MediaHeader / MediaChunk / MediaEnd / MediaFail
 
 service MediaService {

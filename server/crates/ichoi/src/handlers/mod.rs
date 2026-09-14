@@ -1,8 +1,7 @@
 //! Handler implementations: the generated CSIL service traits wired to the store.
 //!
-//! Request/response operations are fully DB-backed. Channel operations (Player.subscribe,
-//! Media.stream, Node.session) have working entry points but their streaming state machines
-//! are pre-alpha stubs (§16) — the media/jukebox loops are the next implementation frontier.
+//! Request/response operations are DB-backed. Player subscriptions publish authoritative
+//! state, and node sessions report output facts and receive playback directives.
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
@@ -10,8 +9,10 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
+use diesel::Connection;
 use libichoi::csil::services::*;
 use libichoi::csil::types::*;
+use rand::Rng;
 use sha2::{Digest, Sha256};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -345,6 +346,30 @@ fn db<T>(r: diesel::QueryResult<T>) -> Result<T, ServiceError> {
     r.map_err(internal)
 }
 
+enum PlayerTxnError {
+    Database(diesel::result::Error),
+    Service(ServiceError),
+}
+
+impl From<diesel::result::Error> for PlayerTxnError {
+    fn from(error: diesel::result::Error) -> Self {
+        Self::Database(error)
+    }
+}
+
+impl From<ServiceError> for PlayerTxnError {
+    fn from(error: ServiceError) -> Self {
+        Self::Service(error)
+    }
+}
+
+fn player_txn_error(error: PlayerTxnError) -> ServiceError {
+    match error {
+        PlayerTxnError::Database(error) => internal(error),
+        PlayerTxnError::Service(error) => error,
+    }
+}
+
 fn require_admin_or_guest_instance(
     ctx: &Ctx,
     conn: &mut diesel::sqlite::SqliteConnection,
@@ -438,6 +463,20 @@ fn status_str(s: &PlayerStatus) -> &'static str {
         PlayerStatus::Playing => "playing",
         PlayerStatus::Paused => "paused",
         PlayerStatus::Stopped => "stopped",
+    }
+}
+fn to_repeat_mode(s: &str) -> RepeatMode {
+    match s {
+        "all" => RepeatMode::All,
+        "one" => RepeatMode::One,
+        _ => RepeatMode::Off,
+    }
+}
+fn repeat_mode_str(mode: &RepeatMode) -> &'static str {
+    match mode {
+        RepeatMode::Off => "off",
+        RepeatMode::All => "all",
+        RepeatMode::One => "one",
     }
 }
 fn parse_dt(s: &str) -> DateTime<Utc> {
@@ -1193,6 +1232,23 @@ impl LibraryService for App {
 
 // ================================================================== PlayerService
 
+fn default_player_state(player_id: &str) -> models::PlayerStateRow {
+    models::PlayerStateRow {
+        player_id: player_id.to_string(),
+        status: "stopped".to_string(),
+        current_index: None,
+        position_ms: None,
+        volume: 100,
+        repeat_mode: "off".to_string(),
+        shuffle: 0,
+        revision: 0,
+        playback_id: None,
+        current_queue_item_id: None,
+        error: None,
+        listener_account_id: None,
+    }
+}
+
 impl App {
     pub fn load_player_state(
         &self,
@@ -1206,6 +1262,7 @@ impl App {
             .map(|it| {
                 let t = store::get_track(conn, &it.track_id).ok().flatten();
                 QueueItem {
+                    queue_item_id: it.id.max(0) as u64,
                     track_id: it.track_id.clone(),
                     library: t.as_ref().map(|track| {
                         if track.library_id == "lib:audiobook" {
@@ -1220,19 +1277,20 @@ impl App {
                 }
             })
             .collect();
-        let st = st.unwrap_or(models::PlayerStateRow {
-            player_id: player_id.to_string(),
-            status: "stopped".to_string(),
-            current_index: None,
-            position_ms: None,
-            volume: 100,
-        });
+        let st = st.unwrap_or_else(|| default_player_state(player_id));
+        let can_undo = db(store::player_undo_state(conn, player_id))?.is_some();
         std::result::Result::Ok(PlayerState {
             player_id: player_id.to_string(),
+            revision: st.revision.max(0) as u64,
             status: to_status(&st.status),
             current_index: st.current_index.map(|n| n as u64),
+            playback_id: st.playback_id,
             position_ms: st.position_ms.map(|n| n.max(0) as u64),
             volume: st.volume.clamp(0, 100) as u64,
+            repeat_mode: to_repeat_mode(&st.repeat_mode),
+            shuffle: st.shuffle != 0,
+            error: st.error,
+            can_undo,
             queue,
         })
     }
@@ -1264,31 +1322,164 @@ impl App {
 
     pub fn record_node_report(&self, report: NodeReport) -> Result<PlayerState, ServiceError> {
         let mut conn = self.conn()?;
-        let row = models::PlayerStateRow {
-            player_id: report.player_id.clone(),
-            status: status_str(&report.status).to_string(),
-            current_index: db(store::get_state(&mut conn, &report.player_id))?
-                .and_then(|s| s.current_index),
-            position_ms: report.position_ms.map(|p| p as i64),
-            volume: db(store::get_state(&mut conn, &report.player_id))?
-                .map(|s| s.volume)
-                .unwrap_or(100),
-        };
-        db(store::upsert_state(&mut conn, &row))?;
         // Every report carries the node's current ability to make sound, so this tracks the
         // live value rather than only the moment it changes.
         let health_changed = self
             .output_health
             .set_blocked(&report.player_id, report.audio_blocked.unwrap_or(false));
-        let state = self.load_player_state(&mut conn, &report.player_id)?;
-        self.subs.publish(
-            &report.player_id,
-            &crate::transport::player_state_frame(&state),
-        );
+        let event = report.event.as_ref().unwrap_or(&NodeEvent::State);
+        let (state, directive, progress_changed) = match event {
+            NodeEvent::Ready => (
+                self.load_player_state(&mut conn, &report.player_id)?,
+                None,
+                false,
+            ),
+            NodeEvent::Completed => {
+                let (Some(playback_id), Some(queue_item_id)) =
+                    (report.playback_id.as_deref(), report.queue_item_id)
+                else {
+                    return Err(err(
+                        400,
+                        "completed report requires playback and queue item ids",
+                    ));
+                };
+                let command = PlayerCommand::Variant17(CmdPlaybackCompleted {
+                    op: "playback-completed".to_string(),
+                    playback_id: playback_id.to_string(),
+                    queue_item_id,
+                });
+                let previous_revision = self
+                    .load_player_state(&mut conn, &report.player_id)?
+                    .revision;
+                let result = conn
+                    .transaction(|conn| {
+                        apply_player_command(self, conn, &report.player_id, &command, None)
+                            .map_err(PlayerTxnError::Service)
+                    })
+                    .map_err(player_txn_error)?;
+                let progress_changed = result.0.revision != previous_revision;
+                (result.0, result.1, progress_changed)
+            }
+            NodeEvent::Failed => {
+                let (Some(playback_id), Some(queue_item_id)) =
+                    (report.playback_id.as_deref(), report.queue_item_id)
+                else {
+                    return Err(err(
+                        400,
+                        "failed report requires playback and queue item ids",
+                    ));
+                };
+                let command = PlayerCommand::Variant18(CmdPlaybackFailed {
+                    op: "playback-failed".to_string(),
+                    playback_id: playback_id.to_string(),
+                    queue_item_id,
+                    error: report
+                        .error
+                        .clone()
+                        .unwrap_or_else(|| "output playback failed".to_string()),
+                });
+                let result = conn
+                    .transaction(|conn| {
+                        apply_player_command(self, conn, &report.player_id, &command, None)
+                            .map_err(PlayerTxnError::Service)
+                    })
+                    .map_err(player_txn_error)?;
+                (result.0, result.1, false)
+            }
+            NodeEvent::State => {
+                let (state, progress_changed) = conn
+                    .transaction(|conn| -> Result<_, PlayerTxnError> {
+                        let mut row = db(store::get_state(conn, &report.player_id))?
+                            .unwrap_or_else(|| default_player_state(&report.player_id));
+                        let queue = db(store::queue_items(conn, &report.player_id))?;
+                        normalize_current_item(&mut row, &queue);
+                        let identifies_playback =
+                            report.playback_id.is_some() || report.queue_item_id.is_some();
+                        if !identifies_playback
+                            || !matches!(
+                                (report.playback_id.as_deref(), report.queue_item_id),
+                                (Some(playback_id), Some(queue_item_id))
+                                    if matches_playback(&row, playback_id, queue_item_id)
+                            )
+                        {
+                            return self
+                                .load_player_state(conn, &report.player_id)
+                                .map(|state| (state, false))
+                                .map_err(PlayerTxnError::Service);
+                        }
+                        row.status = status_str(&report.status).to_string();
+                        if let Some(position) = report.position_ms {
+                            row.position_ms = Some(position.min(i64::MAX as u64) as i64);
+                        }
+                        if matches!(report.status, PlayerStatus::Stopped) {
+                            row.playback_id = None;
+                        }
+                        if matches!(report.status, PlayerStatus::Playing) {
+                            row.error = None;
+                        }
+                        row.revision = row.revision.saturating_add(1);
+                        let progress_changed = record_player_progress(conn, &row, &queue, false)?;
+                        db(store::upsert_state(conn, &row))?;
+                        Ok((
+                            self.load_player_state(conn, &report.player_id)
+                                .map_err(PlayerTxnError::Service)?,
+                            progress_changed,
+                        ))
+                    })
+                    .map_err(player_txn_error)?;
+                (state, None, progress_changed)
+            }
+        };
+        self.publish_player_transition(&report.player_id, &state, directive);
         if health_changed {
             self.changes.publish(ChangeTopic::Players);
         }
+        if progress_changed {
+            self.changes.publish(ChangeTopic::Progress);
+        }
         Ok(state)
+    }
+
+    fn publish_player_transition(
+        &self,
+        player_id: &str,
+        state: &PlayerState,
+        directive: Option<NodeDirective>,
+    ) {
+        if let Some(directive) = directive {
+            self.nodes.publish(
+                player_id,
+                libichoi::csil_channel::encode_node_directive(&directive),
+            );
+        }
+        self.subs
+            .publish(player_id, &crate::transport::player_state_frame(state));
+    }
+
+    /// Send the persisted desired state when an output session connects. Live packets are
+    /// reliable and ordered. This reconciliation is only needed for a new connection.
+    pub fn reconcile_player_output(&self, player_id: &str) -> Result<(), ServiceError> {
+        let mut conn = self.conn()?;
+        let state = db(store::get_state(&mut conn, player_id))?
+            .unwrap_or_else(|| default_player_state(player_id));
+        let queue = db(store::queue_items(&mut conn, player_id))?;
+        self.nodes.publish(
+            player_id,
+            libichoi::csil_channel::encode_node_directive(&NodeDirective::Variant4(DirVolume {
+                op: "volume".to_string(),
+                player_id: player_id.to_string(),
+                volume: state.volume.clamp(0, 100) as u64,
+            })),
+        );
+        if state.status == "playing" {
+            if let Some(load) = load_directive(player_id, &state, &queue) {
+                self.nodes.publish(
+                    player_id,
+                    libichoi::csil_channel::encode_node_directive(&load),
+                );
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1372,8 +1563,7 @@ impl PlayerService for App {
     }
 
     fn subscribe(&self, _ctx: &Ctx, _msg: SubscribeRequest) -> Result<(), ServiceError> {
-        // The subscription push loop lives in the transport; this inbound entry acknowledges.
-        // TODO: register the subscriber and stream PlayerState snapshots (§6.5).
+        // The transport registers the subscriber and sends the initial state after attach.
         std::result::Result::Ok(())
     }
 
@@ -1381,6 +1571,27 @@ impl PlayerService for App {
         let mut conn = self.conn()?;
         let pid = &input.player_id;
         if let Some(player) = db(store::get_player(&mut conn, pid))? {
+            let output_report = matches!(
+                &input.command,
+                PlayerCommand::Variant17(_)
+                    | PlayerCommand::Variant18(_)
+                    | PlayerCommand::Variant19(_)
+            );
+            if output_report {
+                let browser_output_owns_player = player.kind == "shared"
+                    && player.output_device_id.is_none()
+                    && match (&ctx.identity, player.owner_account_id.as_deref()) {
+                        (Identity::User { account_id, .. }, Some(owner)) => account_id == owner,
+                        (Identity::Anonymous, None) => db(store::count_accounts(&mut conn))? == 0,
+                        _ => false,
+                    };
+                if !browser_output_owns_player {
+                    return Err(err(
+                        403,
+                        "only the browser output owner may report playback events",
+                    ));
+                }
+            }
             let mut node_owns_device = false;
             if let Some(device_id) = player.output_device_id.as_deref() {
                 let owns_device = match &ctx.identity {
@@ -1412,38 +1623,40 @@ impl PlayerService for App {
                     _ => return Err(err(401, "must be signed in to control shared devices")),
                 }
             }
-        } else if matches!(ctx.identity, Identity::Node { .. }) {
-            return Err(err(404, "satellite output not found"));
+        } else {
+            return Err(err(404, "player not found"));
         }
-        let mut st = db(store::get_state(&mut conn, pid))?.unwrap_or(models::PlayerStateRow {
-            player_id: pid.clone(),
-            status: "stopped".to_string(),
-            current_index: None,
-            position_ms: None,
-            volume: 100,
-        });
-        let mut queue: Vec<String> = db(store::queue_items(&mut conn, pid))?
-            .into_iter()
-            .map(|q| q.track_id)
-            .collect();
-
-        apply_command(&input.command, &mut st, &mut queue);
-
-        db(store::set_queue(&mut conn, pid, &queue))?;
-        db(store::upsert_state(&mut conn, &st))?;
-        let state = self.load_player_state(&mut conn, pid)?;
-        if let Some(player) = db(store::get_player(&mut conn, pid))? {
-            if player.output_device_id.is_some() && !pid.starts_with("player:core:") {
-                if let Some(dir) = directive_for(&input.command, pid, &st, &queue) {
-                    self.nodes
-                        .publish(pid, libichoi::csil_channel::encode_node_directive(&dir));
-                }
+        let listener_account_id = match &ctx.identity {
+            Identity::User { account_id, .. } => Some(account_id.clone()),
+            Identity::Anonymous if db(store::count_accounts(&mut conn))? == 0 => {
+                Some(GUEST_PROGRESS_ACCOUNT_ID.to_string())
             }
+            _ => None,
+        };
+        let previous_revision =
+            db(store::get_state(&mut conn, pid))?.map_or(0, |state| state.revision.max(0) as u64);
+        let (state, directive) = conn
+            .transaction(|conn| {
+                apply_player_command(
+                    self,
+                    conn,
+                    pid,
+                    &input.command,
+                    listener_account_id.as_deref(),
+                )
+                .map_err(PlayerTxnError::Service)
+            })
+            .map_err(player_txn_error)?;
+        self.publish_player_transition(pid, &state, directive);
+        if state.revision != previous_revision
+            && matches!(
+                input.command,
+                PlayerCommand::Variant17(_) | PlayerCommand::Variant19(_)
+            )
+        {
+            self.changes.publish(ChangeTopic::Progress);
         }
-        // Push the new state to everyone subscribed to this player (§6.5).
-        self.subs
-            .publish(pid, &crate::transport::player_state_frame(&state));
-        std::result::Result::Ok(state)
+        Ok(state)
     }
 
     fn enable_share(
@@ -1560,120 +1773,608 @@ impl PlayerService for App {
     }
 }
 
-fn apply_command(cmd: &PlayerCommand, st: &mut models::PlayerStateRow, queue: &mut Vec<String>) {
-    match cmd {
-        PlayerCommand::Variant0(enq) => {
-            let was_empty = queue.is_empty();
-            let at = enq.at_index.map(|i| i as usize).unwrap_or(queue.len());
-            let at = at.min(queue.len());
-            for (i, tid) in enq.track_ids.iter().enumerate() {
-                queue.insert((at + i).min(queue.len()), tid.clone());
-            }
-            if was_empty && !queue.is_empty() {
-                st.current_index = Some(0);
-                st.position_ms = Some(0);
-            }
+fn validate_track_ids(
+    conn: &mut diesel::SqliteConnection,
+    track_ids: &[String],
+) -> Result<(), ServiceError> {
+    for track_id in track_ids {
+        if db(store::get_track(conn, track_id))?.is_none() {
+            return Err(err(404, format!("track not found: {track_id}")));
         }
-        PlayerCommand::Variant1(rem) => {
-            let i = rem.index as usize;
-            if i < queue.len() {
-                queue.remove(i);
-            }
-        }
-        PlayerCommand::Variant2(reorder) => {
-            let (from, to) = (reorder.from_index as usize, reorder.to_index as usize);
-            if from < queue.len() {
-                let item = queue.remove(from);
-                queue.insert(to.min(queue.len()), item);
-            }
-        }
-        PlayerCommand::Variant3(_clear) => {
-            queue.clear();
-            st.current_index = None;
-            st.status = "stopped".to_string();
-        }
-        PlayerCommand::Variant4(play) => {
-            st.status = "playing".to_string();
-            if let Some(i) = play.index {
-                st.current_index = Some(i as i32);
-            } else if st.current_index.is_none() && !queue.is_empty() {
-                st.current_index = Some(0);
-            }
-            st.position_ms = Some(0);
-        }
-        PlayerCommand::Variant5(_pause) => st.status = "paused".to_string(),
-        PlayerCommand::Variant6(_next) => {
-            let cur = st.current_index.unwrap_or(-1);
-            let next = cur + 1;
-            if (next as usize) < queue.len() {
-                st.current_index = Some(next);
-                st.position_ms = Some(0);
-            }
-        }
-        PlayerCommand::Variant7(_prev) => {
-            let cur = st.current_index.unwrap_or(0);
-            if cur > 0 {
-                st.current_index = Some(cur - 1);
-                st.position_ms = Some(0);
-            }
-        }
-        PlayerCommand::Variant8(seek) => st.position_ms = Some(seek.position_ms as i64),
-        PlayerCommand::Variant9(vol) => st.volume = (vol.volume.min(100)) as i32,
+    }
+    Ok(())
+}
+
+fn queue_entries(queue: &[models::QueueItem]) -> Vec<(Option<i32>, String)> {
+    queue
+        .iter()
+        .map(|item| (Some(item.id), item.track_id.clone()))
+        .collect()
+}
+
+fn set_current_item(
+    state: &mut models::PlayerStateRow,
+    queue: &[models::QueueItem],
+    index: Option<usize>,
+) {
+    state.current_index = index.map(|value| value as i32);
+    state.current_queue_item_id = index.and_then(|value| queue.get(value)).map(|item| item.id);
+}
+
+fn normalize_current_item(state: &mut models::PlayerStateRow, queue: &[models::QueueItem]) {
+    let index = state
+        .current_queue_item_id
+        .and_then(|id| queue.iter().position(|item| item.id == id))
+        .or_else(|| {
+            state
+                .current_index
+                .filter(|index| *index >= 0)
+                .map(|index| index as usize)
+                .filter(|index| *index < queue.len())
+        });
+    set_current_item(state, queue, index);
+}
+
+fn begin_playback(state: &mut models::PlayerStateRow, position_ms: u64) {
+    state.status = "playing".to_string();
+    state.position_ms = Some(position_ms.min(i64::MAX as u64) as i64);
+    state.playback_id = Some(uuid::Uuid::now_v7().to_string());
+    state.error = None;
+}
+
+fn load_directive(
+    player_id: &str,
+    state: &models::PlayerStateRow,
+    queue: &[models::QueueItem],
+) -> Option<NodeDirective> {
+    let item_id = state.current_queue_item_id?;
+    let item = queue.iter().find(|item| item.id == item_id)?;
+    Some(NodeDirective::Variant0(DirLoad {
+        op: "load".to_string(),
+        player_id: player_id.to_string(),
+        queue_item_id: item.id.max(0) as u64,
+        playback_id: state.playback_id.clone()?,
+        track_id: item.track_id.clone(),
+        pref: StreamPref {
+            max_bitrate_kbps: None,
+            prefer_original: Some(false),
+            transcode_codec: Some(TranscodeCodec::Aac),
+        },
+        position_ms: state.position_ms.map(|position| position.max(0) as u64),
+    }))
+}
+
+fn select_next_index(
+    state: &models::PlayerStateRow,
+    queue: &[models::QueueItem],
+    natural_completion: bool,
+) -> Option<usize> {
+    if queue.is_empty() {
+        return None;
+    }
+    let current = state
+        .current_queue_item_id
+        .and_then(|id| queue.iter().position(|item| item.id == id))
+        .or_else(|| state.current_index.map(|index| index.max(0) as usize))
+        .unwrap_or(0)
+        .min(queue.len() - 1);
+    if natural_completion && state.repeat_mode == "one" {
+        return Some(current);
+    }
+    if state.shuffle != 0 && queue.len() > 1 {
+        let candidate = rand::thread_rng().gen_range(0..queue.len() - 1);
+        return Some(if candidate >= current {
+            candidate + 1
+        } else {
+            candidate
+        });
+    }
+    if current + 1 < queue.len() {
+        Some(current + 1)
+    } else if state.repeat_mode == "all" {
+        Some(0)
+    } else {
+        None
     }
 }
 
-fn directive_for(
-    cmd: &PlayerCommand,
+fn matches_playback(state: &models::PlayerStateRow, playback_id: &str, queue_item_id: u64) -> bool {
+    state.playback_id.as_deref() == Some(playback_id)
+        && state.current_queue_item_id == i32::try_from(queue_item_id).ok()
+}
+
+fn save_queue_and_reload(
+    conn: &mut diesel::SqliteConnection,
     player_id: &str,
-    st: &models::PlayerStateRow,
-    queue: &[String],
-) -> Option<NodeDirective> {
-    match cmd {
-        PlayerCommand::Variant3(_) => Some(NodeDirective::Variant3(DirStop {
+    entries: &[(Option<i32>, String)],
+) -> Result<Vec<models::QueueItem>, ServiceError> {
+    db(store::set_queue_entries(conn, player_id, entries))?;
+    db(store::queue_items(conn, player_id))
+}
+
+fn restore_player_undo(
+    conn: &mut diesel::SqliteConnection,
+    player_id: &str,
+    current: &models::PlayerStateRow,
+) -> Result<(models::PlayerStateRow, Vec<models::QueueItem>), ServiceError> {
+    let saved = db(store::player_undo_state(conn, player_id))?
+        .ok_or_else(|| err(409, "no queue change to undo"))?;
+    let saved_queue = db(store::player_undo_queue(conn, player_id))?;
+    let entries = saved_queue
+        .iter()
+        .map(|item| (Some(item.queue_item_id), item.track_id.clone()))
+        .collect::<Vec<_>>();
+    let queue = save_queue_and_reload(conn, player_id, &entries)?;
+    let mut state = models::PlayerStateRow {
+        player_id: player_id.to_string(),
+        status: saved.status,
+        current_index: None,
+        position_ms: saved.position_ms,
+        volume: current.volume,
+        repeat_mode: current.repeat_mode.clone(),
+        shuffle: current.shuffle,
+        revision: current.revision.saturating_add(1),
+        playback_id: saved.playback_id,
+        current_queue_item_id: saved.current_queue_item_id,
+        error: saved.error,
+        listener_account_id: saved.listener_account_id,
+    };
+    normalize_current_item(&mut state, &queue);
+    if state.status == "playing" && state.current_queue_item_id.is_some() {
+        let position_ms = state.position_ms.unwrap_or(0).max(0) as u64;
+        begin_playback(&mut state, position_ms);
+    } else {
+        state.playback_id = None;
+    }
+    db(store::clear_player_undo(conn, player_id))?;
+    Ok((state, queue))
+}
+
+fn apply_player_command(
+    app: &App,
+    conn: &mut diesel::SqliteConnection,
+    player_id: &str,
+    command: &PlayerCommand,
+    listener_account_id: Option<&str>,
+) -> Result<(PlayerState, Option<NodeDirective>), ServiceError> {
+    let mut state =
+        db(store::get_state(conn, player_id))?.unwrap_or_else(|| default_player_state(player_id));
+    let mut queue = db(store::queue_items(conn, player_id))?;
+    normalize_current_item(&mut state, &queue);
+    let mut directive = None;
+    let mut changed = true;
+
+    let saves_undo = matches!(
+        command,
+        PlayerCommand::Variant0(_)
+            | PlayerCommand::Variant1(_)
+            | PlayerCommand::Variant2(_)
+            | PlayerCommand::Variant3(_)
+            | PlayerCommand::Variant4(_)
+            | PlayerCommand::Variant5(_)
+            | PlayerCommand::Variant6(_)
+            | PlayerCommand::Variant8(_)
+    );
+    if saves_undo {
+        db(store::save_player_undo(conn, &state, &queue))?;
+    }
+
+    match command {
+        PlayerCommand::Variant0(enqueue) => {
+            validate_track_ids(conn, &enqueue.track_ids)?;
+            let was_empty = queue.is_empty();
+            let mut entries = queue_entries(&queue);
+            let at = enqueue
+                .at_index
+                .map(|index| index as usize)
+                .unwrap_or(entries.len())
+                .min(entries.len());
+            entries.splice(
+                at..at,
+                enqueue
+                    .track_ids
+                    .iter()
+                    .cloned()
+                    .map(|track_id| (None, track_id)),
+            );
+            queue = save_queue_and_reload(conn, player_id, &entries)?;
+            if was_empty {
+                set_current_item(&mut state, &queue, Some(0));
+                state.position_ms = Some(0);
+            } else {
+                normalize_current_item(&mut state, &queue);
+            }
+        }
+        PlayerCommand::Variant1(enqueue) => {
+            validate_track_ids(conn, &enqueue.track_ids)?;
+            let mut entries = queue_entries(&queue);
+            let at = state
+                .current_queue_item_id
+                .and_then(|id| queue.iter().position(|item| item.id == id))
+                .map(|index| index + 1)
+                .unwrap_or(0);
+            entries.splice(
+                at..at,
+                enqueue
+                    .track_ids
+                    .iter()
+                    .cloned()
+                    .map(|track_id| (None, track_id)),
+            );
+            queue = save_queue_and_reload(conn, player_id, &entries)?;
+            if state.current_queue_item_id.is_none() {
+                set_current_item(&mut state, &queue, Some(0));
+                state.position_ms = Some(0);
+            } else {
+                normalize_current_item(&mut state, &queue);
+            }
+        }
+        PlayerCommand::Variant2(remove) => {
+            let index = remove.index as usize;
+            if index >= queue.len() {
+                return Err(err(400, "queue index is out of range"));
+            }
+            remove_queue_item(
+                conn,
+                player_id,
+                &mut state,
+                &mut queue,
+                index,
+                &mut directive,
+            )?;
+        }
+        PlayerCommand::Variant3(remove) => {
+            let id = i32::try_from(remove.queue_item_id)
+                .map_err(|_| err(400, "queue item id is out of range"))?;
+            let index = queue
+                .iter()
+                .position(|item| item.id == id)
+                .ok_or_else(|| err(409, "queue item is no longer present"))?;
+            remove_queue_item(
+                conn,
+                player_id,
+                &mut state,
+                &mut queue,
+                index,
+                &mut directive,
+            )?;
+        }
+        PlayerCommand::Variant4(reorder) => {
+            let from = reorder.from_index as usize;
+            if from >= queue.len() {
+                return Err(err(400, "queue index is out of range"));
+            }
+            let to = (reorder.to_index as usize).min(queue.len() - 1);
+            let mut entries = queue_entries(&queue);
+            let item = entries.remove(from);
+            entries.insert(to, item);
+            queue = save_queue_and_reload(conn, player_id, &entries)?;
+            normalize_current_item(&mut state, &queue);
+        }
+        PlayerCommand::Variant5(moved) => {
+            let item_id = i32::try_from(moved.queue_item_id)
+                .map_err(|_| err(400, "queue item id is out of range"))?;
+            let mut entries = queue_entries(&queue);
+            let from = queue
+                .iter()
+                .position(|item| item.id == item_id)
+                .ok_or_else(|| err(409, "queue item is no longer present"))?;
+            let item = entries.remove(from);
+            let to = match moved.before_queue_item_id {
+                Some(before) => {
+                    let before = i32::try_from(before)
+                        .map_err(|_| err(400, "queue item id is out of range"))?;
+                    entries
+                        .iter()
+                        .position(|entry| entry.0 == Some(before))
+                        .ok_or_else(|| err(409, "destination queue item is no longer present"))?
+                }
+                None => entries.len(),
+            };
+            entries.insert(to, item);
+            queue = save_queue_and_reload(conn, player_id, &entries)?;
+            normalize_current_item(&mut state, &queue);
+        }
+        PlayerCommand::Variant6(_) => {
+            queue = save_queue_and_reload(conn, player_id, &[])?;
+            set_current_item(&mut state, &queue, None);
+            state.status = "stopped".to_string();
+            state.position_ms = Some(0);
+            state.playback_id = None;
+            state.error = None;
+            directive = Some(NodeDirective::Variant3(DirStop {
+                op: "stop".to_string(),
+                player_id: player_id.to_string(),
+            }));
+        }
+        PlayerCommand::Variant7(play) => {
+            if queue.is_empty() {
+                return Err(err(409, "queue is empty"));
+            }
+            let requested = if let Some(item_id) = play.queue_item_id {
+                let id = i32::try_from(item_id)
+                    .map_err(|_| err(400, "queue item id is out of range"))?;
+                Some(
+                    queue
+                        .iter()
+                        .position(|item| item.id == id)
+                        .ok_or_else(|| err(409, "queue item is no longer present"))?,
+                )
+            } else {
+                play.index.map(|index| index as usize)
+            };
+            let current = state.current_index.map(|index| index.max(0) as usize);
+            let index = requested.or(current).unwrap_or(0);
+            if index >= queue.len() {
+                return Err(err(400, "queue index is out of range"));
+            }
+            let resume = requested.is_none() && state.status == "paused";
+            set_current_item(&mut state, &queue, Some(index));
+            let position_ms = if resume {
+                state.position_ms.unwrap_or(0).max(0) as u64
+            } else {
+                0
+            };
+            begin_playback(&mut state, position_ms);
+            if let Some(listener) = listener_account_id {
+                state.listener_account_id = Some(listener.to_string());
+            }
+            directive = load_directive(player_id, &state, &queue);
+        }
+        PlayerCommand::Variant8(replace) => {
+            validate_track_ids(conn, &replace.track_ids)?;
+            let entries = replace
+                .track_ids
+                .iter()
+                .cloned()
+                .map(|track_id| (None, track_id))
+                .collect::<Vec<_>>();
+            queue = save_queue_and_reload(conn, player_id, &entries)?;
+            let index = replace.start_index.unwrap_or(0) as usize;
+            if index >= queue.len() {
+                return Err(err(400, "queue index is out of range"));
+            }
+            set_current_item(&mut state, &queue, Some(index));
+            begin_playback(&mut state, replace.position_ms.unwrap_or(0));
+            if let Some(listener) = listener_account_id {
+                state.listener_account_id = Some(listener.to_string());
+            }
+            directive = load_directive(player_id, &state, &queue);
+        }
+        PlayerCommand::Variant9(_) => {
+            state.status = "paused".to_string();
+            state.error = None;
+            directive = Some(NodeDirective::Variant1(DirPause {
+                op: "pause".to_string(),
+                player_id: player_id.to_string(),
+            }));
+        }
+        PlayerCommand::Variant10(_) => {
+            if let Some(index) = select_next_index(&state, &queue, false) {
+                set_current_item(&mut state, &queue, Some(index));
+                begin_playback(&mut state, 0);
+                if let Some(listener) = listener_account_id {
+                    state.listener_account_id = Some(listener.to_string());
+                }
+                directive = load_directive(player_id, &state, &queue);
+            } else {
+                state.status = "stopped".to_string();
+                state.position_ms = Some(0);
+                state.playback_id = None;
+                directive = Some(NodeDirective::Variant3(DirStop {
+                    op: "stop".to_string(),
+                    player_id: player_id.to_string(),
+                }));
+            }
+        }
+        PlayerCommand::Variant11(_) => {
+            if queue.is_empty() {
+                return Err(err(409, "queue is empty"));
+            }
+            let current = state.current_index.unwrap_or(0).max(0) as usize;
+            set_current_item(&mut state, &queue, Some(current.saturating_sub(1)));
+            begin_playback(&mut state, 0);
+            if let Some(listener) = listener_account_id {
+                state.listener_account_id = Some(listener.to_string());
+            }
+            directive = load_directive(player_id, &state, &queue);
+        }
+        PlayerCommand::Variant12(seek) => {
+            if state.current_queue_item_id.is_none() {
+                return Err(err(409, "no current queue item"));
+            }
+            begin_playback(&mut state, seek.position_ms);
+            directive = load_directive(player_id, &state, &queue);
+        }
+        PlayerCommand::Variant13(volume) => {
+            state.volume = volume.volume.min(100) as i32;
+            directive = Some(NodeDirective::Variant4(DirVolume {
+                op: "volume".to_string(),
+                player_id: player_id.to_string(),
+                volume: volume.volume.min(100),
+            }));
+        }
+        PlayerCommand::Variant14(mode) => {
+            state.repeat_mode = repeat_mode_str(&mode.repeat_mode).to_string();
+        }
+        PlayerCommand::Variant15(shuffle) => {
+            state.shuffle = i32::from(shuffle.shuffle);
+        }
+        PlayerCommand::Variant16(_) => {
+            let restored = restore_player_undo(conn, player_id, &state)?;
+            state = restored.0;
+            queue = restored.1;
+            directive = if state.status == "playing" {
+                load_directive(player_id, &state, &queue)
+            } else if state.status == "paused" {
+                Some(NodeDirective::Variant1(DirPause {
+                    op: "pause".to_string(),
+                    player_id: player_id.to_string(),
+                }))
+            } else {
+                Some(NodeDirective::Variant3(DirStop {
+                    op: "stop".to_string(),
+                    player_id: player_id.to_string(),
+                }))
+            };
+        }
+        PlayerCommand::Variant17(completed) => {
+            if !matches_playback(&state, &completed.playback_id, completed.queue_item_id) {
+                changed = false;
+            } else {
+                record_completed_item(conn, &state, &queue)?;
+                if let Some(index) = select_next_index(&state, &queue, true) {
+                    set_current_item(&mut state, &queue, Some(index));
+                    begin_playback(&mut state, 0);
+                    directive = load_directive(player_id, &state, &queue);
+                } else {
+                    state.status = "stopped".to_string();
+                    state.position_ms = Some(0);
+                    state.playback_id = None;
+                }
+            }
+        }
+        PlayerCommand::Variant18(failed) => {
+            if !matches_playback(&state, &failed.playback_id, failed.queue_item_id) {
+                changed = false;
+            } else {
+                state.status = "stopped".to_string();
+                state.playback_id = None;
+                state.error = Some(failed.error.clone());
+            }
+        }
+        PlayerCommand::Variant19(observed) => {
+            if !matches_playback(&state, &observed.playback_id, observed.queue_item_id) {
+                changed = false;
+            } else {
+                state.status = status_str(&observed.status).to_string();
+                state.position_ms = Some(observed.position_ms.min(i64::MAX as u64) as i64);
+                state.error = None;
+                let _ = record_player_progress(conn, &state, &queue, false)?;
+            }
+        }
+    }
+
+    if changed {
+        if !matches!(command, PlayerCommand::Variant16(_)) {
+            state.revision = state.revision.saturating_add(1);
+        }
+        db(store::upsert_state(conn, &state))?;
+    }
+    let wire = app.load_player_state(conn, player_id)?;
+    Ok((wire, directive))
+}
+
+fn remove_queue_item(
+    conn: &mut diesel::SqliteConnection,
+    player_id: &str,
+    state: &mut models::PlayerStateRow,
+    queue: &mut Vec<models::QueueItem>,
+    index: usize,
+    directive: &mut Option<NodeDirective>,
+) -> Result<(), ServiceError> {
+    let removed_current = state.current_queue_item_id == Some(queue[index].id);
+    let mut entries = queue_entries(queue);
+    entries.remove(index);
+    *queue = save_queue_and_reload(conn, player_id, &entries)?;
+    if queue.is_empty() {
+        set_current_item(state, queue, None);
+        state.status = "stopped".to_string();
+        state.position_ms = Some(0);
+        state.playback_id = None;
+        *directive = Some(NodeDirective::Variant3(DirStop {
             op: "stop".to_string(),
             player_id: player_id.to_string(),
-        })),
-        PlayerCommand::Variant4(_) | PlayerCommand::Variant6(_) | PlayerCommand::Variant7(_) => {
-            let idx = st.current_index? as usize;
-            let track_id = queue.get(idx)?.clone();
-            Some(NodeDirective::Variant0(DirLoad {
-                op: "load".to_string(),
-                player_id: player_id.to_string(),
-                track_id,
-                pref: StreamPref {
-                    max_bitrate_kbps: None,
-                    prefer_original: Some(false),
-                    transcode_codec: Some(TranscodeCodec::Aac),
-                },
-                position_ms: st.position_ms.map(|p| p.max(0) as u64),
-            }))
+        }));
+    } else if removed_current {
+        set_current_item(state, queue, Some(index.min(queue.len() - 1)));
+        state.position_ms = Some(0);
+        state.playback_id = None;
+        if state.status == "playing" {
+            begin_playback(state, 0);
+            *directive = load_directive(player_id, state, queue);
         }
-        PlayerCommand::Variant5(_) => Some(NodeDirective::Variant1(DirPause {
-            op: "pause".to_string(),
-            player_id: player_id.to_string(),
-        })),
-        PlayerCommand::Variant8(seek) => {
-            let idx = st.current_index? as usize;
-            let track_id = queue.get(idx)?.clone();
-            Some(NodeDirective::Variant0(DirLoad {
-                op: "load".to_string(),
-                player_id: player_id.to_string(),
-                track_id,
-                pref: StreamPref {
-                    max_bitrate_kbps: None,
-                    prefer_original: Some(false),
-                    transcode_codec: Some(TranscodeCodec::Aac),
-                },
-                position_ms: Some(seek.position_ms),
-            }))
-        }
-        PlayerCommand::Variant9(vol) => Some(NodeDirective::Variant4(DirVolume {
-            op: "volume".to_string(),
-            player_id: player_id.to_string(),
-            volume: vol.volume.min(100),
-        })),
-        _ => None,
+    } else {
+        normalize_current_item(state, queue);
     }
+    Ok(())
+}
+
+fn record_completed_item(
+    conn: &mut diesel::SqliteConnection,
+    state: &models::PlayerStateRow,
+    queue: &[models::QueueItem],
+) -> Result<(), ServiceError> {
+    let Some(account_id) = state.listener_account_id.as_deref() else {
+        return Ok(());
+    };
+    let Some(item_id) = state.current_queue_item_id else {
+        return Ok(());
+    };
+    let Some(item) = queue.iter().find(|item| item.id == item_id) else {
+        return Ok(());
+    };
+    let Some(track) = db(store::get_track(conn, &item.track_id))? else {
+        return Ok(());
+    };
+    let _ = db(store::insert_listen(conn, account_id, &track.id))?;
+    let _ = record_player_progress(conn, state, queue, true)?;
+    Ok(())
+}
+
+fn record_player_progress(
+    conn: &mut diesel::SqliteConnection,
+    state: &models::PlayerStateRow,
+    queue: &[models::QueueItem],
+    completed: bool,
+) -> Result<bool, ServiceError> {
+    let Some(account_id) = state.listener_account_id.as_deref() else {
+        return Ok(false);
+    };
+    let Some(item_id) = state.current_queue_item_id else {
+        return Ok(false);
+    };
+    let Some(item) = queue.iter().find(|item| item.id == item_id) else {
+        return Ok(false);
+    };
+    let Some(track) = db(store::get_track(conn, &item.track_id))? else {
+        return Ok(false);
+    };
+    if track.library_id != "lib:audiobook" {
+        return Ok(false);
+    }
+    let position = if completed {
+        track.duration_ms.max(0)
+    } else {
+        state
+            .position_ms
+            .unwrap_or(0)
+            .clamp(0, track.duration_ms.max(0))
+    };
+    if !completed {
+        let existing = db(store::audiobook_progress_for_tracks(
+            conn,
+            account_id,
+            std::slice::from_ref(&track.id),
+        ))?;
+        if existing
+            .first()
+            .is_some_and(|saved| (saved.position_ms - position).abs() < 10_000)
+        {
+            return Ok(false);
+        }
+    }
+    db(store::upsert_audiobook_progress(
+        conn,
+        &models::AudiobookProgress {
+            account_id: account_id.to_string(),
+            track_id: track.id,
+            position_ms: position,
+            completed: i32::from(completed),
+            updated_at: Utc::now().to_rfc3339(),
+        },
+    ))?;
+    Ok(true)
 }
 
 // ================================================================== MediaService

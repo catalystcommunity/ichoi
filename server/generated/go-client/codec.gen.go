@@ -3361,7 +3361,7 @@ func DecodePlayer(csilData []byte) (Player, error) {
 
 // csilEncQueueItem builds the canonical CBOR value tree for a QueueItem.
 func csilEncQueueItem(csilV QueueItem) cborValue {
-	csilEntries := make(cborMap, 0, 5)
+	csilEntries := make(cborMap, 0, 6)
 	if csilV.Title != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("title"), cborText((*csilV.Title))})
 	}
@@ -3375,12 +3375,24 @@ func csilEncQueueItem(csilV QueueItem) cborValue {
 	if csilV.DurationMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("duration_ms"), cborUint((*csilV.DurationMs))})
 	}
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
 	return csilEntries
 }
 
 // csilDecQueueItem reconstructs a QueueItem from a decoded CBOR value tree.
 func csilDecQueueItem(csilRoot cborValue) (QueueItem, error) {
 	var csilOut QueueItem
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "track_id")
 		if csilErr != nil {
@@ -3457,14 +3469,24 @@ func DecodeQueueItem(csilData []byte) (QueueItem, error) {
 
 // csilEncPlayerState builds the canonical CBOR value tree for a PlayerState.
 func csilEncPlayerState(csilV PlayerState) cborValue {
-	csilEntries := make(cborMap, 0, 6)
+	csilEntries := make(cborMap, 0, 12)
+	if csilV.Error != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("error"), cborText((*csilV.Error))})
+	}
 	csilEntries = append(csilEntries, cborEntry{cborText("queue"), cborEncArray(csilV.Queue, func(csilElem QueueItem) cborValue { return csilEncQueueItem(csilElem) })})
 	csilEntries = append(csilEntries, cborEntry{cborText("status"), cborText(csilV.Status)})
 	csilEntries = append(csilEntries, cborEntry{cborText("volume"), cborUint(csilV.Volume)})
+	csilEntries = append(csilEntries, cborEntry{cborText("shuffle"), cborBool(csilV.Shuffle)})
+	csilEntries = append(csilEntries, cborEntry{cborText("can_undo"), cborBool(csilV.CanUndo)})
+	csilEntries = append(csilEntries, cborEntry{cborText("revision"), cborUint(csilV.Revision)})
 	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
+	if csilV.PlaybackId != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("playback_id"), cborText((*csilV.PlaybackId))})
+	}
 	if csilV.PositionMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint((*csilV.PositionMs))})
 	}
+	csilEntries = append(csilEntries, cborEntry{cborText("repeat_mode"), cborText(csilV.RepeatMode)})
 	if csilV.CurrentIndex != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("current_index"), cborUint((*csilV.CurrentIndex))})
 	}
@@ -3487,6 +3509,17 @@ func csilDecPlayerState(csilRoot cborValue) (PlayerState, error) {
 			return csilOut, csilErr
 		}
 		csilOut.PlayerId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "revision")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Revision = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "status")
@@ -3520,6 +3553,13 @@ func csilDecPlayerState(csilRoot cborValue) (PlayerState, error) {
 		}
 		csilOut.CurrentIndex = &csilVal
 	}
+	if csilField, csilOk := cborMapGet(csilRoot, "playback_id"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaybackId = &csilVal
+	}
 	if csilField, csilOk := cborMapGet(csilRoot, "position_ms"); csilOk {
 		csilVal, csilErr := (cborAsU64)(csilField)
 		if csilErr != nil {
@@ -3537,6 +3577,60 @@ func csilDecPlayerState(csilRoot cborValue) (PlayerState, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Volume = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "repeat_mode")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (RepeatMode, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "off" || csilInner == "all" || csilInner == "one") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return RepeatMode(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.RepeatMode = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "shuffle")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Shuffle = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "error"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Error = &csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "can_undo")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CanUndo = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "queue")
@@ -3781,6 +3875,68 @@ func DecodeCmdEnqueue(csilData []byte) (CmdEnqueue, error) {
 	return csilDecCmdEnqueue(csilRoot)
 }
 
+// csilEncCmdEnqueueNext builds the canonical CBOR value tree for a CmdEnqueueNext.
+func csilEncCmdEnqueueNext(csilV CmdEnqueueNext) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("enqueue-next")})
+	csilEntries = append(csilEntries, cborEntry{cborText("track_ids"), cborEncArray(csilV.TrackIds, func(csilElem TrackId) cborValue { return cborText(csilElem) })})
+	return csilEntries
+}
+
+// csilDecCmdEnqueueNext reconstructs a CmdEnqueueNext from a decoded CBOR value tree.
+func csilDecCmdEnqueueNext(csilRoot cborValue) (CmdEnqueueNext, error) {
+	var csilOut CmdEnqueueNext
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("enqueue-next")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "enqueue-next", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_ids")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TrackId, error) {
+			return cborDecArray(csilV, func(csilV cborValue) (TrackId, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				return TrackId(csilInner), csilErr
+			})
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackIds = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdEnqueueNext encodes a CmdEnqueueNext to canonical CSIL CBOR bytes.
+func EncodeCmdEnqueueNext(csilV CmdEnqueueNext) []byte {
+	return cborEncode(csilEncCmdEnqueueNext(csilV))
+}
+
+// DecodeCmdEnqueueNext decodes canonical CSIL CBOR bytes into a CmdEnqueueNext.
+func DecodeCmdEnqueueNext(csilData []byte) (CmdEnqueueNext, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdEnqueueNext
+		return csilZero, csilErr
+	}
+	return csilDecCmdEnqueueNext(csilRoot)
+}
+
 // csilEncCmdRemove builds the canonical CBOR value tree for a CmdRemove.
 func csilEncCmdRemove(csilV CmdRemove) cborValue {
 	csilEntries := make(cborMap, 0, 2)
@@ -3836,6 +3992,63 @@ func DecodeCmdRemove(csilData []byte) (CmdRemove, error) {
 		return csilZero, csilErr
 	}
 	return csilDecCmdRemove(csilRoot)
+}
+
+// csilEncCmdRemoveItem builds the canonical CBOR value tree for a CmdRemoveItem.
+func csilEncCmdRemoveItem(csilV CmdRemoveItem) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("remove-item")})
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
+	return csilEntries
+}
+
+// csilDecCmdRemoveItem reconstructs a CmdRemoveItem from a decoded CBOR value tree.
+func csilDecCmdRemoveItem(csilRoot cborValue) (CmdRemoveItem, error) {
+	var csilOut CmdRemoveItem
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("remove-item")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "remove-item", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdRemoveItem encodes a CmdRemoveItem to canonical CSIL CBOR bytes.
+func EncodeCmdRemoveItem(csilV CmdRemoveItem) []byte {
+	return cborEncode(csilEncCmdRemoveItem(csilV))
+}
+
+// DecodeCmdRemoveItem decodes canonical CSIL CBOR bytes into a CmdRemoveItem.
+func DecodeCmdRemoveItem(csilData []byte) (CmdRemoveItem, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdRemoveItem
+		return csilZero, csilErr
+	}
+	return csilDecCmdRemoveItem(csilRoot)
 }
 
 // csilEncCmdReorder builds the canonical CBOR value tree for a CmdReorder.
@@ -3907,6 +4120,73 @@ func DecodeCmdReorder(csilData []byte) (CmdReorder, error) {
 	return csilDecCmdReorder(csilRoot)
 }
 
+// csilEncCmdMoveItem builds the canonical CBOR value tree for a CmdMoveItem.
+func csilEncCmdMoveItem(csilV CmdMoveItem) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("move-item")})
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
+	if csilV.BeforeQueueItemId != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("before_queue_item_id"), cborUint((*csilV.BeforeQueueItemId))})
+	}
+	return csilEntries
+}
+
+// csilDecCmdMoveItem reconstructs a CmdMoveItem from a decoded CBOR value tree.
+func csilDecCmdMoveItem(csilRoot cborValue) (CmdMoveItem, error) {
+	var csilOut CmdMoveItem
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("move-item")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "move-item", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "before_queue_item_id"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.BeforeQueueItemId = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdMoveItem encodes a CmdMoveItem to canonical CSIL CBOR bytes.
+func EncodeCmdMoveItem(csilV CmdMoveItem) []byte {
+	return cborEncode(csilEncCmdMoveItem(csilV))
+}
+
+// DecodeCmdMoveItem decodes canonical CSIL CBOR bytes into a CmdMoveItem.
+func DecodeCmdMoveItem(csilData []byte) (CmdMoveItem, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdMoveItem
+		return csilZero, csilErr
+	}
+	return csilDecCmdMoveItem(csilRoot)
+}
+
 // csilEncCmdClear builds the canonical CBOR value tree for a CmdClear.
 func csilEncCmdClear(csilV CmdClear) cborValue {
 	csilEntries := make(cborMap, 0, 1)
@@ -3954,10 +4234,13 @@ func DecodeCmdClear(csilData []byte) (CmdClear, error) {
 
 // csilEncCmdPlay builds the canonical CBOR value tree for a CmdPlay.
 func csilEncCmdPlay(csilV CmdPlay) cborValue {
-	csilEntries := make(cborMap, 0, 2)
+	csilEntries := make(cborMap, 0, 3)
 	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("play")})
 	if csilV.Index != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("index"), cborUint((*csilV.Index))})
+	}
+	if csilV.QueueItemId != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint((*csilV.QueueItemId))})
 	}
 	return csilEntries
 }
@@ -3989,6 +4272,13 @@ func csilDecCmdPlay(csilRoot cborValue) (CmdPlay, error) {
 		}
 		csilOut.Index = &csilVal
 	}
+	if csilField, csilOk := cborMapGet(csilRoot, "queue_item_id"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = &csilVal
+	}
 	return csilOut, nil
 }
 
@@ -4005,6 +4295,88 @@ func DecodeCmdPlay(csilData []byte) (CmdPlay, error) {
 		return csilZero, csilErr
 	}
 	return csilDecCmdPlay(csilRoot)
+}
+
+// csilEncCmdReplaceAndPlay builds the canonical CBOR value tree for a CmdReplaceAndPlay.
+func csilEncCmdReplaceAndPlay(csilV CmdReplaceAndPlay) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("replace-and-play")})
+	csilEntries = append(csilEntries, cborEntry{cborText("track_ids"), cborEncArray(csilV.TrackIds, func(csilElem TrackId) cborValue { return cborText(csilElem) })})
+	if csilV.PositionMs != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint((*csilV.PositionMs))})
+	}
+	if csilV.StartIndex != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("start_index"), cborUint((*csilV.StartIndex))})
+	}
+	return csilEntries
+}
+
+// csilDecCmdReplaceAndPlay reconstructs a CmdReplaceAndPlay from a decoded CBOR value tree.
+func csilDecCmdReplaceAndPlay(csilRoot cborValue) (CmdReplaceAndPlay, error) {
+	var csilOut CmdReplaceAndPlay
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("replace-and-play")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "replace-and-play", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "track_ids")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]TrackId, error) {
+			return cborDecArray(csilV, func(csilV cborValue) (TrackId, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				return TrackId(csilInner), csilErr
+			})
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.TrackIds = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "start_index"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StartIndex = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "position_ms"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PositionMs = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdReplaceAndPlay encodes a CmdReplaceAndPlay to canonical CSIL CBOR bytes.
+func EncodeCmdReplaceAndPlay(csilV CmdReplaceAndPlay) []byte {
+	return cborEncode(csilEncCmdReplaceAndPlay(csilV))
+}
+
+// DecodeCmdReplaceAndPlay decodes canonical CSIL CBOR bytes into a CmdReplaceAndPlay.
+func DecodeCmdReplaceAndPlay(csilData []byte) (CmdReplaceAndPlay, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdReplaceAndPlay
+		return csilZero, csilErr
+	}
+	return csilDecCmdReplaceAndPlay(csilRoot)
 }
 
 // csilEncCmdPause builds the canonical CBOR value tree for a CmdPause.
@@ -4256,6 +4628,436 @@ func DecodeCmdVolume(csilData []byte) (CmdVolume, error) {
 	return csilDecCmdVolume(csilRoot)
 }
 
+// csilEncCmdSetRepeat builds the canonical CBOR value tree for a CmdSetRepeat.
+func csilEncCmdSetRepeat(csilV CmdSetRepeat) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("set-repeat")})
+	csilEntries = append(csilEntries, cborEntry{cborText("repeat_mode"), cborText(csilV.RepeatMode)})
+	return csilEntries
+}
+
+// csilDecCmdSetRepeat reconstructs a CmdSetRepeat from a decoded CBOR value tree.
+func csilDecCmdSetRepeat(csilRoot cborValue) (CmdSetRepeat, error) {
+	var csilOut CmdSetRepeat
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("set-repeat")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "set-repeat", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "repeat_mode")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (RepeatMode, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "off" || csilInner == "all" || csilInner == "one") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return RepeatMode(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.RepeatMode = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdSetRepeat encodes a CmdSetRepeat to canonical CSIL CBOR bytes.
+func EncodeCmdSetRepeat(csilV CmdSetRepeat) []byte {
+	return cborEncode(csilEncCmdSetRepeat(csilV))
+}
+
+// DecodeCmdSetRepeat decodes canonical CSIL CBOR bytes into a CmdSetRepeat.
+func DecodeCmdSetRepeat(csilData []byte) (CmdSetRepeat, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdSetRepeat
+		return csilZero, csilErr
+	}
+	return csilDecCmdSetRepeat(csilRoot)
+}
+
+// csilEncCmdSetShuffle builds the canonical CBOR value tree for a CmdSetShuffle.
+func csilEncCmdSetShuffle(csilV CmdSetShuffle) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("set-shuffle")})
+	csilEntries = append(csilEntries, cborEntry{cborText("shuffle"), cborBool(csilV.Shuffle)})
+	return csilEntries
+}
+
+// csilDecCmdSetShuffle reconstructs a CmdSetShuffle from a decoded CBOR value tree.
+func csilDecCmdSetShuffle(csilRoot cborValue) (CmdSetShuffle, error) {
+	var csilOut CmdSetShuffle
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("set-shuffle")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "set-shuffle", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "shuffle")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Shuffle = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdSetShuffle encodes a CmdSetShuffle to canonical CSIL CBOR bytes.
+func EncodeCmdSetShuffle(csilV CmdSetShuffle) []byte {
+	return cborEncode(csilEncCmdSetShuffle(csilV))
+}
+
+// DecodeCmdSetShuffle decodes canonical CSIL CBOR bytes into a CmdSetShuffle.
+func DecodeCmdSetShuffle(csilData []byte) (CmdSetShuffle, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdSetShuffle
+		return csilZero, csilErr
+	}
+	return csilDecCmdSetShuffle(csilRoot)
+}
+
+// csilEncCmdUndo builds the canonical CBOR value tree for a CmdUndo.
+func csilEncCmdUndo(csilV CmdUndo) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("undo")})
+	return csilEntries
+}
+
+// csilDecCmdUndo reconstructs a CmdUndo from a decoded CBOR value tree.
+func csilDecCmdUndo(csilRoot cborValue) (CmdUndo, error) {
+	var csilOut CmdUndo
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("undo")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "undo", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdUndo encodes a CmdUndo to canonical CSIL CBOR bytes.
+func EncodeCmdUndo(csilV CmdUndo) []byte {
+	return cborEncode(csilEncCmdUndo(csilV))
+}
+
+// DecodeCmdUndo decodes canonical CSIL CBOR bytes into a CmdUndo.
+func DecodeCmdUndo(csilData []byte) (CmdUndo, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdUndo
+		return csilZero, csilErr
+	}
+	return csilDecCmdUndo(csilRoot)
+}
+
+// csilEncCmdPlaybackCompleted builds the canonical CBOR value tree for a CmdPlaybackCompleted.
+func csilEncCmdPlaybackCompleted(csilV CmdPlaybackCompleted) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("playback-completed")})
+	csilEntries = append(csilEntries, cborEntry{cborText("playback_id"), cborText(csilV.PlaybackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
+	return csilEntries
+}
+
+// csilDecCmdPlaybackCompleted reconstructs a CmdPlaybackCompleted from a decoded CBOR value tree.
+func csilDecCmdPlaybackCompleted(csilRoot cborValue) (CmdPlaybackCompleted, error) {
+	var csilOut CmdPlaybackCompleted
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("playback-completed")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "playback-completed", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "playback_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaybackId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdPlaybackCompleted encodes a CmdPlaybackCompleted to canonical CSIL CBOR bytes.
+func EncodeCmdPlaybackCompleted(csilV CmdPlaybackCompleted) []byte {
+	return cborEncode(csilEncCmdPlaybackCompleted(csilV))
+}
+
+// DecodeCmdPlaybackCompleted decodes canonical CSIL CBOR bytes into a CmdPlaybackCompleted.
+func DecodeCmdPlaybackCompleted(csilData []byte) (CmdPlaybackCompleted, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdPlaybackCompleted
+		return csilZero, csilErr
+	}
+	return csilDecCmdPlaybackCompleted(csilRoot)
+}
+
+// csilEncCmdPlaybackFailed builds the canonical CBOR value tree for a CmdPlaybackFailed.
+func csilEncCmdPlaybackFailed(csilV CmdPlaybackFailed) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("playback-failed")})
+	csilEntries = append(csilEntries, cborEntry{cborText("error"), cborText(csilV.Error)})
+	csilEntries = append(csilEntries, cborEntry{cborText("playback_id"), cborText(csilV.PlaybackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
+	return csilEntries
+}
+
+// csilDecCmdPlaybackFailed reconstructs a CmdPlaybackFailed from a decoded CBOR value tree.
+func csilDecCmdPlaybackFailed(csilRoot cborValue) (CmdPlaybackFailed, error) {
+	var csilOut CmdPlaybackFailed
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("playback-failed")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "playback-failed", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "playback_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaybackId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "error")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Error = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdPlaybackFailed encodes a CmdPlaybackFailed to canonical CSIL CBOR bytes.
+func EncodeCmdPlaybackFailed(csilV CmdPlaybackFailed) []byte {
+	return cborEncode(csilEncCmdPlaybackFailed(csilV))
+}
+
+// DecodeCmdPlaybackFailed decodes canonical CSIL CBOR bytes into a CmdPlaybackFailed.
+func DecodeCmdPlaybackFailed(csilData []byte) (CmdPlaybackFailed, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdPlaybackFailed
+		return csilZero, csilErr
+	}
+	return csilDecCmdPlaybackFailed(csilRoot)
+}
+
+// csilEncCmdPlaybackState builds the canonical CBOR value tree for a CmdPlaybackState.
+func csilEncCmdPlaybackState(csilV CmdPlaybackState) cborValue {
+	csilEntries := make(cborMap, 0, 5)
+	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("playback-state")})
+	csilEntries = append(csilEntries, cborEntry{cborText("status"), cborText(csilV.Status)})
+	csilEntries = append(csilEntries, cborEntry{cborText("playback_id"), cborText(csilV.PlaybackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint(csilV.PositionMs)})
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
+	return csilEntries
+}
+
+// csilDecCmdPlaybackState reconstructs a CmdPlaybackState from a decoded CBOR value tree.
+func csilDecCmdPlaybackState(csilRoot cborValue) (CmdPlaybackState, error) {
+	var csilOut CmdPlaybackState
+	{
+		csilField, csilErr := cborRequire(csilRoot, "op")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (string, error) {
+			if !cborEqual(csilV, cborText("playback-state")) {
+				var csilZero string
+				return csilZero, fmt.Errorf("csil cbor: literal mismatch")
+			}
+			return "playback-state", nil
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Op = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "playback_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaybackId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "status")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (PlayerStatus, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "stopped" || csilInner == "playing" || csilInner == "paused") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return PlayerStatus(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Status = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "position_ms")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PositionMs = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeCmdPlaybackState encodes a CmdPlaybackState to canonical CSIL CBOR bytes.
+func EncodeCmdPlaybackState(csilV CmdPlaybackState) []byte {
+	return cborEncode(csilEncCmdPlaybackState(csilV))
+}
+
+// DecodeCmdPlaybackState decodes canonical CSIL CBOR bytes into a CmdPlaybackState.
+func DecodeCmdPlaybackState(csilData []byte) (CmdPlaybackState, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero CmdPlaybackState
+		return csilZero, csilErr
+	}
+	return csilDecCmdPlaybackState(csilRoot)
+}
+
 // csilEncCommandRequest builds the canonical CBOR value tree for a CommandRequest.
 func csilEncCommandRequest(csilV CommandRequest) cborValue {
 	csilEntries := make(cborMap, 0, 2)
@@ -4430,10 +5232,11 @@ func DecodeShareResult(csilData []byte) (ShareResult, error) {
 
 // csilEncMediaOpen builds the canonical CBOR value tree for a MediaOpen.
 func csilEncMediaOpen(csilV MediaOpen) cborValue {
-	csilEntries := make(cborMap, 0, 3)
+	csilEntries := make(cborMap, 0, 4)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("open")})
 	csilEntries = append(csilEntries, cborEntry{cborText("pref"), csilEncStreamPref(csilV.Pref)})
 	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	return csilEntries
 }
 
@@ -4456,6 +5259,17 @@ func csilDecMediaOpen(csilRoot cborValue) (MediaOpen, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "track_id")
@@ -4502,8 +5316,9 @@ func DecodeMediaOpen(csilData []byte) (MediaOpen, error) {
 
 // csilEncMediaSeek builds the canonical CBOR value tree for a MediaSeek.
 func csilEncMediaSeek(csilV MediaSeek) cborValue {
-	csilEntries := make(cborMap, 0, 2)
+	csilEntries := make(cborMap, 0, 3)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("seek")})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint(csilV.PositionMs)})
 	return csilEntries
 }
@@ -4527,6 +5342,17 @@ func csilDecMediaSeek(csilRoot cborValue) (MediaSeek, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "position_ms")
@@ -4559,8 +5385,9 @@ func DecodeMediaSeek(csilData []byte) (MediaSeek, error) {
 
 // csilEncMediaPause builds the canonical CBOR value tree for a MediaPause.
 func csilEncMediaPause(csilV MediaPause) cborValue {
-	csilEntries := make(cborMap, 0, 1)
+	csilEntries := make(cborMap, 0, 2)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("pause")})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	return csilEntries
 }
 
@@ -4584,6 +5411,17 @@ func csilDecMediaPause(csilRoot cborValue) (MediaPause, error) {
 		}
 		csilOut.Kind = csilVal
 	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
+	}
 	return csilOut, nil
 }
 
@@ -4604,8 +5442,9 @@ func DecodeMediaPause(csilData []byte) (MediaPause, error) {
 
 // csilEncMediaResume builds the canonical CBOR value tree for a MediaResume.
 func csilEncMediaResume(csilV MediaResume) cborValue {
-	csilEntries := make(cborMap, 0, 1)
+	csilEntries := make(cborMap, 0, 2)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("resume")})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	return csilEntries
 }
 
@@ -4629,6 +5468,17 @@ func csilDecMediaResume(csilRoot cborValue) (MediaResume, error) {
 		}
 		csilOut.Kind = csilVal
 	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
+	}
 	return csilOut, nil
 }
 
@@ -4649,8 +5499,9 @@ func DecodeMediaResume(csilData []byte) (MediaResume, error) {
 
 // csilEncMediaStop builds the canonical CBOR value tree for a MediaStop.
 func csilEncMediaStop(csilV MediaStop) cborValue {
-	csilEntries := make(cborMap, 0, 1)
+	csilEntries := make(cborMap, 0, 2)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("stop")})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	return csilEntries
 }
 
@@ -4674,6 +5525,17 @@ func csilDecMediaStop(csilRoot cborValue) (MediaStop, error) {
 		}
 		csilOut.Kind = csilVal
 	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
+	}
 	return csilOut, nil
 }
 
@@ -4694,10 +5556,11 @@ func DecodeMediaStop(csilData []byte) (MediaStop, error) {
 
 // csilEncMediaHeader builds the canonical CBOR value tree for a MediaHeader.
 func csilEncMediaHeader(csilV MediaHeader) cborValue {
-	csilEntries := make(cborMap, 0, 9)
+	csilEntries := make(cborMap, 0, 10)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("header")})
 	csilEntries = append(csilEntries, cborEntry{cborText("codec"), cborText(csilV.Codec)})
 	csilEntries = append(csilEntries, cborEntry{cborText("channels"), cborUint(csilV.Channels)})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	csilEntries = append(csilEntries, cborEntry{cborText("transcoded"), cborBool(csilV.Transcoded)})
 	if csilV.DurationMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("duration_ms"), cborUint((*csilV.DurationMs))})
@@ -4730,6 +5593,17 @@ func csilDecMediaHeader(csilRoot cborValue) (MediaHeader, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "codec")
@@ -4845,10 +5719,11 @@ func DecodeMediaHeader(csilData []byte) (MediaHeader, error) {
 
 // csilEncMediaChunk builds the canonical CBOR value tree for a MediaChunk.
 func csilEncMediaChunk(csilV MediaChunk) cborValue {
-	csilEntries := make(cborMap, 0, 4)
+	csilEntries := make(cborMap, 0, 5)
 	csilEntries = append(csilEntries, cborEntry{cborText("seq"), cborUint(csilV.Seq)})
 	csilEntries = append(csilEntries, cborEntry{cborText("data"), cborBytes(csilV.Data)})
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("chunk")})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	if csilV.TimestampMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("timestamp_ms"), cborUint((*csilV.TimestampMs))})
 	}
@@ -4874,6 +5749,17 @@ func csilDecMediaChunk(csilRoot cborValue) (MediaChunk, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "seq")
@@ -4924,11 +5810,12 @@ func DecodeMediaChunk(csilData []byte) (MediaChunk, error) {
 
 // csilEncMediaEnd builds the canonical CBOR value tree for a MediaEnd.
 func csilEncMediaEnd(csilV MediaEnd) cborValue {
-	csilEntries := make(cborMap, 0, 2)
+	csilEntries := make(cborMap, 0, 3)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("end")})
 	if csilV.Reason != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("reason"), cborText((*csilV.Reason))})
 	}
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	return csilEntries
 }
 
@@ -4951,6 +5838,17 @@ func csilDecMediaEnd(csilRoot cborValue) (MediaEnd, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
 	}
 	if csilField, csilOk := cborMapGet(csilRoot, "reason"); csilOk {
 		csilVal, csilErr := (func(csilV cborValue) (MediaEndReason, error) {
@@ -4993,9 +5891,10 @@ func DecodeMediaEnd(csilData []byte) (MediaEnd, error) {
 
 // csilEncMediaFail builds the canonical CBOR value tree for a MediaFail.
 func csilEncMediaFail(csilV MediaFail) cborValue {
-	csilEntries := make(cborMap, 0, 2)
+	csilEntries := make(cborMap, 0, 3)
 	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText("error")})
 	csilEntries = append(csilEntries, cborEntry{cborText("error"), csilEncServiceError(csilV.Error)})
+	csilEntries = append(csilEntries, cborEntry{cborText("stream_id"), cborText(csilV.StreamId)})
 	return csilEntries
 }
 
@@ -5018,6 +5917,17 @@ func csilDecMediaFail(csilRoot cborValue) (MediaFail, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "stream_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.StreamId = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "error")
@@ -5267,14 +6177,16 @@ func DecodeRegisterNodeResponse(csilData []byte) (RegisterNodeResponse, error) {
 
 // csilEncDirLoad builds the canonical CBOR value tree for a DirLoad.
 func csilEncDirLoad(csilV DirLoad) cborValue {
-	csilEntries := make(cborMap, 0, 5)
+	csilEntries := make(cborMap, 0, 7)
 	csilEntries = append(csilEntries, cborEntry{cborText("op"), cborText("load")})
 	csilEntries = append(csilEntries, cborEntry{cborText("pref"), csilEncStreamPref(csilV.Pref)})
 	csilEntries = append(csilEntries, cborEntry{cborText("track_id"), cborText(csilV.TrackId)})
 	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("playback_id"), cborText(csilV.PlaybackId)})
 	if csilV.PositionMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint((*csilV.PositionMs))})
 	}
+	csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint(csilV.QueueItemId)})
 	return csilEntries
 }
 
@@ -5311,6 +6223,28 @@ func csilDecDirLoad(csilRoot cborValue) (DirLoad, error) {
 			return csilOut, csilErr
 		}
 		csilOut.PlayerId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "queue_item_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "playback_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaybackId = csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "track_id")
@@ -5616,14 +6550,26 @@ func DecodeDirVolume(csilData []byte) (DirVolume, error) {
 
 // csilEncNodeReport builds the canonical CBOR value tree for a NodeReport.
 func csilEncNodeReport(csilV NodeReport) cborValue {
-	csilEntries := make(cborMap, 0, 4)
+	csilEntries := make(cborMap, 0, 8)
+	if csilV.Error != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("error"), cborText((*csilV.Error))})
+	}
+	if csilV.Event != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("event"), cborText((*csilV.Event))})
+	}
 	csilEntries = append(csilEntries, cborEntry{cborText("status"), cborText(csilV.Status)})
 	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
+	if csilV.PlaybackId != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("playback_id"), cborText((*csilV.PlaybackId))})
+	}
 	if csilV.PositionMs != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("position_ms"), cborUint((*csilV.PositionMs))})
 	}
 	if csilV.AudioBlocked != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("audio_blocked"), cborBool((*csilV.AudioBlocked))})
+	}
+	if csilV.QueueItemId != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("queue_item_id"), cborUint((*csilV.QueueItemId))})
 	}
 	return csilEntries
 }
@@ -5644,6 +6590,27 @@ func csilDecNodeReport(csilRoot cborValue) (NodeReport, error) {
 			return csilOut, csilErr
 		}
 		csilOut.PlayerId = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "event"); csilOk {
+		csilVal, csilErr := (func(csilV cborValue) (NodeEvent, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "ready" || csilInner == "state" || csilInner == "completed" || csilInner == "failed") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return NodeEvent(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Event = &csilVal
 	}
 	{
 		csilField, csilErr := cborRequire(csilRoot, "status")
@@ -5670,12 +6637,33 @@ func csilDecNodeReport(csilRoot cborValue) (NodeReport, error) {
 		}
 		csilOut.Status = csilVal
 	}
+	if csilField, csilOk := cborMapGet(csilRoot, "queue_item_id"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.QueueItemId = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "playback_id"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlaybackId = &csilVal
+	}
 	if csilField, csilOk := cborMapGet(csilRoot, "position_ms"); csilOk {
 		csilVal, csilErr := (cborAsU64)(csilField)
 		if csilErr != nil {
 			return csilOut, csilErr
 		}
 		csilOut.PositionMs = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "error"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Error = &csilVal
 	}
 	if csilField, csilOk := cborMapGet(csilRoot, "audio_blocked"); csilOk {
 		csilVal, csilErr := (cborAsBool)(csilField)
@@ -8118,24 +9106,44 @@ func csilEncPlayerCommand(csilV PlayerCommand) cborValue {
 	switch csilX := csilV.(type) {
 	case CmdEnqueue:
 		return cborArray{cborUint(0), csilEncCmdEnqueue(csilX)}
+	case CmdEnqueueNext:
+		return cborArray{cborUint(1), csilEncCmdEnqueueNext(csilX)}
 	case CmdRemove:
-		return cborArray{cborUint(1), csilEncCmdRemove(csilX)}
+		return cborArray{cborUint(2), csilEncCmdRemove(csilX)}
+	case CmdRemoveItem:
+		return cborArray{cborUint(3), csilEncCmdRemoveItem(csilX)}
 	case CmdReorder:
-		return cborArray{cborUint(2), csilEncCmdReorder(csilX)}
+		return cborArray{cborUint(4), csilEncCmdReorder(csilX)}
+	case CmdMoveItem:
+		return cborArray{cborUint(5), csilEncCmdMoveItem(csilX)}
 	case CmdClear:
-		return cborArray{cborUint(3), csilEncCmdClear(csilX)}
+		return cborArray{cborUint(6), csilEncCmdClear(csilX)}
 	case CmdPlay:
-		return cborArray{cborUint(4), csilEncCmdPlay(csilX)}
+		return cborArray{cborUint(7), csilEncCmdPlay(csilX)}
+	case CmdReplaceAndPlay:
+		return cborArray{cborUint(8), csilEncCmdReplaceAndPlay(csilX)}
 	case CmdPause:
-		return cborArray{cborUint(5), csilEncCmdPause(csilX)}
+		return cborArray{cborUint(9), csilEncCmdPause(csilX)}
 	case CmdNext:
-		return cborArray{cborUint(6), csilEncCmdNext(csilX)}
+		return cborArray{cborUint(10), csilEncCmdNext(csilX)}
 	case CmdPrevious:
-		return cborArray{cborUint(7), csilEncCmdPrevious(csilX)}
+		return cborArray{cborUint(11), csilEncCmdPrevious(csilX)}
 	case CmdSeek:
-		return cborArray{cborUint(8), csilEncCmdSeek(csilX)}
+		return cborArray{cborUint(12), csilEncCmdSeek(csilX)}
 	case CmdVolume:
-		return cborArray{cborUint(9), csilEncCmdVolume(csilX)}
+		return cborArray{cborUint(13), csilEncCmdVolume(csilX)}
+	case CmdSetRepeat:
+		return cborArray{cborUint(14), csilEncCmdSetRepeat(csilX)}
+	case CmdSetShuffle:
+		return cborArray{cborUint(15), csilEncCmdSetShuffle(csilX)}
+	case CmdUndo:
+		return cborArray{cborUint(16), csilEncCmdUndo(csilX)}
+	case CmdPlaybackCompleted:
+		return cborArray{cborUint(17), csilEncCmdPlaybackCompleted(csilX)}
+	case CmdPlaybackFailed:
+		return cborArray{cborUint(18), csilEncCmdPlaybackFailed(csilX)}
+	case CmdPlaybackState:
+		return cborArray{cborUint(19), csilEncCmdPlaybackState(csilX)}
 	default:
 		return cborNull{}
 	}
@@ -8158,31 +9166,61 @@ func csilDecPlayerCommand(csilV cborValue) (PlayerCommand, error) {
 		csilVal, csilErr := (csilDecCmdEnqueue)(csilArr[1])
 		return csilVal, csilErr
 	case 1:
-		csilVal, csilErr := (csilDecCmdRemove)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdEnqueueNext)(csilArr[1])
 		return csilVal, csilErr
 	case 2:
-		csilVal, csilErr := (csilDecCmdReorder)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdRemove)(csilArr[1])
 		return csilVal, csilErr
 	case 3:
-		csilVal, csilErr := (csilDecCmdClear)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdRemoveItem)(csilArr[1])
 		return csilVal, csilErr
 	case 4:
-		csilVal, csilErr := (csilDecCmdPlay)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdReorder)(csilArr[1])
 		return csilVal, csilErr
 	case 5:
-		csilVal, csilErr := (csilDecCmdPause)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdMoveItem)(csilArr[1])
 		return csilVal, csilErr
 	case 6:
-		csilVal, csilErr := (csilDecCmdNext)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdClear)(csilArr[1])
 		return csilVal, csilErr
 	case 7:
-		csilVal, csilErr := (csilDecCmdPrevious)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdPlay)(csilArr[1])
 		return csilVal, csilErr
 	case 8:
-		csilVal, csilErr := (csilDecCmdSeek)(csilArr[1])
+		csilVal, csilErr := (csilDecCmdReplaceAndPlay)(csilArr[1])
 		return csilVal, csilErr
 	case 9:
+		csilVal, csilErr := (csilDecCmdPause)(csilArr[1])
+		return csilVal, csilErr
+	case 10:
+		csilVal, csilErr := (csilDecCmdNext)(csilArr[1])
+		return csilVal, csilErr
+	case 11:
+		csilVal, csilErr := (csilDecCmdPrevious)(csilArr[1])
+		return csilVal, csilErr
+	case 12:
+		csilVal, csilErr := (csilDecCmdSeek)(csilArr[1])
+		return csilVal, csilErr
+	case 13:
 		csilVal, csilErr := (csilDecCmdVolume)(csilArr[1])
+		return csilVal, csilErr
+	case 14:
+		csilVal, csilErr := (csilDecCmdSetRepeat)(csilArr[1])
+		return csilVal, csilErr
+	case 15:
+		csilVal, csilErr := (csilDecCmdSetShuffle)(csilArr[1])
+		return csilVal, csilErr
+	case 16:
+		csilVal, csilErr := (csilDecCmdUndo)(csilArr[1])
+		return csilVal, csilErr
+	case 17:
+		csilVal, csilErr := (csilDecCmdPlaybackCompleted)(csilArr[1])
+		return csilVal, csilErr
+	case 18:
+		csilVal, csilErr := (csilDecCmdPlaybackFailed)(csilArr[1])
+		return csilVal, csilErr
+	case 19:
+		csilVal, csilErr := (csilDecCmdPlaybackState)(csilArr[1])
 		return csilVal, csilErr
 	default:
 		var csilZero PlayerCommand

@@ -19,6 +19,12 @@ fun CmdVolume.validate() {
     require(volume <= 100uL) { "field 'volume' must be at most 100" }
 }
 
+/** Validate a CmdPlaybackFailed; throws IllegalArgumentException on a constraint breach. */
+fun CmdPlaybackFailed.validate() {
+    require(error.length >= 1) { "field 'error' must have at least 1 characters" }
+    require(error.length <= 1024) { "field 'error' must have at most 1024 characters" }
+}
+
 /** Validate a EnableShareRequest; throws IllegalArgumentException on a constraint breach. */
 fun EnableShareRequest.validate() {
     suffix?.let { v ->
@@ -32,6 +38,16 @@ fun EnableShareRequest.validate() {
 /** Validate a DirVolume; throws IllegalArgumentException on a constraint breach. */
 fun DirVolume.validate() {
     require(volume <= 100uL) { "field 'volume' must be at most 100" }
+}
+
+/** Validate a NodeReport; throws IllegalArgumentException on a constraint breach. */
+fun NodeReport.validate() {
+    error?.let { v ->
+        require(v.length >= 1) { "field 'error' must have at least 1 characters" }
+    }
+    error?.let { v ->
+        require(v.length <= 1024) { "field 'error' must have at most 1024 characters" }
+    }
 }
 
 /** Validate a RenameNodeRequest; throws IllegalArgumentException on a constraint breach. */

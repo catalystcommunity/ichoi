@@ -39,6 +39,12 @@ enum class Role { Admin, Member, Guest }
 /** PlayerStatus enum (bare-literal wire). */
 enum class PlayerStatus { Stopped, Playing, Paused }
 
+/** RepeatMode enum (bare-literal wire). */
+enum class RepeatMode { Off, All, One }
+
+/** NodeEvent enum (bare-literal wire). */
+enum class NodeEvent { Ready, State, Completed, Failed }
+
 /** Codec enum (bare-literal wire). */
 enum class Codec { Mp3, Aac, Vorbis, Flac, Alac, Opus, Wav, Wma }
 
@@ -461,6 +467,8 @@ data class Player(
 
 /** QueueItem record. */
 data class QueueItem(
+    // wire key: queue_item_id
+    val queueItemId: ULong,
     // wire key: track_id
     val trackId: TrackId,
     val library: Library? = null,
@@ -474,12 +482,21 @@ data class QueueItem(
 data class PlayerState(
     // wire key: player_id
     val playerId: PlayerId,
+    val revision: ULong,
     val status: PlayerStatus,
     // wire key: current_index
     val currentIndex: ULong? = null,
+    // wire key: playback_id
+    val playbackId: String? = null,
     // wire key: position_ms
     val positionMs: ULong? = null,
     val volume: ULong = 100uL,
+    // wire key: repeat_mode
+    val repeatMode: RepeatMode,
+    val shuffle: Boolean = false,
+    val error: String? = null,
+    // wire key: can_undo
+    val canUndo: Boolean = false,
     val queue: List<QueueItem>
 )
 
@@ -509,10 +526,24 @@ data class CmdEnqueue(
     val atIndex: ULong? = null
 )
 
+/** CmdEnqueueNext record. */
+data class CmdEnqueueNext(
+    val op: String,
+    // wire key: track_ids
+    val trackIds: List<TrackId>
+)
+
 /** CmdRemove record. */
 data class CmdRemove(
     val op: String,
     val index: ULong
+)
+
+/** CmdRemoveItem record. */
+data class CmdRemoveItem(
+    val op: String,
+    // wire key: queue_item_id
+    val queueItemId: ULong
 )
 
 /** CmdReorder record. */
@@ -524,6 +555,15 @@ data class CmdReorder(
     val toIndex: ULong
 )
 
+/** CmdMoveItem record. */
+data class CmdMoveItem(
+    val op: String,
+    // wire key: queue_item_id
+    val queueItemId: ULong,
+    // wire key: before_queue_item_id
+    val beforeQueueItemId: ULong? = null
+)
+
 /** CmdClear record. */
 data class CmdClear(
     val op: String
@@ -532,7 +572,20 @@ data class CmdClear(
 /** CmdPlay record. */
 data class CmdPlay(
     val op: String,
-    val index: ULong? = null
+    val index: ULong? = null,
+    // wire key: queue_item_id
+    val queueItemId: ULong? = null
+)
+
+/** CmdReplaceAndPlay record. */
+data class CmdReplaceAndPlay(
+    val op: String,
+    // wire key: track_ids
+    val trackIds: List<TrackId>,
+    // wire key: start_index
+    val startIndex: ULong? = 0uL,
+    // wire key: position_ms
+    val positionMs: ULong? = 0uL
 )
 
 /** CmdPause record. */
@@ -563,18 +616,77 @@ data class CmdVolume(
     val volume: ULong
 )
 
-/** PlayerCommand: tagged-sum union of 10 arms. */
+/** CmdSetRepeat record. */
+data class CmdSetRepeat(
+    val op: String,
+    // wire key: repeat_mode
+    val repeatMode: RepeatMode
+)
+
+/** CmdSetShuffle record. */
+data class CmdSetShuffle(
+    val op: String,
+    val shuffle: Boolean
+)
+
+/** CmdUndo record. */
+data class CmdUndo(
+    val op: String
+)
+
+/** CmdPlaybackCompleted record. */
+data class CmdPlaybackCompleted(
+    val op: String,
+    // wire key: playback_id
+    val playbackId: String,
+    // wire key: queue_item_id
+    val queueItemId: ULong
+)
+
+/** CmdPlaybackFailed record. */
+data class CmdPlaybackFailed(
+    val op: String,
+    // wire key: playback_id
+    val playbackId: String,
+    // wire key: queue_item_id
+    val queueItemId: ULong,
+    val error: String
+)
+
+/** CmdPlaybackState record. */
+data class CmdPlaybackState(
+    val op: String,
+    // wire key: playback_id
+    val playbackId: String,
+    // wire key: queue_item_id
+    val queueItemId: ULong,
+    val status: PlayerStatus,
+    // wire key: position_ms
+    val positionMs: ULong
+)
+
+/** PlayerCommand: tagged-sum union of 20 arms. */
 sealed interface PlayerCommand
 data class PlayerCommandVariant0(val value: CmdEnqueue) : PlayerCommand
-data class PlayerCommandVariant1(val value: CmdRemove) : PlayerCommand
-data class PlayerCommandVariant2(val value: CmdReorder) : PlayerCommand
-data class PlayerCommandVariant3(val value: CmdClear) : PlayerCommand
-data class PlayerCommandVariant4(val value: CmdPlay) : PlayerCommand
-data class PlayerCommandVariant5(val value: CmdPause) : PlayerCommand
-data class PlayerCommandVariant6(val value: CmdNext) : PlayerCommand
-data class PlayerCommandVariant7(val value: CmdPrevious) : PlayerCommand
-data class PlayerCommandVariant8(val value: CmdSeek) : PlayerCommand
-data class PlayerCommandVariant9(val value: CmdVolume) : PlayerCommand
+data class PlayerCommandVariant1(val value: CmdEnqueueNext) : PlayerCommand
+data class PlayerCommandVariant2(val value: CmdRemove) : PlayerCommand
+data class PlayerCommandVariant3(val value: CmdRemoveItem) : PlayerCommand
+data class PlayerCommandVariant4(val value: CmdReorder) : PlayerCommand
+data class PlayerCommandVariant5(val value: CmdMoveItem) : PlayerCommand
+data class PlayerCommandVariant6(val value: CmdClear) : PlayerCommand
+data class PlayerCommandVariant7(val value: CmdPlay) : PlayerCommand
+data class PlayerCommandVariant8(val value: CmdReplaceAndPlay) : PlayerCommand
+data class PlayerCommandVariant9(val value: CmdPause) : PlayerCommand
+data class PlayerCommandVariant10(val value: CmdNext) : PlayerCommand
+data class PlayerCommandVariant11(val value: CmdPrevious) : PlayerCommand
+data class PlayerCommandVariant12(val value: CmdSeek) : PlayerCommand
+data class PlayerCommandVariant13(val value: CmdVolume) : PlayerCommand
+data class PlayerCommandVariant14(val value: CmdSetRepeat) : PlayerCommand
+data class PlayerCommandVariant15(val value: CmdSetShuffle) : PlayerCommand
+data class PlayerCommandVariant16(val value: CmdUndo) : PlayerCommand
+data class PlayerCommandVariant17(val value: CmdPlaybackCompleted) : PlayerCommand
+data class PlayerCommandVariant18(val value: CmdPlaybackFailed) : PlayerCommand
+data class PlayerCommandVariant19(val value: CmdPlaybackState) : PlayerCommand
 
 /** CommandRequest record. */
 data class CommandRequest(
@@ -602,6 +714,8 @@ data class ShareResult(
 /** MediaOpen record. */
 data class MediaOpen(
     val kind: String,
+    // wire key: stream_id
+    val streamId: String,
     // wire key: track_id
     val trackId: TrackId,
     val pref: StreamPref
@@ -610,23 +724,31 @@ data class MediaOpen(
 /** MediaSeek record. */
 data class MediaSeek(
     val kind: String,
+    // wire key: stream_id
+    val streamId: String,
     // wire key: position_ms
     val positionMs: ULong
 )
 
 /** MediaPause record. */
 data class MediaPause(
-    val kind: String
+    val kind: String,
+    // wire key: stream_id
+    val streamId: String
 )
 
 /** MediaResume record. */
 data class MediaResume(
-    val kind: String
+    val kind: String,
+    // wire key: stream_id
+    val streamId: String
 )
 
 /** MediaStop record. */
 data class MediaStop(
-    val kind: String
+    val kind: String,
+    // wire key: stream_id
+    val streamId: String
 )
 
 /** MediaControl: tagged-sum union of 5 arms. */
@@ -640,6 +762,8 @@ data class MediaControlVariant4(val value: MediaStop) : MediaControl
 /** MediaHeader record. */
 data class MediaHeader(
     val kind: String,
+    // wire key: stream_id
+    val streamId: String,
     val codec: Codec,
     val transcoded: Boolean,
     // wire key: sample_rate
@@ -658,6 +782,7 @@ data class MediaHeader(
         if (this === other) return true
         if (other !is MediaHeader) return false
         if (kind != other.kind) return false
+        if (streamId != other.streamId) return false
         if (codec != other.codec) return false
         if (transcoded != other.transcoded) return false
         if (sampleRate != other.sampleRate) return false
@@ -671,6 +796,7 @@ data class MediaHeader(
 
     override fun hashCode(): Int {
         var result = kind.hashCode()
+        result = 31 * result + streamId.hashCode()
         result = 31 * result + codec.hashCode()
         result = 31 * result + transcoded.hashCode()
         result = 31 * result + sampleRate.hashCode()
@@ -689,6 +815,8 @@ enum class MediaEndReason { Eos, Stopped }
 /** MediaChunk record. */
 data class MediaChunk(
     val kind: String,
+    // wire key: stream_id
+    val streamId: String,
     val seq: ULong,
     // wire key: timestamp_ms
     val timestampMs: ULong? = null,
@@ -698,6 +826,7 @@ data class MediaChunk(
         if (this === other) return true
         if (other !is MediaChunk) return false
         if (kind != other.kind) return false
+        if (streamId != other.streamId) return false
         if (seq != other.seq) return false
         if (timestampMs != other.timestampMs) return false
         if (!data.contentEquals(other.data)) return false
@@ -706,6 +835,7 @@ data class MediaChunk(
 
     override fun hashCode(): Int {
         var result = kind.hashCode()
+        result = 31 * result + streamId.hashCode()
         result = 31 * result + seq.hashCode()
         result = 31 * result + timestampMs.hashCode()
         result = 31 * result + data.contentHashCode()
@@ -716,12 +846,16 @@ data class MediaChunk(
 /** MediaEnd record. */
 data class MediaEnd(
     val kind: String,
+    // wire key: stream_id
+    val streamId: String,
     val reason: MediaEndReason? = null
 )
 
 /** MediaFail record. */
 data class MediaFail(
     val kind: String,
+    // wire key: stream_id
+    val streamId: String,
     val error: ServiceError
 )
 
@@ -765,6 +899,10 @@ data class DirLoad(
     val op: String,
     // wire key: player_id
     val playerId: PlayerId,
+    // wire key: queue_item_id
+    val queueItemId: ULong,
+    // wire key: playback_id
+    val playbackId: String,
     // wire key: track_id
     val trackId: TrackId,
     val pref: StreamPref,
@@ -813,9 +951,15 @@ data class NodeDirectiveVariant4(val value: DirVolume) : NodeDirective
 data class NodeReport(
     // wire key: player_id
     val playerId: PlayerId,
+    val event: NodeEvent? = NodeEvent.State,
     val status: PlayerStatus,
+    // wire key: queue_item_id
+    val queueItemId: ULong? = null,
+    // wire key: playback_id
+    val playbackId: String? = null,
     // wire key: position_ms
     val positionMs: ULong? = null,
+    val error: String? = null,
     // wire key: audio_blocked
     val audioBlocked: Boolean? = false
 )

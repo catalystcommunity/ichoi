@@ -16,6 +16,7 @@ Player = {
 }
 
 QueueItem = {
+    queue_item_id: uint,
     track_id: TrackId,
     ? library: Library,
     ? title: text,
@@ -25,10 +26,16 @@ QueueItem = {
 
 PlayerState = {
     player_id: PlayerId,
+    revision: uint,
     status: PlayerStatus,
     ? current_index: uint,
+    ? playback_id: text,
     ? position_ms: uint,
     volume: uint .le 100 .default 100,
+    repeat_mode: RepeatMode,
+    shuffle: bool .default false,
+    ? error: text,
+    can_undo: bool .default false,
     queue: [* QueueItem]
 }
 
@@ -39,16 +46,28 @@ SubscribeRequest = { player_id: PlayerId, ? active: bool .default true }
 
 ;; Transport/queue commands (client -> server), discriminated on `op`.
 CmdEnqueue  = { op: "enqueue", track_ids: [+ TrackId], ? at_index: uint }
+CmdEnqueueNext = { op: "enqueue-next", track_ids: [+ TrackId] }
 CmdRemove   = { op: "remove", index: uint }
+CmdRemoveItem = { op: "remove-item", queue_item_id: uint }
 CmdReorder  = { op: "reorder", from_index: uint, to_index: uint }
+CmdMoveItem = { op: "move-item", queue_item_id: uint, ? before_queue_item_id: uint }
 CmdClear    = { op: "clear" }
-CmdPlay     = { op: "play", ? index: uint }
+CmdPlay     = { op: "play", ? index: uint, ? queue_item_id: uint }
+CmdReplaceAndPlay = { op: "replace-and-play", track_ids: [+ TrackId], ? start_index: uint .default 0, ? position_ms: uint .default 0 }
 CmdPause    = { op: "pause" }
 CmdNext     = { op: "next" }
 CmdPrevious = { op: "previous" }
 CmdSeek     = { op: "seek", position_ms: uint }
 CmdVolume   = { op: "volume", volume: uint .le 100 }
-PlayerCommand = CmdEnqueue / CmdRemove / CmdReorder / CmdClear / CmdPlay / CmdPause / CmdNext / CmdPrevious / CmdSeek / CmdVolume
+CmdSetRepeat = { op: "set-repeat", repeat_mode: RepeatMode }
+CmdSetShuffle = { op: "set-shuffle", shuffle: bool }
+CmdUndo = { op: "undo" }
+;; Browser outputs use this command only to report a physical terminal event. Native
+;; satellites send the equivalent NodeReport.
+CmdPlaybackCompleted = { op: "playback-completed", playback_id: text, queue_item_id: uint }
+CmdPlaybackFailed = { op: "playback-failed", playback_id: text, queue_item_id: uint, error: text .size (1..1024) }
+CmdPlaybackState = { op: "playback-state", playback_id: text, queue_item_id: uint, status: PlayerStatus, position_ms: uint }
+PlayerCommand = CmdEnqueue / CmdEnqueueNext / CmdRemove / CmdRemoveItem / CmdReorder / CmdMoveItem / CmdClear / CmdPlay / CmdReplaceAndPlay / CmdPause / CmdNext / CmdPrevious / CmdSeek / CmdVolume / CmdSetRepeat / CmdSetShuffle / CmdUndo / CmdPlaybackCompleted / CmdPlaybackFailed / CmdPlaybackState
 
 CommandRequest = { player_id: PlayerId, command: PlayerCommand }
 

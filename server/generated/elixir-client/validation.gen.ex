@@ -35,6 +35,23 @@ defmodule Csilgen.Generated.Validation do
     end
   end
 
+  @spec validate_cmd_playback_failed(Csilgen.Generated.CmdPlaybackFailed.t()) ::
+          :ok | {:error, String.t()}
+  def validate_cmd_playback_failed(%Csilgen.Generated.CmdPlaybackFailed{} = v) do
+    with :ok <-
+           if(String.length(v.error) >= 1,
+             do: :ok,
+             else: {:error, "field 'error' must have at least 1 elements"}
+           ),
+         :ok <-
+           if(String.length(v.error) <= 1024,
+             do: :ok,
+             else: {:error, "field 'error' must have at most 1024 elements"}
+           ) do
+      :ok
+    end
+  end
+
   @spec validate_enable_share_request(Csilgen.Generated.EnableShareRequest.t()) ::
           :ok | {:error, String.t()}
   def validate_enable_share_request(%Csilgen.Generated.EnableShareRequest{} = v) do
@@ -56,6 +73,22 @@ defmodule Csilgen.Generated.Validation do
   def validate_dir_volume(%Csilgen.Generated.DirVolume{} = v) do
     with :ok <-
            if(v.volume <= 100, do: :ok, else: {:error, "field 'volume' must be at most 100"}) do
+      :ok
+    end
+  end
+
+  @spec validate_node_report(Csilgen.Generated.NodeReport.t()) :: :ok | {:error, String.t()}
+  def validate_node_report(%Csilgen.Generated.NodeReport{} = v) do
+    with :ok <-
+           if(is_nil(v.error) or String.length(v.error) >= 1,
+             do: :ok,
+             else: {:error, "field 'error' must have at least 1 elements"}
+           ),
+         :ok <-
+           if(is_nil(v.error) or String.length(v.error) <= 1024,
+             do: :ok,
+             else: {:error, "field 'error' must have at most 1024 elements"}
+           ) do
       :ok
     end
   end

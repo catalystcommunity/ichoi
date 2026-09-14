@@ -29,6 +29,10 @@ typedef Role = String;
 
 typedef PlayerStatus = String;
 
+typedef RepeatMode = String;
+
+typedef NodeEvent = String;
+
 typedef Codec = String;
 
 typedef TranscodeCodec = String;
@@ -2864,6 +2868,7 @@ final class Player {
 }
 
 final class QueueItem {
+  final int queueItemId;
   final TrackId trackId;
   final Library? library_;
   final String? title;
@@ -2871,6 +2876,7 @@ final class QueueItem {
   final int? durationMs;
 
   const QueueItem({
+    required this.queueItemId,
     required this.trackId,
     this.library_,
     this.title,
@@ -2880,6 +2886,7 @@ final class QueueItem {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
+    map['queue_item_id'] = queueItemId;
     map['track_id'] = trackId;
     if (library_ != null) map['library'] = library_;
     if (title != null) map['title'] = title;
@@ -2890,6 +2897,7 @@ final class QueueItem {
 
   factory QueueItem.fromMap(Map<String, Object?> map) {
     return QueueItem(
+      queueItemId: map['queue_item_id'] as int,
       trackId: map['track_id'] as TrackId,
       library_: map['library'] as Library?,
       title: map['title'] as String?,
@@ -2901,7 +2909,8 @@ final class QueueItem {
   @override
   bool operator ==(Object other) {
     if (other is! QueueItem) return false;
-    return trackId == other.trackId &&
+    return queueItemId == other.queueItemId &&
+        trackId == other.trackId &&
         library_ == other.library_ &&
         title == other.title &&
         artist == other.artist &&
@@ -2909,12 +2918,19 @@ final class QueueItem {
   }
 
   @override
-  int get hashCode =>
-      Object.hashAll([trackId, library_, title, artist, durationMs]);
+  int get hashCode => Object.hashAll([
+    queueItemId,
+    trackId,
+    library_,
+    title,
+    artist,
+    durationMs,
+  ]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
+    map['queue_item_id'] = queueItemId;
     map['track_id'] = trackId;
     if (library_ != null) map['library'] = library_!;
     if (title != null) map['title'] = title!;
@@ -2927,6 +2943,7 @@ final class QueueItem {
   factory QueueItem.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return QueueItem(
+      queueItemId: map['queue_item_id'] as int,
       trackId: map['track_id'] as String,
       library_: map['library'] == null
           ? null
@@ -2950,28 +2967,46 @@ final class QueueItem {
 
 final class PlayerState {
   final PlayerId playerId;
+  final int revision;
   final PlayerStatus status;
   final int? currentIndex;
+  final String? playbackId;
   final int? positionMs;
   final int volume;
+  final RepeatMode repeatMode;
+  final bool shuffle;
+  final String? error;
+  final bool canUndo;
   final List<QueueItem> queue;
 
   const PlayerState({
     required this.playerId,
+    required this.revision,
     required this.status,
     this.currentIndex,
+    this.playbackId,
     this.positionMs,
     required this.volume,
+    required this.repeatMode,
+    required this.shuffle,
+    this.error,
+    required this.canUndo,
     required this.queue,
   });
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
+    map['revision'] = revision;
     map['status'] = status;
     if (currentIndex != null) map['current_index'] = currentIndex;
+    if (playbackId != null) map['playback_id'] = playbackId;
     if (positionMs != null) map['position_ms'] = positionMs;
     map['volume'] = volume;
+    map['repeat_mode'] = repeatMode;
+    map['shuffle'] = shuffle;
+    if (error != null) map['error'] = error;
+    map['can_undo'] = canUndo;
     map['queue'] = queue;
     return map;
   }
@@ -2979,10 +3014,16 @@ final class PlayerState {
   factory PlayerState.fromMap(Map<String, Object?> map) {
     return PlayerState(
       playerId: map['player_id'] as PlayerId,
+      revision: map['revision'] as int,
       status: map['status'] as PlayerStatus,
       currentIndex: map['current_index'] as int?,
+      playbackId: map['playback_id'] as String?,
       positionMs: map['position_ms'] as int?,
       volume: map['volume'] as int,
+      repeatMode: map['repeat_mode'] as RepeatMode,
+      shuffle: map['shuffle'] as bool,
+      error: map['error'] as String?,
+      canUndo: map['can_undo'] as bool,
       queue: map['queue'] as List<QueueItem>,
     );
   }
@@ -2998,20 +3039,32 @@ final class PlayerState {
   bool operator ==(Object other) {
     if (other is! PlayerState) return false;
     return playerId == other.playerId &&
+        revision == other.revision &&
         status == other.status &&
         currentIndex == other.currentIndex &&
+        playbackId == other.playbackId &&
         positionMs == other.positionMs &&
         volume == other.volume &&
+        repeatMode == other.repeatMode &&
+        shuffle == other.shuffle &&
+        error == other.error &&
+        canUndo == other.canUndo &&
         queue == other.queue;
   }
 
   @override
   int get hashCode => Object.hashAll([
     playerId,
+    revision,
     status,
     currentIndex,
+    playbackId,
     positionMs,
     volume,
+    repeatMode,
+    shuffle,
+    error,
+    canUndo,
     queue,
   ]);
 
@@ -3019,10 +3072,16 @@ final class PlayerState {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
+    map['revision'] = revision;
     map['status'] = status;
     if (currentIndex != null) map['current_index'] = currentIndex!;
+    if (playbackId != null) map['playback_id'] = playbackId!;
     if (positionMs != null) map['position_ms'] = positionMs!;
     map['volume'] = volume;
+    map['repeat_mode'] = repeatMode;
+    map['shuffle'] = shuffle;
+    if (error != null) map['error'] = error!;
+    map['can_undo'] = canUndo;
     map['queue'] = queue.map((csilE) => csilE.toCborValue()).toList();
     return map;
   }
@@ -3032,6 +3091,7 @@ final class PlayerState {
     final map = cbor as Map;
     return PlayerState(
       playerId: map['player_id'] as String,
+      revision: map['revision'] as int,
       status: CsilCbor.expectOneOf<String>(map['status'], const [
         'stopped',
         'playing',
@@ -3040,8 +3100,19 @@ final class PlayerState {
       currentIndex: map['current_index'] == null
           ? null
           : map['current_index'] as int,
+      playbackId: map['playback_id'] == null
+          ? null
+          : map['playback_id'] as String,
       positionMs: map['position_ms'] == null ? null : map['position_ms'] as int,
       volume: map['volume'] as int,
+      repeatMode: CsilCbor.expectOneOf<String>(map['repeat_mode'], const [
+        'off',
+        'all',
+        'one',
+      ]),
+      shuffle: map['shuffle'] as bool,
+      error: map['error'] == null ? null : map['error'] as String,
+      canUndo: map['can_undo'] as bool,
       queue: (map['queue'] as List)
           .map((csilE) => QueueItem.fromCborValue(csilE))
           .cast<QueueItem>()
@@ -3277,6 +3348,63 @@ final class CmdEnqueue {
       CmdEnqueue.fromCborValue(CsilCbor.decode(bytes));
 }
 
+final class CmdEnqueueNext {
+  final String op;
+  final List<TrackId> trackIds;
+
+  const CmdEnqueueNext({required this.op, required this.trackIds});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['track_ids'] = trackIds;
+    return map;
+  }
+
+  factory CmdEnqueueNext.fromMap(Map<String, Object?> map) {
+    return CmdEnqueueNext(
+      op: map['op'] as String,
+      trackIds: map['track_ids'] as List<TrackId>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdEnqueueNext) return false;
+    return op == other.op && trackIds == other.trackIds;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, trackIds]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'enqueue-next';
+    map['track_ids'] = trackIds;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdEnqueueNext.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdEnqueueNext(
+      op: CsilCbor.expectLiteral(map['op'], 'enqueue-next', 'enqueue-next'),
+      trackIds: (map['track_ids'] as List)
+          .map((csilE) => csilE as String)
+          .cast<TrackId>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdEnqueueNext.fromCbor(List<int> bytes) =>
+      CmdEnqueueNext.fromCborValue(CsilCbor.decode(bytes));
+}
+
 final class CmdRemove {
   final String op;
   final int index;
@@ -3326,6 +3454,60 @@ final class CmdRemove {
   /// Decode a CSIL CBOR byte payload into this record.
   factory CmdRemove.fromCbor(List<int> bytes) =>
       CmdRemove.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdRemoveItem {
+  final String op;
+  final int queueItemId;
+
+  const CmdRemoveItem({required this.op, required this.queueItemId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['queue_item_id'] = queueItemId;
+    return map;
+  }
+
+  factory CmdRemoveItem.fromMap(Map<String, Object?> map) {
+    return CmdRemoveItem(
+      op: map['op'] as String,
+      queueItemId: map['queue_item_id'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdRemoveItem) return false;
+    return op == other.op && queueItemId == other.queueItemId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, queueItemId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'remove-item';
+    map['queue_item_id'] = queueItemId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdRemoveItem.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdRemoveItem(
+      op: CsilCbor.expectLiteral(map['op'], 'remove-item', 'remove-item'),
+      queueItemId: map['queue_item_id'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdRemoveItem.fromCbor(List<int> bytes) =>
+      CmdRemoveItem.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class CmdReorder {
@@ -3393,6 +3575,75 @@ final class CmdReorder {
       CmdReorder.fromCborValue(CsilCbor.decode(bytes));
 }
 
+final class CmdMoveItem {
+  final String op;
+  final int queueItemId;
+  final int? beforeQueueItemId;
+
+  const CmdMoveItem({
+    required this.op,
+    required this.queueItemId,
+    this.beforeQueueItemId,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['queue_item_id'] = queueItemId;
+    if (beforeQueueItemId != null)
+      map['before_queue_item_id'] = beforeQueueItemId;
+    return map;
+  }
+
+  factory CmdMoveItem.fromMap(Map<String, Object?> map) {
+    return CmdMoveItem(
+      op: map['op'] as String,
+      queueItemId: map['queue_item_id'] as int,
+      beforeQueueItemId: map['before_queue_item_id'] as int?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdMoveItem) return false;
+    return op == other.op &&
+        queueItemId == other.queueItemId &&
+        beforeQueueItemId == other.beforeQueueItemId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, queueItemId, beforeQueueItemId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'move-item';
+    map['queue_item_id'] = queueItemId;
+    if (beforeQueueItemId != null)
+      map['before_queue_item_id'] = beforeQueueItemId!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdMoveItem.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdMoveItem(
+      op: CsilCbor.expectLiteral(map['op'], 'move-item', 'move-item'),
+      queueItemId: map['queue_item_id'] as int,
+      beforeQueueItemId: map['before_queue_item_id'] == null
+          ? null
+          : map['before_queue_item_id'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdMoveItem.fromCbor(List<int> bytes) =>
+      CmdMoveItem.fromCborValue(CsilCbor.decode(bytes));
+}
+
 final class CmdClear {
   final String op;
 
@@ -3441,34 +3692,43 @@ final class CmdClear {
 final class CmdPlay {
   final String op;
   final int? index;
+  final int? queueItemId;
 
-  const CmdPlay({required this.op, this.index});
+  const CmdPlay({required this.op, this.index, this.queueItemId});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['op'] = op;
     if (index != null) map['index'] = index;
+    if (queueItemId != null) map['queue_item_id'] = queueItemId;
     return map;
   }
 
   factory CmdPlay.fromMap(Map<String, Object?> map) {
-    return CmdPlay(op: map['op'] as String, index: map['index'] as int?);
+    return CmdPlay(
+      op: map['op'] as String,
+      index: map['index'] as int?,
+      queueItemId: map['queue_item_id'] as int?,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! CmdPlay) return false;
-    return op == other.op && index == other.index;
+    return op == other.op &&
+        index == other.index &&
+        queueItemId == other.queueItemId;
   }
 
   @override
-  int get hashCode => Object.hashAll([op, index]);
+  int get hashCode => Object.hashAll([op, index, queueItemId]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['op'] = 'play';
     if (index != null) map['index'] = index!;
+    if (queueItemId != null) map['queue_item_id'] = queueItemId!;
     return map;
   }
 
@@ -3478,6 +3738,9 @@ final class CmdPlay {
     return CmdPlay(
       op: CsilCbor.expectLiteral(map['op'], 'play', 'play'),
       index: map['index'] == null ? null : map['index'] as int,
+      queueItemId: map['queue_item_id'] == null
+          ? null
+          : map['queue_item_id'] as int,
     );
   }
 
@@ -3487,6 +3750,85 @@ final class CmdPlay {
   /// Decode a CSIL CBOR byte payload into this record.
   factory CmdPlay.fromCbor(List<int> bytes) =>
       CmdPlay.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdReplaceAndPlay {
+  final String op;
+  final List<TrackId> trackIds;
+  final int? startIndex;
+  final int? positionMs;
+
+  const CmdReplaceAndPlay({
+    required this.op,
+    required this.trackIds,
+    this.startIndex,
+    this.positionMs,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['track_ids'] = trackIds;
+    if (startIndex != null) map['start_index'] = startIndex;
+    if (positionMs != null) map['position_ms'] = positionMs;
+    return map;
+  }
+
+  factory CmdReplaceAndPlay.fromMap(Map<String, Object?> map) {
+    return CmdReplaceAndPlay(
+      op: map['op'] as String,
+      trackIds: map['track_ids'] as List<TrackId>,
+      startIndex: map['start_index'] as int?,
+      positionMs: map['position_ms'] as int?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdReplaceAndPlay) return false;
+    return op == other.op &&
+        trackIds == other.trackIds &&
+        startIndex == other.startIndex &&
+        positionMs == other.positionMs;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, trackIds, startIndex, positionMs]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'replace-and-play';
+    map['track_ids'] = trackIds;
+    if (startIndex != null) map['start_index'] = startIndex!;
+    if (positionMs != null) map['position_ms'] = positionMs!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdReplaceAndPlay.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdReplaceAndPlay(
+      op: CsilCbor.expectLiteral(
+        map['op'],
+        'replace-and-play',
+        'replace-and-play',
+      ),
+      trackIds: (map['track_ids'] as List)
+          .map((csilE) => csilE as String)
+          .cast<TrackId>()
+          .toList(),
+      startIndex: map['start_index'] == null ? null : map['start_index'] as int,
+      positionMs: map['position_ms'] == null ? null : map['position_ms'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdReplaceAndPlay.fromCbor(List<int> bytes) =>
+      CmdReplaceAndPlay.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class CmdPause {
@@ -3738,6 +4080,402 @@ final class CmdVolume {
       CmdVolume.fromCborValue(CsilCbor.decode(bytes));
 }
 
+final class CmdSetRepeat {
+  final String op;
+  final RepeatMode repeatMode;
+
+  const CmdSetRepeat({required this.op, required this.repeatMode});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['repeat_mode'] = repeatMode;
+    return map;
+  }
+
+  factory CmdSetRepeat.fromMap(Map<String, Object?> map) {
+    return CmdSetRepeat(
+      op: map['op'] as String,
+      repeatMode: map['repeat_mode'] as RepeatMode,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdSetRepeat) return false;
+    return op == other.op && repeatMode == other.repeatMode;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, repeatMode]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'set-repeat';
+    map['repeat_mode'] = repeatMode;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdSetRepeat.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdSetRepeat(
+      op: CsilCbor.expectLiteral(map['op'], 'set-repeat', 'set-repeat'),
+      repeatMode: CsilCbor.expectOneOf<String>(map['repeat_mode'], const [
+        'off',
+        'all',
+        'one',
+      ]),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdSetRepeat.fromCbor(List<int> bytes) =>
+      CmdSetRepeat.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdSetShuffle {
+  final String op;
+  final bool shuffle;
+
+  const CmdSetShuffle({required this.op, required this.shuffle});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['shuffle'] = shuffle;
+    return map;
+  }
+
+  factory CmdSetShuffle.fromMap(Map<String, Object?> map) {
+    return CmdSetShuffle(
+      op: map['op'] as String,
+      shuffle: map['shuffle'] as bool,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdSetShuffle) return false;
+    return op == other.op && shuffle == other.shuffle;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, shuffle]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'set-shuffle';
+    map['shuffle'] = shuffle;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdSetShuffle.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdSetShuffle(
+      op: CsilCbor.expectLiteral(map['op'], 'set-shuffle', 'set-shuffle'),
+      shuffle: map['shuffle'] as bool,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdSetShuffle.fromCbor(List<int> bytes) =>
+      CmdSetShuffle.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdUndo {
+  final String op;
+
+  const CmdUndo({required this.op});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    return map;
+  }
+
+  factory CmdUndo.fromMap(Map<String, Object?> map) {
+    return CmdUndo(op: map['op'] as String);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdUndo) return false;
+    return op == other.op;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'undo';
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdUndo.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdUndo(op: CsilCbor.expectLiteral(map['op'], 'undo', 'undo'));
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdUndo.fromCbor(List<int> bytes) =>
+      CmdUndo.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdPlaybackCompleted {
+  final String op;
+  final String playbackId;
+  final int queueItemId;
+
+  const CmdPlaybackCompleted({
+    required this.op,
+    required this.playbackId,
+    required this.queueItemId,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['playback_id'] = playbackId;
+    map['queue_item_id'] = queueItemId;
+    return map;
+  }
+
+  factory CmdPlaybackCompleted.fromMap(Map<String, Object?> map) {
+    return CmdPlaybackCompleted(
+      op: map['op'] as String,
+      playbackId: map['playback_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdPlaybackCompleted) return false;
+    return op == other.op &&
+        playbackId == other.playbackId &&
+        queueItemId == other.queueItemId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, playbackId, queueItemId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'playback-completed';
+    map['playback_id'] = playbackId;
+    map['queue_item_id'] = queueItemId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdPlaybackCompleted.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdPlaybackCompleted(
+      op: CsilCbor.expectLiteral(
+        map['op'],
+        'playback-completed',
+        'playback-completed',
+      ),
+      playbackId: map['playback_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdPlaybackCompleted.fromCbor(List<int> bytes) =>
+      CmdPlaybackCompleted.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdPlaybackFailed {
+  final String op;
+  final String playbackId;
+  final int queueItemId;
+  final String error;
+
+  const CmdPlaybackFailed({
+    required this.op,
+    required this.playbackId,
+    required this.queueItemId,
+    required this.error,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['playback_id'] = playbackId;
+    map['queue_item_id'] = queueItemId;
+    map['error'] = error;
+    return map;
+  }
+
+  factory CmdPlaybackFailed.fromMap(Map<String, Object?> map) {
+    return CmdPlaybackFailed(
+      op: map['op'] as String,
+      playbackId: map['playback_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+      error: map['error'] as String,
+    );
+  }
+
+  /// Throws [ArgumentError] when a field constraint is violated.
+  void validate() {
+    if (error.isEmpty) {
+      throw ArgumentError('\'error\' must have length >= 1');
+    }
+    if (error.length > 1024) {
+      throw ArgumentError('\'error\' must have length <= 1024');
+    }
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdPlaybackFailed) return false;
+    return op == other.op &&
+        playbackId == other.playbackId &&
+        queueItemId == other.queueItemId &&
+        error == other.error;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([op, playbackId, queueItemId, error]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'playback-failed';
+    map['playback_id'] = playbackId;
+    map['queue_item_id'] = queueItemId;
+    map['error'] = error;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdPlaybackFailed.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdPlaybackFailed(
+      op: CsilCbor.expectLiteral(
+        map['op'],
+        'playback-failed',
+        'playback-failed',
+      ),
+      playbackId: map['playback_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+      error: map['error'] as String,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdPlaybackFailed.fromCbor(List<int> bytes) =>
+      CmdPlaybackFailed.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class CmdPlaybackState {
+  final String op;
+  final String playbackId;
+  final int queueItemId;
+  final PlayerStatus status;
+  final int positionMs;
+
+  const CmdPlaybackState({
+    required this.op,
+    required this.playbackId,
+    required this.queueItemId,
+    required this.status,
+    required this.positionMs,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['op'] = op;
+    map['playback_id'] = playbackId;
+    map['queue_item_id'] = queueItemId;
+    map['status'] = status;
+    map['position_ms'] = positionMs;
+    return map;
+  }
+
+  factory CmdPlaybackState.fromMap(Map<String, Object?> map) {
+    return CmdPlaybackState(
+      op: map['op'] as String,
+      playbackId: map['playback_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+      status: map['status'] as PlayerStatus,
+      positionMs: map['position_ms'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! CmdPlaybackState) return false;
+    return op == other.op &&
+        playbackId == other.playbackId &&
+        queueItemId == other.queueItemId &&
+        status == other.status &&
+        positionMs == other.positionMs;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([op, playbackId, queueItemId, status, positionMs]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['op'] = 'playback-state';
+    map['playback_id'] = playbackId;
+    map['queue_item_id'] = queueItemId;
+    map['status'] = status;
+    map['position_ms'] = positionMs;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory CmdPlaybackState.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return CmdPlaybackState(
+      op: CsilCbor.expectLiteral(map['op'], 'playback-state', 'playback-state'),
+      playbackId: map['playback_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+      status: CsilCbor.expectOneOf<String>(map['status'], const [
+        'stopped',
+        'playing',
+        'paused',
+      ]),
+      positionMs: map['position_ms'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory CmdPlaybackState.fromCbor(List<int> bytes) =>
+      CmdPlaybackState.fromCborValue(CsilCbor.decode(bytes));
+}
+
 sealed class PlayerCommand {
   const PlayerCommand();
 }
@@ -3747,14 +4485,29 @@ final class PlayerCommandCmdEnqueue extends PlayerCommand {
   const PlayerCommandCmdEnqueue(this.value);
 }
 
+final class PlayerCommandCmdEnqueueNext extends PlayerCommand {
+  final CmdEnqueueNext value;
+  const PlayerCommandCmdEnqueueNext(this.value);
+}
+
 final class PlayerCommandCmdRemove extends PlayerCommand {
   final CmdRemove value;
   const PlayerCommandCmdRemove(this.value);
 }
 
+final class PlayerCommandCmdRemoveItem extends PlayerCommand {
+  final CmdRemoveItem value;
+  const PlayerCommandCmdRemoveItem(this.value);
+}
+
 final class PlayerCommandCmdReorder extends PlayerCommand {
   final CmdReorder value;
   const PlayerCommandCmdReorder(this.value);
+}
+
+final class PlayerCommandCmdMoveItem extends PlayerCommand {
+  final CmdMoveItem value;
+  const PlayerCommandCmdMoveItem(this.value);
 }
 
 final class PlayerCommandCmdClear extends PlayerCommand {
@@ -3765,6 +4518,11 @@ final class PlayerCommandCmdClear extends PlayerCommand {
 final class PlayerCommandCmdPlay extends PlayerCommand {
   final CmdPlay value;
   const PlayerCommandCmdPlay(this.value);
+}
+
+final class PlayerCommandCmdReplaceAndPlay extends PlayerCommand {
+  final CmdReplaceAndPlay value;
+  const PlayerCommandCmdReplaceAndPlay(this.value);
 }
 
 final class PlayerCommandCmdPause extends PlayerCommand {
@@ -3790,6 +4548,36 @@ final class PlayerCommandCmdSeek extends PlayerCommand {
 final class PlayerCommandCmdVolume extends PlayerCommand {
   final CmdVolume value;
   const PlayerCommandCmdVolume(this.value);
+}
+
+final class PlayerCommandCmdSetRepeat extends PlayerCommand {
+  final CmdSetRepeat value;
+  const PlayerCommandCmdSetRepeat(this.value);
+}
+
+final class PlayerCommandCmdSetShuffle extends PlayerCommand {
+  final CmdSetShuffle value;
+  const PlayerCommandCmdSetShuffle(this.value);
+}
+
+final class PlayerCommandCmdUndo extends PlayerCommand {
+  final CmdUndo value;
+  const PlayerCommandCmdUndo(this.value);
+}
+
+final class PlayerCommandCmdPlaybackCompleted extends PlayerCommand {
+  final CmdPlaybackCompleted value;
+  const PlayerCommandCmdPlaybackCompleted(this.value);
+}
+
+final class PlayerCommandCmdPlaybackFailed extends PlayerCommand {
+  final CmdPlaybackFailed value;
+  const PlayerCommandCmdPlaybackFailed(this.value);
+}
+
+final class PlayerCommandCmdPlaybackState extends PlayerCommand {
+  final CmdPlaybackState value;
+  const PlayerCommandCmdPlaybackState(this.value);
 }
 
 final class CommandRequest {
@@ -3827,15 +4615,52 @@ final class CommandRequest {
     map['player_id'] = playerId;
     map['command'] = (switch (command) {
       PlayerCommandCmdEnqueue csilV => <Object?>[0, csilV.value.toCborValue()],
-      PlayerCommandCmdRemove csilV => <Object?>[1, csilV.value.toCborValue()],
-      PlayerCommandCmdReorder csilV => <Object?>[2, csilV.value.toCborValue()],
-      PlayerCommandCmdClear csilV => <Object?>[3, csilV.value.toCborValue()],
-      PlayerCommandCmdPlay csilV => <Object?>[4, csilV.value.toCborValue()],
-      PlayerCommandCmdPause csilV => <Object?>[5, csilV.value.toCborValue()],
-      PlayerCommandCmdNext csilV => <Object?>[6, csilV.value.toCborValue()],
-      PlayerCommandCmdPrevious csilV => <Object?>[7, csilV.value.toCborValue()],
-      PlayerCommandCmdSeek csilV => <Object?>[8, csilV.value.toCborValue()],
-      PlayerCommandCmdVolume csilV => <Object?>[9, csilV.value.toCborValue()],
+      PlayerCommandCmdEnqueueNext csilV => <Object?>[
+        1,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdRemove csilV => <Object?>[2, csilV.value.toCborValue()],
+      PlayerCommandCmdRemoveItem csilV => <Object?>[
+        3,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdReorder csilV => <Object?>[4, csilV.value.toCborValue()],
+      PlayerCommandCmdMoveItem csilV => <Object?>[5, csilV.value.toCborValue()],
+      PlayerCommandCmdClear csilV => <Object?>[6, csilV.value.toCborValue()],
+      PlayerCommandCmdPlay csilV => <Object?>[7, csilV.value.toCborValue()],
+      PlayerCommandCmdReplaceAndPlay csilV => <Object?>[
+        8,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdPause csilV => <Object?>[9, csilV.value.toCborValue()],
+      PlayerCommandCmdNext csilV => <Object?>[10, csilV.value.toCborValue()],
+      PlayerCommandCmdPrevious csilV => <Object?>[
+        11,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdSeek csilV => <Object?>[12, csilV.value.toCborValue()],
+      PlayerCommandCmdVolume csilV => <Object?>[13, csilV.value.toCborValue()],
+      PlayerCommandCmdSetRepeat csilV => <Object?>[
+        14,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdSetShuffle csilV => <Object?>[
+        15,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdUndo csilV => <Object?>[16, csilV.value.toCborValue()],
+      PlayerCommandCmdPlaybackCompleted csilV => <Object?>[
+        17,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdPlaybackFailed csilV => <Object?>[
+        18,
+        csilV.value.toCborValue(),
+      ],
+      PlayerCommandCmdPlaybackState csilV => <Object?>[
+        19,
+        csilV.value.toCborValue(),
+      ],
     });
     return map;
   }
@@ -3849,15 +4674,39 @@ final class CommandRequest {
         final csilU = map['command'] as List;
         return switch (csilU[0] as int) {
           0 => PlayerCommandCmdEnqueue(CmdEnqueue.fromCborValue(csilU[1])),
-          1 => PlayerCommandCmdRemove(CmdRemove.fromCborValue(csilU[1])),
-          2 => PlayerCommandCmdReorder(CmdReorder.fromCborValue(csilU[1])),
-          3 => PlayerCommandCmdClear(CmdClear.fromCborValue(csilU[1])),
-          4 => PlayerCommandCmdPlay(CmdPlay.fromCborValue(csilU[1])),
-          5 => PlayerCommandCmdPause(CmdPause.fromCborValue(csilU[1])),
-          6 => PlayerCommandCmdNext(CmdNext.fromCborValue(csilU[1])),
-          7 => PlayerCommandCmdPrevious(CmdPrevious.fromCborValue(csilU[1])),
-          8 => PlayerCommandCmdSeek(CmdSeek.fromCborValue(csilU[1])),
-          9 => PlayerCommandCmdVolume(CmdVolume.fromCborValue(csilU[1])),
+          1 => PlayerCommandCmdEnqueueNext(
+            CmdEnqueueNext.fromCborValue(csilU[1]),
+          ),
+          2 => PlayerCommandCmdRemove(CmdRemove.fromCborValue(csilU[1])),
+          3 => PlayerCommandCmdRemoveItem(
+            CmdRemoveItem.fromCborValue(csilU[1]),
+          ),
+          4 => PlayerCommandCmdReorder(CmdReorder.fromCborValue(csilU[1])),
+          5 => PlayerCommandCmdMoveItem(CmdMoveItem.fromCborValue(csilU[1])),
+          6 => PlayerCommandCmdClear(CmdClear.fromCborValue(csilU[1])),
+          7 => PlayerCommandCmdPlay(CmdPlay.fromCborValue(csilU[1])),
+          8 => PlayerCommandCmdReplaceAndPlay(
+            CmdReplaceAndPlay.fromCborValue(csilU[1]),
+          ),
+          9 => PlayerCommandCmdPause(CmdPause.fromCborValue(csilU[1])),
+          10 => PlayerCommandCmdNext(CmdNext.fromCborValue(csilU[1])),
+          11 => PlayerCommandCmdPrevious(CmdPrevious.fromCborValue(csilU[1])),
+          12 => PlayerCommandCmdSeek(CmdSeek.fromCborValue(csilU[1])),
+          13 => PlayerCommandCmdVolume(CmdVolume.fromCborValue(csilU[1])),
+          14 => PlayerCommandCmdSetRepeat(CmdSetRepeat.fromCborValue(csilU[1])),
+          15 => PlayerCommandCmdSetShuffle(
+            CmdSetShuffle.fromCborValue(csilU[1]),
+          ),
+          16 => PlayerCommandCmdUndo(CmdUndo.fromCborValue(csilU[1])),
+          17 => PlayerCommandCmdPlaybackCompleted(
+            CmdPlaybackCompleted.fromCborValue(csilU[1]),
+          ),
+          18 => PlayerCommandCmdPlaybackFailed(
+            CmdPlaybackFailed.fromCborValue(csilU[1]),
+          ),
+          19 => PlayerCommandCmdPlaybackState(
+            CmdPlaybackState.fromCborValue(csilU[1]),
+          ),
           _ => throw ArgumentError('unknown PlayerCommand variant'),
         };
       })(),
@@ -4021,11 +4870,13 @@ final class ShareResult {
 
 final class MediaOpen {
   final String kind;
+  final String streamId;
   final TrackId trackId;
   final StreamPref pref;
 
   const MediaOpen({
     required this.kind,
+    required this.streamId,
     required this.trackId,
     required this.pref,
   });
@@ -4033,6 +4884,7 @@ final class MediaOpen {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     map['track_id'] = trackId;
     map['pref'] = pref;
     return map;
@@ -4041,6 +4893,7 @@ final class MediaOpen {
   factory MediaOpen.fromMap(Map<String, Object?> map) {
     return MediaOpen(
       kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
       trackId: map['track_id'] as TrackId,
       pref: map['pref'] as StreamPref,
     );
@@ -4049,16 +4902,20 @@ final class MediaOpen {
   @override
   bool operator ==(Object other) {
     if (other is! MediaOpen) return false;
-    return kind == other.kind && trackId == other.trackId && pref == other.pref;
+    return kind == other.kind &&
+        streamId == other.streamId &&
+        trackId == other.trackId &&
+        pref == other.pref;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind, trackId, pref]);
+  int get hashCode => Object.hashAll([kind, streamId, trackId, pref]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'open';
+    map['stream_id'] = streamId;
     map['track_id'] = trackId;
     map['pref'] = pref.toCborValue();
     return map;
@@ -4069,6 +4926,7 @@ final class MediaOpen {
     final map = cbor as Map;
     return MediaOpen(
       kind: CsilCbor.expectLiteral(map['kind'], 'open', 'open'),
+      streamId: map['stream_id'] as String,
       trackId: map['track_id'] as String,
       pref: StreamPref.fromCborValue(map['pref']),
     );
@@ -4084,13 +4942,19 @@ final class MediaOpen {
 
 final class MediaSeek {
   final String kind;
+  final String streamId;
   final int positionMs;
 
-  const MediaSeek({required this.kind, required this.positionMs});
+  const MediaSeek({
+    required this.kind,
+    required this.streamId,
+    required this.positionMs,
+  });
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     map['position_ms'] = positionMs;
     return map;
   }
@@ -4098,6 +4962,7 @@ final class MediaSeek {
   factory MediaSeek.fromMap(Map<String, Object?> map) {
     return MediaSeek(
       kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
       positionMs: map['position_ms'] as int,
     );
   }
@@ -4105,16 +4970,19 @@ final class MediaSeek {
   @override
   bool operator ==(Object other) {
     if (other is! MediaSeek) return false;
-    return kind == other.kind && positionMs == other.positionMs;
+    return kind == other.kind &&
+        streamId == other.streamId &&
+        positionMs == other.positionMs;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind, positionMs]);
+  int get hashCode => Object.hashAll([kind, streamId, positionMs]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'seek';
+    map['stream_id'] = streamId;
     map['position_ms'] = positionMs;
     return map;
   }
@@ -4124,6 +4992,7 @@ final class MediaSeek {
     final map = cbor as Map;
     return MediaSeek(
       kind: CsilCbor.expectLiteral(map['kind'], 'seek', 'seek'),
+      streamId: map['stream_id'] as String,
       positionMs: map['position_ms'] as int,
     );
   }
@@ -4138,32 +5007,38 @@ final class MediaSeek {
 
 final class MediaPause {
   final String kind;
+  final String streamId;
 
-  const MediaPause({required this.kind});
+  const MediaPause({required this.kind, required this.streamId});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     return map;
   }
 
   factory MediaPause.fromMap(Map<String, Object?> map) {
-    return MediaPause(kind: map['kind'] as String);
+    return MediaPause(
+      kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! MediaPause) return false;
-    return kind == other.kind;
+    return kind == other.kind && streamId == other.streamId;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind]);
+  int get hashCode => Object.hashAll([kind, streamId]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'pause';
+    map['stream_id'] = streamId;
     return map;
   }
 
@@ -4172,6 +5047,7 @@ final class MediaPause {
     final map = cbor as Map;
     return MediaPause(
       kind: CsilCbor.expectLiteral(map['kind'], 'pause', 'pause'),
+      streamId: map['stream_id'] as String,
     );
   }
 
@@ -4185,32 +5061,38 @@ final class MediaPause {
 
 final class MediaResume {
   final String kind;
+  final String streamId;
 
-  const MediaResume({required this.kind});
+  const MediaResume({required this.kind, required this.streamId});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     return map;
   }
 
   factory MediaResume.fromMap(Map<String, Object?> map) {
-    return MediaResume(kind: map['kind'] as String);
+    return MediaResume(
+      kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! MediaResume) return false;
-    return kind == other.kind;
+    return kind == other.kind && streamId == other.streamId;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind]);
+  int get hashCode => Object.hashAll([kind, streamId]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'resume';
+    map['stream_id'] = streamId;
     return map;
   }
 
@@ -4219,6 +5101,7 @@ final class MediaResume {
     final map = cbor as Map;
     return MediaResume(
       kind: CsilCbor.expectLiteral(map['kind'], 'resume', 'resume'),
+      streamId: map['stream_id'] as String,
     );
   }
 
@@ -4232,39 +5115,48 @@ final class MediaResume {
 
 final class MediaStop {
   final String kind;
+  final String streamId;
 
-  const MediaStop({required this.kind});
+  const MediaStop({required this.kind, required this.streamId});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     return map;
   }
 
   factory MediaStop.fromMap(Map<String, Object?> map) {
-    return MediaStop(kind: map['kind'] as String);
+    return MediaStop(
+      kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! MediaStop) return false;
-    return kind == other.kind;
+    return kind == other.kind && streamId == other.streamId;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind]);
+  int get hashCode => Object.hashAll([kind, streamId]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'stop';
+    map['stream_id'] = streamId;
     return map;
   }
 
   /// Reconstruct this record from a decoded CBOR dynamic tree.
   factory MediaStop.fromCborValue(Object? cbor) {
     final map = cbor as Map;
-    return MediaStop(kind: CsilCbor.expectLiteral(map['kind'], 'stop', 'stop'));
+    return MediaStop(
+      kind: CsilCbor.expectLiteral(map['kind'], 'stop', 'stop'),
+      streamId: map['stream_id'] as String,
+    );
   }
 
   /// Encode this record to canonical CSIL CBOR bytes.
@@ -4306,6 +5198,7 @@ final class MediaControlMediaStop extends MediaControl {
 
 final class MediaHeader {
   final String kind;
+  final String streamId;
   final Codec codec;
   final bool transcoded;
   final int sampleRate;
@@ -4317,6 +5210,7 @@ final class MediaHeader {
 
   const MediaHeader({
     required this.kind,
+    required this.streamId,
     required this.codec,
     required this.transcoded,
     required this.sampleRate,
@@ -4330,6 +5224,7 @@ final class MediaHeader {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     map['codec'] = codec;
     map['transcoded'] = transcoded;
     map['sample_rate'] = sampleRate;
@@ -4344,6 +5239,7 @@ final class MediaHeader {
   factory MediaHeader.fromMap(Map<String, Object?> map) {
     return MediaHeader(
       kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
       codec: map['codec'] as Codec,
       transcoded: map['transcoded'] as bool,
       sampleRate: map['sample_rate'] as int,
@@ -4359,6 +5255,7 @@ final class MediaHeader {
   bool operator ==(Object other) {
     if (other is! MediaHeader) return false;
     return kind == other.kind &&
+        streamId == other.streamId &&
         codec == other.codec &&
         transcoded == other.transcoded &&
         sampleRate == other.sampleRate &&
@@ -4372,6 +5269,7 @@ final class MediaHeader {
   @override
   int get hashCode => Object.hashAll([
     kind,
+    streamId,
     codec,
     transcoded,
     sampleRate,
@@ -4395,6 +5293,7 @@ final class MediaHeader {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'header';
+    map['stream_id'] = streamId;
     map['codec'] = codec;
     map['transcoded'] = transcoded;
     map['sample_rate'] = sampleRate;
@@ -4411,6 +5310,7 @@ final class MediaHeader {
     final map = cbor as Map;
     return MediaHeader(
       kind: CsilCbor.expectLiteral(map['kind'], 'header', 'header'),
+      streamId: map['stream_id'] as String,
       codec: CsilCbor.expectOneOf<String>(map['codec'], const [
         'mp3',
         'aac',
@@ -4445,12 +5345,14 @@ typedef MediaEndReason = String;
 
 final class MediaChunk {
   final String kind;
+  final String streamId;
   final int seq;
   final int? timestampMs;
   final Uint8List data;
 
   const MediaChunk({
     required this.kind,
+    required this.streamId,
     required this.seq,
     this.timestampMs,
     required this.data,
@@ -4459,6 +5361,7 @@ final class MediaChunk {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     map['seq'] = seq;
     if (timestampMs != null) map['timestamp_ms'] = timestampMs;
     map['data'] = data;
@@ -4468,6 +5371,7 @@ final class MediaChunk {
   factory MediaChunk.fromMap(Map<String, Object?> map) {
     return MediaChunk(
       kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
       seq: map['seq'] as int,
       timestampMs: map['timestamp_ms'] as int?,
       data: map['data'] as Uint8List,
@@ -4478,6 +5382,7 @@ final class MediaChunk {
   bool operator ==(Object other) {
     if (other is! MediaChunk) return false;
     return kind == other.kind &&
+        streamId == other.streamId &&
         seq == other.seq &&
         timestampMs == other.timestampMs &&
         _bytesEqual(data, other.data);
@@ -4485,7 +5390,7 @@ final class MediaChunk {
 
   @override
   int get hashCode =>
-      Object.hashAll([kind, seq, timestampMs, Object.hashAll(data)]);
+      Object.hashAll([kind, streamId, seq, timestampMs, Object.hashAll(data)]);
 
   static bool _bytesEqual(Uint8List? a, Uint8List? b) {
     if (a == null || b == null) return a == b;
@@ -4500,6 +5405,7 @@ final class MediaChunk {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'chunk';
+    map['stream_id'] = streamId;
     map['seq'] = seq;
     if (timestampMs != null) map['timestamp_ms'] = timestampMs!;
     map['data'] = data;
@@ -4511,6 +5417,7 @@ final class MediaChunk {
     final map = cbor as Map;
     return MediaChunk(
       kind: CsilCbor.expectLiteral(map['kind'], 'chunk', 'chunk'),
+      streamId: map['stream_id'] as String,
       seq: map['seq'] as int,
       timestampMs: map['timestamp_ms'] == null
           ? null
@@ -4529,13 +5436,15 @@ final class MediaChunk {
 
 final class MediaEnd {
   final String kind;
+  final String streamId;
   final MediaEndReason? reason;
 
-  const MediaEnd({required this.kind, this.reason});
+  const MediaEnd({required this.kind, required this.streamId, this.reason});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     if (reason != null) map['reason'] = reason;
     return map;
   }
@@ -4543,6 +5452,7 @@ final class MediaEnd {
   factory MediaEnd.fromMap(Map<String, Object?> map) {
     return MediaEnd(
       kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
       reason: map['reason'] as MediaEndReason?,
     );
   }
@@ -4550,16 +5460,19 @@ final class MediaEnd {
   @override
   bool operator ==(Object other) {
     if (other is! MediaEnd) return false;
-    return kind == other.kind && reason == other.reason;
+    return kind == other.kind &&
+        streamId == other.streamId &&
+        reason == other.reason;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind, reason]);
+  int get hashCode => Object.hashAll([kind, streamId, reason]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'end';
+    map['stream_id'] = streamId;
     if (reason != null) map['reason'] = reason!;
     return map;
   }
@@ -4569,6 +5482,7 @@ final class MediaEnd {
     final map = cbor as Map;
     return MediaEnd(
       kind: CsilCbor.expectLiteral(map['kind'], 'end', 'end'),
+      streamId: map['stream_id'] as String,
       reason: map['reason'] == null
           ? null
           : CsilCbor.expectOneOf<String>(map['reason'], const [
@@ -4588,13 +5502,19 @@ final class MediaEnd {
 
 final class MediaFail {
   final String kind;
+  final String streamId;
   final ServiceError error;
 
-  const MediaFail({required this.kind, required this.error});
+  const MediaFail({
+    required this.kind,
+    required this.streamId,
+    required this.error,
+  });
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['kind'] = kind;
+    map['stream_id'] = streamId;
     map['error'] = error;
     return map;
   }
@@ -4602,6 +5522,7 @@ final class MediaFail {
   factory MediaFail.fromMap(Map<String, Object?> map) {
     return MediaFail(
       kind: map['kind'] as String,
+      streamId: map['stream_id'] as String,
       error: map['error'] as ServiceError,
     );
   }
@@ -4609,16 +5530,19 @@ final class MediaFail {
   @override
   bool operator ==(Object other) {
     if (other is! MediaFail) return false;
-    return kind == other.kind && error == other.error;
+    return kind == other.kind &&
+        streamId == other.streamId &&
+        error == other.error;
   }
 
   @override
-  int get hashCode => Object.hashAll([kind, error]);
+  int get hashCode => Object.hashAll([kind, streamId, error]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['kind'] = 'error';
+    map['stream_id'] = streamId;
     map['error'] = error.toCborValue();
     return map;
   }
@@ -4628,6 +5552,7 @@ final class MediaFail {
     final map = cbor as Map;
     return MediaFail(
       kind: CsilCbor.expectLiteral(map['kind'], 'error', 'error'),
+      streamId: map['stream_id'] as String,
       error: ServiceError.fromCborValue(map['error']),
     );
   }
@@ -4889,6 +5814,8 @@ final class RegisterNodeResponse {
 final class DirLoad {
   final String op;
   final PlayerId playerId;
+  final int queueItemId;
+  final String playbackId;
   final TrackId trackId;
   final StreamPref pref;
   final int? positionMs;
@@ -4896,6 +5823,8 @@ final class DirLoad {
   const DirLoad({
     required this.op,
     required this.playerId,
+    required this.queueItemId,
+    required this.playbackId,
     required this.trackId,
     required this.pref,
     this.positionMs,
@@ -4905,6 +5834,8 @@ final class DirLoad {
     final map = <String, Object?>{};
     map['op'] = op;
     map['player_id'] = playerId;
+    map['queue_item_id'] = queueItemId;
+    map['playback_id'] = playbackId;
     map['track_id'] = trackId;
     map['pref'] = pref;
     if (positionMs != null) map['position_ms'] = positionMs;
@@ -4915,6 +5846,8 @@ final class DirLoad {
     return DirLoad(
       op: map['op'] as String,
       playerId: map['player_id'] as PlayerId,
+      queueItemId: map['queue_item_id'] as int,
+      playbackId: map['playback_id'] as String,
       trackId: map['track_id'] as TrackId,
       pref: map['pref'] as StreamPref,
       positionMs: map['position_ms'] as int?,
@@ -4926,19 +5859,31 @@ final class DirLoad {
     if (other is! DirLoad) return false;
     return op == other.op &&
         playerId == other.playerId &&
+        queueItemId == other.queueItemId &&
+        playbackId == other.playbackId &&
         trackId == other.trackId &&
         pref == other.pref &&
         positionMs == other.positionMs;
   }
 
   @override
-  int get hashCode => Object.hashAll([op, playerId, trackId, pref, positionMs]);
+  int get hashCode => Object.hashAll([
+    op,
+    playerId,
+    queueItemId,
+    playbackId,
+    trackId,
+    pref,
+    positionMs,
+  ]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['op'] = 'load';
     map['player_id'] = playerId;
+    map['queue_item_id'] = queueItemId;
+    map['playback_id'] = playbackId;
     map['track_id'] = trackId;
     map['pref'] = pref.toCborValue();
     if (positionMs != null) map['position_ms'] = positionMs!;
@@ -4951,6 +5896,8 @@ final class DirLoad {
     return DirLoad(
       op: CsilCbor.expectLiteral(map['op'], 'load', 'load'),
       playerId: map['player_id'] as String,
+      queueItemId: map['queue_item_id'] as int,
+      playbackId: map['playback_id'] as String,
       trackId: map['track_id'] as String,
       pref: StreamPref.fromCborValue(map['pref']),
       positionMs: map['position_ms'] == null ? null : map['position_ms'] as int,
@@ -5230,22 +6177,34 @@ final class NodeDirectiveDirVolume extends NodeDirective {
 
 final class NodeReport {
   final PlayerId playerId;
+  final NodeEvent? event;
   final PlayerStatus status;
+  final int? queueItemId;
+  final String? playbackId;
   final int? positionMs;
+  final String? error;
   final bool? audioBlocked;
 
   const NodeReport({
     required this.playerId,
+    this.event,
     required this.status,
+    this.queueItemId,
+    this.playbackId,
     this.positionMs,
+    this.error,
     this.audioBlocked,
   });
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
+    if (event != null) map['event'] = event;
     map['status'] = status;
+    if (queueItemId != null) map['queue_item_id'] = queueItemId;
+    if (playbackId != null) map['playback_id'] = playbackId;
     if (positionMs != null) map['position_ms'] = positionMs;
+    if (error != null) map['error'] = error;
     if (audioBlocked != null) map['audio_blocked'] = audioBlocked;
     return map;
   }
@@ -5253,31 +6212,61 @@ final class NodeReport {
   factory NodeReport.fromMap(Map<String, Object?> map) {
     return NodeReport(
       playerId: map['player_id'] as PlayerId,
+      event: map['event'] as NodeEvent?,
       status: map['status'] as PlayerStatus,
+      queueItemId: map['queue_item_id'] as int?,
+      playbackId: map['playback_id'] as String?,
       positionMs: map['position_ms'] as int?,
+      error: map['error'] as String?,
       audioBlocked: map['audio_blocked'] as bool?,
     );
+  }
+
+  /// Throws [ArgumentError] when a field constraint is violated.
+  void validate() {
+    if (error != null && error!.isEmpty) {
+      throw ArgumentError('\'error\' must have length >= 1');
+    }
+    if (error != null && error!.length > 1024) {
+      throw ArgumentError('\'error\' must have length <= 1024');
+    }
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! NodeReport) return false;
     return playerId == other.playerId &&
+        event == other.event &&
         status == other.status &&
+        queueItemId == other.queueItemId &&
+        playbackId == other.playbackId &&
         positionMs == other.positionMs &&
+        error == other.error &&
         audioBlocked == other.audioBlocked;
   }
 
   @override
-  int get hashCode =>
-      Object.hashAll([playerId, status, positionMs, audioBlocked]);
+  int get hashCode => Object.hashAll([
+    playerId,
+    event,
+    status,
+    queueItemId,
+    playbackId,
+    positionMs,
+    error,
+    audioBlocked,
+  ]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
+    if (event != null) map['event'] = event!;
     map['status'] = status;
+    if (queueItemId != null) map['queue_item_id'] = queueItemId!;
+    if (playbackId != null) map['playback_id'] = playbackId!;
     if (positionMs != null) map['position_ms'] = positionMs!;
+    if (error != null) map['error'] = error!;
     if (audioBlocked != null) map['audio_blocked'] = audioBlocked!;
     return map;
   }
@@ -5287,12 +6276,27 @@ final class NodeReport {
     final map = cbor as Map;
     return NodeReport(
       playerId: map['player_id'] as String,
+      event: map['event'] == null
+          ? null
+          : CsilCbor.expectOneOf<String>(map['event'], const [
+              'ready',
+              'state',
+              'completed',
+              'failed',
+            ]),
       status: CsilCbor.expectOneOf<String>(map['status'], const [
         'stopped',
         'playing',
         'paused',
       ]),
+      queueItemId: map['queue_item_id'] == null
+          ? null
+          : map['queue_item_id'] as int,
+      playbackId: map['playback_id'] == null
+          ? null
+          : map['playback_id'] as String,
       positionMs: map['position_ms'] == null ? null : map['position_ms'] as int,
+      error: map['error'] == null ? null : map['error'] as String,
       audioBlocked: map['audio_blocked'] == null
           ? null
           : map['audio_blocked'] as bool,

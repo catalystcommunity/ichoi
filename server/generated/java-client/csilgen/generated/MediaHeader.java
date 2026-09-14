@@ -7,6 +7,7 @@ import java.util.Objects;
 
 public record MediaHeader(
     String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */,
     Codec codec /* wire: "codec" */,
     boolean transcoded /* wire: "transcoded" */,
     long sampleRate /* wire: "sample_rate" */,
@@ -22,6 +23,7 @@ public record MediaHeader(
         if (!(obj instanceof MediaHeader o)) return false;
         return true
             && Objects.equals(kind, o.kind)
+            && Objects.equals(streamId, o.streamId)
             && Objects.equals(codec, o.codec)
             && Objects.equals(transcoded, o.transcoded)
             && Objects.equals(sampleRate, o.sampleRate)
@@ -34,10 +36,10 @@ public record MediaHeader(
     }
     @Override
     public int hashCode() {
-        return Objects.hash(kind, codec, transcoded, sampleRate, channels, durationMs, trimStartSamples, trimEndSamples, Arrays.hashCode(codecConfig));
+        return Objects.hash(kind, streamId, codec, transcoded, sampleRate, channels, durationMs, trimStartSamples, trimEndSamples, Arrays.hashCode(codecConfig));
     }
     @Override
     public String toString() {
-        return "MediaHeader[" + "kind=" + kind + ", " + "codec=" + codec + ", " + "transcoded=" + transcoded + ", " + "sampleRate=" + sampleRate + ", " + "channels=" + channels + ", " + "durationMs=" + durationMs + ", " + "trimStartSamples=" + trimStartSamples + ", " + "trimEndSamples=" + trimEndSamples + ", " + "codecConfig=" + Arrays.toString(codecConfig) + "]";
+        return "MediaHeader[" + "kind=" + kind + ", " + "streamId=" + streamId + ", " + "codec=" + codec + ", " + "transcoded=" + transcoded + ", " + "sampleRate=" + sampleRate + ", " + "channels=" + channels + ", " + "durationMs=" + durationMs + ", " + "trimStartSamples=" + trimStartSamples + ", " + "trimEndSamples=" + trimEndSamples + ", " + "codecConfig=" + Arrays.toString(codecConfig) + "]";
     }
 }

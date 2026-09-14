@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record CmdPlay(
     String op /* wire: "op" */,
-    Long index /* wire: "index" */
+    Long index /* wire: "index" */,
+    Long queueItemId /* wire: "queue_item_id" */
 ) {
 }

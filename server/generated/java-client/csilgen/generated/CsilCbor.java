@@ -1621,7 +1621,7 @@ public final class CsilCbor {
     }
 
     static CborValue encQueueItem(QueueItem v) {
-        List<CborEntry> csilEntries = new ArrayList<>(5);
+        List<CborEntry> csilEntries = new ArrayList<>(6);
         if (v.title() != null) {
             csilEntries.add(new CborEntry(new CborText("title"), new CborText(v.title())));
         }
@@ -1635,10 +1635,12 @@ public final class CsilCbor {
         if (v.durationMs() != null) {
             csilEntries.add(new CborEntry(new CborText("duration_ms"), new CborUint(v.durationMs())));
         }
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
         return new CborMap(csilEntries);
     }
 
     static QueueItem decQueueItem(CborValue csilRoot) {
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
         TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
         Library library;
         {
@@ -1660,7 +1662,7 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "duration_ms");
             durationMs = csilField != null ? asU64(csilField) : null;
         }
-        return new QueueItem(trackId, library, title, artist, durationMs);
+        return new QueueItem(queueItemId, trackId, library, title, artist, durationMs);
     }
 
     public static byte[] encodeQueueItem(QueueItem v) {
@@ -1672,14 +1674,24 @@ public final class CsilCbor {
     }
 
     static CborValue encPlayerState(PlayerState v) {
-        List<CborEntry> csilEntries = new ArrayList<>(6);
+        List<CborEntry> csilEntries = new ArrayList<>(12);
+        if (v.error() != null) {
+            csilEntries.add(new CborEntry(new CborText("error"), new CborText(v.error())));
+        }
         csilEntries.add(new CborEntry(new CborText("queue"), encArray(v.queue(), csilElem0 -> encQueueItem(csilElem0))));
         csilEntries.add(new CborEntry(new CborText("status"), encPlayerStatus(v.status())));
         csilEntries.add(new CborEntry(new CborText("volume"), new CborUint(v.volume())));
+        csilEntries.add(new CborEntry(new CborText("shuffle"), new CborBool(v.shuffle())));
+        csilEntries.add(new CborEntry(new CborText("can_undo"), new CborBool(v.canUndo())));
+        csilEntries.add(new CborEntry(new CborText("revision"), new CborUint(v.revision())));
         csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
+        if (v.playbackId() != null) {
+            csilEntries.add(new CborEntry(new CborText("playback_id"), new CborText(v.playbackId())));
+        }
         if (v.positionMs() != null) {
             csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
         }
+        csilEntries.add(new CborEntry(new CborText("repeat_mode"), encRepeatMode(v.repeatMode())));
         if (v.currentIndex() != null) {
             csilEntries.add(new CborEntry(new CborText("current_index"), new CborUint(v.currentIndex())));
         }
@@ -1688,11 +1700,17 @@ public final class CsilCbor {
 
     static PlayerState decPlayerState(CborValue csilRoot) {
         PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
+        long revision = asU64(require(csilRoot, "revision"));
         PlayerStatus status = decPlayerStatus(require(csilRoot, "status"));
         Long currentIndex;
         {
             CborValue csilField = mapGet(csilRoot, "current_index");
             currentIndex = csilField != null ? asU64(csilField) : null;
+        }
+        String playbackId;
+        {
+            CborValue csilField = mapGet(csilRoot, "playback_id");
+            playbackId = csilField != null ? asText(csilField) : null;
         }
         Long positionMs;
         {
@@ -1700,8 +1718,16 @@ public final class CsilCbor {
             positionMs = csilField != null ? asU64(csilField) : null;
         }
         long volume = asU64(require(csilRoot, "volume"));
+        RepeatMode repeatMode = decRepeatMode(require(csilRoot, "repeat_mode"));
+        boolean shuffle = asBool(require(csilRoot, "shuffle"));
+        String error;
+        {
+            CborValue csilField = mapGet(csilRoot, "error");
+            error = csilField != null ? asText(csilField) : null;
+        }
+        boolean canUndo = asBool(require(csilRoot, "can_undo"));
         List<QueueItem> queue = decArray(require(csilRoot, "queue"), csilE0 -> decQueueItem(csilE0));
-        return new PlayerState(playerId, status, currentIndex, positionMs, volume, queue);
+        return new PlayerState(playerId, revision, status, currentIndex, playbackId, positionMs, volume, repeatMode, shuffle, error, canUndo, queue);
     }
 
     public static byte[] encodePlayerState(PlayerState v) {
@@ -1812,6 +1838,27 @@ public final class CsilCbor {
         return decCmdEnqueue(decode(data));
     }
 
+    static CborValue encCmdEnqueueNext(CmdEnqueueNext v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("enqueue-next")));
+        csilEntries.add(new CborEntry(new CborText("track_ids"), encArray(v.trackIds(), csilElem0 -> new CborText((csilElem0).value()))));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdEnqueueNext decCmdEnqueueNext(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("enqueue-next"), "enqueue-next");
+        List<TrackId> trackIds = decArray(require(csilRoot, "track_ids"), csilE0 -> new TrackId(asText(csilE0)));
+        return new CmdEnqueueNext(op, trackIds);
+    }
+
+    public static byte[] encodeCmdEnqueueNext(CmdEnqueueNext v) {
+        return encode(encCmdEnqueueNext(v));
+    }
+
+    public static CmdEnqueueNext decodeCmdEnqueueNext(byte[] data) {
+        return decCmdEnqueueNext(decode(data));
+    }
+
     static CborValue encCmdRemove(CmdRemove v) {
         List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("op"), new CborText("remove")));
@@ -1831,6 +1878,27 @@ public final class CsilCbor {
 
     public static CmdRemove decodeCmdRemove(byte[] data) {
         return decCmdRemove(decode(data));
+    }
+
+    static CborValue encCmdRemoveItem(CmdRemoveItem v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("remove-item")));
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdRemoveItem decCmdRemoveItem(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("remove-item"), "remove-item");
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
+        return new CmdRemoveItem(op, queueItemId);
+    }
+
+    public static byte[] encodeCmdRemoveItem(CmdRemoveItem v) {
+        return encode(encCmdRemoveItem(v));
+    }
+
+    public static CmdRemoveItem decodeCmdRemoveItem(byte[] data) {
+        return decCmdRemoveItem(decode(data));
     }
 
     static CborValue encCmdReorder(CmdReorder v) {
@@ -1856,6 +1924,35 @@ public final class CsilCbor {
         return decCmdReorder(decode(data));
     }
 
+    static CborValue encCmdMoveItem(CmdMoveItem v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("move-item")));
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
+        if (v.beforeQueueItemId() != null) {
+            csilEntries.add(new CborEntry(new CborText("before_queue_item_id"), new CborUint(v.beforeQueueItemId())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static CmdMoveItem decCmdMoveItem(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("move-item"), "move-item");
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
+        Long beforeQueueItemId;
+        {
+            CborValue csilField = mapGet(csilRoot, "before_queue_item_id");
+            beforeQueueItemId = csilField != null ? asU64(csilField) : null;
+        }
+        return new CmdMoveItem(op, queueItemId, beforeQueueItemId);
+    }
+
+    public static byte[] encodeCmdMoveItem(CmdMoveItem v) {
+        return encode(encCmdMoveItem(v));
+    }
+
+    public static CmdMoveItem decodeCmdMoveItem(byte[] data) {
+        return decCmdMoveItem(decode(data));
+    }
+
     static CborValue encCmdClear(CmdClear v) {
         List<CborEntry> csilEntries = new ArrayList<>(1);
         csilEntries.add(new CborEntry(new CborText("op"), new CborText("clear")));
@@ -1876,10 +1973,13 @@ public final class CsilCbor {
     }
 
     static CborValue encCmdPlay(CmdPlay v) {
-        List<CborEntry> csilEntries = new ArrayList<>(2);
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         csilEntries.add(new CborEntry(new CborText("op"), new CborText("play")));
         if (v.index() != null) {
             csilEntries.add(new CborEntry(new CborText("index"), new CborUint(v.index())));
+        }
+        if (v.queueItemId() != null) {
+            csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
         }
         return new CborMap(csilEntries);
     }
@@ -1891,7 +1991,12 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "index");
             index = csilField != null ? asU64(csilField) : null;
         }
-        return new CmdPlay(op, index);
+        Long queueItemId;
+        {
+            CborValue csilField = mapGet(csilRoot, "queue_item_id");
+            queueItemId = csilField != null ? asU64(csilField) : null;
+        }
+        return new CmdPlay(op, index, queueItemId);
     }
 
     public static byte[] encodeCmdPlay(CmdPlay v) {
@@ -1900,6 +2005,43 @@ public final class CsilCbor {
 
     public static CmdPlay decodeCmdPlay(byte[] data) {
         return decCmdPlay(decode(data));
+    }
+
+    static CborValue encCmdReplaceAndPlay(CmdReplaceAndPlay v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("replace-and-play")));
+        csilEntries.add(new CborEntry(new CborText("track_ids"), encArray(v.trackIds(), csilElem0 -> new CborText((csilElem0).value()))));
+        if (v.positionMs() != null) {
+            csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
+        }
+        if (v.startIndex() != null) {
+            csilEntries.add(new CborEntry(new CborText("start_index"), new CborUint(v.startIndex())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static CmdReplaceAndPlay decCmdReplaceAndPlay(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("replace-and-play"), "replace-and-play");
+        List<TrackId> trackIds = decArray(require(csilRoot, "track_ids"), csilE0 -> new TrackId(asText(csilE0)));
+        Long startIndex;
+        {
+            CborValue csilField = mapGet(csilRoot, "start_index");
+            startIndex = csilField != null ? asU64(csilField) : null;
+        }
+        Long positionMs;
+        {
+            CborValue csilField = mapGet(csilRoot, "position_ms");
+            positionMs = csilField != null ? asU64(csilField) : null;
+        }
+        return new CmdReplaceAndPlay(op, trackIds, startIndex, positionMs);
+    }
+
+    public static byte[] encodeCmdReplaceAndPlay(CmdReplaceAndPlay v) {
+        return encode(encCmdReplaceAndPlay(v));
+    }
+
+    public static CmdReplaceAndPlay decodeCmdReplaceAndPlay(byte[] data) {
+        return decCmdReplaceAndPlay(decode(data));
     }
 
     static CborValue encCmdPause(CmdPause v) {
@@ -2001,6 +2143,142 @@ public final class CsilCbor {
         return decCmdVolume(decode(data));
     }
 
+    static CborValue encCmdSetRepeat(CmdSetRepeat v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("set-repeat")));
+        csilEntries.add(new CborEntry(new CborText("repeat_mode"), encRepeatMode(v.repeatMode())));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdSetRepeat decCmdSetRepeat(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("set-repeat"), "set-repeat");
+        RepeatMode repeatMode = decRepeatMode(require(csilRoot, "repeat_mode"));
+        return new CmdSetRepeat(op, repeatMode);
+    }
+
+    public static byte[] encodeCmdSetRepeat(CmdSetRepeat v) {
+        return encode(encCmdSetRepeat(v));
+    }
+
+    public static CmdSetRepeat decodeCmdSetRepeat(byte[] data) {
+        return decCmdSetRepeat(decode(data));
+    }
+
+    static CborValue encCmdSetShuffle(CmdSetShuffle v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("set-shuffle")));
+        csilEntries.add(new CborEntry(new CborText("shuffle"), new CborBool(v.shuffle())));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdSetShuffle decCmdSetShuffle(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("set-shuffle"), "set-shuffle");
+        boolean shuffle = asBool(require(csilRoot, "shuffle"));
+        return new CmdSetShuffle(op, shuffle);
+    }
+
+    public static byte[] encodeCmdSetShuffle(CmdSetShuffle v) {
+        return encode(encCmdSetShuffle(v));
+    }
+
+    public static CmdSetShuffle decodeCmdSetShuffle(byte[] data) {
+        return decCmdSetShuffle(decode(data));
+    }
+
+    static CborValue encCmdUndo(CmdUndo v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("undo")));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdUndo decCmdUndo(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("undo"), "undo");
+        return new CmdUndo(op);
+    }
+
+    public static byte[] encodeCmdUndo(CmdUndo v) {
+        return encode(encCmdUndo(v));
+    }
+
+    public static CmdUndo decodeCmdUndo(byte[] data) {
+        return decCmdUndo(decode(data));
+    }
+
+    static CborValue encCmdPlaybackCompleted(CmdPlaybackCompleted v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("playback-completed")));
+        csilEntries.add(new CborEntry(new CborText("playback_id"), new CborText(v.playbackId())));
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdPlaybackCompleted decCmdPlaybackCompleted(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("playback-completed"), "playback-completed");
+        String playbackId = asText(require(csilRoot, "playback_id"));
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
+        return new CmdPlaybackCompleted(op, playbackId, queueItemId);
+    }
+
+    public static byte[] encodeCmdPlaybackCompleted(CmdPlaybackCompleted v) {
+        return encode(encCmdPlaybackCompleted(v));
+    }
+
+    public static CmdPlaybackCompleted decodeCmdPlaybackCompleted(byte[] data) {
+        return decCmdPlaybackCompleted(decode(data));
+    }
+
+    static CborValue encCmdPlaybackFailed(CmdPlaybackFailed v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("playback-failed")));
+        csilEntries.add(new CborEntry(new CborText("error"), new CborText(v.error())));
+        csilEntries.add(new CborEntry(new CborText("playback_id"), new CborText(v.playbackId())));
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdPlaybackFailed decCmdPlaybackFailed(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("playback-failed"), "playback-failed");
+        String playbackId = asText(require(csilRoot, "playback_id"));
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
+        String error = asText(require(csilRoot, "error"));
+        return new CmdPlaybackFailed(op, playbackId, queueItemId, error);
+    }
+
+    public static byte[] encodeCmdPlaybackFailed(CmdPlaybackFailed v) {
+        return encode(encCmdPlaybackFailed(v));
+    }
+
+    public static CmdPlaybackFailed decodeCmdPlaybackFailed(byte[] data) {
+        return decCmdPlaybackFailed(decode(data));
+    }
+
+    static CborValue encCmdPlaybackState(CmdPlaybackState v) {
+        List<CborEntry> csilEntries = new ArrayList<>(5);
+        csilEntries.add(new CborEntry(new CborText("op"), new CborText("playback-state")));
+        csilEntries.add(new CborEntry(new CborText("status"), encPlayerStatus(v.status())));
+        csilEntries.add(new CborEntry(new CborText("playback_id"), new CborText(v.playbackId())));
+        csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
+        return new CborMap(csilEntries);
+    }
+
+    static CmdPlaybackState decCmdPlaybackState(CborValue csilRoot) {
+        String op = expectLiteral(require(csilRoot, "op"), new CborText("playback-state"), "playback-state");
+        String playbackId = asText(require(csilRoot, "playback_id"));
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
+        PlayerStatus status = decPlayerStatus(require(csilRoot, "status"));
+        long positionMs = asU64(require(csilRoot, "position_ms"));
+        return new CmdPlaybackState(op, playbackId, queueItemId, status, positionMs);
+    }
+
+    public static byte[] encodeCmdPlaybackState(CmdPlaybackState v) {
+        return encode(encCmdPlaybackState(v));
+    }
+
+    public static CmdPlaybackState decodeCmdPlaybackState(byte[] data) {
+        return decCmdPlaybackState(decode(data));
+    }
+
     static CborValue encCommandRequest(CommandRequest v) {
         List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("command"), encPlayerCommand(v.command())));
@@ -2086,18 +2364,20 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaOpen(MediaOpen v) {
-        List<CborEntry> csilEntries = new ArrayList<>(3);
+        List<CborEntry> csilEntries = new ArrayList<>(4);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("open")));
         csilEntries.add(new CborEntry(new CborText("pref"), encStreamPref(v.pref())));
         csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         return new CborMap(csilEntries);
     }
 
     static MediaOpen decMediaOpen(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("open"), "open");
+        String streamId = asText(require(csilRoot, "stream_id"));
         TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
         StreamPref pref = decStreamPref(require(csilRoot, "pref"));
-        return new MediaOpen(kind, trackId, pref);
+        return new MediaOpen(kind, streamId, trackId, pref);
     }
 
     public static byte[] encodeMediaOpen(MediaOpen v) {
@@ -2109,16 +2389,18 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaSeek(MediaSeek v) {
-        List<CborEntry> csilEntries = new ArrayList<>(2);
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("seek")));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
         return new CborMap(csilEntries);
     }
 
     static MediaSeek decMediaSeek(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("seek"), "seek");
+        String streamId = asText(require(csilRoot, "stream_id"));
         long positionMs = asU64(require(csilRoot, "position_ms"));
-        return new MediaSeek(kind, positionMs);
+        return new MediaSeek(kind, streamId, positionMs);
     }
 
     public static byte[] encodeMediaSeek(MediaSeek v) {
@@ -2130,14 +2412,16 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaPause(MediaPause v) {
-        List<CborEntry> csilEntries = new ArrayList<>(1);
+        List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("pause")));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         return new CborMap(csilEntries);
     }
 
     static MediaPause decMediaPause(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("pause"), "pause");
-        return new MediaPause(kind);
+        String streamId = asText(require(csilRoot, "stream_id"));
+        return new MediaPause(kind, streamId);
     }
 
     public static byte[] encodeMediaPause(MediaPause v) {
@@ -2149,14 +2433,16 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaResume(MediaResume v) {
-        List<CborEntry> csilEntries = new ArrayList<>(1);
+        List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("resume")));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         return new CborMap(csilEntries);
     }
 
     static MediaResume decMediaResume(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("resume"), "resume");
-        return new MediaResume(kind);
+        String streamId = asText(require(csilRoot, "stream_id"));
+        return new MediaResume(kind, streamId);
     }
 
     public static byte[] encodeMediaResume(MediaResume v) {
@@ -2168,14 +2454,16 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaStop(MediaStop v) {
-        List<CborEntry> csilEntries = new ArrayList<>(1);
+        List<CborEntry> csilEntries = new ArrayList<>(2);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("stop")));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         return new CborMap(csilEntries);
     }
 
     static MediaStop decMediaStop(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("stop"), "stop");
-        return new MediaStop(kind);
+        String streamId = asText(require(csilRoot, "stream_id"));
+        return new MediaStop(kind, streamId);
     }
 
     public static byte[] encodeMediaStop(MediaStop v) {
@@ -2187,10 +2475,11 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaHeader(MediaHeader v) {
-        List<CborEntry> csilEntries = new ArrayList<>(9);
+        List<CborEntry> csilEntries = new ArrayList<>(10);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("header")));
         csilEntries.add(new CborEntry(new CborText("codec"), encCodec(v.codec())));
         csilEntries.add(new CborEntry(new CborText("channels"), new CborUint(v.channels())));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         csilEntries.add(new CborEntry(new CborText("transcoded"), new CborBool(v.transcoded())));
         if (v.durationMs() != null) {
             csilEntries.add(new CborEntry(new CborText("duration_ms"), new CborUint(v.durationMs())));
@@ -2206,6 +2495,7 @@ public final class CsilCbor {
 
     static MediaHeader decMediaHeader(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("header"), "header");
+        String streamId = asText(require(csilRoot, "stream_id"));
         Codec codec = decCodec(require(csilRoot, "codec"));
         boolean transcoded = asBool(require(csilRoot, "transcoded"));
         long sampleRate = asU64(require(csilRoot, "sample_rate"));
@@ -2222,7 +2512,7 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "codec_config");
             codecConfig = csilField != null ? asBytes(csilField) : null;
         }
-        return new MediaHeader(kind, codec, transcoded, sampleRate, channels, durationMs, trimStartSamples, trimEndSamples, codecConfig);
+        return new MediaHeader(kind, streamId, codec, transcoded, sampleRate, channels, durationMs, trimStartSamples, trimEndSamples, codecConfig);
     }
 
     public static byte[] encodeMediaHeader(MediaHeader v) {
@@ -2234,10 +2524,11 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaChunk(MediaChunk v) {
-        List<CborEntry> csilEntries = new ArrayList<>(4);
+        List<CborEntry> csilEntries = new ArrayList<>(5);
         csilEntries.add(new CborEntry(new CborText("seq"), new CborUint(v.seq())));
         csilEntries.add(new CborEntry(new CborText("data"), new CborBytes(v.data())));
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("chunk")));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         if (v.timestampMs() != null) {
             csilEntries.add(new CborEntry(new CborText("timestamp_ms"), new CborUint(v.timestampMs())));
         }
@@ -2246,6 +2537,7 @@ public final class CsilCbor {
 
     static MediaChunk decMediaChunk(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("chunk"), "chunk");
+        String streamId = asText(require(csilRoot, "stream_id"));
         long seq = asU64(require(csilRoot, "seq"));
         Long timestampMs;
         {
@@ -2253,7 +2545,7 @@ public final class CsilCbor {
             timestampMs = csilField != null ? asU64(csilField) : null;
         }
         byte[] data = asBytes(require(csilRoot, "data"));
-        return new MediaChunk(kind, seq, timestampMs, data);
+        return new MediaChunk(kind, streamId, seq, timestampMs, data);
     }
 
     public static byte[] encodeMediaChunk(MediaChunk v) {
@@ -2265,22 +2557,24 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaEnd(MediaEnd v) {
-        List<CborEntry> csilEntries = new ArrayList<>(2);
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("end")));
         if (v.reason() != null) {
             csilEntries.add(new CborEntry(new CborText("reason"), encMediaEndReason(v.reason())));
         }
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         return new CborMap(csilEntries);
     }
 
     static MediaEnd decMediaEnd(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("end"), "end");
+        String streamId = asText(require(csilRoot, "stream_id"));
         MediaEndReason reason;
         {
             CborValue csilField = mapGet(csilRoot, "reason");
             reason = csilField != null ? decMediaEndReason(csilField) : null;
         }
-        return new MediaEnd(kind, reason);
+        return new MediaEnd(kind, streamId, reason);
     }
 
     public static byte[] encodeMediaEnd(MediaEnd v) {
@@ -2292,16 +2586,18 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaFail(MediaFail v) {
-        List<CborEntry> csilEntries = new ArrayList<>(2);
+        List<CborEntry> csilEntries = new ArrayList<>(3);
         csilEntries.add(new CborEntry(new CborText("kind"), new CborText("error")));
         csilEntries.add(new CborEntry(new CborText("error"), encServiceError(v.error())));
+        csilEntries.add(new CborEntry(new CborText("stream_id"), new CborText(v.streamId())));
         return new CborMap(csilEntries);
     }
 
     static MediaFail decMediaFail(CborValue csilRoot) {
         String kind = expectLiteral(require(csilRoot, "kind"), new CborText("error"), "error");
+        String streamId = asText(require(csilRoot, "stream_id"));
         ServiceError error = decServiceError(require(csilRoot, "error"));
-        return new MediaFail(kind, error);
+        return new MediaFail(kind, streamId, error);
     }
 
     public static byte[] encodeMediaFail(MediaFail v) {
@@ -2392,20 +2688,24 @@ public final class CsilCbor {
     }
 
     static CborValue encDirLoad(DirLoad v) {
-        List<CborEntry> csilEntries = new ArrayList<>(5);
+        List<CborEntry> csilEntries = new ArrayList<>(7);
         csilEntries.add(new CborEntry(new CborText("op"), new CborText("load")));
         csilEntries.add(new CborEntry(new CborText("pref"), encStreamPref(v.pref())));
         csilEntries.add(new CborEntry(new CborText("track_id"), new CborText((v.trackId()).value())));
         csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
+        csilEntries.add(new CborEntry(new CborText("playback_id"), new CborText(v.playbackId())));
         if (v.positionMs() != null) {
             csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
         }
+        csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
         return new CborMap(csilEntries);
     }
 
     static DirLoad decDirLoad(CborValue csilRoot) {
         String op = expectLiteral(require(csilRoot, "op"), new CborText("load"), "load");
         PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
+        long queueItemId = asU64(require(csilRoot, "queue_item_id"));
+        String playbackId = asText(require(csilRoot, "playback_id"));
         TrackId trackId = new TrackId(asText(require(csilRoot, "track_id")));
         StreamPref pref = decStreamPref(require(csilRoot, "pref"));
         Long positionMs;
@@ -2413,7 +2713,7 @@ public final class CsilCbor {
             CborValue csilField = mapGet(csilRoot, "position_ms");
             positionMs = csilField != null ? asU64(csilField) : null;
         }
-        return new DirLoad(op, playerId, trackId, pref, positionMs);
+        return new DirLoad(op, playerId, queueItemId, playbackId, trackId, pref, positionMs);
     }
 
     public static byte[] encodeDirLoad(DirLoad v) {
@@ -2511,32 +2811,64 @@ public final class CsilCbor {
     }
 
     static CborValue encNodeReport(NodeReport v) {
-        List<CborEntry> csilEntries = new ArrayList<>(4);
+        List<CborEntry> csilEntries = new ArrayList<>(8);
+        if (v.error() != null) {
+            csilEntries.add(new CborEntry(new CborText("error"), new CborText(v.error())));
+        }
+        if (v.event() != null) {
+            csilEntries.add(new CborEntry(new CborText("event"), encNodeEvent(v.event())));
+        }
         csilEntries.add(new CborEntry(new CborText("status"), encPlayerStatus(v.status())));
         csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
+        if (v.playbackId() != null) {
+            csilEntries.add(new CborEntry(new CborText("playback_id"), new CborText(v.playbackId())));
+        }
         if (v.positionMs() != null) {
             csilEntries.add(new CborEntry(new CborText("position_ms"), new CborUint(v.positionMs())));
         }
         if (v.audioBlocked() != null) {
             csilEntries.add(new CborEntry(new CborText("audio_blocked"), new CborBool(v.audioBlocked())));
         }
+        if (v.queueItemId() != null) {
+            csilEntries.add(new CborEntry(new CborText("queue_item_id"), new CborUint(v.queueItemId())));
+        }
         return new CborMap(csilEntries);
     }
 
     static NodeReport decNodeReport(CborValue csilRoot) {
         PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
+        NodeEvent event;
+        {
+            CborValue csilField = mapGet(csilRoot, "event");
+            event = csilField != null ? decNodeEvent(csilField) : null;
+        }
         PlayerStatus status = decPlayerStatus(require(csilRoot, "status"));
+        Long queueItemId;
+        {
+            CborValue csilField = mapGet(csilRoot, "queue_item_id");
+            queueItemId = csilField != null ? asU64(csilField) : null;
+        }
+        String playbackId;
+        {
+            CborValue csilField = mapGet(csilRoot, "playback_id");
+            playbackId = csilField != null ? asText(csilField) : null;
+        }
         Long positionMs;
         {
             CborValue csilField = mapGet(csilRoot, "position_ms");
             positionMs = csilField != null ? asU64(csilField) : null;
+        }
+        String error;
+        {
+            CborValue csilField = mapGet(csilRoot, "error");
+            error = csilField != null ? asText(csilField) : null;
         }
         Boolean audioBlocked;
         {
             CborValue csilField = mapGet(csilRoot, "audio_blocked");
             audioBlocked = csilField != null ? asBool(csilField) : null;
         }
-        return new NodeReport(playerId, status, positionMs, audioBlocked);
+        return new NodeReport(playerId, event, status, queueItemId, playbackId, positionMs, error, audioBlocked);
     }
 
     public static byte[] encodeNodeReport(NodeReport v) {
@@ -3522,6 +3854,30 @@ public final class CsilCbor {
         return new PlayerStatus(csilVal);
     }
 
+    static CborValue encRepeatMode(RepeatMode v) {
+        return new CborText((String) v.value());
+    }
+
+    static RepeatMode decRepeatMode(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "off") || Objects.equals(csilVal, "all") || Objects.equals(csilVal, "one"))) {
+            throw new CsilCborException("csil cbor: RepeatMode value " + csilVal + " is not a member of the declared enum");
+        }
+        return new RepeatMode(csilVal);
+    }
+
+    static CborValue encNodeEvent(NodeEvent v) {
+        return new CborText((String) v.value());
+    }
+
+    static NodeEvent decNodeEvent(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "ready") || Objects.equals(csilVal, "state") || Objects.equals(csilVal, "completed") || Objects.equals(csilVal, "failed"))) {
+            throw new CsilCborException("csil cbor: NodeEvent value " + csilVal + " is not a member of the declared enum");
+        }
+        return new NodeEvent(csilVal);
+    }
+
     static CborValue encCodec(Codec v) {
         return new CborText((String) v.value());
     }
@@ -3611,32 +3967,62 @@ public final class CsilCbor {
         if (csilInner instanceof CmdEnqueue csilCast0) {
             return new CborArray(Arrays.asList(new CborUint(0L), encCmdEnqueue(csilCast0)));
         }
-        if (csilInner instanceof CmdRemove csilCast1) {
-            return new CborArray(Arrays.asList(new CborUint(1L), encCmdRemove(csilCast1)));
+        if (csilInner instanceof CmdEnqueueNext csilCast1) {
+            return new CborArray(Arrays.asList(new CborUint(1L), encCmdEnqueueNext(csilCast1)));
         }
-        if (csilInner instanceof CmdReorder csilCast2) {
-            return new CborArray(Arrays.asList(new CborUint(2L), encCmdReorder(csilCast2)));
+        if (csilInner instanceof CmdRemove csilCast2) {
+            return new CborArray(Arrays.asList(new CborUint(2L), encCmdRemove(csilCast2)));
         }
-        if (csilInner instanceof CmdClear csilCast3) {
-            return new CborArray(Arrays.asList(new CborUint(3L), encCmdClear(csilCast3)));
+        if (csilInner instanceof CmdRemoveItem csilCast3) {
+            return new CborArray(Arrays.asList(new CborUint(3L), encCmdRemoveItem(csilCast3)));
         }
-        if (csilInner instanceof CmdPlay csilCast4) {
-            return new CborArray(Arrays.asList(new CborUint(4L), encCmdPlay(csilCast4)));
+        if (csilInner instanceof CmdReorder csilCast4) {
+            return new CborArray(Arrays.asList(new CborUint(4L), encCmdReorder(csilCast4)));
         }
-        if (csilInner instanceof CmdPause csilCast5) {
-            return new CborArray(Arrays.asList(new CborUint(5L), encCmdPause(csilCast5)));
+        if (csilInner instanceof CmdMoveItem csilCast5) {
+            return new CborArray(Arrays.asList(new CborUint(5L), encCmdMoveItem(csilCast5)));
         }
-        if (csilInner instanceof CmdNext csilCast6) {
-            return new CborArray(Arrays.asList(new CborUint(6L), encCmdNext(csilCast6)));
+        if (csilInner instanceof CmdClear csilCast6) {
+            return new CborArray(Arrays.asList(new CborUint(6L), encCmdClear(csilCast6)));
         }
-        if (csilInner instanceof CmdPrevious csilCast7) {
-            return new CborArray(Arrays.asList(new CborUint(7L), encCmdPrevious(csilCast7)));
+        if (csilInner instanceof CmdPlay csilCast7) {
+            return new CborArray(Arrays.asList(new CborUint(7L), encCmdPlay(csilCast7)));
         }
-        if (csilInner instanceof CmdSeek csilCast8) {
-            return new CborArray(Arrays.asList(new CborUint(8L), encCmdSeek(csilCast8)));
+        if (csilInner instanceof CmdReplaceAndPlay csilCast8) {
+            return new CborArray(Arrays.asList(new CborUint(8L), encCmdReplaceAndPlay(csilCast8)));
         }
-        if (csilInner instanceof CmdVolume csilCast9) {
-            return new CborArray(Arrays.asList(new CborUint(9L), encCmdVolume(csilCast9)));
+        if (csilInner instanceof CmdPause csilCast9) {
+            return new CborArray(Arrays.asList(new CborUint(9L), encCmdPause(csilCast9)));
+        }
+        if (csilInner instanceof CmdNext csilCast10) {
+            return new CborArray(Arrays.asList(new CborUint(10L), encCmdNext(csilCast10)));
+        }
+        if (csilInner instanceof CmdPrevious csilCast11) {
+            return new CborArray(Arrays.asList(new CborUint(11L), encCmdPrevious(csilCast11)));
+        }
+        if (csilInner instanceof CmdSeek csilCast12) {
+            return new CborArray(Arrays.asList(new CborUint(12L), encCmdSeek(csilCast12)));
+        }
+        if (csilInner instanceof CmdVolume csilCast13) {
+            return new CborArray(Arrays.asList(new CborUint(13L), encCmdVolume(csilCast13)));
+        }
+        if (csilInner instanceof CmdSetRepeat csilCast14) {
+            return new CborArray(Arrays.asList(new CborUint(14L), encCmdSetRepeat(csilCast14)));
+        }
+        if (csilInner instanceof CmdSetShuffle csilCast15) {
+            return new CborArray(Arrays.asList(new CborUint(15L), encCmdSetShuffle(csilCast15)));
+        }
+        if (csilInner instanceof CmdUndo csilCast16) {
+            return new CborArray(Arrays.asList(new CborUint(16L), encCmdUndo(csilCast16)));
+        }
+        if (csilInner instanceof CmdPlaybackCompleted csilCast17) {
+            return new CborArray(Arrays.asList(new CborUint(17L), encCmdPlaybackCompleted(csilCast17)));
+        }
+        if (csilInner instanceof CmdPlaybackFailed csilCast18) {
+            return new CborArray(Arrays.asList(new CborUint(18L), encCmdPlaybackFailed(csilCast18)));
+        }
+        if (csilInner instanceof CmdPlaybackState csilCast19) {
+            return new CborArray(Arrays.asList(new CborUint(19L), encCmdPlaybackState(csilCast19)));
         }
         throw new CsilCborException("csil cbor: PlayerCommand value matches no variant");
     }
@@ -3649,31 +4035,61 @@ public final class CsilCbor {
             return new PlayerCommand(decCmdEnqueue(csilPayload));
         }
         if (csilIdx == 1L) {
-            return new PlayerCommand(decCmdRemove(csilPayload));
+            return new PlayerCommand(decCmdEnqueueNext(csilPayload));
         }
         if (csilIdx == 2L) {
-            return new PlayerCommand(decCmdReorder(csilPayload));
+            return new PlayerCommand(decCmdRemove(csilPayload));
         }
         if (csilIdx == 3L) {
-            return new PlayerCommand(decCmdClear(csilPayload));
+            return new PlayerCommand(decCmdRemoveItem(csilPayload));
         }
         if (csilIdx == 4L) {
-            return new PlayerCommand(decCmdPlay(csilPayload));
+            return new PlayerCommand(decCmdReorder(csilPayload));
         }
         if (csilIdx == 5L) {
-            return new PlayerCommand(decCmdPause(csilPayload));
+            return new PlayerCommand(decCmdMoveItem(csilPayload));
         }
         if (csilIdx == 6L) {
-            return new PlayerCommand(decCmdNext(csilPayload));
+            return new PlayerCommand(decCmdClear(csilPayload));
         }
         if (csilIdx == 7L) {
-            return new PlayerCommand(decCmdPrevious(csilPayload));
+            return new PlayerCommand(decCmdPlay(csilPayload));
         }
         if (csilIdx == 8L) {
-            return new PlayerCommand(decCmdSeek(csilPayload));
+            return new PlayerCommand(decCmdReplaceAndPlay(csilPayload));
         }
         if (csilIdx == 9L) {
+            return new PlayerCommand(decCmdPause(csilPayload));
+        }
+        if (csilIdx == 10L) {
+            return new PlayerCommand(decCmdNext(csilPayload));
+        }
+        if (csilIdx == 11L) {
+            return new PlayerCommand(decCmdPrevious(csilPayload));
+        }
+        if (csilIdx == 12L) {
+            return new PlayerCommand(decCmdSeek(csilPayload));
+        }
+        if (csilIdx == 13L) {
             return new PlayerCommand(decCmdVolume(csilPayload));
+        }
+        if (csilIdx == 14L) {
+            return new PlayerCommand(decCmdSetRepeat(csilPayload));
+        }
+        if (csilIdx == 15L) {
+            return new PlayerCommand(decCmdSetShuffle(csilPayload));
+        }
+        if (csilIdx == 16L) {
+            return new PlayerCommand(decCmdUndo(csilPayload));
+        }
+        if (csilIdx == 17L) {
+            return new PlayerCommand(decCmdPlaybackCompleted(csilPayload));
+        }
+        if (csilIdx == 18L) {
+            return new PlayerCommand(decCmdPlaybackFailed(csilPayload));
+        }
+        if (csilIdx == 19L) {
+            return new PlayerCommand(decCmdPlaybackState(csilPayload));
         }
         throw new CsilCborException("csil cbor: PlayerCommand variant index " + csilIdx);
     }

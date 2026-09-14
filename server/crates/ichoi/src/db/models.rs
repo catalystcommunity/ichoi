@@ -167,6 +167,13 @@ pub struct PlayerStateRow {
     pub current_index: Option<i32>,
     pub position_ms: Option<i64>,
     pub volume: i32,
+    pub repeat_mode: String,
+    pub shuffle: i32,
+    pub revision: i64,
+    pub playback_id: Option<String>,
+    pub current_queue_item_id: Option<i32>,
+    pub error: Option<String>,
+    pub listener_account_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable)]
@@ -183,7 +190,31 @@ pub struct QueueItem {
 #[diesel(table_name = player_queue_items)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct NewQueueItem {
+    pub id: Option<i32>,
     pub player_id: String,
+    pub track_id: String,
+    pub position: i32,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]
+#[diesel(table_name = player_undo_state, primary_key(player_id))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct PlayerUndoState {
+    pub player_id: String,
+    pub status: String,
+    pub current_queue_item_id: Option<i32>,
+    pub position_ms: Option<i64>,
+    pub playback_id: Option<String>,
+    pub error: Option<String>,
+    pub listener_account_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable)]
+#[diesel(table_name = player_undo_queue_items, primary_key(player_id, queue_item_id))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct PlayerUndoQueueItem {
+    pub player_id: String,
+    pub queue_item_id: i32,
     pub track_id: String,
     pub position: i32,
 }

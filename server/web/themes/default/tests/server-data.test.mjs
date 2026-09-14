@@ -88,7 +88,8 @@ test("player state uses one wire subscription until its final consumer leaves", 
   const second = [];
   const offFirst = store.watch("A", (state) => first.push(state.status));
   const offSecond = store.watch("A", (state) => second.push(state.status));
-  receive({ player_id: "A", status: "playing", volume: 100, queue: [] });
+  receive({ player_id: "A", revision: 2, status: "playing", volume: 100, queue: [] });
+  receive({ player_id: "A", revision: 1, status: "paused", volume: 100, queue: [] });
 
   assert.deepEqual(subscriptions, [["A", true]]);
   assert.deepEqual(first, ["playing"]);

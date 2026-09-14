@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record MediaOpen(
     String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */,
     TrackId trackId /* wire: "track_id" */,
     StreamPref pref /* wire: "pref" */
 ) {

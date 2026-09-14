@@ -21,6 +21,7 @@ import type {
   PlayerCommand,
   PlayerState,
   QueueItem,
+  RepeatMode,
   StreamPref,
   Track,
 } from "../lib/schema.ts";
@@ -40,8 +41,6 @@ import {
 import { requireTermsForPlaylist } from "../lib/compliance.ts";
 
 export const LOCAL_TARGET = "local";
-export type RepeatMode = "off" | "all" | "one";
-
 const PREF_KEY = "ichoi.streamPref";
 const OWNED_KEY = "ichoi.ownedDevices";
 const REPEAT_KEY = "ichoi.repeatMode";
@@ -178,10 +177,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   );
   const [outputAudioReady, setOutputAudioReady] = createSignal(false);
   const [audioBlocked, setAudioBlocked] = createSignal(false);
-  const [repeatMode, setRepeatMode] = createSignal<RepeatMode>(loadRepeatMode());
-  const [shuffle, setShuffle] = createSignal(loadShuffle());
+  const [localRepeatMode, setLocalRepeatMode] = createSignal<RepeatMode>(loadRepeatMode());
+  const [localShuffle, setLocalShuffle] = createSignal(loadShuffle());
   const [localVolume, setLocalVolume] = createSignal(loadVolume());
   const [remoteVolume, setRemoteVolume] = createSignal(100);
+  const [remoteState, setRemoteState] = createSignal<PlayerState>();
   const [undoState, setUndoState] = createSignal<{
     serverId: string | undefined;
     target: string;
@@ -189,69 +189,120 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     index: number;
     snapshot: PlaybackSnapshot;
   }>();
-  let lastProgressTrack = "";
-  let lastProgressPosition = -1;
-  let lastSatelliteReportSecond = -1;
+  let lastOutputReportSecond = -1;
 
   const satellitePlayerId = () => servers.active()?.satellitePlayerId;
   const owned = () => ownedByServer()[servers.activeId() ?? ""] ?? [];
   const isLocal = () => !satelliteMode && target() === LOCAL_TARGET;
   const volume = () => isLocal() ? localVolume() : remoteVolume();
+  const repeatMode = () => isLocal() ? localRepeatMode() : remoteState()?.repeat_mode ?? "off";
+  const shuffle = () => isLocal() ? localShuffle() : remoteState()?.shuffle ?? false;
 
-  function reportSatellite(status: "stopped" | "playing" | "paused", positionMs?: number): void {
-    const playerId = satellitePlayerId();
+  function outputContext(): {
+    playerId: string;
+    playbackId: string;
+    item: QueueItem;
+  } | undefined {
+    const playerId = satelliteMode ? satellitePlayerId() : target();
+    const state = remoteState();
+    if (!playerId || playerId === LOCAL_TARGET || !state || !isOwned(playerId)) return undefined;
+    const index = state.current_index ?? -1;
+    const item = index >= 0 ? state.queue[index] : undefined;
+    if (!item || !state.playback_id) return undefined;
+    return { playerId, playbackId: state.playback_id, item };
+  }
+
+  function reportOutputState(status: "stopped" | "playing" | "paused", positionMs = 0): void {
+    const context = outputContext();
+    if (!context) return;
     const api = servers.api();
-    if (!satelliteMode || !playerId || !api) return;
-    // Every report carries the current sound state, so the server's view stays right without
-    // a separate channel — and a satellite that was blocked corrects itself the moment it
-    // plays anything.
-    api.node.report({
-      player_id: playerId,
-      status,
-      position_ms: positionMs,
-      audio_blocked: audioBlocked(),
-    });
+    if (!api) return;
+    if (satelliteMode) {
+      api.node.report({
+        player_id: context.playerId,
+        event: "state",
+        status,
+        queue_item_id: context.item.queue_item_id,
+        playback_id: context.playbackId,
+        position_ms: positionMs,
+        audio_blocked: audioBlocked(),
+      });
+    } else {
+      void control({
+        op: "playback-state",
+        status,
+        queue_item_id: context.item.queue_item_id,
+        playback_id: context.playbackId,
+        position_ms: positionMs,
+      }, context.playerId);
+    }
+  }
+
+  function reportOutputTerminal(completed: boolean, error?: string): void {
+    const context = outputContext();
+    const api = servers.api();
+    if (!context || !api) return;
+    if (satelliteMode) {
+      api.node.report({
+        player_id: context.playerId,
+        event: completed ? "completed" : "failed",
+        status: "stopped",
+        queue_item_id: context.item.queue_item_id,
+        playback_id: context.playbackId,
+        position_ms: Math.round(snapshot().positionMs),
+        error: completed ? undefined : (error ?? "browser playback failed").slice(0, 1024),
+        audio_blocked: audioBlocked(),
+      });
+    } else {
+      void control(completed
+        ? {
+            op: "playback-completed",
+            queue_item_id: context.item.queue_item_id,
+            playback_id: context.playbackId,
+          }
+        : {
+            op: "playback-failed",
+            queue_item_id: context.item.queue_item_id,
+            playback_id: context.playbackId,
+            error: (error ?? "browser playback failed").slice(0, 1024),
+          }, context.playerId);
+    }
   }
 
   /** Push the blocked flag out of band, when it changed without playback changing. */
   function reportAudioBlocked(): void {
-    const status = snapshot().status;
-    reportSatellite(
-      status === "playing" ? "playing" : status === "paused" ? "paused" : "stopped",
-      Math.round(snapshot().positionMs),
-    );
+    if (!satelliteMode) return;
+    const context = outputContext();
+    const api = servers.api();
+    const playerId = satellitePlayerId();
+    if (!api || !playerId) return;
+    if (!context) {
+      api.node.report({
+        player_id: playerId,
+        event: "ready",
+        status: "stopped",
+        audio_blocked: audioBlocked(),
+      });
+      return;
+    }
+    const status = snapshot().status === "playing"
+      ? "playing"
+      : snapshot().status === "paused" ? "paused" : "stopped";
+    api.node.report({
+      player_id: context.playerId,
+      event: "state",
+      status,
+      queue_item_id: context.item.queue_item_id,
+      playback_id: context.playbackId,
+      position_ms: Math.round(snapshot().positionMs),
+      audio_blocked: audioBlocked(),
+    });
   }
 
   function setBlocked(blocked: boolean): void {
     if (audioBlocked() === blocked) return;
     setAudioBlocked(blocked);
     reportAudioBlocked();
-  }
-
-  function reportAudiobookProgress(completed = false): void {
-    const track = current();
-    const session = servers.active()?.session;
-    const api = servers.api();
-    if (!track || track.library !== "audiobook" || !session || !api) {
-      return;
-    }
-    const position = completed ? track.duration_ms : Math.max(0, Math.round(snapshot().positionMs));
-    if (
-      !completed &&
-      track.id === lastProgressTrack &&
-      Math.abs(position - lastProgressPosition) < 10_000
-    ) {
-      return;
-    }
-    lastProgressTrack = track.id;
-    lastProgressPosition = position;
-    void api.library
-      .updateAudiobookProgress({
-        track_id: track.id,
-        position_ms: position,
-        completed,
-      })
-      .catch((e) => console.warn("[playback] audiobook progress failed", e));
   }
 
   const isOwned = (id: string) =>
@@ -312,6 +363,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   // --- Audio engine (HTTP /media + native <audio>; §5 bridge) ---------------
   const audio = typeof Audio !== "undefined" ? new Audio() : undefined;
+  let suppressPauseReport = false;
   if (audio) audio.volume = localVolume() / 100;
 
   async function applySatelliteSink(): Promise<void> {
@@ -339,11 +391,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   if (audio) {
     audio.addEventListener("timeupdate", () => {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: audio.currentTime * 1000 }));
-      reportAudiobookProgress();
       const second = Math.floor(audio.currentTime);
-      if (second !== lastSatelliteReportSecond) {
-        lastSatelliteReportSecond = second;
-        reportSatellite("playing", second * 1000);
+      if (second !== lastOutputReportSecond) {
+        lastOutputReportSecond = second;
+        reportOutputState("playing", second * 1000);
       }
     });
     audio.addEventListener("loadedmetadata", () =>
@@ -356,23 +407,22 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       setOutputAudioReady(true);
       finishUpdateReload();
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "playing" }));
-      reportSatellite("playing", Math.round(audio.currentTime * 1000));
+      reportOutputState("playing", Math.round(audio.currentTime * 1000));
     });
     audio.addEventListener("pause", () => {
       setSnapshot((s): PlaybackSnapshot => (s.status === "ended" ? s : { ...s, status: "paused" }));
-      reportAudiobookProgress();
-      if (!audio.ended && !updateReloadInProgress()) {
-        reportSatellite("paused", Math.round(audio.currentTime * 1000));
+      if (!suppressPauseReport && !audio.ended && !updateReloadInProgress()) {
+        reportOutputState("paused", Math.round(audio.currentTime * 1000));
       }
     });
     audio.addEventListener("ended", () => {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "ended" }));
-      reportAudiobookProgress(true);
-      reportSatellite("stopped", 0);
+      if (!isLocal()) reportOutputTerminal(true);
     });
-    audio.addEventListener("error", () =>
-      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: "playback error" })),
-    );
+    audio.addEventListener("error", () => {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: "playback error" }));
+      if (!isLocal()) reportOutputTerminal(false, "browser playback error");
+    });
   }
 
   // --- Shared targets -------------------------------------------------------
@@ -420,18 +470,24 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   });
 
   // --- Remote (shared-target) state ----------------------------------------
-  let ownerTrackId: string | undefined;
+  let ownerPlaybackId: string | undefined;
 
   function driveOwnerAudio(state: PlayerState): void {
     if (!audio) return;
     const idx = state.current_index ?? -1;
     const item = idx >= 0 && idx < state.queue.length ? state.queue[idx] : undefined;
     if (state.status === "playing" && item) {
-      if (item.track_id !== ownerTrackId) {
-        ownerTrackId = item.track_id;
+      if (state.playback_id !== ownerPlaybackId) {
+        ownerPlaybackId = state.playback_id;
         const url = mediaUrl(item.track_id);
         if (url) {
+          // Replacing src can emit pause for the old stream. That event does not describe the
+          // new server playback, so do not send it as a state transition.
+          suppressPauseReport = true;
           audio.src = url;
+          queueMicrotask(() => {
+            suppressPauseReport = false;
+          });
           const startMs = state.position_ms ?? 0;
           if (startMs > 0) {
             const restorePosition = () => {
@@ -464,7 +520,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       audio.pause();
     } else {
       audio.pause();
-      ownerTrackId = undefined;
+      ownerPlaybackId = undefined;
     }
   }
 
@@ -472,6 +528,9 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     // One channel fans out every subscribed player's pushes; ignore states for other players
     // (a stale server-side subscription from a previous target can still deliver here).
     if (state.player_id !== t || target() !== t) return;
+    const currentState = remoteState();
+    if (currentState && state.revision < currentState.revision) return;
+    setRemoteState(state);
     setQueue(state.queue.map(qiToTrack));
     setCurrentIndex(state.current_index ?? -1);
     setRemoteVolume(state.volume);
@@ -484,6 +543,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
         status: mapStatus(state.status),
         positionMs: state.position_ms ?? current.positionMs,
         durationMs: cur?.duration_ms,
+        error: state.error,
       }));
       driveOwnerAudio(state);
     } else {
@@ -492,6 +552,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
         positionMs: state.position_ms ?? 0,
         durationMs: cur?.duration_ms,
         decoderMissing: false,
+        error: state.error,
       });
     }
   }
@@ -576,11 +637,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     if (prev === LOCAL_TARGET && id !== LOCAL_TARGET) {
       savedLocal = { tracks: queue.slice(), index: currentIndex() };
       audio?.pause();
-      ownerTrackId = undefined;
+      ownerPlaybackId = undefined;
     }
     setTargetSignal(id);
     if (id === LOCAL_TARGET) {
-      ownerTrackId = undefined;
+      ownerPlaybackId = undefined;
       if (audio) audio.volume = localVolume() / 100;
       if (savedLocal) {
         setQueue(savedLocal.tracks);
@@ -591,6 +652,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       // Do not show the previous target's queue while the subscription changes. Fetch an
       // explicit snapshot as well, so target switching does not depend on channel timing.
       setQueue([]);
+      setRemoteState(undefined);
       setCurrentIndex(-1);
       setSnapshot({ status: "idle", positionMs: 0, decoderMissing: false });
       const dataStore = servers.data();
@@ -627,13 +689,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     return i >= 0 && i < queue.length ? queue[i] : undefined;
   };
 
-  // Shared targets report position through PlayerState instead of native audio events.
-  createEffect(() => {
-    snapshot().positionMs;
-    current()?.id;
-    reportAudiobookProgress(snapshot().status === "ended");
-  });
-
   const setPref = (p: StreamPref) => {
     setPrefSignal(p);
     try {
@@ -644,7 +699,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   };
 
   function cycleRepeatMode(): void {
-    setRepeatMode((current) => {
+    if (!isLocal()) {
+      const current = repeatMode();
+      const next = current === "off" ? "all" : current === "all" ? "one" : "off";
+      void control({ op: "set-repeat", repeat_mode: next });
+      return;
+    }
+    setLocalRepeatMode((current) => {
       const next = current === "off" ? "all" : current === "all" ? "one" : "off";
       try {
         localStorage.setItem(REPEAT_KEY, next);
@@ -656,7 +717,11 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   function toggleShuffle(): void {
-    setShuffle((current) => {
+    if (!isLocal()) {
+      void control({ op: "set-shuffle", shuffle: !shuffle() });
+      return;
+    }
+    setLocalShuffle((current) => {
       const next = !current;
       try {
         localStorage.setItem(SHUFFLE_KEY, String(next));
@@ -678,7 +743,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   async function openIndex(index: number, startMs = 0): Promise<void> {
     const track = queue[index];
     if (!track || !audio) return;
-    reportAudiobookProgress();
     setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: startMs }));
     setCurrentIndex(index);
     const url = mediaUrl(track.id);
@@ -755,11 +819,13 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       setQueue(tracks.slice());
       if (tracks.length) await openIndex(startIndex, startMs);
     } else {
-      await control({ op: "clear" });
       if (!tracks.length) return;
-      await control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
-      await control({ op: "play", index: startIndex });
-      if (startMs > 0) await control({ op: "seek", position_ms: startMs });
+      await control({
+        op: "replace-and-play",
+        track_ids: tracks.map((track) => track.id),
+        start_index: startIndex,
+        position_ms: startMs,
+      });
     }
   }
 
@@ -777,19 +843,21 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   function playNext(track: Track): void {
     rememberQueue();
-    const insertionIndex = currentIndex() >= 0 ? currentIndex() + 1 : 0;
     if (isLocal()) {
       const plan = insertTrackNext(queue, currentIndex(), track);
       setQueue(plan.tracks);
       setCurrentIndex(plan.currentIndex);
     } else {
-      void control({ op: "enqueue", track_ids: [track.id], at_index: insertionIndex });
+      void control({ op: "enqueue-next", track_ids: [track.id] });
     }
   }
 
   async function playIndex(index: number): Promise<void> {
     if (isLocal()) await openIndex(index);
-    else await control({ op: "play", index });
+    else {
+      const item = remoteState()?.queue[index];
+      if (item) await control({ op: "play", queue_item_id: item.queue_item_id });
+    }
   }
 
   function togglePlay(): void {
@@ -805,6 +873,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   async function next(): Promise<void> {
     if (!queue.length) return;
+    if (!isLocal()) {
+      await control({ op: "next" });
+      return;
+    }
     if (shuffle() && queue.length > 1) {
       await playIndex(randomQueueIndex());
       return;
@@ -831,7 +903,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     on(
       () => snapshot().status,
       (status, prevStatus) => {
-        if (status === "ended" && prevStatus !== "ended") void advanceAfterEnd();
+        if (isLocal() && status === "ended" && prevStatus !== "ended") void advanceAfterEnd();
       },
     ),
   );
@@ -928,7 +1000,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     if (index < 0 || index >= queue.length) return;
     rememberQueue();
     if (!isLocal()) {
-      void control({ op: "remove", index });
+      const item = remoteState()?.queue[index];
+      if (item) void control({ op: "remove-item", queue_item_id: item.queue_item_id });
       return;
     }
     const cur = currentIndex();
@@ -950,7 +1023,16 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
     rememberQueue();
     if (!isLocal()) {
-      void control({ op: "reorder", from_index: from, to_index: to });
+      const items = remoteState()?.queue;
+      const item = items?.[from];
+      if (item && items) {
+        const remaining = items.filter((candidate) => candidate.queue_item_id !== item.queue_item_id);
+        void control({
+          op: "move-item",
+          queue_item_id: item.queue_item_id,
+          before_queue_item_id: remaining[to]?.queue_item_id,
+        });
+      }
       return;
     }
     const cur = currentIndex();
@@ -966,37 +1048,30 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   function rememberQueue(): void {
-    setUndoState({
-      serverId: servers.activeId(),
-      target: target(),
-      tracks: queue.slice(),
-      index: currentIndex(),
-      snapshot: { ...snapshot() },
-    });
+    if (isLocal()) {
+      setUndoState({
+        serverId: servers.activeId(),
+        target: target(),
+        tracks: queue.slice(),
+        index: currentIndex(),
+        snapshot: { ...snapshot() },
+      });
+    }
     toast.show(t("queue.changed"), { label: t("queue.undo"), run: () => void undoQueue() });
   }
 
-  const canUndoQueue = () =>
-    undoState()?.target === target() && undoState()?.serverId === servers.activeId();
+  const canUndoQueue = () => isLocal()
+    ? undoState()?.target === target() && undoState()?.serverId === servers.activeId()
+    : remoteState()?.can_undo ?? false;
 
   async function undoQueue(): Promise<void> {
+    if (!isLocal()) {
+      if (remoteState()?.can_undo) await control({ op: "undo" });
+      return;
+    }
     const saved = undoState();
     if (!saved || saved.target !== target() || saved.serverId !== servers.activeId()) return;
     setUndoState(undefined);
-
-    if (!isLocal()) {
-      await control({ op: "clear" });
-      if (!saved.tracks.length) return;
-      await control({ op: "enqueue", track_ids: saved.tracks.map((track) => track.id) });
-      if (saved.index >= 0 && (saved.snapshot.status === "playing" || saved.snapshot.status === "paused")) {
-        await control({ op: "play", index: saved.index });
-        if (saved.snapshot.positionMs > 0) {
-          await control({ op: "seek", position_ms: Math.round(saved.snapshot.positionMs) });
-        }
-        if (saved.snapshot.status !== "playing") await control({ op: "pause" });
-      }
-      return;
-    }
 
     audio?.pause();
     audio?.removeAttribute("src");
@@ -1020,7 +1095,6 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
 
   onCleanup(() => {
     if (volumeTimer !== undefined) clearTimeout(volumeTimer);
-    reportAudiobookProgress();
     audio?.pause();
   });
 

@@ -13,6 +13,12 @@ let rec encode_role (v : role) : Cbor.t =
 and encode_player_status (v : player_status) : Cbor.t =
   match v with Stopped -> Cbor.Text "stopped" | Playing -> Cbor.Text "playing" | Paused -> Cbor.Text "paused"
 
+and encode_repeat_mode (v : repeat_mode) : Cbor.t =
+  match v with Off -> Cbor.Text "off" | All -> Cbor.Text "all" | One -> Cbor.Text "one"
+
+and encode_node_event (v : node_event) : Cbor.t =
+  match v with Ready -> Cbor.Text "ready" | State -> Cbor.Text "state" | Completed -> Cbor.Text "completed" | Failed -> Cbor.Text "failed"
+
 and encode_codec (v : codec) : Cbor.t =
   match v with Mp_3 -> Cbor.Text "mp3" | Aac -> Cbor.Text "aac" | Vorbis -> Cbor.Text "vorbis" | Flac -> Cbor.Text "flac" | Alac -> Cbor.Text "alac" | Opus -> Cbor.Text "opus" | Wav -> Cbor.Text "wav" | Wma -> Cbor.Text "wma"
 
@@ -459,6 +465,7 @@ and encode_queue_item (v : queue_item) : Cbor.t =
          (match v.library with Some csil_x -> Some (Cbor.Text "library", (encode_library csil_x)) | None -> None);
          Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
          (match v.duration_ms with Some csil_x -> Some (Cbor.Text "duration_ms", (Cbor.int64 csil_x)) | None -> None);
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
        ])
 
 and encode_player_state (v : player_state) : Cbor.t =
@@ -466,11 +473,17 @@ and encode_player_state (v : player_state) : Cbor.t =
     (List.filter_map
        (fun x -> x)
        [
+         (match v.error with Some csil_x -> Some (Cbor.Text "error", (Cbor.Text csil_x)) | None -> None);
          Some (Cbor.Text "queue", (Cbor.Array (List.map (fun csil_e -> (encode_queue_item csil_e)) v.queue)));
          Some (Cbor.Text "status", (encode_player_status v.status));
          Some (Cbor.Text "volume", (Cbor.int64 v.volume));
+         Some (Cbor.Text "shuffle", (Cbor.Bool v.shuffle));
+         Some (Cbor.Text "can_undo", (Cbor.Bool v.can_undo));
+         Some (Cbor.Text "revision", (Cbor.int64 v.revision));
          Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
+         (match v.playback_id with Some csil_x -> Some (Cbor.Text "playback_id", (Cbor.Text csil_x)) | None -> None);
          (match v.position_ms with Some csil_x -> Some (Cbor.Text "position_ms", (Cbor.int64 csil_x)) | None -> None);
+         Some (Cbor.Text "repeat_mode", (encode_repeat_mode v.repeat_mode));
          (match v.current_index with Some csil_x -> Some (Cbor.Text "current_index", (Cbor.int64 csil_x)) | None -> None);
        ])
 
@@ -509,6 +522,15 @@ and encode_cmd_enqueue (v : cmd_enqueue) : Cbor.t =
          Some (Cbor.Text "track_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.track_ids)));
        ])
 
+and encode_cmd_enqueue_next (v : cmd_enqueue_next) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "track_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.track_ids)));
+       ])
+
 and encode_cmd_remove (v : cmd_remove) : Cbor.t =
   Cbor.Map
     (List.filter_map
@@ -516,6 +538,15 @@ and encode_cmd_remove (v : cmd_remove) : Cbor.t =
        [
          Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
          Some (Cbor.Text "index", (Cbor.int64 v.index));
+       ])
+
+and encode_cmd_remove_item (v : cmd_remove_item) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
        ])
 
 and encode_cmd_reorder (v : cmd_reorder) : Cbor.t =
@@ -526,6 +557,16 @@ and encode_cmd_reorder (v : cmd_reorder) : Cbor.t =
          Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
          Some (Cbor.Text "to_index", (Cbor.int64 v.to_index));
          Some (Cbor.Text "from_index", (Cbor.int64 v.from_index));
+       ])
+
+and encode_cmd_move_item (v : cmd_move_item) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
+         (match v.before_queue_item_id with Some csil_x -> Some (Cbor.Text "before_queue_item_id", (Cbor.int64 csil_x)) | None -> None);
        ])
 
 and encode_cmd_clear (v : cmd_clear) : Cbor.t =
@@ -543,6 +584,18 @@ and encode_cmd_play (v : cmd_play) : Cbor.t =
        [
          Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
          (match v.index with Some csil_x -> Some (Cbor.Text "index", (Cbor.int64 csil_x)) | None -> None);
+         (match v.queue_item_id with Some csil_x -> Some (Cbor.Text "queue_item_id", (Cbor.int64 csil_x)) | None -> None);
+       ])
+
+and encode_cmd_replace_and_play (v : cmd_replace_and_play) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "track_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.track_ids)));
+         (match v.position_ms with Some csil_x -> Some (Cbor.Text "position_ms", (Cbor.int64 csil_x)) | None -> None);
+         (match v.start_index with Some csil_x -> Some (Cbor.Text "start_index", (Cbor.int64 csil_x)) | None -> None);
        ])
 
 and encode_cmd_pause (v : cmd_pause) : Cbor.t =
@@ -587,8 +640,67 @@ and encode_cmd_volume (v : cmd_volume) : Cbor.t =
          Some (Cbor.Text "volume", (Cbor.int64 v.volume));
        ])
 
+and encode_cmd_set_repeat (v : cmd_set_repeat) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "repeat_mode", (encode_repeat_mode v.repeat_mode));
+       ])
+
+and encode_cmd_set_shuffle (v : cmd_set_shuffle) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "shuffle", (Cbor.Bool v.shuffle));
+       ])
+
+and encode_cmd_undo (v : cmd_undo) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+       ])
+
+and encode_cmd_playback_completed (v : cmd_playback_completed) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "playback_id", (Cbor.Text v.playback_id));
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
+       ])
+
+and encode_cmd_playback_failed (v : cmd_playback_failed) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "error", (Cbor.Text v.error));
+         Some (Cbor.Text "playback_id", (Cbor.Text v.playback_id));
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
+       ])
+
+and encode_cmd_playback_state (v : cmd_playback_state) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "op", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "status", (encode_player_status v.status));
+         Some (Cbor.Text "playback_id", (Cbor.Text v.playback_id));
+         Some (Cbor.Text "position_ms", (Cbor.int64 v.position_ms));
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
+       ])
+
 and encode_player_command (v : player_command) : Cbor.t =
-  match v with Cmd_enqueue csil_x -> Cbor.Array [Cbor.int64 0L; (encode_cmd_enqueue csil_x)] | Cmd_remove csil_x -> Cbor.Array [Cbor.int64 1L; (encode_cmd_remove csil_x)] | Cmd_reorder csil_x -> Cbor.Array [Cbor.int64 2L; (encode_cmd_reorder csil_x)] | Cmd_clear csil_x -> Cbor.Array [Cbor.int64 3L; (encode_cmd_clear csil_x)] | Cmd_play csil_x -> Cbor.Array [Cbor.int64 4L; (encode_cmd_play csil_x)] | Cmd_pause csil_x -> Cbor.Array [Cbor.int64 5L; (encode_cmd_pause csil_x)] | Cmd_next csil_x -> Cbor.Array [Cbor.int64 6L; (encode_cmd_next csil_x)] | Cmd_previous csil_x -> Cbor.Array [Cbor.int64 7L; (encode_cmd_previous csil_x)] | Cmd_seek csil_x -> Cbor.Array [Cbor.int64 8L; (encode_cmd_seek csil_x)] | Cmd_volume csil_x -> Cbor.Array [Cbor.int64 9L; (encode_cmd_volume csil_x)]
+  match v with Cmd_enqueue csil_x -> Cbor.Array [Cbor.int64 0L; (encode_cmd_enqueue csil_x)] | Cmd_enqueue_next csil_x -> Cbor.Array [Cbor.int64 1L; (encode_cmd_enqueue_next csil_x)] | Cmd_remove csil_x -> Cbor.Array [Cbor.int64 2L; (encode_cmd_remove csil_x)] | Cmd_remove_item csil_x -> Cbor.Array [Cbor.int64 3L; (encode_cmd_remove_item csil_x)] | Cmd_reorder csil_x -> Cbor.Array [Cbor.int64 4L; (encode_cmd_reorder csil_x)] | Cmd_move_item csil_x -> Cbor.Array [Cbor.int64 5L; (encode_cmd_move_item csil_x)] | Cmd_clear csil_x -> Cbor.Array [Cbor.int64 6L; (encode_cmd_clear csil_x)] | Cmd_play csil_x -> Cbor.Array [Cbor.int64 7L; (encode_cmd_play csil_x)] | Cmd_replace_and_play csil_x -> Cbor.Array [Cbor.int64 8L; (encode_cmd_replace_and_play csil_x)] | Cmd_pause csil_x -> Cbor.Array [Cbor.int64 9L; (encode_cmd_pause csil_x)] | Cmd_next csil_x -> Cbor.Array [Cbor.int64 10L; (encode_cmd_next csil_x)] | Cmd_previous csil_x -> Cbor.Array [Cbor.int64 11L; (encode_cmd_previous csil_x)] | Cmd_seek csil_x -> Cbor.Array [Cbor.int64 12L; (encode_cmd_seek csil_x)] | Cmd_volume csil_x -> Cbor.Array [Cbor.int64 13L; (encode_cmd_volume csil_x)] | Cmd_set_repeat csil_x -> Cbor.Array [Cbor.int64 14L; (encode_cmd_set_repeat csil_x)] | Cmd_set_shuffle csil_x -> Cbor.Array [Cbor.int64 15L; (encode_cmd_set_shuffle csil_x)] | Cmd_undo csil_x -> Cbor.Array [Cbor.int64 16L; (encode_cmd_undo csil_x)] | Cmd_playback_completed csil_x -> Cbor.Array [Cbor.int64 17L; (encode_cmd_playback_completed csil_x)] | Cmd_playback_failed csil_x -> Cbor.Array [Cbor.int64 18L; (encode_cmd_playback_failed csil_x)] | Cmd_playback_state csil_x -> Cbor.Array [Cbor.int64 19L; (encode_cmd_playback_state csil_x)]
 
 and encode_command_request (v : command_request) : Cbor.t =
   Cbor.Map
@@ -631,6 +743,7 @@ and encode_media_open (v : media_open) : Cbor.t =
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
          Some (Cbor.Text "pref", (encode_stream_pref v.pref));
          Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
        ])
 
 and encode_media_seek (v : media_seek) : Cbor.t =
@@ -639,6 +752,7 @@ and encode_media_seek (v : media_seek) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
          Some (Cbor.Text "position_ms", (Cbor.int64 v.position_ms));
        ])
 
@@ -648,6 +762,7 @@ and encode_media_pause (v : media_pause) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
        ])
 
 and encode_media_resume (v : media_resume) : Cbor.t =
@@ -656,6 +771,7 @@ and encode_media_resume (v : media_resume) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
        ])
 
 and encode_media_stop (v : media_stop) : Cbor.t =
@@ -664,6 +780,7 @@ and encode_media_stop (v : media_stop) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
        ])
 
 and encode_media_control (v : media_control) : Cbor.t =
@@ -677,6 +794,7 @@ and encode_media_header (v : media_header) : Cbor.t =
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
          Some (Cbor.Text "codec", (encode_codec v.codec));
          Some (Cbor.Text "channels", (Cbor.int64 v.channels));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
          Some (Cbor.Text "transcoded", (Cbor.Bool v.transcoded));
          (match v.duration_ms with Some csil_x -> Some (Cbor.Text "duration_ms", (Cbor.int64 csil_x)) | None -> None);
          Some (Cbor.Text "sample_rate", (Cbor.int64 v.sample_rate));
@@ -696,6 +814,7 @@ and encode_media_chunk (v : media_chunk) : Cbor.t =
          Some (Cbor.Text "seq", (Cbor.int64 v.seq));
          Some (Cbor.Text "data", (Cbor.Bytes v.data));
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
          (match v.timestamp_ms with Some csil_x -> Some (Cbor.Text "timestamp_ms", (Cbor.int64 csil_x)) | None -> None);
        ])
 
@@ -706,6 +825,7 @@ and encode_media_end (v : media_end) : Cbor.t =
        [
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
          (match v.reason with Some csil_x -> Some (Cbor.Text "reason", (encode_media_end_reason csil_x)) | None -> None);
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
        ])
 
 and encode_media_fail (v : media_fail) : Cbor.t =
@@ -715,6 +835,7 @@ and encode_media_fail (v : media_fail) : Cbor.t =
        [
          Some (Cbor.Text "kind", (failwith "csilgen: no codec for this field shape"));
          Some (Cbor.Text "error", (encode_service_error v.error));
+         Some (Cbor.Text "stream_id", (Cbor.Text v.stream_id));
        ])
 
 and encode_media_event (v : media_event) : Cbor.t =
@@ -761,7 +882,9 @@ and encode_dir_load (v : dir_load) : Cbor.t =
          Some (Cbor.Text "pref", (encode_stream_pref v.pref));
          Some (Cbor.Text "track_id", (Cbor.Text v.track_id));
          Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
+         Some (Cbor.Text "playback_id", (Cbor.Text v.playback_id));
          (match v.position_ms with Some csil_x -> Some (Cbor.Text "position_ms", (Cbor.int64 csil_x)) | None -> None);
+         Some (Cbor.Text "queue_item_id", (Cbor.int64 v.queue_item_id));
        ])
 
 and encode_dir_pause (v : dir_pause) : Cbor.t =
@@ -809,10 +932,14 @@ and encode_node_report (v : node_report) : Cbor.t =
     (List.filter_map
        (fun x -> x)
        [
+         (match v.error with Some csil_x -> Some (Cbor.Text "error", (Cbor.Text csil_x)) | None -> None);
+         (match v.event with Some csil_x -> Some (Cbor.Text "event", (encode_node_event csil_x)) | None -> None);
          Some (Cbor.Text "status", (encode_player_status v.status));
          Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
+         (match v.playback_id with Some csil_x -> Some (Cbor.Text "playback_id", (Cbor.Text csil_x)) | None -> None);
          (match v.position_ms with Some csil_x -> Some (Cbor.Text "position_ms", (Cbor.int64 csil_x)) | None -> None);
          (match v.audio_blocked with Some csil_x -> Some (Cbor.Text "audio_blocked", (Cbor.Bool csil_x)) | None -> None);
+         (match v.queue_item_id with Some csil_x -> Some (Cbor.Text "queue_item_id", (Cbor.int64 csil_x)) | None -> None);
        ])
 
 and encode_account (v : account) : Cbor.t =
@@ -1213,6 +1340,12 @@ let rec decode_role (csil_c : Cbor.t) : role =
 
 and decode_player_status (csil_c : Cbor.t) : player_status =
   match Cbor.to_text csil_c with "stopped" -> Stopped | "playing" -> Playing | "paused" -> Paused | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_repeat_mode (csil_c : Cbor.t) : repeat_mode =
+  match Cbor.to_text csil_c with "off" -> Off | "all" -> All | "one" -> One | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_node_event (csil_c : Cbor.t) : node_event =
+  match Cbor.to_text csil_c with "ready" -> Ready | "state" -> State | "completed" -> Completed | "failed" -> Failed | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
 
 and decode_codec (csil_c : Cbor.t) : codec =
   match Cbor.to_text csil_c with "mp3" -> Mp_3 | "aac" -> Aac | "vorbis" -> Vorbis | "flac" -> Flac | "alac" -> Alac | "opus" -> Opus | "wav" -> Wav | "wma" -> Wma | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
@@ -1869,6 +2002,7 @@ and decode_queue_item (csil_c : Cbor.t) : queue_item =
         library = (match csil_field "library" with Some csil_v -> Some (decode_library csil_v) | None -> None);
         track_id = (Cbor.to_text (csil_req "track_id"));
         duration_ms = (match csil_field "duration_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
       }
   | _ -> failwith "csilgen: expected map for queue_item"
 
@@ -1881,11 +2015,17 @@ and decode_player_state (csil_c : Cbor.t) : player_state =
       in
       ignore csil_req;
       {
+        error = (match csil_field "error" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         queue = (match (csil_req "queue") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_queue_item csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
         status = (decode_player_status (csil_req "status"));
         volume = (Cbor.to_i64 (csil_req "volume"));
+        shuffle = (Cbor.to_bool (csil_req "shuffle"));
+        can_undo = (Cbor.to_bool (csil_req "can_undo"));
+        revision = (Cbor.to_i64 (csil_req "revision"));
         player_id = (Cbor.to_text (csil_req "player_id"));
+        playback_id = (match csil_field "playback_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         position_ms = (match csil_field "position_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        repeat_mode = (decode_repeat_mode (csil_req "repeat_mode"));
         current_index = (match csil_field "current_index" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for player_state"
@@ -1945,6 +2085,20 @@ and decode_cmd_enqueue (csil_c : Cbor.t) : cmd_enqueue =
       }
   | _ -> failwith "csilgen: expected map for cmd_enqueue"
 
+and decode_cmd_enqueue_next (csil_c : Cbor.t) : cmd_enqueue_next =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        track_ids = (match (csil_req "track_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for cmd_enqueue_next"
+
 and decode_cmd_remove (csil_c : Cbor.t) : cmd_remove =
   match csil_c with
   | Cbor.Map csil_kvs ->
@@ -1958,6 +2112,20 @@ and decode_cmd_remove (csil_c : Cbor.t) : cmd_remove =
         index = (Cbor.to_i64 (csil_req "index"));
       }
   | _ -> failwith "csilgen: expected map for cmd_remove"
+
+and decode_cmd_remove_item (csil_c : Cbor.t) : cmd_remove_item =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
+      }
+  | _ -> failwith "csilgen: expected map for cmd_remove_item"
 
 and decode_cmd_reorder (csil_c : Cbor.t) : cmd_reorder =
   match csil_c with
@@ -1973,6 +2141,21 @@ and decode_cmd_reorder (csil_c : Cbor.t) : cmd_reorder =
         from_index = (Cbor.to_i64 (csil_req "from_index"));
       }
   | _ -> failwith "csilgen: expected map for cmd_reorder"
+
+and decode_cmd_move_item (csil_c : Cbor.t) : cmd_move_item =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
+        before_queue_item_id = (match csil_field "before_queue_item_id" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for cmd_move_item"
 
 and decode_cmd_clear (csil_c : Cbor.t) : cmd_clear =
   match csil_c with
@@ -1998,8 +2181,25 @@ and decode_cmd_play (csil_c : Cbor.t) : cmd_play =
       {
         op = (failwith "csilgen: no codec for this field shape");
         index = (match csil_field "index" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        queue_item_id = (match csil_field "queue_item_id" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for cmd_play"
+
+and decode_cmd_replace_and_play (csil_c : Cbor.t) : cmd_replace_and_play =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        track_ids = (match (csil_req "track_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+        position_ms = (match csil_field "position_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        start_index = (match csil_field "start_index" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for cmd_replace_and_play"
 
 and decode_cmd_pause (csil_c : Cbor.t) : cmd_pause =
   match csil_c with
@@ -2068,9 +2268,98 @@ and decode_cmd_volume (csil_c : Cbor.t) : cmd_volume =
       }
   | _ -> failwith "csilgen: expected map for cmd_volume"
 
+and decode_cmd_set_repeat (csil_c : Cbor.t) : cmd_set_repeat =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        repeat_mode = (decode_repeat_mode (csil_req "repeat_mode"));
+      }
+  | _ -> failwith "csilgen: expected map for cmd_set_repeat"
+
+and decode_cmd_set_shuffle (csil_c : Cbor.t) : cmd_set_shuffle =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        shuffle = (Cbor.to_bool (csil_req "shuffle"));
+      }
+  | _ -> failwith "csilgen: expected map for cmd_set_shuffle"
+
+and decode_cmd_undo (csil_c : Cbor.t) : cmd_undo =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+      }
+  | _ -> failwith "csilgen: expected map for cmd_undo"
+
+and decode_cmd_playback_completed (csil_c : Cbor.t) : cmd_playback_completed =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        playback_id = (Cbor.to_text (csil_req "playback_id"));
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
+      }
+  | _ -> failwith "csilgen: expected map for cmd_playback_completed"
+
+and decode_cmd_playback_failed (csil_c : Cbor.t) : cmd_playback_failed =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        error = (Cbor.to_text (csil_req "error"));
+        playback_id = (Cbor.to_text (csil_req "playback_id"));
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
+      }
+  | _ -> failwith "csilgen: expected map for cmd_playback_failed"
+
+and decode_cmd_playback_state (csil_c : Cbor.t) : cmd_playback_state =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        op = (failwith "csilgen: no codec for this field shape");
+        status = (decode_player_status (csil_req "status"));
+        playback_id = (Cbor.to_text (csil_req "playback_id"));
+        position_ms = (Cbor.to_i64 (csil_req "position_ms"));
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
+      }
+  | _ -> failwith "csilgen: expected map for cmd_playback_state"
+
 and decode_player_command (csil_c : Cbor.t) : player_command =
   match csil_c with
-  | Cbor.Array [ csil_idx; csil_v ] -> (match Cbor.to_i64 csil_idx with 0L -> Cmd_enqueue (decode_cmd_enqueue csil_v) | 1L -> Cmd_remove (decode_cmd_remove csil_v) | 2L -> Cmd_reorder (decode_cmd_reorder csil_v) | 3L -> Cmd_clear (decode_cmd_clear csil_v) | 4L -> Cmd_play (decode_cmd_play csil_v) | 5L -> Cmd_pause (decode_cmd_pause csil_v) | 6L -> Cmd_next (decode_cmd_next csil_v) | 7L -> Cmd_previous (decode_cmd_previous csil_v) | 8L -> Cmd_seek (decode_cmd_seek csil_v) | 9L -> Cmd_volume (decode_cmd_volume csil_v) | csil_n -> failwith (Printf.sprintf "csilgen: unknown union variant %Ld" csil_n))
+  | Cbor.Array [ csil_idx; csil_v ] -> (match Cbor.to_i64 csil_idx with 0L -> Cmd_enqueue (decode_cmd_enqueue csil_v) | 1L -> Cmd_enqueue_next (decode_cmd_enqueue_next csil_v) | 2L -> Cmd_remove (decode_cmd_remove csil_v) | 3L -> Cmd_remove_item (decode_cmd_remove_item csil_v) | 4L -> Cmd_reorder (decode_cmd_reorder csil_v) | 5L -> Cmd_move_item (decode_cmd_move_item csil_v) | 6L -> Cmd_clear (decode_cmd_clear csil_v) | 7L -> Cmd_play (decode_cmd_play csil_v) | 8L -> Cmd_replace_and_play (decode_cmd_replace_and_play csil_v) | 9L -> Cmd_pause (decode_cmd_pause csil_v) | 10L -> Cmd_next (decode_cmd_next csil_v) | 11L -> Cmd_previous (decode_cmd_previous csil_v) | 12L -> Cmd_seek (decode_cmd_seek csil_v) | 13L -> Cmd_volume (decode_cmd_volume csil_v) | 14L -> Cmd_set_repeat (decode_cmd_set_repeat csil_v) | 15L -> Cmd_set_shuffle (decode_cmd_set_shuffle csil_v) | 16L -> Cmd_undo (decode_cmd_undo csil_v) | 17L -> Cmd_playback_completed (decode_cmd_playback_completed csil_v) | 18L -> Cmd_playback_failed (decode_cmd_playback_failed csil_v) | 19L -> Cmd_playback_state (decode_cmd_playback_state csil_v) | csil_n -> failwith (Printf.sprintf "csilgen: unknown union variant %Ld" csil_n))
   | _ -> failwith "csilgen: expected union array for player_command"
 
 and decode_command_request (csil_c : Cbor.t) : command_request =
@@ -2138,6 +2427,7 @@ and decode_media_open (csil_c : Cbor.t) : media_open =
         kind = (failwith "csilgen: no codec for this field shape");
         pref = (decode_stream_pref (csil_req "pref"));
         track_id = (Cbor.to_text (csil_req "track_id"));
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
       }
   | _ -> failwith "csilgen: expected map for media_open"
 
@@ -2151,6 +2441,7 @@ and decode_media_seek (csil_c : Cbor.t) : media_seek =
       ignore csil_req;
       {
         kind = (failwith "csilgen: no codec for this field shape");
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
         position_ms = (Cbor.to_i64 (csil_req "position_ms"));
       }
   | _ -> failwith "csilgen: expected map for media_seek"
@@ -2165,6 +2456,7 @@ and decode_media_pause (csil_c : Cbor.t) : media_pause =
       ignore csil_req;
       {
         kind = (failwith "csilgen: no codec for this field shape");
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
       }
   | _ -> failwith "csilgen: expected map for media_pause"
 
@@ -2178,6 +2470,7 @@ and decode_media_resume (csil_c : Cbor.t) : media_resume =
       ignore csil_req;
       {
         kind = (failwith "csilgen: no codec for this field shape");
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
       }
   | _ -> failwith "csilgen: expected map for media_resume"
 
@@ -2191,6 +2484,7 @@ and decode_media_stop (csil_c : Cbor.t) : media_stop =
       ignore csil_req;
       {
         kind = (failwith "csilgen: no codec for this field shape");
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
       }
   | _ -> failwith "csilgen: expected map for media_stop"
 
@@ -2211,6 +2505,7 @@ and decode_media_header (csil_c : Cbor.t) : media_header =
         kind = (failwith "csilgen: no codec for this field shape");
         codec = (decode_codec (csil_req "codec"));
         channels = (Cbor.to_i64 (csil_req "channels"));
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
         transcoded = (Cbor.to_bool (csil_req "transcoded"));
         duration_ms = (match csil_field "duration_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
         sample_rate = (Cbor.to_i64 (csil_req "sample_rate"));
@@ -2235,6 +2530,7 @@ and decode_media_chunk (csil_c : Cbor.t) : media_chunk =
         seq = (Cbor.to_i64 (csil_req "seq"));
         data = (Cbor.to_bytes (csil_req "data"));
         kind = (failwith "csilgen: no codec for this field shape");
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
         timestamp_ms = (match csil_field "timestamp_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for media_chunk"
@@ -2250,6 +2546,7 @@ and decode_media_end (csil_c : Cbor.t) : media_end =
       {
         kind = (failwith "csilgen: no codec for this field shape");
         reason = (match csil_field "reason" with Some csil_v -> Some (decode_media_end_reason csil_v) | None -> None);
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
       }
   | _ -> failwith "csilgen: expected map for media_end"
 
@@ -2264,6 +2561,7 @@ and decode_media_fail (csil_c : Cbor.t) : media_fail =
       {
         kind = (failwith "csilgen: no codec for this field shape");
         error = (decode_service_error (csil_req "error"));
+        stream_id = (Cbor.to_text (csil_req "stream_id"));
       }
   | _ -> failwith "csilgen: expected map for media_fail"
 
@@ -2332,7 +2630,9 @@ and decode_dir_load (csil_c : Cbor.t) : dir_load =
         pref = (decode_stream_pref (csil_req "pref"));
         track_id = (Cbor.to_text (csil_req "track_id"));
         player_id = (Cbor.to_text (csil_req "player_id"));
+        playback_id = (Cbor.to_text (csil_req "playback_id"));
         position_ms = (match csil_field "position_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        queue_item_id = (Cbor.to_i64 (csil_req "queue_item_id"));
       }
   | _ -> failwith "csilgen: expected map for dir_load"
 
@@ -2407,10 +2707,14 @@ and decode_node_report (csil_c : Cbor.t) : node_report =
       in
       ignore csil_req;
       {
+        error = (match csil_field "error" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        event = (match csil_field "event" with Some csil_v -> Some (decode_node_event csil_v) | None -> None);
         status = (decode_player_status (csil_req "status"));
         player_id = (Cbor.to_text (csil_req "player_id"));
+        playback_id = (match csil_field "playback_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
         position_ms = (match csil_field "position_ms" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
         audio_blocked = (match csil_field "audio_blocked" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
+        queue_item_id = (match csil_field "queue_item_id" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for node_report"
 
@@ -3020,6 +3324,14 @@ let encode_player_status_bytes (v : player_status) : bytes = Cbor.encode (encode
 let decode_player_status_bytes (b : bytes) : player_status =
   match Cbor.decode b with Ok c -> decode_player_status c | Error e -> failwith e
 
+let encode_repeat_mode_bytes (v : repeat_mode) : bytes = Cbor.encode (encode_repeat_mode v)
+let decode_repeat_mode_bytes (b : bytes) : repeat_mode =
+  match Cbor.decode b with Ok c -> decode_repeat_mode c | Error e -> failwith e
+
+let encode_node_event_bytes (v : node_event) : bytes = Cbor.encode (encode_node_event v)
+let decode_node_event_bytes (b : bytes) : node_event =
+  match Cbor.decode b with Ok c -> decode_node_event c | Error e -> failwith e
+
 let encode_codec_bytes (v : codec) : bytes = Cbor.encode (encode_codec v)
 let decode_codec_bytes (b : bytes) : codec =
   match Cbor.decode b with Ok c -> decode_codec c | Error e -> failwith e
@@ -3236,13 +3548,25 @@ let encode_cmd_enqueue_bytes (v : cmd_enqueue) : bytes = Cbor.encode (encode_cmd
 let decode_cmd_enqueue_bytes (b : bytes) : cmd_enqueue =
   match Cbor.decode b with Ok c -> decode_cmd_enqueue c | Error e -> failwith e
 
+let encode_cmd_enqueue_next_bytes (v : cmd_enqueue_next) : bytes = Cbor.encode (encode_cmd_enqueue_next v)
+let decode_cmd_enqueue_next_bytes (b : bytes) : cmd_enqueue_next =
+  match Cbor.decode b with Ok c -> decode_cmd_enqueue_next c | Error e -> failwith e
+
 let encode_cmd_remove_bytes (v : cmd_remove) : bytes = Cbor.encode (encode_cmd_remove v)
 let decode_cmd_remove_bytes (b : bytes) : cmd_remove =
   match Cbor.decode b with Ok c -> decode_cmd_remove c | Error e -> failwith e
 
+let encode_cmd_remove_item_bytes (v : cmd_remove_item) : bytes = Cbor.encode (encode_cmd_remove_item v)
+let decode_cmd_remove_item_bytes (b : bytes) : cmd_remove_item =
+  match Cbor.decode b with Ok c -> decode_cmd_remove_item c | Error e -> failwith e
+
 let encode_cmd_reorder_bytes (v : cmd_reorder) : bytes = Cbor.encode (encode_cmd_reorder v)
 let decode_cmd_reorder_bytes (b : bytes) : cmd_reorder =
   match Cbor.decode b with Ok c -> decode_cmd_reorder c | Error e -> failwith e
+
+let encode_cmd_move_item_bytes (v : cmd_move_item) : bytes = Cbor.encode (encode_cmd_move_item v)
+let decode_cmd_move_item_bytes (b : bytes) : cmd_move_item =
+  match Cbor.decode b with Ok c -> decode_cmd_move_item c | Error e -> failwith e
 
 let encode_cmd_clear_bytes (v : cmd_clear) : bytes = Cbor.encode (encode_cmd_clear v)
 let decode_cmd_clear_bytes (b : bytes) : cmd_clear =
@@ -3251,6 +3575,10 @@ let decode_cmd_clear_bytes (b : bytes) : cmd_clear =
 let encode_cmd_play_bytes (v : cmd_play) : bytes = Cbor.encode (encode_cmd_play v)
 let decode_cmd_play_bytes (b : bytes) : cmd_play =
   match Cbor.decode b with Ok c -> decode_cmd_play c | Error e -> failwith e
+
+let encode_cmd_replace_and_play_bytes (v : cmd_replace_and_play) : bytes = Cbor.encode (encode_cmd_replace_and_play v)
+let decode_cmd_replace_and_play_bytes (b : bytes) : cmd_replace_and_play =
+  match Cbor.decode b with Ok c -> decode_cmd_replace_and_play c | Error e -> failwith e
 
 let encode_cmd_pause_bytes (v : cmd_pause) : bytes = Cbor.encode (encode_cmd_pause v)
 let decode_cmd_pause_bytes (b : bytes) : cmd_pause =
@@ -3271,6 +3599,30 @@ let decode_cmd_seek_bytes (b : bytes) : cmd_seek =
 let encode_cmd_volume_bytes (v : cmd_volume) : bytes = Cbor.encode (encode_cmd_volume v)
 let decode_cmd_volume_bytes (b : bytes) : cmd_volume =
   match Cbor.decode b with Ok c -> decode_cmd_volume c | Error e -> failwith e
+
+let encode_cmd_set_repeat_bytes (v : cmd_set_repeat) : bytes = Cbor.encode (encode_cmd_set_repeat v)
+let decode_cmd_set_repeat_bytes (b : bytes) : cmd_set_repeat =
+  match Cbor.decode b with Ok c -> decode_cmd_set_repeat c | Error e -> failwith e
+
+let encode_cmd_set_shuffle_bytes (v : cmd_set_shuffle) : bytes = Cbor.encode (encode_cmd_set_shuffle v)
+let decode_cmd_set_shuffle_bytes (b : bytes) : cmd_set_shuffle =
+  match Cbor.decode b with Ok c -> decode_cmd_set_shuffle c | Error e -> failwith e
+
+let encode_cmd_undo_bytes (v : cmd_undo) : bytes = Cbor.encode (encode_cmd_undo v)
+let decode_cmd_undo_bytes (b : bytes) : cmd_undo =
+  match Cbor.decode b with Ok c -> decode_cmd_undo c | Error e -> failwith e
+
+let encode_cmd_playback_completed_bytes (v : cmd_playback_completed) : bytes = Cbor.encode (encode_cmd_playback_completed v)
+let decode_cmd_playback_completed_bytes (b : bytes) : cmd_playback_completed =
+  match Cbor.decode b with Ok c -> decode_cmd_playback_completed c | Error e -> failwith e
+
+let encode_cmd_playback_failed_bytes (v : cmd_playback_failed) : bytes = Cbor.encode (encode_cmd_playback_failed v)
+let decode_cmd_playback_failed_bytes (b : bytes) : cmd_playback_failed =
+  match Cbor.decode b with Ok c -> decode_cmd_playback_failed c | Error e -> failwith e
+
+let encode_cmd_playback_state_bytes (v : cmd_playback_state) : bytes = Cbor.encode (encode_cmd_playback_state v)
+let decode_cmd_playback_state_bytes (b : bytes) : cmd_playback_state =
+  match Cbor.decode b with Ok c -> decode_cmd_playback_state c | Error e -> failwith e
 
 let encode_player_command_bytes (v : player_command) : bytes = Cbor.encode (encode_player_command v)
 let decode_player_command_bytes (b : bytes) : player_command =

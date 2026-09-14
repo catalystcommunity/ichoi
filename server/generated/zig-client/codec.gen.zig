@@ -385,6 +385,54 @@ fn dec_PlayerStatus(alloc: std.mem.Allocator, src: Value, out: *types.PlayerStat
     return error.WrongType;
 }
 
+fn enc_RepeatMode(out: *std.ArrayList(u8), v: *const types.RepeatMode) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_RepeatMode(alloc: std.mem.Allocator, src: Value, out: *types.RepeatMode) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "off")) {
+        out.* = .off;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "all")) {
+        out.* = .all;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "one")) {
+        out.* = .one;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_NodeEvent(out: *std.ArrayList(u8), v: *const types.NodeEvent) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_NodeEvent(alloc: std.mem.Allocator, src: Value, out: *types.NodeEvent) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "ready")) {
+        out.* = .ready;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "state")) {
+        out.* = .state;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "completed")) {
+        out.* = .completed;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "failed")) {
+        out.* = .failed;
+        return;
+    }
+    return error.WrongType;
+}
+
 fn enc_Codec(out: *std.ArrayList(u8), v: *const types.Codec) CodecError!void {
     try w_text(out, v.wire_name());
 }
@@ -2008,7 +2056,7 @@ fn dec_Player(alloc: std.mem.Allocator, m: Value, out: *types.Player) CodecError
 }
 
 fn enc_QueueItem(out: *std.ArrayList(u8), v: *const types.QueueItem) CodecError!void {
-    var csil_n: usize = 1;
+    var csil_n: usize = 2;
     if (v.title != null) csil_n += 1;
     if (v.artist != null) csil_n += 1;
     if (v.library != null) csil_n += 1;
@@ -2032,6 +2080,8 @@ fn enc_QueueItem(out: *std.ArrayList(u8), v: *const types.QueueItem) CodecError!
         try w_text(out, "duration_ms");
         try w_uint(out, csil_x);
     }
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
 }
 
 fn dec_QueueItem(alloc: std.mem.Allocator, m: Value, out: *types.QueueItem) CodecError!void {
@@ -2070,13 +2120,23 @@ fn dec_QueueItem(alloc: std.mem.Allocator, m: Value, out: *types.QueueItem) Code
             out.duration_ms = null;
         }
     }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
+    }
 }
 
 fn enc_PlayerState(out: *std.ArrayList(u8), v: *const types.PlayerState) CodecError!void {
-    var csil_n: usize = 4;
+    var csil_n: usize = 8;
+    if (v.@"error" != null) csil_n += 1;
+    if (v.playback_id != null) csil_n += 1;
     if (v.position_ms != null) csil_n += 1;
     if (v.current_index != null) csil_n += 1;
     try w_map_head(out, csil_n);
+    if (v.@"error") |csil_x| {
+        try w_text(out, "error");
+        try w_text(out, csil_x);
+    }
     try w_text(out, "queue");
     try w_array_head(out, v.queue.len);
     for (v.queue) |csil_it| {
@@ -2086,12 +2146,24 @@ fn enc_PlayerState(out: *std.ArrayList(u8), v: *const types.PlayerState) CodecEr
     try enc_PlayerStatus(out, &(v.status));
     try w_text(out, "volume");
     try w_uint(out, v.volume);
+    try w_text(out, "shuffle");
+    try w_bool(out, v.shuffle);
+    try w_text(out, "can_undo");
+    try w_bool(out, v.can_undo);
+    try w_text(out, "revision");
+    try w_uint(out, v.revision);
     try w_text(out, "player_id");
     try w_text(out, v.player_id);
+    if (v.playback_id) |csil_x| {
+        try w_text(out, "playback_id");
+        try w_text(out, csil_x);
+    }
     if (v.position_ms) |csil_x| {
         try w_text(out, "position_ms");
         try w_uint(out, csil_x);
     }
+    try w_text(out, "repeat_mode");
+    try enc_RepeatMode(out, &(v.repeat_mode));
     if (v.current_index) |csil_x| {
         try w_text(out, "current_index");
         try w_uint(out, csil_x);
@@ -2100,6 +2172,13 @@ fn enc_PlayerState(out: *std.ArrayList(u8), v: *const types.PlayerState) CodecEr
 
 fn dec_PlayerState(alloc: std.mem.Allocator, m: Value, out: *types.PlayerState) CodecError!void {
     if (m != .map) return error.WrongType;
+    {
+        if (mget(m, "error")) |csil_fv| {
+            out.@"error" = try as_text(csil_fv);
+        } else {
+            out.@"error" = null;
+        }
+    }
     {
         const csil_fv = try req(m, "queue");
         if (csil_fv != .array) return error.WrongType;
@@ -2117,8 +2196,27 @@ fn dec_PlayerState(alloc: std.mem.Allocator, m: Value, out: *types.PlayerState) 
         out.volume = try as_u64(csil_fv);
     }
     {
+        const csil_fv = try req(m, "shuffle");
+        out.shuffle = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "can_undo");
+        out.can_undo = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "revision");
+        out.revision = try as_u64(csil_fv);
+    }
+    {
         const csil_fv = try req(m, "player_id");
         out.player_id = try as_text(csil_fv);
+    }
+    {
+        if (mget(m, "playback_id")) |csil_fv| {
+            out.playback_id = try as_text(csil_fv);
+        } else {
+            out.playback_id = null;
+        }
     }
     {
         if (mget(m, "position_ms")) |csil_fv| {
@@ -2126,6 +2224,10 @@ fn dec_PlayerState(alloc: std.mem.Allocator, m: Value, out: *types.PlayerState) 
         } else {
             out.position_ms = null;
         }
+    }
+    {
+        const csil_fv = try req(m, "repeat_mode");
+        try dec_RepeatMode(alloc, csil_fv, &(out.repeat_mode));
     }
     {
         if (mget(m, "current_index")) |csil_fv| {
@@ -2252,6 +2354,37 @@ fn dec_CmdEnqueue(alloc: std.mem.Allocator, m: Value, out: *types.CmdEnqueue) Co
     }
 }
 
+fn enc_CmdEnqueueNext(out: *std.ArrayList(u8), v: *const types.CmdEnqueueNext) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "op");
+    try w_text(out, "enqueue-next");
+    try w_text(out, "track_ids");
+    try w_array_head(out, v.track_ids.len);
+    for (v.track_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_CmdEnqueueNext(alloc: std.mem.Allocator, m: Value, out: *types.CmdEnqueueNext) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "enqueue-next")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "track_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.track_ids = try alloc.alloc(types.TrackId, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.track_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+}
+
 fn enc_CmdRemove(out: *std.ArrayList(u8), v: *const types.CmdRemove) CodecError!void {
     try w_map_head(out, 2);
     try w_text(out, "op");
@@ -2274,6 +2407,31 @@ fn dec_CmdRemove(alloc: std.mem.Allocator, m: Value, out: *types.CmdRemove) Code
     {
         const csil_fv = try req(m, "index");
         out.index = try as_u64(csil_fv);
+    }
+}
+
+fn enc_CmdRemoveItem(out: *std.ArrayList(u8), v: *const types.CmdRemoveItem) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "op");
+    try w_text(out, "remove-item");
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
+}
+
+fn dec_CmdRemoveItem(alloc: std.mem.Allocator, m: Value, out: *types.CmdRemoveItem) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "remove-item")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
     }
 }
 
@@ -2308,6 +2466,44 @@ fn dec_CmdReorder(alloc: std.mem.Allocator, m: Value, out: *types.CmdReorder) Co
     }
 }
 
+fn enc_CmdMoveItem(out: *std.ArrayList(u8), v: *const types.CmdMoveItem) CodecError!void {
+    var csil_n: usize = 2;
+    if (v.before_queue_item_id != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "op");
+    try w_text(out, "move-item");
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
+    if (v.before_queue_item_id) |csil_x| {
+        try w_text(out, "before_queue_item_id");
+        try w_uint(out, csil_x);
+    }
+}
+
+fn dec_CmdMoveItem(alloc: std.mem.Allocator, m: Value, out: *types.CmdMoveItem) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "move-item")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
+    }
+    {
+        if (mget(m, "before_queue_item_id")) |csil_fv| {
+            out.before_queue_item_id = try as_u64(csil_fv);
+        } else {
+            out.before_queue_item_id = null;
+        }
+    }
+}
+
 fn enc_CmdClear(out: *std.ArrayList(u8), v: *const types.CmdClear) CodecError!void {
     try w_map_head(out, 1);
     try w_text(out, "op");
@@ -2330,11 +2526,16 @@ fn dec_CmdClear(alloc: std.mem.Allocator, m: Value, out: *types.CmdClear) CodecE
 fn enc_CmdPlay(out: *std.ArrayList(u8), v: *const types.CmdPlay) CodecError!void {
     var csil_n: usize = 1;
     if (v.index != null) csil_n += 1;
+    if (v.queue_item_id != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "op");
     try w_text(out, "play");
     if (v.index) |csil_x| {
         try w_text(out, "index");
+        try w_uint(out, csil_x);
+    }
+    if (v.queue_item_id) |csil_x| {
+        try w_text(out, "queue_item_id");
         try w_uint(out, csil_x);
     }
 }
@@ -2355,6 +2556,69 @@ fn dec_CmdPlay(alloc: std.mem.Allocator, m: Value, out: *types.CmdPlay) CodecErr
             out.index = try as_u64(csil_fv);
         } else {
             out.index = null;
+        }
+    }
+    {
+        if (mget(m, "queue_item_id")) |csil_fv| {
+            out.queue_item_id = try as_u64(csil_fv);
+        } else {
+            out.queue_item_id = null;
+        }
+    }
+}
+
+fn enc_CmdReplaceAndPlay(out: *std.ArrayList(u8), v: *const types.CmdReplaceAndPlay) CodecError!void {
+    var csil_n: usize = 2;
+    if (v.position_ms != null) csil_n += 1;
+    if (v.start_index != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "op");
+    try w_text(out, "replace-and-play");
+    try w_text(out, "track_ids");
+    try w_array_head(out, v.track_ids.len);
+    for (v.track_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+    if (v.position_ms) |csil_x| {
+        try w_text(out, "position_ms");
+        try w_uint(out, csil_x);
+    }
+    if (v.start_index) |csil_x| {
+        try w_text(out, "start_index");
+        try w_uint(out, csil_x);
+    }
+}
+
+fn dec_CmdReplaceAndPlay(alloc: std.mem.Allocator, m: Value, out: *types.CmdReplaceAndPlay) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "replace-and-play")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "track_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.track_ids = try alloc.alloc(types.TrackId, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.track_ids[csil_i] = try as_text(csil_it);
+        }
+    }
+    {
+        if (mget(m, "position_ms")) |csil_fv| {
+            out.position_ms = try as_u64(csil_fv);
+        } else {
+            out.position_ms = null;
+        }
+    }
+    {
+        if (mget(m, "start_index")) |csil_fv| {
+            out.start_index = try as_u64(csil_fv);
+        } else {
+            out.start_index = null;
         }
     }
 }
@@ -2466,6 +2730,184 @@ fn dec_CmdVolume(alloc: std.mem.Allocator, m: Value, out: *types.CmdVolume) Code
     }
 }
 
+fn enc_CmdSetRepeat(out: *std.ArrayList(u8), v: *const types.CmdSetRepeat) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "op");
+    try w_text(out, "set-repeat");
+    try w_text(out, "repeat_mode");
+    try enc_RepeatMode(out, &(v.repeat_mode));
+}
+
+fn dec_CmdSetRepeat(alloc: std.mem.Allocator, m: Value, out: *types.CmdSetRepeat) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "set-repeat")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "repeat_mode");
+        try dec_RepeatMode(alloc, csil_fv, &(out.repeat_mode));
+    }
+}
+
+fn enc_CmdSetShuffle(out: *std.ArrayList(u8), v: *const types.CmdSetShuffle) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "op");
+    try w_text(out, "set-shuffle");
+    try w_text(out, "shuffle");
+    try w_bool(out, v.shuffle);
+}
+
+fn dec_CmdSetShuffle(alloc: std.mem.Allocator, m: Value, out: *types.CmdSetShuffle) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "set-shuffle")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "shuffle");
+        out.shuffle = try as_bool(csil_fv);
+    }
+}
+
+fn enc_CmdUndo(out: *std.ArrayList(u8), v: *const types.CmdUndo) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "op");
+    try w_text(out, "undo");
+}
+
+fn dec_CmdUndo(alloc: std.mem.Allocator, m: Value, out: *types.CmdUndo) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "undo")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+}
+
+fn enc_CmdPlaybackCompleted(out: *std.ArrayList(u8), v: *const types.CmdPlaybackCompleted) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "op");
+    try w_text(out, "playback-completed");
+    try w_text(out, "playback_id");
+    try w_text(out, v.playback_id);
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
+}
+
+fn dec_CmdPlaybackCompleted(alloc: std.mem.Allocator, m: Value, out: *types.CmdPlaybackCompleted) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "playback-completed")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "playback_id");
+        out.playback_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
+    }
+}
+
+fn enc_CmdPlaybackFailed(out: *std.ArrayList(u8), v: *const types.CmdPlaybackFailed) CodecError!void {
+    try w_map_head(out, 4);
+    try w_text(out, "op");
+    try w_text(out, "playback-failed");
+    try w_text(out, "error");
+    try w_text(out, v.@"error");
+    try w_text(out, "playback_id");
+    try w_text(out, v.playback_id);
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
+}
+
+fn dec_CmdPlaybackFailed(alloc: std.mem.Allocator, m: Value, out: *types.CmdPlaybackFailed) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "playback-failed")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "error");
+        out.@"error" = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "playback_id");
+        out.playback_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
+    }
+}
+
+fn enc_CmdPlaybackState(out: *std.ArrayList(u8), v: *const types.CmdPlaybackState) CodecError!void {
+    try w_map_head(out, 5);
+    try w_text(out, "op");
+    try w_text(out, "playback-state");
+    try w_text(out, "status");
+    try enc_PlayerStatus(out, &(v.status));
+    try w_text(out, "playback_id");
+    try w_text(out, v.playback_id);
+    try w_text(out, "position_ms");
+    try w_uint(out, v.position_ms);
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
+}
+
+fn dec_CmdPlaybackState(alloc: std.mem.Allocator, m: Value, out: *types.CmdPlaybackState) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "op");
+        {
+            const csil_lit = try as_text(csil_fv);
+            if (!std.mem.eql(u8, csil_lit, "playback-state")) return error.WrongType;
+            out.op = csil_lit;
+        }
+    }
+    {
+        const csil_fv = try req(m, "status");
+        try dec_PlayerStatus(alloc, csil_fv, &(out.status));
+    }
+    {
+        const csil_fv = try req(m, "playback_id");
+        out.playback_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "position_ms");
+        out.position_ms = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
+    }
+}
+
 fn enc_PlayerCommand(out: *std.ArrayList(u8), v: *const types.PlayerCommand) CodecError!void {
     try w_array_head(out, 2);
     switch (v.*) {
@@ -2473,41 +2915,81 @@ fn enc_PlayerCommand(out: *std.ArrayList(u8), v: *const types.PlayerCommand) Cod
             try w_uint(out, 0);
             try enc_CmdEnqueue(out, &(csil_x));
         },
-        .cmd_remove => |csil_x| {
+        .cmd_enqueue_next => |csil_x| {
             try w_uint(out, 1);
+            try enc_CmdEnqueueNext(out, &(csil_x));
+        },
+        .cmd_remove => |csil_x| {
+            try w_uint(out, 2);
             try enc_CmdRemove(out, &(csil_x));
         },
+        .cmd_remove_item => |csil_x| {
+            try w_uint(out, 3);
+            try enc_CmdRemoveItem(out, &(csil_x));
+        },
         .cmd_reorder => |csil_x| {
-            try w_uint(out, 2);
+            try w_uint(out, 4);
             try enc_CmdReorder(out, &(csil_x));
         },
+        .cmd_move_item => |csil_x| {
+            try w_uint(out, 5);
+            try enc_CmdMoveItem(out, &(csil_x));
+        },
         .cmd_clear => |csil_x| {
-            try w_uint(out, 3);
+            try w_uint(out, 6);
             try enc_CmdClear(out, &(csil_x));
         },
         .cmd_play => |csil_x| {
-            try w_uint(out, 4);
+            try w_uint(out, 7);
             try enc_CmdPlay(out, &(csil_x));
         },
+        .cmd_replace_and_play => |csil_x| {
+            try w_uint(out, 8);
+            try enc_CmdReplaceAndPlay(out, &(csil_x));
+        },
         .cmd_pause => |csil_x| {
-            try w_uint(out, 5);
+            try w_uint(out, 9);
             try enc_CmdPause(out, &(csil_x));
         },
         .cmd_next => |csil_x| {
-            try w_uint(out, 6);
+            try w_uint(out, 10);
             try enc_CmdNext(out, &(csil_x));
         },
         .cmd_previous => |csil_x| {
-            try w_uint(out, 7);
+            try w_uint(out, 11);
             try enc_CmdPrevious(out, &(csil_x));
         },
         .cmd_seek => |csil_x| {
-            try w_uint(out, 8);
+            try w_uint(out, 12);
             try enc_CmdSeek(out, &(csil_x));
         },
         .cmd_volume => |csil_x| {
-            try w_uint(out, 9);
+            try w_uint(out, 13);
             try enc_CmdVolume(out, &(csil_x));
+        },
+        .cmd_set_repeat => |csil_x| {
+            try w_uint(out, 14);
+            try enc_CmdSetRepeat(out, &(csil_x));
+        },
+        .cmd_set_shuffle => |csil_x| {
+            try w_uint(out, 15);
+            try enc_CmdSetShuffle(out, &(csil_x));
+        },
+        .cmd_undo => |csil_x| {
+            try w_uint(out, 16);
+            try enc_CmdUndo(out, &(csil_x));
+        },
+        .cmd_playback_completed => |csil_x| {
+            try w_uint(out, 17);
+            try enc_CmdPlaybackCompleted(out, &(csil_x));
+        },
+        .cmd_playback_failed => |csil_x| {
+            try w_uint(out, 18);
+            try enc_CmdPlaybackFailed(out, &(csil_x));
+        },
+        .cmd_playback_state => |csil_x| {
+            try w_uint(out, 19);
+            try enc_CmdPlaybackState(out, &(csil_x));
         },
     }
 }
@@ -2522,49 +3004,99 @@ fn dec_PlayerCommand(alloc: std.mem.Allocator, src: Value, out: *types.PlayerCom
             out.* = .{ .cmd_enqueue = csil_tmp };
         },
         1 => {
+            var csil_tmp: types.CmdEnqueueNext = undefined;
+            try dec_CmdEnqueueNext(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_enqueue_next = csil_tmp };
+        },
+        2 => {
             var csil_tmp: types.CmdRemove = undefined;
             try dec_CmdRemove(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_remove = csil_tmp };
         },
-        2 => {
+        3 => {
+            var csil_tmp: types.CmdRemoveItem = undefined;
+            try dec_CmdRemoveItem(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_remove_item = csil_tmp };
+        },
+        4 => {
             var csil_tmp: types.CmdReorder = undefined;
             try dec_CmdReorder(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_reorder = csil_tmp };
         },
-        3 => {
+        5 => {
+            var csil_tmp: types.CmdMoveItem = undefined;
+            try dec_CmdMoveItem(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_move_item = csil_tmp };
+        },
+        6 => {
             var csil_tmp: types.CmdClear = undefined;
             try dec_CmdClear(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_clear = csil_tmp };
         },
-        4 => {
+        7 => {
             var csil_tmp: types.CmdPlay = undefined;
             try dec_CmdPlay(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_play = csil_tmp };
         },
-        5 => {
+        8 => {
+            var csil_tmp: types.CmdReplaceAndPlay = undefined;
+            try dec_CmdReplaceAndPlay(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_replace_and_play = csil_tmp };
+        },
+        9 => {
             var csil_tmp: types.CmdPause = undefined;
             try dec_CmdPause(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_pause = csil_tmp };
         },
-        6 => {
+        10 => {
             var csil_tmp: types.CmdNext = undefined;
             try dec_CmdNext(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_next = csil_tmp };
         },
-        7 => {
+        11 => {
             var csil_tmp: types.CmdPrevious = undefined;
             try dec_CmdPrevious(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_previous = csil_tmp };
         },
-        8 => {
+        12 => {
             var csil_tmp: types.CmdSeek = undefined;
             try dec_CmdSeek(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_seek = csil_tmp };
         },
-        9 => {
+        13 => {
             var csil_tmp: types.CmdVolume = undefined;
             try dec_CmdVolume(alloc, src.array[1], &(csil_tmp));
             out.* = .{ .cmd_volume = csil_tmp };
+        },
+        14 => {
+            var csil_tmp: types.CmdSetRepeat = undefined;
+            try dec_CmdSetRepeat(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_set_repeat = csil_tmp };
+        },
+        15 => {
+            var csil_tmp: types.CmdSetShuffle = undefined;
+            try dec_CmdSetShuffle(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_set_shuffle = csil_tmp };
+        },
+        16 => {
+            var csil_tmp: types.CmdUndo = undefined;
+            try dec_CmdUndo(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_undo = csil_tmp };
+        },
+        17 => {
+            var csil_tmp: types.CmdPlaybackCompleted = undefined;
+            try dec_CmdPlaybackCompleted(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_playback_completed = csil_tmp };
+        },
+        18 => {
+            var csil_tmp: types.CmdPlaybackFailed = undefined;
+            try dec_CmdPlaybackFailed(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_playback_failed = csil_tmp };
+        },
+        19 => {
+            var csil_tmp: types.CmdPlaybackState = undefined;
+            try dec_CmdPlaybackState(alloc, src.array[1], &(csil_tmp));
+            out.* = .{ .cmd_playback_state = csil_tmp };
         },
         else => return error.WrongType,
     }
@@ -2642,13 +3174,15 @@ fn dec_ShareResult(alloc: std.mem.Allocator, m: Value, out: *types.ShareResult) 
 }
 
 fn enc_MediaOpen(out: *std.ArrayList(u8), v: *const types.MediaOpen) CodecError!void {
-    try w_map_head(out, 3);
+    try w_map_head(out, 4);
     try w_text(out, "kind");
     try w_text(out, "open");
     try w_text(out, "pref");
     try enc_StreamPref(out, &(v.pref));
     try w_text(out, "track_id");
     try w_text(out, v.track_id);
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
 }
 
 fn dec_MediaOpen(alloc: std.mem.Allocator, m: Value, out: *types.MediaOpen) CodecError!void {
@@ -2669,12 +3203,18 @@ fn dec_MediaOpen(alloc: std.mem.Allocator, m: Value, out: *types.MediaOpen) Code
         const csil_fv = try req(m, "track_id");
         out.track_id = try as_text(csil_fv);
     }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
+    }
 }
 
 fn enc_MediaSeek(out: *std.ArrayList(u8), v: *const types.MediaSeek) CodecError!void {
-    try w_map_head(out, 2);
+    try w_map_head(out, 3);
     try w_text(out, "kind");
     try w_text(out, "seek");
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
     try w_text(out, "position_ms");
     try w_uint(out, v.position_ms);
 }
@@ -2691,15 +3231,21 @@ fn dec_MediaSeek(alloc: std.mem.Allocator, m: Value, out: *types.MediaSeek) Code
         }
     }
     {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
+    }
+    {
         const csil_fv = try req(m, "position_ms");
         out.position_ms = try as_u64(csil_fv);
     }
 }
 
 fn enc_MediaPause(out: *std.ArrayList(u8), v: *const types.MediaPause) CodecError!void {
-    try w_map_head(out, 1);
+    try w_map_head(out, 2);
     try w_text(out, "kind");
     try w_text(out, "pause");
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
 }
 
 fn dec_MediaPause(alloc: std.mem.Allocator, m: Value, out: *types.MediaPause) CodecError!void {
@@ -2713,12 +3259,18 @@ fn dec_MediaPause(alloc: std.mem.Allocator, m: Value, out: *types.MediaPause) Co
             out.kind = csil_lit;
         }
     }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
+    }
 }
 
 fn enc_MediaResume(out: *std.ArrayList(u8), v: *const types.MediaResume) CodecError!void {
-    try w_map_head(out, 1);
+    try w_map_head(out, 2);
     try w_text(out, "kind");
     try w_text(out, "resume");
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
 }
 
 fn dec_MediaResume(alloc: std.mem.Allocator, m: Value, out: *types.MediaResume) CodecError!void {
@@ -2732,12 +3284,18 @@ fn dec_MediaResume(alloc: std.mem.Allocator, m: Value, out: *types.MediaResume) 
             out.kind = csil_lit;
         }
     }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
+    }
 }
 
 fn enc_MediaStop(out: *std.ArrayList(u8), v: *const types.MediaStop) CodecError!void {
-    try w_map_head(out, 1);
+    try w_map_head(out, 2);
     try w_text(out, "kind");
     try w_text(out, "stop");
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
 }
 
 fn dec_MediaStop(alloc: std.mem.Allocator, m: Value, out: *types.MediaStop) CodecError!void {
@@ -2750,6 +3308,10 @@ fn dec_MediaStop(alloc: std.mem.Allocator, m: Value, out: *types.MediaStop) Code
             if (!std.mem.eql(u8, csil_lit, "stop")) return error.WrongType;
             out.kind = csil_lit;
         }
+    }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
     }
 }
 
@@ -2813,7 +3375,7 @@ fn dec_MediaControl(alloc: std.mem.Allocator, src: Value, out: *types.MediaContr
 }
 
 fn enc_MediaHeader(out: *std.ArrayList(u8), v: *const types.MediaHeader) CodecError!void {
-    var csil_n: usize = 7;
+    var csil_n: usize = 8;
     if (v.duration_ms != null) csil_n += 1;
     if (v.codec_config != null) csil_n += 1;
     try w_map_head(out, csil_n);
@@ -2823,6 +3385,8 @@ fn enc_MediaHeader(out: *std.ArrayList(u8), v: *const types.MediaHeader) CodecEr
     try enc_Codec(out, &(v.codec));
     try w_text(out, "channels");
     try w_uint(out, v.channels);
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
     try w_text(out, "transcoded");
     try w_bool(out, v.transcoded);
     if (v.duration_ms) |csil_x| {
@@ -2858,6 +3422,10 @@ fn dec_MediaHeader(alloc: std.mem.Allocator, m: Value, out: *types.MediaHeader) 
     {
         const csil_fv = try req(m, "channels");
         out.channels = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
     }
     {
         const csil_fv = try req(m, "transcoded");
@@ -2910,7 +3478,7 @@ fn dec_MediaEndReason(alloc: std.mem.Allocator, src: Value, out: *types.MediaEnd
 }
 
 fn enc_MediaChunk(out: *std.ArrayList(u8), v: *const types.MediaChunk) CodecError!void {
-    var csil_n: usize = 3;
+    var csil_n: usize = 4;
     if (v.timestamp_ms != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "seq");
@@ -2919,6 +3487,8 @@ fn enc_MediaChunk(out: *std.ArrayList(u8), v: *const types.MediaChunk) CodecErro
     try w_bytes(out, v.data);
     try w_text(out, "kind");
     try w_text(out, "chunk");
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
     if (v.timestamp_ms) |csil_x| {
         try w_text(out, "timestamp_ms");
         try w_uint(out, csil_x);
@@ -2945,6 +3515,10 @@ fn dec_MediaChunk(alloc: std.mem.Allocator, m: Value, out: *types.MediaChunk) Co
         }
     }
     {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
+    }
+    {
         if (mget(m, "timestamp_ms")) |csil_fv| {
             out.timestamp_ms = try as_u64(csil_fv);
         } else {
@@ -2954,7 +3528,7 @@ fn dec_MediaChunk(alloc: std.mem.Allocator, m: Value, out: *types.MediaChunk) Co
 }
 
 fn enc_MediaEnd(out: *std.ArrayList(u8), v: *const types.MediaEnd) CodecError!void {
-    var csil_n: usize = 1;
+    var csil_n: usize = 2;
     if (v.reason != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "kind");
@@ -2963,6 +3537,8 @@ fn enc_MediaEnd(out: *std.ArrayList(u8), v: *const types.MediaEnd) CodecError!vo
         try w_text(out, "reason");
         try enc_MediaEndReason(out, &(csil_x));
     }
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
 }
 
 fn dec_MediaEnd(alloc: std.mem.Allocator, m: Value, out: *types.MediaEnd) CodecError!void {
@@ -2984,14 +3560,20 @@ fn dec_MediaEnd(alloc: std.mem.Allocator, m: Value, out: *types.MediaEnd) CodecE
             out.reason = null;
         }
     }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
+    }
 }
 
 fn enc_MediaFail(out: *std.ArrayList(u8), v: *const types.MediaFail) CodecError!void {
-    try w_map_head(out, 2);
+    try w_map_head(out, 3);
     try w_text(out, "kind");
     try w_text(out, "error");
     try w_text(out, "error");
     try enc_ServiceError(out, &(v.@"error"));
+    try w_text(out, "stream_id");
+    try w_text(out, v.stream_id);
 }
 
 fn dec_MediaFail(alloc: std.mem.Allocator, m: Value, out: *types.MediaFail) CodecError!void {
@@ -3007,6 +3589,10 @@ fn dec_MediaFail(alloc: std.mem.Allocator, m: Value, out: *types.MediaFail) Code
     {
         const csil_fv = try req(m, "error");
         try dec_ServiceError(alloc, csil_fv, &(out.@"error"));
+    }
+    {
+        const csil_fv = try req(m, "stream_id");
+        out.stream_id = try as_text(csil_fv);
     }
 }
 
@@ -3179,7 +3765,7 @@ fn dec_RegisterNodeResponse(alloc: std.mem.Allocator, m: Value, out: *types.Regi
 }
 
 fn enc_DirLoad(out: *std.ArrayList(u8), v: *const types.DirLoad) CodecError!void {
-    var csil_n: usize = 4;
+    var csil_n: usize = 6;
     if (v.position_ms != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "op");
@@ -3190,10 +3776,14 @@ fn enc_DirLoad(out: *std.ArrayList(u8), v: *const types.DirLoad) CodecError!void
     try w_text(out, v.track_id);
     try w_text(out, "player_id");
     try w_text(out, v.player_id);
+    try w_text(out, "playback_id");
+    try w_text(out, v.playback_id);
     if (v.position_ms) |csil_x| {
         try w_text(out, "position_ms");
         try w_uint(out, csil_x);
     }
+    try w_text(out, "queue_item_id");
+    try w_uint(out, v.queue_item_id);
 }
 
 fn dec_DirLoad(alloc: std.mem.Allocator, m: Value, out: *types.DirLoad) CodecError!void {
@@ -3219,11 +3809,19 @@ fn dec_DirLoad(alloc: std.mem.Allocator, m: Value, out: *types.DirLoad) CodecErr
         out.player_id = try as_text(csil_fv);
     }
     {
+        const csil_fv = try req(m, "playback_id");
+        out.playback_id = try as_text(csil_fv);
+    }
+    {
         if (mget(m, "position_ms")) |csil_fv| {
             out.position_ms = try as_u64(csil_fv);
         } else {
             out.position_ms = null;
         }
+    }
+    {
+        const csil_fv = try req(m, "queue_item_id");
+        out.queue_item_id = try as_u64(csil_fv);
     }
 }
 
@@ -3394,13 +3992,29 @@ fn dec_NodeDirective(alloc: std.mem.Allocator, src: Value, out: *types.NodeDirec
 
 fn enc_NodeReport(out: *std.ArrayList(u8), v: *const types.NodeReport) CodecError!void {
     var csil_n: usize = 2;
+    if (v.@"error" != null) csil_n += 1;
+    if (v.event != null) csil_n += 1;
+    if (v.playback_id != null) csil_n += 1;
     if (v.position_ms != null) csil_n += 1;
     if (v.audio_blocked != null) csil_n += 1;
+    if (v.queue_item_id != null) csil_n += 1;
     try w_map_head(out, csil_n);
+    if (v.@"error") |csil_x| {
+        try w_text(out, "error");
+        try w_text(out, csil_x);
+    }
+    if (v.event) |csil_x| {
+        try w_text(out, "event");
+        try enc_NodeEvent(out, &(csil_x));
+    }
     try w_text(out, "status");
     try enc_PlayerStatus(out, &(v.status));
     try w_text(out, "player_id");
     try w_text(out, v.player_id);
+    if (v.playback_id) |csil_x| {
+        try w_text(out, "playback_id");
+        try w_text(out, csil_x);
+    }
     if (v.position_ms) |csil_x| {
         try w_text(out, "position_ms");
         try w_uint(out, csil_x);
@@ -3409,10 +4023,30 @@ fn enc_NodeReport(out: *std.ArrayList(u8), v: *const types.NodeReport) CodecErro
         try w_text(out, "audio_blocked");
         try w_bool(out, csil_x);
     }
+    if (v.queue_item_id) |csil_x| {
+        try w_text(out, "queue_item_id");
+        try w_uint(out, csil_x);
+    }
 }
 
 fn dec_NodeReport(alloc: std.mem.Allocator, m: Value, out: *types.NodeReport) CodecError!void {
     if (m != .map) return error.WrongType;
+    {
+        if (mget(m, "error")) |csil_fv| {
+            out.@"error" = try as_text(csil_fv);
+        } else {
+            out.@"error" = null;
+        }
+    }
+    {
+        if (mget(m, "event")) |csil_fv| {
+            var csil_tmp: types.NodeEvent = undefined;
+            try dec_NodeEvent(alloc, csil_fv, &csil_tmp);
+            out.event = csil_tmp;
+        } else {
+            out.event = null;
+        }
+    }
     {
         const csil_fv = try req(m, "status");
         try dec_PlayerStatus(alloc, csil_fv, &(out.status));
@@ -3420,6 +4054,13 @@ fn dec_NodeReport(alloc: std.mem.Allocator, m: Value, out: *types.NodeReport) Co
     {
         const csil_fv = try req(m, "player_id");
         out.player_id = try as_text(csil_fv);
+    }
+    {
+        if (mget(m, "playback_id")) |csil_fv| {
+            out.playback_id = try as_text(csil_fv);
+        } else {
+            out.playback_id = null;
+        }
     }
     {
         if (mget(m, "position_ms")) |csil_fv| {
@@ -3433,6 +4074,13 @@ fn dec_NodeReport(alloc: std.mem.Allocator, m: Value, out: *types.NodeReport) Co
             out.audio_blocked = try as_bool(csil_fv);
         } else {
             out.audio_blocked = null;
+        }
+    }
+    {
+        if (mget(m, "queue_item_id")) |csil_fv| {
+            out.queue_item_id = try as_u64(csil_fv);
+        } else {
+            out.queue_item_id = null;
         }
     }
 }
@@ -4701,6 +5349,38 @@ pub fn decode_PlayerStatus(alloc: std.mem.Allocator, bytes: []const u8, out: *ty
     try dec_PlayerStatus(alloc, root, out);
 }
 
+/// Encode a RepeatMode to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_RepeatMode(alloc: std.mem.Allocator, v: *const types.RepeatMode) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_RepeatMode(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a RepeatMode. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_RepeatMode(alloc: std.mem.Allocator, bytes: []const u8, out: *types.RepeatMode) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_RepeatMode(alloc, root, out);
+}
+
+/// Encode a NodeEvent to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_NodeEvent(alloc: std.mem.Allocator, v: *const types.NodeEvent) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_NodeEvent(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a NodeEvent. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_NodeEvent(alloc: std.mem.Allocator, bytes: []const u8, out: *types.NodeEvent) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_NodeEvent(alloc, root, out);
+}
+
 /// Encode a Codec to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_Codec(alloc: std.mem.Allocator, v: *const types.Codec) CodecError![]u8 {
@@ -5565,6 +6245,22 @@ pub fn decode_CmdEnqueue(alloc: std.mem.Allocator, bytes: []const u8, out: *type
     try dec_CmdEnqueue(alloc, root, out);
 }
 
+/// Encode a CmdEnqueueNext to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdEnqueueNext(alloc: std.mem.Allocator, v: *const types.CmdEnqueueNext) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdEnqueueNext(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdEnqueueNext. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdEnqueueNext(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdEnqueueNext) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdEnqueueNext(alloc, root, out);
+}
+
 /// Encode a CmdRemove to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_CmdRemove(alloc: std.mem.Allocator, v: *const types.CmdRemove) CodecError![]u8 {
@@ -5581,6 +6277,22 @@ pub fn decode_CmdRemove(alloc: std.mem.Allocator, bytes: []const u8, out: *types
     try dec_CmdRemove(alloc, root, out);
 }
 
+/// Encode a CmdRemoveItem to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdRemoveItem(alloc: std.mem.Allocator, v: *const types.CmdRemoveItem) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdRemoveItem(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdRemoveItem. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdRemoveItem(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdRemoveItem) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdRemoveItem(alloc, root, out);
+}
+
 /// Encode a CmdReorder to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_CmdReorder(alloc: std.mem.Allocator, v: *const types.CmdReorder) CodecError![]u8 {
@@ -5595,6 +6307,22 @@ pub fn encode_CmdReorder(alloc: std.mem.Allocator, v: *const types.CmdReorder) C
 pub fn decode_CmdReorder(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdReorder) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_CmdReorder(alloc, root, out);
+}
+
+/// Encode a CmdMoveItem to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdMoveItem(alloc: std.mem.Allocator, v: *const types.CmdMoveItem) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdMoveItem(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdMoveItem. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdMoveItem(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdMoveItem) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdMoveItem(alloc, root, out);
 }
 
 /// Encode a CmdClear to CBOR. The returned slice is owned by the caller
@@ -5627,6 +6355,22 @@ pub fn encode_CmdPlay(alloc: std.mem.Allocator, v: *const types.CmdPlay) CodecEr
 pub fn decode_CmdPlay(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdPlay) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_CmdPlay(alloc, root, out);
+}
+
+/// Encode a CmdReplaceAndPlay to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdReplaceAndPlay(alloc: std.mem.Allocator, v: *const types.CmdReplaceAndPlay) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdReplaceAndPlay(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdReplaceAndPlay. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdReplaceAndPlay(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdReplaceAndPlay) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdReplaceAndPlay(alloc, root, out);
 }
 
 /// Encode a CmdPause to CBOR. The returned slice is owned by the caller
@@ -5707,6 +6451,102 @@ pub fn encode_CmdVolume(alloc: std.mem.Allocator, v: *const types.CmdVolume) Cod
 pub fn decode_CmdVolume(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdVolume) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_CmdVolume(alloc, root, out);
+}
+
+/// Encode a CmdSetRepeat to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdSetRepeat(alloc: std.mem.Allocator, v: *const types.CmdSetRepeat) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdSetRepeat(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdSetRepeat. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdSetRepeat(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdSetRepeat) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdSetRepeat(alloc, root, out);
+}
+
+/// Encode a CmdSetShuffle to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdSetShuffle(alloc: std.mem.Allocator, v: *const types.CmdSetShuffle) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdSetShuffle(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdSetShuffle. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdSetShuffle(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdSetShuffle) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdSetShuffle(alloc, root, out);
+}
+
+/// Encode a CmdUndo to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdUndo(alloc: std.mem.Allocator, v: *const types.CmdUndo) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdUndo(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdUndo. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdUndo(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdUndo) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdUndo(alloc, root, out);
+}
+
+/// Encode a CmdPlaybackCompleted to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdPlaybackCompleted(alloc: std.mem.Allocator, v: *const types.CmdPlaybackCompleted) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdPlaybackCompleted(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdPlaybackCompleted. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdPlaybackCompleted(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdPlaybackCompleted) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdPlaybackCompleted(alloc, root, out);
+}
+
+/// Encode a CmdPlaybackFailed to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdPlaybackFailed(alloc: std.mem.Allocator, v: *const types.CmdPlaybackFailed) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdPlaybackFailed(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdPlaybackFailed. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdPlaybackFailed(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdPlaybackFailed) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdPlaybackFailed(alloc, root, out);
+}
+
+/// Encode a CmdPlaybackState to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_CmdPlaybackState(alloc: std.mem.Allocator, v: *const types.CmdPlaybackState) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_CmdPlaybackState(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a CmdPlaybackState. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_CmdPlaybackState(alloc: std.mem.Allocator, bytes: []const u8, out: *types.CmdPlaybackState) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_CmdPlaybackState(alloc, root, out);
 }
 
 /// Encode a PlayerCommand to CBOR. The returned slice is owned by the caller

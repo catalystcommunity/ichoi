@@ -40,6 +40,7 @@ export class PlayerController {
   private pendingTrimStart = 0;
   private trimEnd = 0;
   private streamSampleRate = 48000;
+  private streamId?: string;
   private baseUrl: string;
 
   private snap: PlaybackSnapshot = {
@@ -73,20 +74,21 @@ export class PlayerController {
     await this.ensureAudio();
     this.update({ status: "loading", positionMs: 0, error: undefined });
     this.resetStreamState();
-    const control: MediaControl = { kind: "open", track_id: trackId, pref };
+    this.streamId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    const control: MediaControl = { kind: "open", stream_id: this.streamId, track_id: trackId, pref };
     this.media.send(control);
   }
 
   pause(): void {
     this.post({ type: "pause" });
-    this.media.send({ kind: "pause" });
+    if (this.streamId) this.media.send({ kind: "pause", stream_id: this.streamId });
     if (this.snap.status === "playing") this.update({ status: "paused" });
   }
 
   resume(): void {
     void this.ctx?.resume();
     this.post({ type: "play" });
-    this.media.send({ kind: "resume" });
+    if (this.streamId) this.media.send({ kind: "resume", stream_id: this.streamId });
     if (this.snap.status === "paused") this.update({ status: "playing" });
   }
 
@@ -96,11 +98,12 @@ export class PlayerController {
     this.decoder?.reset();
     this.fifo?.clear();
     this.pendingTrimStart = 0; // trim_start only applies at true stream start
-    this.media.send({ kind: "seek", position_ms: positionMs });
+    if (this.streamId) this.media.send({ kind: "seek", stream_id: this.streamId, position_ms: positionMs });
   }
 
   stop(): void {
-    this.media.send({ kind: "stop" });
+    if (this.streamId) this.media.send({ kind: "stop", stream_id: this.streamId });
+    this.streamId = undefined;
     this.post({ type: "flush" });
     this.resetStreamState();
     this.update({ status: "idle", positionMs: 0 });
@@ -136,6 +139,7 @@ export class PlayerController {
   // --- MediaService stream handling ---
 
   private async onMediaEvent(e: MediaEvent): Promise<void> {
+    if (e.stream_id !== this.streamId) return;
     switch (e.kind) {
       case "header":
         await this.onHeader(e);

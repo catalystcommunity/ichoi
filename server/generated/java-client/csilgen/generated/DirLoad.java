@@ -5,6 +5,8 @@ package csilgen.generated;
 public record DirLoad(
     String op /* wire: "op" */,
     PlayerId playerId /* wire: "player_id" */,
+    long queueItemId /* wire: "queue_item_id" */,
+    String playbackId /* wire: "playback_id" */,
     TrackId trackId /* wire: "track_id" */,
     StreamPref pref /* wire: "pref" */,
     Long positionMs /* wire: "position_ms" */

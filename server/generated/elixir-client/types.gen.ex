@@ -60,6 +60,16 @@ defmodule Csilgen.Generated.PlayerStatus do
   @type t :: String.t()
 end
 
+defmodule Csilgen.Generated.RepeatMode do
+  @moduledoc "Type alias for RepeatMode."
+  @type t :: String.t()
+end
+
+defmodule Csilgen.Generated.NodeEvent do
+  @moduledoc "Type alias for NodeEvent."
+  @type t :: String.t()
+end
+
 defmodule Csilgen.Generated.Codec do
   @moduledoc "Type alias for Codec."
   @type t :: String.t()
@@ -2813,10 +2823,11 @@ end
 defmodule Csilgen.Generated.QueueItem do
   @moduledoc "Generated struct for the QueueItem type."
 
-  @enforce_keys [:track_id]
-  defstruct [:track_id, :library, :title, :artist, :duration_ms]
+  @enforce_keys [:queue_item_id, :track_id]
+  defstruct [:queue_item_id, :track_id, :library, :title, :artist, :duration_ms]
 
   @type t :: %__MODULE__{
+          queue_item_id: integer(),
           track_id: Csilgen.Generated.TrackId.t(),
           library: Csilgen.Generated.Library.t() | nil,
           title: String.t() | nil,
@@ -2825,6 +2836,7 @@ defmodule Csilgen.Generated.QueueItem do
         }
 
   @wire_keys [
+    queue_item_id: "queue_item_id",
     track_id: "track_id",
     library: "library",
     title: "title",
@@ -2845,7 +2857,11 @@ defmodule Csilgen.Generated.QueueItem do
          if(is_nil(v.artist), do: nil, else: {{:text, "artist"}, {:text, v.artist}}),
          if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}}),
          {{:text, "track_id"}, {:text, v.track_id}},
-         if(is_nil(v.duration_ms), do: nil, else: {{:text, "duration_ms"}, {:int, v.duration_ms}})
+         if(is_nil(v.duration_ms),
+           do: nil,
+           else: {{:text, "duration_ms"}, {:int, v.duration_ms}}
+         ),
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
        ],
        &is_nil/1
      )}
@@ -2884,7 +2900,9 @@ defmodule Csilgen.Generated.QueueItem do
         case Map.get(csil_fields, {:text, "duration_ms"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
-        end
+        end,
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"}))
     }
   end
 
@@ -2900,24 +2918,49 @@ end
 defmodule Csilgen.Generated.PlayerState do
   @moduledoc "Generated struct for the PlayerState type."
 
-  @enforce_keys [:player_id, :status, :queue]
-  defstruct [:player_id, :status, :current_index, :position_ms, :queue, volume: 100]
+  @enforce_keys [:player_id, :revision, :status, :repeat_mode, :queue]
+  defstruct [
+    :player_id,
+    :revision,
+    :status,
+    :current_index,
+    :playback_id,
+    :position_ms,
+    :repeat_mode,
+    :error,
+    :queue,
+    volume: 100,
+    shuffle: false,
+    can_undo: false
+  ]
 
   @type t :: %__MODULE__{
           player_id: Csilgen.Generated.PlayerId.t(),
+          revision: integer(),
           status: Csilgen.Generated.PlayerStatus.t(),
           current_index: integer() | nil,
+          playback_id: String.t() | nil,
           position_ms: integer() | nil,
           volume: integer(),
+          repeat_mode: Csilgen.Generated.RepeatMode.t(),
+          shuffle: boolean(),
+          error: String.t() | nil,
+          can_undo: boolean(),
           queue: [Csilgen.Generated.QueueItem.t()]
         }
 
   @wire_keys [
     player_id: "player_id",
+    revision: "revision",
     status: "status",
     current_index: "current_index",
+    playback_id: "playback_id",
     position_ms: "position_ms",
     volume: "volume",
+    repeat_mode: "repeat_mode",
+    shuffle: "shuffle",
+    error: "error",
+    can_undo: "can_undo",
     queue: "queue"
   ]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
@@ -2930,16 +2973,25 @@ defmodule Csilgen.Generated.PlayerState do
     {:map,
      Enum.reject(
        [
+         if(is_nil(v.error), do: nil, else: {{:text, "error"}, {:text, v.error}}),
          {{:text, "queue"},
           {:array,
            Enum.map(v.queue, fn csil_e -> Csilgen.Generated.QueueItem.to_cbor_value(csil_e) end)}},
          {{:text, "status"}, {:text, v.status}},
          {{:text, "volume"}, {:int, v.volume}},
+         {{:text, "shuffle"}, {:bool, v.shuffle}},
+         {{:text, "can_undo"}, {:bool, v.can_undo}},
+         {{:text, "revision"}, {:int, v.revision}},
          {{:text, "player_id"}, {:text, v.player_id}},
+         if(is_nil(v.playback_id),
+           do: nil,
+           else: {{:text, "playback_id"}, {:text, v.playback_id}}
+         ),
          if(is_nil(v.position_ms),
            do: nil,
            else: {{:text, "position_ms"}, {:int, v.position_ms}}
          ),
+         {{:text, "repeat_mode"}, {:text, v.repeat_mode}},
          if(is_nil(v.current_index),
            do: nil,
            else: {{:text, "current_index"}, {:int, v.current_index}}
@@ -2955,6 +3007,11 @@ defmodule Csilgen.Generated.PlayerState do
     csil_fields = Map.new(csil_kvs)
 
     %__MODULE__{
+      error:
+        case Map.get(csil_fields, {:text, "error"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
+        end,
       queue:
         case Map.fetch!(csil_fields, {:text, "queue"}) do
           {:array, csil_xs} ->
@@ -2970,11 +3027,26 @@ defmodule Csilgen.Generated.PlayerState do
           csil_other -> raise("csilgen: unknown PlayerStatus literal #{inspect(csil_other)}")
         end,
       volume: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "volume"})),
+      shuffle: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "shuffle"})),
+      can_undo: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "can_undo"})),
+      revision: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "revision"})),
       player_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "player_id"})),
+      playback_id:
+        case Map.get(csil_fields, {:text, "playback_id"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
+        end,
       position_ms:
         case Map.get(csil_fields, {:text, "position_ms"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end,
+      repeat_mode:
+        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "repeat_mode"})) do
+          "off" -> "off"
+          "all" -> "all"
+          "one" -> "one"
+          csil_other -> raise("csilgen: unknown RepeatMode literal #{inspect(csil_other)}")
         end,
       current_index:
         case Map.get(csil_fields, {:text, "current_index"}) do
@@ -3214,6 +3286,59 @@ defmodule Csilgen.Generated.CmdEnqueue do
   def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
 end
 
+defmodule Csilgen.Generated.CmdEnqueueNext do
+  @moduledoc "Generated struct for the CmdEnqueueNext type."
+
+  @enforce_keys [:op, :track_ids]
+  defstruct [:op, :track_ids]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          track_ids: [Csilgen.Generated.TrackId.t()]
+        }
+
+  @wire_keys [op: "op", track_ids: "track_ids"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "track_ids"}, {:array, Enum.map(v.track_ids, fn csil_e -> {:text, csil_e} end)}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      track_ids:
+        case Map.fetch!(csil_fields, {:text, "track_ids"}) do
+          {:array, csil_xs} ->
+            Enum.map(csil_xs, fn csil_e -> Csilgen.Generated.Cbor.to_text(csil_e) end)
+        end
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
 defmodule Csilgen.Generated.CmdRemove do
   @moduledoc "Generated struct for the CmdRemove type."
 
@@ -3251,6 +3376,56 @@ defmodule Csilgen.Generated.CmdRemove do
     %__MODULE__{
       op: raise("csilgen: no codec for this field shape"),
       index: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "index"}))
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdRemoveItem do
+  @moduledoc "Generated struct for the CmdRemoveItem type."
+
+  @enforce_keys [:op, :queue_item_id]
+  defstruct [:op, :queue_item_id]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          queue_item_id: integer()
+        }
+
+  @wire_keys [op: "op", queue_item_id: "queue_item_id"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"}))
     }
   end
 
@@ -3315,6 +3490,70 @@ defmodule Csilgen.Generated.CmdReorder do
   def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
 end
 
+defmodule Csilgen.Generated.CmdMoveItem do
+  @moduledoc "Generated struct for the CmdMoveItem type."
+
+  @enforce_keys [:op, :queue_item_id]
+  defstruct [:op, :queue_item_id, :before_queue_item_id]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          queue_item_id: integer(),
+          before_queue_item_id: integer() | nil
+        }
+
+  @wire_keys [
+    op: "op",
+    queue_item_id: "queue_item_id",
+    before_queue_item_id: "before_queue_item_id"
+  ]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}},
+         if(is_nil(v.before_queue_item_id),
+           do: nil,
+           else: {{:text, "before_queue_item_id"}, {:int, v.before_queue_item_id}}
+         )
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"})),
+      before_queue_item_id:
+        case Map.get(csil_fields, {:text, "before_queue_item_id"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
 defmodule Csilgen.Generated.CmdClear do
   @moduledoc "Generated struct for the CmdClear type."
 
@@ -3365,14 +3604,15 @@ defmodule Csilgen.Generated.CmdPlay do
   @moduledoc "Generated struct for the CmdPlay type."
 
   @enforce_keys [:op]
-  defstruct [:op, :index]
+  defstruct [:op, :index, :queue_item_id]
 
   @type t :: %__MODULE__{
           op: String.t(),
-          index: integer() | nil
+          index: integer() | nil,
+          queue_item_id: integer() | nil
         }
 
-  @wire_keys [op: "op", index: "index"]
+  @wire_keys [op: "op", index: "index", queue_item_id: "queue_item_id"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -3384,7 +3624,11 @@ defmodule Csilgen.Generated.CmdPlay do
      Enum.reject(
        [
          {{:text, "op"}, raise("csilgen: no codec for this field shape")},
-         if(is_nil(v.index), do: nil, else: {{:text, "index"}, {:int, v.index}})
+         if(is_nil(v.index), do: nil, else: {{:text, "index"}, {:int, v.index}}),
+         if(is_nil(v.queue_item_id),
+           do: nil,
+           else: {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
+         )
        ],
        &is_nil/1
      )}
@@ -3399,6 +3643,87 @@ defmodule Csilgen.Generated.CmdPlay do
       op: raise("csilgen: no codec for this field shape"),
       index:
         case Map.get(csil_fields, {:text, "index"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end,
+      queue_item_id:
+        case Map.get(csil_fields, {:text, "queue_item_id"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdReplaceAndPlay do
+  @moduledoc "Generated struct for the CmdReplaceAndPlay type."
+
+  @enforce_keys [:op, :track_ids]
+  defstruct [:op, :track_ids, start_index: 0, position_ms: 0]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          track_ids: [Csilgen.Generated.TrackId.t()],
+          start_index: integer() | nil,
+          position_ms: integer() | nil
+        }
+
+  @wire_keys [
+    op: "op",
+    track_ids: "track_ids",
+    start_index: "start_index",
+    position_ms: "position_ms"
+  ]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "track_ids"},
+          {:array, Enum.map(v.track_ids, fn csil_e -> {:text, csil_e} end)}},
+         if(is_nil(v.position_ms),
+           do: nil,
+           else: {{:text, "position_ms"}, {:int, v.position_ms}}
+         ),
+         if(is_nil(v.start_index), do: nil, else: {{:text, "start_index"}, {:int, v.start_index}})
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      track_ids:
+        case Map.fetch!(csil_fields, {:text, "track_ids"}) do
+          {:array, csil_xs} ->
+            Enum.map(csil_xs, fn csil_e -> Csilgen.Generated.Cbor.to_text(csil_e) end)
+        end,
+      position_ms:
+        case Map.get(csil_fields, {:text, "position_ms"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
+        end,
+      start_index:
+        case Map.get(csil_fields, {:text, "start_index"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
         end
@@ -3650,9 +3975,347 @@ defmodule Csilgen.Generated.CmdVolume do
   def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
 end
 
+defmodule Csilgen.Generated.CmdSetRepeat do
+  @moduledoc "Generated struct for the CmdSetRepeat type."
+
+  @enforce_keys [:op, :repeat_mode]
+  defstruct [:op, :repeat_mode]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          repeat_mode: Csilgen.Generated.RepeatMode.t()
+        }
+
+  @wire_keys [op: "op", repeat_mode: "repeat_mode"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "repeat_mode"}, {:text, v.repeat_mode}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      repeat_mode:
+        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "repeat_mode"})) do
+          "off" -> "off"
+          "all" -> "all"
+          "one" -> "one"
+          csil_other -> raise("csilgen: unknown RepeatMode literal #{inspect(csil_other)}")
+        end
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdSetShuffle do
+  @moduledoc "Generated struct for the CmdSetShuffle type."
+
+  @enforce_keys [:op, :shuffle]
+  defstruct [:op, :shuffle]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          shuffle: boolean()
+        }
+
+  @wire_keys [op: "op", shuffle: "shuffle"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "shuffle"}, {:bool, v.shuffle}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      shuffle: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "shuffle"}))
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdUndo do
+  @moduledoc "Generated struct for the CmdUndo type."
+
+  @enforce_keys [:op]
+  defstruct [:op]
+
+  @type t :: %__MODULE__{
+          op: String.t()
+        }
+
+  @wire_keys [op: "op"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape")
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdPlaybackCompleted do
+  @moduledoc "Generated struct for the CmdPlaybackCompleted type."
+
+  @enforce_keys [:op, :playback_id, :queue_item_id]
+  defstruct [:op, :playback_id, :queue_item_id]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          playback_id: String.t(),
+          queue_item_id: integer()
+        }
+
+  @wire_keys [op: "op", playback_id: "playback_id", queue_item_id: "queue_item_id"]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "playback_id"}, {:text, v.playback_id}},
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      playback_id:
+        Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "playback_id"})),
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"}))
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdPlaybackFailed do
+  @moduledoc "Generated struct for the CmdPlaybackFailed type."
+
+  @enforce_keys [:op, :playback_id, :queue_item_id, :error]
+  defstruct [:op, :playback_id, :queue_item_id, :error]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          playback_id: String.t(),
+          queue_item_id: integer(),
+          error: String.t()
+        }
+
+  @wire_keys [
+    op: "op",
+    playback_id: "playback_id",
+    queue_item_id: "queue_item_id",
+    error: "error"
+  ]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "error"}, {:text, v.error}},
+         {{:text, "playback_id"}, {:text, v.playback_id}},
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      error: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "error"})),
+      playback_id:
+        Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "playback_id"})),
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"}))
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
+defmodule Csilgen.Generated.CmdPlaybackState do
+  @moduledoc "Generated struct for the CmdPlaybackState type."
+
+  @enforce_keys [:op, :playback_id, :queue_item_id, :status, :position_ms]
+  defstruct [:op, :playback_id, :queue_item_id, :status, :position_ms]
+
+  @type t :: %__MODULE__{
+          op: String.t(),
+          playback_id: String.t(),
+          queue_item_id: integer(),
+          status: Csilgen.Generated.PlayerStatus.t(),
+          position_ms: integer()
+        }
+
+  @wire_keys [
+    op: "op",
+    playback_id: "playback_id",
+    queue_item_id: "queue_item_id",
+    status: "status",
+    position_ms: "position_ms"
+  ]
+  @doc "Maps struct field atoms to their verbatim CBOR wire keys."
+  @spec wire_keys() :: keyword()
+  def wire_keys, do: @wire_keys
+
+  @doc "Builds the canonical CBOR value tree for this struct."
+  @spec to_cbor_value(t()) :: Csilgen.Generated.Cbor.value()
+  def to_cbor_value(%__MODULE__{} = v) do
+    {:map,
+     Enum.reject(
+       [
+         {{:text, "op"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "status"}, {:text, v.status}},
+         {{:text, "playback_id"}, {:text, v.playback_id}},
+         {{:text, "position_ms"}, {:int, v.position_ms}},
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
+       ],
+       &is_nil/1
+     )}
+  end
+
+  @doc "Reconstructs this struct from a decoded CBOR value tree."
+  @spec from_cbor_value(term()) :: t()
+  def from_cbor_value({:map, csil_kvs}) do
+    csil_fields = Map.new(csil_kvs)
+
+    %__MODULE__{
+      op: raise("csilgen: no codec for this field shape"),
+      status:
+        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
+          "stopped" -> "stopped"
+          "playing" -> "playing"
+          "paused" -> "paused"
+          csil_other -> raise("csilgen: unknown PlayerStatus literal #{inspect(csil_other)}")
+        end,
+      playback_id:
+        Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "playback_id"})),
+      position_ms: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "position_ms"})),
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"}))
+    }
+  end
+
+  @doc "Encodes this struct to canonical CBOR bytes."
+  @spec to_cbor(t()) :: binary()
+  def to_cbor(v), do: Csilgen.Generated.Cbor.encode(to_cbor_value(v))
+
+  @doc "Decodes canonical CBOR bytes into this struct."
+  @spec from_cbor(binary()) :: t()
+  def from_cbor(bytes), do: from_cbor_value(Csilgen.Generated.Cbor.decode(bytes))
+end
+
 defmodule Csilgen.Generated.PlayerCommand do
   @moduledoc "Type alias for PlayerCommand."
-  @type t :: Csilgen.Generated.CmdEnqueue.t() | Csilgen.Generated.CmdRemove.t() | Csilgen.Generated.CmdReorder.t() | Csilgen.Generated.CmdClear.t() | Csilgen.Generated.CmdPlay.t() | Csilgen.Generated.CmdPause.t() | Csilgen.Generated.CmdNext.t() | Csilgen.Generated.CmdPrevious.t() | Csilgen.Generated.CmdSeek.t() | Csilgen.Generated.CmdVolume.t()
+  @type t :: Csilgen.Generated.CmdEnqueue.t() | Csilgen.Generated.CmdEnqueueNext.t() | Csilgen.Generated.CmdRemove.t() | Csilgen.Generated.CmdRemoveItem.t() | Csilgen.Generated.CmdReorder.t() | Csilgen.Generated.CmdMoveItem.t() | Csilgen.Generated.CmdClear.t() | Csilgen.Generated.CmdPlay.t() | Csilgen.Generated.CmdReplaceAndPlay.t() | Csilgen.Generated.CmdPause.t() | Csilgen.Generated.CmdNext.t() | Csilgen.Generated.CmdPrevious.t() | Csilgen.Generated.CmdSeek.t() | Csilgen.Generated.CmdVolume.t() | Csilgen.Generated.CmdSetRepeat.t() | Csilgen.Generated.CmdSetShuffle.t() | Csilgen.Generated.CmdUndo.t() | Csilgen.Generated.CmdPlaybackCompleted.t() | Csilgen.Generated.CmdPlaybackFailed.t() | Csilgen.Generated.CmdPlaybackState.t()
 end
 
 defmodule Csilgen.Generated.CommandRequest do
@@ -3679,17 +4342,69 @@ defmodule Csilgen.Generated.CommandRequest do
        [
          {{:text, "command"},
           cond do
-            true -> {:array, [{:int, 0}, Csilgen.Generated.CmdEnqueue.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 1}, Csilgen.Generated.CmdRemove.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 2}, Csilgen.Generated.CmdReorder.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 3}, Csilgen.Generated.CmdClear.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 4}, Csilgen.Generated.CmdPlay.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 5}, Csilgen.Generated.CmdPause.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 6}, Csilgen.Generated.CmdNext.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 7}, Csilgen.Generated.CmdPrevious.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 8}, Csilgen.Generated.CmdSeek.to_cbor_value(v.command)]}
-            true -> {:array, [{:int, 9}, Csilgen.Generated.CmdVolume.to_cbor_value(v.command)]}
-            true -> raise("csilgen: value does not match any PlayerCommand variant")
+            true ->
+              {:array, [{:int, 0}, Csilgen.Generated.CmdEnqueue.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 1}, Csilgen.Generated.CmdEnqueueNext.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 2}, Csilgen.Generated.CmdRemove.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 3}, Csilgen.Generated.CmdRemoveItem.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 4}, Csilgen.Generated.CmdReorder.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 5}, Csilgen.Generated.CmdMoveItem.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 6}, Csilgen.Generated.CmdClear.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 7}, Csilgen.Generated.CmdPlay.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 8}, Csilgen.Generated.CmdReplaceAndPlay.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 9}, Csilgen.Generated.CmdPause.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 10}, Csilgen.Generated.CmdNext.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 11}, Csilgen.Generated.CmdPrevious.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 12}, Csilgen.Generated.CmdSeek.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 13}, Csilgen.Generated.CmdVolume.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 14}, Csilgen.Generated.CmdSetRepeat.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 15}, Csilgen.Generated.CmdSetShuffle.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 16}, Csilgen.Generated.CmdUndo.to_cbor_value(v.command)]}
+
+            true ->
+              {:array,
+               [{:int, 17}, Csilgen.Generated.CmdPlaybackCompleted.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 18}, Csilgen.Generated.CmdPlaybackFailed.to_cbor_value(v.command)]}
+
+            true ->
+              {:array, [{:int, 19}, Csilgen.Generated.CmdPlaybackState.to_cbor_value(v.command)]}
+
+            true ->
+              raise("csilgen: value does not match any PlayerCommand variant")
           end},
          {{:text, "player_id"}, {:text, v.player_id}}
        ],
@@ -3708,15 +4423,25 @@ defmodule Csilgen.Generated.CommandRequest do
           {:array, [{:int, csil_idx}, csil_inner]} ->
             case csil_idx do
               0 -> Csilgen.Generated.CmdEnqueue.from_cbor_value(csil_inner)
-              1 -> Csilgen.Generated.CmdRemove.from_cbor_value(csil_inner)
-              2 -> Csilgen.Generated.CmdReorder.from_cbor_value(csil_inner)
-              3 -> Csilgen.Generated.CmdClear.from_cbor_value(csil_inner)
-              4 -> Csilgen.Generated.CmdPlay.from_cbor_value(csil_inner)
-              5 -> Csilgen.Generated.CmdPause.from_cbor_value(csil_inner)
-              6 -> Csilgen.Generated.CmdNext.from_cbor_value(csil_inner)
-              7 -> Csilgen.Generated.CmdPrevious.from_cbor_value(csil_inner)
-              8 -> Csilgen.Generated.CmdSeek.from_cbor_value(csil_inner)
-              9 -> Csilgen.Generated.CmdVolume.from_cbor_value(csil_inner)
+              1 -> Csilgen.Generated.CmdEnqueueNext.from_cbor_value(csil_inner)
+              2 -> Csilgen.Generated.CmdRemove.from_cbor_value(csil_inner)
+              3 -> Csilgen.Generated.CmdRemoveItem.from_cbor_value(csil_inner)
+              4 -> Csilgen.Generated.CmdReorder.from_cbor_value(csil_inner)
+              5 -> Csilgen.Generated.CmdMoveItem.from_cbor_value(csil_inner)
+              6 -> Csilgen.Generated.CmdClear.from_cbor_value(csil_inner)
+              7 -> Csilgen.Generated.CmdPlay.from_cbor_value(csil_inner)
+              8 -> Csilgen.Generated.CmdReplaceAndPlay.from_cbor_value(csil_inner)
+              9 -> Csilgen.Generated.CmdPause.from_cbor_value(csil_inner)
+              10 -> Csilgen.Generated.CmdNext.from_cbor_value(csil_inner)
+              11 -> Csilgen.Generated.CmdPrevious.from_cbor_value(csil_inner)
+              12 -> Csilgen.Generated.CmdSeek.from_cbor_value(csil_inner)
+              13 -> Csilgen.Generated.CmdVolume.from_cbor_value(csil_inner)
+              14 -> Csilgen.Generated.CmdSetRepeat.from_cbor_value(csil_inner)
+              15 -> Csilgen.Generated.CmdSetShuffle.from_cbor_value(csil_inner)
+              16 -> Csilgen.Generated.CmdUndo.from_cbor_value(csil_inner)
+              17 -> Csilgen.Generated.CmdPlaybackCompleted.from_cbor_value(csil_inner)
+              18 -> Csilgen.Generated.CmdPlaybackFailed.from_cbor_value(csil_inner)
+              19 -> Csilgen.Generated.CmdPlaybackState.from_cbor_value(csil_inner)
               csil_other -> raise("csilgen: unknown PlayerCommand variant index #{csil_other}")
             end
         end,
@@ -3877,16 +4602,17 @@ end
 defmodule Csilgen.Generated.MediaOpen do
   @moduledoc "Generated struct for the MediaOpen type."
 
-  @enforce_keys [:kind, :track_id, :pref]
-  defstruct [:kind, :track_id, :pref]
+  @enforce_keys [:kind, :stream_id, :track_id, :pref]
+  defstruct [:kind, :stream_id, :track_id, :pref]
 
   @type t :: %__MODULE__{
           kind: String.t(),
+          stream_id: String.t(),
           track_id: Csilgen.Generated.TrackId.t(),
           pref: Csilgen.Generated.StreamPref.t()
         }
 
-  @wire_keys [kind: "kind", track_id: "track_id", pref: "pref"]
+  @wire_keys [kind: "kind", stream_id: "stream_id", track_id: "track_id", pref: "pref"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -3899,7 +4625,8 @@ defmodule Csilgen.Generated.MediaOpen do
        [
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
          {{:text, "pref"}, Csilgen.Generated.StreamPref.to_cbor_value(v.pref)},
-         {{:text, "track_id"}, {:text, v.track_id}}
+         {{:text, "track_id"}, {:text, v.track_id}},
+         {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
      )}
@@ -3914,7 +4641,8 @@ defmodule Csilgen.Generated.MediaOpen do
       kind: raise("csilgen: no codec for this field shape"),
       pref:
         Csilgen.Generated.StreamPref.from_cbor_value(Map.fetch!(csil_fields, {:text, "pref"})),
-      track_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "track_id"}))
+      track_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "track_id"})),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
   end
 
@@ -3930,15 +4658,16 @@ end
 defmodule Csilgen.Generated.MediaSeek do
   @moduledoc "Generated struct for the MediaSeek type."
 
-  @enforce_keys [:kind, :position_ms]
-  defstruct [:kind, :position_ms]
+  @enforce_keys [:kind, :stream_id, :position_ms]
+  defstruct [:kind, :stream_id, :position_ms]
 
   @type t :: %__MODULE__{
           kind: String.t(),
+          stream_id: String.t(),
           position_ms: integer()
         }
 
-  @wire_keys [kind: "kind", position_ms: "position_ms"]
+  @wire_keys [kind: "kind", stream_id: "stream_id", position_ms: "position_ms"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -3950,6 +4679,7 @@ defmodule Csilgen.Generated.MediaSeek do
      Enum.reject(
        [
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "stream_id"}, {:text, v.stream_id}},
          {{:text, "position_ms"}, {:int, v.position_ms}}
        ],
        &is_nil/1
@@ -3963,6 +4693,7 @@ defmodule Csilgen.Generated.MediaSeek do
 
     %__MODULE__{
       kind: raise("csilgen: no codec for this field shape"),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"})),
       position_ms: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "position_ms"}))
     }
   end
@@ -3979,14 +4710,15 @@ end
 defmodule Csilgen.Generated.MediaPause do
   @moduledoc "Generated struct for the MediaPause type."
 
-  @enforce_keys [:kind]
-  defstruct [:kind]
+  @enforce_keys [:kind, :stream_id]
+  defstruct [:kind, :stream_id]
 
   @type t :: %__MODULE__{
-          kind: String.t()
+          kind: String.t(),
+          stream_id: String.t()
         }
 
-  @wire_keys [kind: "kind"]
+  @wire_keys [kind: "kind", stream_id: "stream_id"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -3997,7 +4729,8 @@ defmodule Csilgen.Generated.MediaPause do
     {:map,
      Enum.reject(
        [
-         {{:text, "kind"}, raise("csilgen: no codec for this field shape")}
+         {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
      )}
@@ -4009,7 +4742,8 @@ defmodule Csilgen.Generated.MediaPause do
     csil_fields = Map.new(csil_kvs)
 
     %__MODULE__{
-      kind: raise("csilgen: no codec for this field shape")
+      kind: raise("csilgen: no codec for this field shape"),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
   end
 
@@ -4025,14 +4759,15 @@ end
 defmodule Csilgen.Generated.MediaResume do
   @moduledoc "Generated struct for the MediaResume type."
 
-  @enforce_keys [:kind]
-  defstruct [:kind]
+  @enforce_keys [:kind, :stream_id]
+  defstruct [:kind, :stream_id]
 
   @type t :: %__MODULE__{
-          kind: String.t()
+          kind: String.t(),
+          stream_id: String.t()
         }
 
-  @wire_keys [kind: "kind"]
+  @wire_keys [kind: "kind", stream_id: "stream_id"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -4043,7 +4778,8 @@ defmodule Csilgen.Generated.MediaResume do
     {:map,
      Enum.reject(
        [
-         {{:text, "kind"}, raise("csilgen: no codec for this field shape")}
+         {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
      )}
@@ -4055,7 +4791,8 @@ defmodule Csilgen.Generated.MediaResume do
     csil_fields = Map.new(csil_kvs)
 
     %__MODULE__{
-      kind: raise("csilgen: no codec for this field shape")
+      kind: raise("csilgen: no codec for this field shape"),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
   end
 
@@ -4071,14 +4808,15 @@ end
 defmodule Csilgen.Generated.MediaStop do
   @moduledoc "Generated struct for the MediaStop type."
 
-  @enforce_keys [:kind]
-  defstruct [:kind]
+  @enforce_keys [:kind, :stream_id]
+  defstruct [:kind, :stream_id]
 
   @type t :: %__MODULE__{
-          kind: String.t()
+          kind: String.t(),
+          stream_id: String.t()
         }
 
-  @wire_keys [kind: "kind"]
+  @wire_keys [kind: "kind", stream_id: "stream_id"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -4089,7 +4827,8 @@ defmodule Csilgen.Generated.MediaStop do
     {:map,
      Enum.reject(
        [
-         {{:text, "kind"}, raise("csilgen: no codec for this field shape")}
+         {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
      )}
@@ -4101,7 +4840,8 @@ defmodule Csilgen.Generated.MediaStop do
     csil_fields = Map.new(csil_kvs)
 
     %__MODULE__{
-      kind: raise("csilgen: no codec for this field shape")
+      kind: raise("csilgen: no codec for this field shape"),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
   end
 
@@ -4122,9 +4862,10 @@ end
 defmodule Csilgen.Generated.MediaHeader do
   @moduledoc "Generated struct for the MediaHeader type."
 
-  @enforce_keys [:kind, :codec, :transcoded, :sample_rate, :channels]
+  @enforce_keys [:kind, :stream_id, :codec, :transcoded, :sample_rate, :channels]
   defstruct [
     :kind,
+    :stream_id,
     :codec,
     :transcoded,
     :sample_rate,
@@ -4137,6 +4878,7 @@ defmodule Csilgen.Generated.MediaHeader do
 
   @type t :: %__MODULE__{
           kind: String.t(),
+          stream_id: String.t(),
           codec: Csilgen.Generated.Codec.t(),
           transcoded: boolean(),
           sample_rate: integer(),
@@ -4149,6 +4891,7 @@ defmodule Csilgen.Generated.MediaHeader do
 
   @wire_keys [
     kind: "kind",
+    stream_id: "stream_id",
     codec: "codec",
     transcoded: "transcoded",
     sample_rate: "sample_rate",
@@ -4171,6 +4914,7 @@ defmodule Csilgen.Generated.MediaHeader do
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
          {{:text, "codec"}, {:text, v.codec}},
          {{:text, "channels"}, {:int, v.channels}},
+         {{:text, "stream_id"}, {:text, v.stream_id}},
          {{:text, "transcoded"}, {:bool, v.transcoded}},
          if(is_nil(v.duration_ms),
            do: nil,
@@ -4208,6 +4952,7 @@ defmodule Csilgen.Generated.MediaHeader do
           csil_other -> raise("csilgen: unknown Codec literal #{inspect(csil_other)}")
         end,
       channels: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "channels"})),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"})),
       transcoded: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "transcoded"})),
       duration_ms:
         case Map.get(csil_fields, {:text, "duration_ms"}) do
@@ -4244,17 +4989,24 @@ end
 defmodule Csilgen.Generated.MediaChunk do
   @moduledoc "Generated struct for the MediaChunk type."
 
-  @enforce_keys [:kind, :seq, :data]
-  defstruct [:kind, :seq, :timestamp_ms, :data]
+  @enforce_keys [:kind, :stream_id, :seq, :data]
+  defstruct [:kind, :stream_id, :seq, :timestamp_ms, :data]
 
   @type t :: %__MODULE__{
           kind: String.t(),
+          stream_id: String.t(),
           seq: integer(),
           timestamp_ms: integer() | nil,
           data: binary()
         }
 
-  @wire_keys [kind: "kind", seq: "seq", timestamp_ms: "timestamp_ms", data: "data"]
+  @wire_keys [
+    kind: "kind",
+    stream_id: "stream_id",
+    seq: "seq",
+    timestamp_ms: "timestamp_ms",
+    data: "data"
+  ]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -4268,6 +5020,7 @@ defmodule Csilgen.Generated.MediaChunk do
          {{:text, "seq"}, {:int, v.seq}},
          {{:text, "data"}, {:bytes, v.data}},
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
+         {{:text, "stream_id"}, {:text, v.stream_id}},
          if(is_nil(v.timestamp_ms),
            do: nil,
            else: {{:text, "timestamp_ms"}, {:int, v.timestamp_ms}}
@@ -4286,6 +5039,7 @@ defmodule Csilgen.Generated.MediaChunk do
       seq: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "seq"})),
       data: Csilgen.Generated.Cbor.to_bytes(Map.fetch!(csil_fields, {:text, "data"})),
       kind: raise("csilgen: no codec for this field shape"),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"})),
       timestamp_ms:
         case Map.get(csil_fields, {:text, "timestamp_ms"}) do
           nil -> nil
@@ -4306,15 +5060,16 @@ end
 defmodule Csilgen.Generated.MediaEnd do
   @moduledoc "Generated struct for the MediaEnd type."
 
-  @enforce_keys [:kind]
-  defstruct [:kind, :reason]
+  @enforce_keys [:kind, :stream_id]
+  defstruct [:kind, :stream_id, :reason]
 
   @type t :: %__MODULE__{
           kind: String.t(),
+          stream_id: String.t(),
           reason: Csilgen.Generated.MediaEndReason.t() | nil
         }
 
-  @wire_keys [kind: "kind", reason: "reason"]
+  @wire_keys [kind: "kind", stream_id: "stream_id", reason: "reason"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -4326,7 +5081,8 @@ defmodule Csilgen.Generated.MediaEnd do
      Enum.reject(
        [
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
-         if(is_nil(v.reason), do: nil, else: {{:text, "reason"}, {:text, v.reason}})
+         if(is_nil(v.reason), do: nil, else: {{:text, "reason"}, {:text, v.reason}}),
+         {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
      )}
@@ -4355,7 +5111,8 @@ defmodule Csilgen.Generated.MediaEnd do
               csil_other ->
                 raise("csilgen: unknown MediaEndReason literal #{inspect(csil_other)}")
             end
-        end
+        end,
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
   end
 
@@ -4371,15 +5128,16 @@ end
 defmodule Csilgen.Generated.MediaFail do
   @moduledoc "Generated struct for the MediaFail type."
 
-  @enforce_keys [:kind, :error]
-  defstruct [:kind, :error]
+  @enforce_keys [:kind, :stream_id, :error]
+  defstruct [:kind, :stream_id, :error]
 
   @type t :: %__MODULE__{
           kind: String.t(),
+          stream_id: String.t(),
           error: Csilgen.Generated.ServiceError.t()
         }
 
-  @wire_keys [kind: "kind", error: "error"]
+  @wire_keys [kind: "kind", stream_id: "stream_id", error: "error"]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
   @spec wire_keys() :: keyword()
   def wire_keys, do: @wire_keys
@@ -4391,7 +5149,8 @@ defmodule Csilgen.Generated.MediaFail do
      Enum.reject(
        [
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
-         {{:text, "error"}, Csilgen.Generated.ServiceError.to_cbor_value(v.error)}
+         {{:text, "error"}, Csilgen.Generated.ServiceError.to_cbor_value(v.error)},
+         {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
      )}
@@ -4405,7 +5164,8 @@ defmodule Csilgen.Generated.MediaFail do
     %__MODULE__{
       kind: raise("csilgen: no codec for this field shape"),
       error:
-        Csilgen.Generated.ServiceError.from_cbor_value(Map.fetch!(csil_fields, {:text, "error"}))
+        Csilgen.Generated.ServiceError.from_cbor_value(Map.fetch!(csil_fields, {:text, "error"})),
+      stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
   end
 
@@ -4623,12 +5383,14 @@ end
 defmodule Csilgen.Generated.DirLoad do
   @moduledoc "Generated struct for the DirLoad type."
 
-  @enforce_keys [:op, :player_id, :track_id, :pref]
-  defstruct [:op, :player_id, :track_id, :pref, :position_ms]
+  @enforce_keys [:op, :player_id, :queue_item_id, :playback_id, :track_id, :pref]
+  defstruct [:op, :player_id, :queue_item_id, :playback_id, :track_id, :pref, :position_ms]
 
   @type t :: %__MODULE__{
           op: String.t(),
           player_id: Csilgen.Generated.PlayerId.t(),
+          queue_item_id: integer(),
+          playback_id: String.t(),
           track_id: Csilgen.Generated.TrackId.t(),
           pref: Csilgen.Generated.StreamPref.t(),
           position_ms: integer() | nil
@@ -4637,6 +5399,8 @@ defmodule Csilgen.Generated.DirLoad do
   @wire_keys [
     op: "op",
     player_id: "player_id",
+    queue_item_id: "queue_item_id",
+    playback_id: "playback_id",
     track_id: "track_id",
     pref: "pref",
     position_ms: "position_ms"
@@ -4655,7 +5419,12 @@ defmodule Csilgen.Generated.DirLoad do
          {{:text, "pref"}, Csilgen.Generated.StreamPref.to_cbor_value(v.pref)},
          {{:text, "track_id"}, {:text, v.track_id}},
          {{:text, "player_id"}, {:text, v.player_id}},
-         if(is_nil(v.position_ms), do: nil, else: {{:text, "position_ms"}, {:int, v.position_ms}})
+         {{:text, "playback_id"}, {:text, v.playback_id}},
+         if(is_nil(v.position_ms),
+           do: nil,
+           else: {{:text, "position_ms"}, {:int, v.position_ms}}
+         ),
+         {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
        ],
        &is_nil/1
      )}
@@ -4672,11 +5441,15 @@ defmodule Csilgen.Generated.DirLoad do
         Csilgen.Generated.StreamPref.from_cbor_value(Map.fetch!(csil_fields, {:text, "pref"})),
       track_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "track_id"})),
       player_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "player_id"})),
+      playback_id:
+        Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "playback_id"})),
       position_ms:
         case Map.get(csil_fields, {:text, "position_ms"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
-        end
+        end,
+      queue_item_id:
+        Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "queue_item_id"}))
     }
   end
 
@@ -4897,19 +5670,36 @@ defmodule Csilgen.Generated.NodeReport do
   @moduledoc "Generated struct for the NodeReport type."
 
   @enforce_keys [:player_id, :status]
-  defstruct [:player_id, :status, :position_ms, audio_blocked: false]
+  defstruct [
+    :player_id,
+    :status,
+    :queue_item_id,
+    :playback_id,
+    :position_ms,
+    :error,
+    event: "state",
+    audio_blocked: false
+  ]
 
   @type t :: %__MODULE__{
           player_id: Csilgen.Generated.PlayerId.t(),
+          event: Csilgen.Generated.NodeEvent.t() | nil,
           status: Csilgen.Generated.PlayerStatus.t(),
+          queue_item_id: integer() | nil,
+          playback_id: String.t() | nil,
           position_ms: integer() | nil,
+          error: String.t() | nil,
           audio_blocked: boolean() | nil
         }
 
   @wire_keys [
     player_id: "player_id",
+    event: "event",
     status: "status",
+    queue_item_id: "queue_item_id",
+    playback_id: "playback_id",
     position_ms: "position_ms",
+    error: "error",
     audio_blocked: "audio_blocked"
   ]
   @doc "Maps struct field atoms to their verbatim CBOR wire keys."
@@ -4922,8 +5712,14 @@ defmodule Csilgen.Generated.NodeReport do
     {:map,
      Enum.reject(
        [
+         if(is_nil(v.error), do: nil, else: {{:text, "error"}, {:text, v.error}}),
+         if(is_nil(v.event), do: nil, else: {{:text, "event"}, {:text, v.event}}),
          {{:text, "status"}, {:text, v.status}},
          {{:text, "player_id"}, {:text, v.player_id}},
+         if(is_nil(v.playback_id),
+           do: nil,
+           else: {{:text, "playback_id"}, {:text, v.playback_id}}
+         ),
          if(is_nil(v.position_ms),
            do: nil,
            else: {{:text, "position_ms"}, {:int, v.position_ms}}
@@ -4931,6 +5727,10 @@ defmodule Csilgen.Generated.NodeReport do
          if(is_nil(v.audio_blocked),
            do: nil,
            else: {{:text, "audio_blocked"}, {:bool, v.audio_blocked}}
+         ),
+         if(is_nil(v.queue_item_id),
+           do: nil,
+           else: {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
          )
        ],
        &is_nil/1
@@ -4943,6 +5743,25 @@ defmodule Csilgen.Generated.NodeReport do
     csil_fields = Map.new(csil_kvs)
 
     %__MODULE__{
+      error:
+        case Map.get(csil_fields, {:text, "error"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
+        end,
+      event:
+        case Map.get(csil_fields, {:text, "event"}) do
+          nil ->
+            nil
+
+          csil_v ->
+            case Csilgen.Generated.Cbor.to_text(csil_v) do
+              "ready" -> "ready"
+              "state" -> "state"
+              "completed" -> "completed"
+              "failed" -> "failed"
+              csil_other -> raise("csilgen: unknown NodeEvent literal #{inspect(csil_other)}")
+            end
+        end,
       status:
         case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
           "stopped" -> "stopped"
@@ -4951,6 +5770,11 @@ defmodule Csilgen.Generated.NodeReport do
           csil_other -> raise("csilgen: unknown PlayerStatus literal #{inspect(csil_other)}")
         end,
       player_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "player_id"})),
+      playback_id:
+        case Map.get(csil_fields, {:text, "playback_id"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_text(csil_v)
+        end,
       position_ms:
         case Map.get(csil_fields, {:text, "position_ms"}) do
           nil -> nil
@@ -4960,6 +5784,11 @@ defmodule Csilgen.Generated.NodeReport do
         case Map.get(csil_fields, {:text, "audio_blocked"}) do
           nil -> nil
           csil_v -> Csilgen.Generated.Cbor.to_bool(csil_v)
+        end,
+      queue_item_id:
+        case Map.get(csil_fields, {:text, "queue_item_id"}) do
+          nil -> nil
+          csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
         end
     }
   end

@@ -51,6 +51,7 @@ async fn demo_guest_can_browse_and_stream_but_cannot_write_after_bootstrap() {
         &guest,
         MediaControl::Variant0(MediaOpen {
             kind: "open".into(),
+            stream_id: "smoke-stream".into(),
             track_id: "track-1".into(),
             pref: StreamPref {
                 max_bitrate_kbps: None,

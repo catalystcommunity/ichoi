@@ -41,6 +41,21 @@ public enum PlayerStatus: String, Equatable, Sendable, CaseIterable {
     case paused = "paused"
 }
 
+/// RepeatMode is a generated CSIL string enum (a closed set of wire values).
+public enum RepeatMode: String, Equatable, Sendable, CaseIterable {
+    case off = "off"
+    case all = "all"
+    case one = "one"
+}
+
+/// NodeEvent is a generated CSIL string enum (a closed set of wire values).
+public enum NodeEvent: String, Equatable, Sendable, CaseIterable {
+    case ready = "ready"
+    case state = "state"
+    case completed = "completed"
+    case failed = "failed"
+}
+
 /// Codec is a generated CSIL string enum (a closed set of wire values).
 public enum Codec: String, Equatable, Sendable, CaseIterable {
     case mp3 = "mp3"
@@ -1000,6 +1015,8 @@ public struct Player: Equatable, Sendable {
 
 /// QueueItem is a generated CSIL record type.
 public struct QueueItem: Equatable, Sendable {
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
     /// wire key: track_id
     public let trackId: TrackId
     public let library: Library?
@@ -1008,7 +1025,8 @@ public struct QueueItem: Equatable, Sendable {
     /// wire key: duration_ms
     public let durationMs: UInt64?
 
-    public init(trackId: TrackId, library: Library? = nil, title: String? = nil, artist: String? = nil, durationMs: UInt64? = nil) {
+    public init(queueItemId: UInt64, trackId: TrackId, library: Library? = nil, title: String? = nil, artist: String? = nil, durationMs: UInt64? = nil) {
+        self.queueItemId = queueItemId
         self.trackId = trackId
         self.library = library
         self.title = title
@@ -1018,6 +1036,7 @@ public struct QueueItem: Equatable, Sendable {
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
+        "queueItemId": "queue_item_id",
         "trackId": "track_id",
         "library": "library",
         "title": "title",
@@ -1030,20 +1049,35 @@ public struct QueueItem: Equatable, Sendable {
 public struct PlayerState: Equatable, Sendable {
     /// wire key: player_id
     public let playerId: PlayerId
+    public let revision: UInt64
     public let status: PlayerStatus
     /// wire key: current_index
     public let currentIndex: UInt64?
+    /// wire key: playback_id
+    public let playbackId: String?
     /// wire key: position_ms
     public let positionMs: UInt64?
     public let volume: UInt64
+    /// wire key: repeat_mode
+    public let repeatMode: RepeatMode
+    public let shuffle: Bool
+    public let error: String?
+    /// wire key: can_undo
+    public let canUndo: Bool
     public let queue: [QueueItem]
 
-    public init(playerId: PlayerId, status: PlayerStatus, currentIndex: UInt64? = nil, positionMs: UInt64? = nil, volume: UInt64 = 100, queue: [QueueItem]) {
+    public init(playerId: PlayerId, revision: UInt64, status: PlayerStatus, currentIndex: UInt64? = nil, playbackId: String? = nil, positionMs: UInt64? = nil, volume: UInt64 = 100, repeatMode: RepeatMode, shuffle: Bool = false, error: String? = nil, canUndo: Bool = false, queue: [QueueItem]) {
         self.playerId = playerId
+        self.revision = revision
         self.status = status
         self.currentIndex = currentIndex
+        self.playbackId = playbackId
         self.positionMs = positionMs
         self.volume = volume
+        self.repeatMode = repeatMode
+        self.shuffle = shuffle
+        self.error = error
+        self.canUndo = canUndo
         self.queue = queue
     }
 
@@ -1057,10 +1091,16 @@ public struct PlayerState: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "playerId": "player_id",
+        "revision": "revision",
         "status": "status",
         "currentIndex": "current_index",
+        "playbackId": "playback_id",
         "positionMs": "position_ms",
         "volume": "volume",
+        "repeatMode": "repeat_mode",
+        "shuffle": "shuffle",
+        "error": "error",
+        "canUndo": "can_undo",
         "queue": "queue"
     ]
 }
@@ -1133,6 +1173,24 @@ public struct CmdEnqueue: Equatable, Sendable {
     ]
 }
 
+/// CmdEnqueueNext is a generated CSIL record type.
+public struct CmdEnqueueNext: Equatable, Sendable {
+    public let op: String
+    /// wire key: track_ids
+    public let trackIds: [TrackId]
+
+    public init(op: String, trackIds: [TrackId]) {
+        self.op = op
+        self.trackIds = trackIds
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "trackIds": "track_ids"
+    ]
+}
+
 /// CmdRemove is a generated CSIL record type.
 public struct CmdRemove: Equatable, Sendable {
     public let op: String
@@ -1147,6 +1205,24 @@ public struct CmdRemove: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "op": "op",
         "index": "index"
+    ]
+}
+
+/// CmdRemoveItem is a generated CSIL record type.
+public struct CmdRemoveItem: Equatable, Sendable {
+    public let op: String
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
+
+    public init(op: String, queueItemId: UInt64) {
+        self.op = op
+        self.queueItemId = queueItemId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "queueItemId": "queue_item_id"
     ]
 }
 
@@ -1172,6 +1248,28 @@ public struct CmdReorder: Equatable, Sendable {
     ]
 }
 
+/// CmdMoveItem is a generated CSIL record type.
+public struct CmdMoveItem: Equatable, Sendable {
+    public let op: String
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
+    /// wire key: before_queue_item_id
+    public let beforeQueueItemId: UInt64?
+
+    public init(op: String, queueItemId: UInt64, beforeQueueItemId: UInt64? = nil) {
+        self.op = op
+        self.queueItemId = queueItemId
+        self.beforeQueueItemId = beforeQueueItemId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "queueItemId": "queue_item_id",
+        "beforeQueueItemId": "before_queue_item_id"
+    ]
+}
+
 /// CmdClear is a generated CSIL record type.
 public struct CmdClear: Equatable, Sendable {
     public let op: String
@@ -1190,16 +1288,46 @@ public struct CmdClear: Equatable, Sendable {
 public struct CmdPlay: Equatable, Sendable {
     public let op: String
     public let index: UInt64?
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64?
 
-    public init(op: String, index: UInt64? = nil) {
+    public init(op: String, index: UInt64? = nil, queueItemId: UInt64? = nil) {
         self.op = op
         self.index = index
+        self.queueItemId = queueItemId
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "op": "op",
-        "index": "index"
+        "index": "index",
+        "queueItemId": "queue_item_id"
+    ]
+}
+
+/// CmdReplaceAndPlay is a generated CSIL record type.
+public struct CmdReplaceAndPlay: Equatable, Sendable {
+    public let op: String
+    /// wire key: track_ids
+    public let trackIds: [TrackId]
+    /// wire key: start_index
+    public let startIndex: UInt64?
+    /// wire key: position_ms
+    public let positionMs: UInt64?
+
+    public init(op: String, trackIds: [TrackId], startIndex: UInt64? = 0, positionMs: UInt64? = 0) {
+        self.op = op
+        self.trackIds = trackIds
+        self.startIndex = startIndex
+        self.positionMs = positionMs
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "trackIds": "track_ids",
+        "startIndex": "start_index",
+        "positionMs": "position_ms"
     ]
 }
 
@@ -1287,18 +1415,163 @@ public struct CmdVolume: Equatable, Sendable {
     ]
 }
 
+/// CmdSetRepeat is a generated CSIL record type.
+public struct CmdSetRepeat: Equatable, Sendable {
+    public let op: String
+    /// wire key: repeat_mode
+    public let repeatMode: RepeatMode
+
+    public init(op: String, repeatMode: RepeatMode) {
+        self.op = op
+        self.repeatMode = repeatMode
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "repeatMode": "repeat_mode"
+    ]
+}
+
+/// CmdSetShuffle is a generated CSIL record type.
+public struct CmdSetShuffle: Equatable, Sendable {
+    public let op: String
+    public let shuffle: Bool
+
+    public init(op: String, shuffle: Bool) {
+        self.op = op
+        self.shuffle = shuffle
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "shuffle": "shuffle"
+    ]
+}
+
+/// CmdUndo is a generated CSIL record type.
+public struct CmdUndo: Equatable, Sendable {
+    public let op: String
+
+    public init(op: String) {
+        self.op = op
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op"
+    ]
+}
+
+/// CmdPlaybackCompleted is a generated CSIL record type.
+public struct CmdPlaybackCompleted: Equatable, Sendable {
+    public let op: String
+    /// wire key: playback_id
+    public let playbackId: String
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
+
+    public init(op: String, playbackId: String, queueItemId: UInt64) {
+        self.op = op
+        self.playbackId = playbackId
+        self.queueItemId = queueItemId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "playbackId": "playback_id",
+        "queueItemId": "queue_item_id"
+    ]
+}
+
+/// CmdPlaybackFailed is a generated CSIL record type.
+public struct CmdPlaybackFailed: Equatable, Sendable {
+    public let op: String
+    /// wire key: playback_id
+    public let playbackId: String
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
+    public let error: String
+
+    public init(op: String, playbackId: String, queueItemId: UInt64, error: String) {
+        self.op = op
+        self.playbackId = playbackId
+        self.queueItemId = queueItemId
+        self.error = error
+    }
+
+    /// Validate field constraints, throwing CsilValidationError on the first failure.
+    public func validate() throws {
+        if self.error.count < 1 {
+            throw CsilValidationError("field 'error' must have at least 1 elements")
+        }
+        if self.error.count > 1024 {
+            throw CsilValidationError("field 'error' must have at most 1024 elements")
+        }
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "playbackId": "playback_id",
+        "queueItemId": "queue_item_id",
+        "error": "error"
+    ]
+}
+
+/// CmdPlaybackState is a generated CSIL record type.
+public struct CmdPlaybackState: Equatable, Sendable {
+    public let op: String
+    /// wire key: playback_id
+    public let playbackId: String
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
+    public let status: PlayerStatus
+    /// wire key: position_ms
+    public let positionMs: UInt64
+
+    public init(op: String, playbackId: String, queueItemId: UInt64, status: PlayerStatus, positionMs: UInt64) {
+        self.op = op
+        self.playbackId = playbackId
+        self.queueItemId = queueItemId
+        self.status = status
+        self.positionMs = positionMs
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "op": "op",
+        "playbackId": "playback_id",
+        "queueItemId": "queue_item_id",
+        "status": "status",
+        "positionMs": "position_ms"
+    ]
+}
+
 /// PlayerCommand is a generated CSIL variant (sum) type.
 public enum PlayerCommand: Equatable, Sendable {
     case cmdEnqueue(CmdEnqueue)
+    case cmdEnqueueNext(CmdEnqueueNext)
     case cmdRemove(CmdRemove)
+    case cmdRemoveItem(CmdRemoveItem)
     case cmdReorder(CmdReorder)
+    case cmdMoveItem(CmdMoveItem)
     case cmdClear(CmdClear)
     case cmdPlay(CmdPlay)
+    case cmdReplaceAndPlay(CmdReplaceAndPlay)
     case cmdPause(CmdPause)
     case cmdNext(CmdNext)
     case cmdPrevious(CmdPrevious)
     case cmdSeek(CmdSeek)
     case cmdVolume(CmdVolume)
+    case cmdSetRepeat(CmdSetRepeat)
+    case cmdSetShuffle(CmdSetShuffle)
+    case cmdUndo(CmdUndo)
+    case cmdPlaybackCompleted(CmdPlaybackCompleted)
+    case cmdPlaybackFailed(CmdPlaybackFailed)
+    case cmdPlaybackState(CmdPlaybackState)
 }
 
 /// CommandRequest is a generated CSIL record type.
@@ -1375,12 +1648,15 @@ public struct ShareResult: Equatable, Sendable {
 /// MediaOpen is a generated CSIL record type.
 public struct MediaOpen: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
     /// wire key: track_id
     public let trackId: TrackId
     public let pref: StreamPref
 
-    public init(kind: String, trackId: TrackId, pref: StreamPref) {
+    public init(kind: String, streamId: String, trackId: TrackId, pref: StreamPref) {
         self.kind = kind
+        self.streamId = streamId
         self.trackId = trackId
         self.pref = pref
     }
@@ -1388,6 +1664,7 @@ public struct MediaOpen: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "kind": "kind",
+        "streamId": "stream_id",
         "trackId": "track_id",
         "pref": "pref"
     ]
@@ -1396,17 +1673,21 @@ public struct MediaOpen: Equatable, Sendable {
 /// MediaSeek is a generated CSIL record type.
 public struct MediaSeek: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
     /// wire key: position_ms
     public let positionMs: UInt64
 
-    public init(kind: String, positionMs: UInt64) {
+    public init(kind: String, streamId: String, positionMs: UInt64) {
         self.kind = kind
+        self.streamId = streamId
         self.positionMs = positionMs
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "kind": "kind",
+        "streamId": "stream_id",
         "positionMs": "position_ms"
     ]
 }
@@ -1414,42 +1695,54 @@ public struct MediaSeek: Equatable, Sendable {
 /// MediaPause is a generated CSIL record type.
 public struct MediaPause: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
 
-    public init(kind: String) {
+    public init(kind: String, streamId: String) {
         self.kind = kind
+        self.streamId = streamId
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "kind": "kind"
+        "kind": "kind",
+        "streamId": "stream_id"
     ]
 }
 
 /// MediaResume is a generated CSIL record type.
 public struct MediaResume: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
 
-    public init(kind: String) {
+    public init(kind: String, streamId: String) {
         self.kind = kind
+        self.streamId = streamId
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "kind": "kind"
+        "kind": "kind",
+        "streamId": "stream_id"
     ]
 }
 
 /// MediaStop is a generated CSIL record type.
 public struct MediaStop: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
 
-    public init(kind: String) {
+    public init(kind: String, streamId: String) {
         self.kind = kind
+        self.streamId = streamId
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "kind": "kind"
+        "kind": "kind",
+        "streamId": "stream_id"
     ]
 }
 
@@ -1465,6 +1758,8 @@ public enum MediaControl: Equatable, Sendable {
 /// MediaHeader is a generated CSIL record type.
 public struct MediaHeader: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
     public let codec: Codec
     public let transcoded: Bool
     /// wire key: sample_rate
@@ -1479,8 +1774,9 @@ public struct MediaHeader: Equatable, Sendable {
     /// wire key: codec_config
     public let codecConfig: [UInt8]?
 
-    public init(kind: String, codec: Codec, transcoded: Bool, sampleRate: UInt64, channels: UInt64, durationMs: UInt64? = nil, trimStartSamples: UInt64 = 0, trimEndSamples: UInt64 = 0, codecConfig: [UInt8]? = nil) {
+    public init(kind: String, streamId: String, codec: Codec, transcoded: Bool, sampleRate: UInt64, channels: UInt64, durationMs: UInt64? = nil, trimStartSamples: UInt64 = 0, trimEndSamples: UInt64 = 0, codecConfig: [UInt8]? = nil) {
         self.kind = kind
+        self.streamId = streamId
         self.codec = codec
         self.transcoded = transcoded
         self.sampleRate = sampleRate
@@ -1494,6 +1790,7 @@ public struct MediaHeader: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "kind": "kind",
+        "streamId": "stream_id",
         "codec": "codec",
         "transcoded": "transcoded",
         "sampleRate": "sample_rate",
@@ -1514,13 +1811,16 @@ public enum MediaEndReason: String, Equatable, Sendable, CaseIterable {
 /// MediaChunk is a generated CSIL record type.
 public struct MediaChunk: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
     public let seq: UInt64
     /// wire key: timestamp_ms
     public let timestampMs: UInt64?
     public let data: [UInt8]
 
-    public init(kind: String, seq: UInt64, timestampMs: UInt64? = nil, data: [UInt8]) {
+    public init(kind: String, streamId: String, seq: UInt64, timestampMs: UInt64? = nil, data: [UInt8]) {
         self.kind = kind
+        self.streamId = streamId
         self.seq = seq
         self.timestampMs = timestampMs
         self.data = data
@@ -1529,6 +1829,7 @@ public struct MediaChunk: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "kind": "kind",
+        "streamId": "stream_id",
         "seq": "seq",
         "timestampMs": "timestamp_ms",
         "data": "data"
@@ -1538,16 +1839,20 @@ public struct MediaChunk: Equatable, Sendable {
 /// MediaEnd is a generated CSIL record type.
 public struct MediaEnd: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
     public let reason: MediaEndReason?
 
-    public init(kind: String, reason: MediaEndReason? = nil) {
+    public init(kind: String, streamId: String, reason: MediaEndReason? = nil) {
         self.kind = kind
+        self.streamId = streamId
         self.reason = reason
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "kind": "kind",
+        "streamId": "stream_id",
         "reason": "reason"
     ]
 }
@@ -1555,16 +1860,20 @@ public struct MediaEnd: Equatable, Sendable {
 /// MediaFail is a generated CSIL record type.
 public struct MediaFail: Equatable, Sendable {
     public let kind: String
+    /// wire key: stream_id
+    public let streamId: String
     public let error: ServiceError
 
-    public init(kind: String, error: ServiceError) {
+    public init(kind: String, streamId: String, error: ServiceError) {
         self.kind = kind
+        self.streamId = streamId
         self.error = error
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "kind": "kind",
+        "streamId": "stream_id",
         "error": "error"
     ]
 }
@@ -1653,15 +1962,21 @@ public struct DirLoad: Equatable, Sendable {
     public let op: String
     /// wire key: player_id
     public let playerId: PlayerId
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64
+    /// wire key: playback_id
+    public let playbackId: String
     /// wire key: track_id
     public let trackId: TrackId
     public let pref: StreamPref
     /// wire key: position_ms
     public let positionMs: UInt64?
 
-    public init(op: String, playerId: PlayerId, trackId: TrackId, pref: StreamPref, positionMs: UInt64? = nil) {
+    public init(op: String, playerId: PlayerId, queueItemId: UInt64, playbackId: String, trackId: TrackId, pref: StreamPref, positionMs: UInt64? = nil) {
         self.op = op
         self.playerId = playerId
+        self.queueItemId = queueItemId
+        self.playbackId = playbackId
         self.trackId = trackId
         self.pref = pref
         self.positionMs = positionMs
@@ -1671,6 +1986,8 @@ public struct DirLoad: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "op": "op",
         "playerId": "player_id",
+        "queueItemId": "queue_item_id",
+        "playbackId": "playback_id",
         "trackId": "track_id",
         "pref": "pref",
         "positionMs": "position_ms"
@@ -1772,24 +2089,48 @@ public enum NodeDirective: Equatable, Sendable {
 public struct NodeReport: Equatable, Sendable {
     /// wire key: player_id
     public let playerId: PlayerId
+    public let event: NodeEvent?
     public let status: PlayerStatus
+    /// wire key: queue_item_id
+    public let queueItemId: UInt64?
+    /// wire key: playback_id
+    public let playbackId: String?
     /// wire key: position_ms
     public let positionMs: UInt64?
+    public let error: String?
     /// wire key: audio_blocked
     public let audioBlocked: Bool?
 
-    public init(playerId: PlayerId, status: PlayerStatus, positionMs: UInt64? = nil, audioBlocked: Bool? = false) {
+    public init(playerId: PlayerId, event: NodeEvent? = "state", status: PlayerStatus, queueItemId: UInt64? = nil, playbackId: String? = nil, positionMs: UInt64? = nil, error: String? = nil, audioBlocked: Bool? = false) {
         self.playerId = playerId
+        self.event = event
         self.status = status
+        self.queueItemId = queueItemId
+        self.playbackId = playbackId
         self.positionMs = positionMs
+        self.error = error
         self.audioBlocked = audioBlocked
+    }
+
+    /// Validate field constraints, throwing CsilValidationError on the first failure.
+    public func validate() throws {
+        if let v = self.error, v.count < 1 {
+            throw CsilValidationError("field 'error' must have at least 1 elements")
+        }
+        if let v = self.error, v.count > 1024 {
+            throw CsilValidationError("field 'error' must have at most 1024 elements")
+        }
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "playerId": "player_id",
+        "event": "event",
         "status": "status",
+        "queueItemId": "queue_item_id",
+        "playbackId": "playback_id",
         "positionMs": "position_ms",
+        "error": "error",
         "audioBlocked": "audio_blocked"
     ]
 }

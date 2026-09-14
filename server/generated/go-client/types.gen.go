@@ -43,6 +43,12 @@ type Role string
 // PlayerStatus is a type alias
 type PlayerStatus string
 
+// RepeatMode is a type alias
+type RepeatMode string
+
+// NodeEvent is a type alias
+type NodeEvent string
+
 // Codec is a type alias
 type Codec string
 
@@ -358,20 +364,27 @@ type Player struct {
 
 // QueueItem represents a structured data type
 type QueueItem struct {
-	TrackId    TrackId  `json:"track_id" yaml:"track_id"`
-	Library    *Library `json:"library,omitempty" yaml:"library,omitempty"`
-	Title      *string  `json:"title,omitempty" yaml:"title,omitempty"`
-	Artist     *string  `json:"artist,omitempty" yaml:"artist,omitempty"`
-	DurationMs *uint64  `json:"duration_ms,omitempty" yaml:"duration_ms,omitempty"`
+	QueueItemId uint64   `json:"queue_item_id" yaml:"queue_item_id"`
+	TrackId     TrackId  `json:"track_id" yaml:"track_id"`
+	Library     *Library `json:"library,omitempty" yaml:"library,omitempty"`
+	Title       *string  `json:"title,omitempty" yaml:"title,omitempty"`
+	Artist      *string  `json:"artist,omitempty" yaml:"artist,omitempty"`
+	DurationMs  *uint64  `json:"duration_ms,omitempty" yaml:"duration_ms,omitempty"`
 }
 
 // PlayerState represents a structured data type
 type PlayerState struct {
 	PlayerId     PlayerId     `json:"player_id" yaml:"player_id"`
+	Revision     uint64       `json:"revision" yaml:"revision"`
 	Status       PlayerStatus `json:"status" yaml:"status"`
 	CurrentIndex *uint64      `json:"current_index,omitempty" yaml:"current_index,omitempty"`
+	PlaybackId   *string      `json:"playback_id,omitempty" yaml:"playback_id,omitempty"`
 	PositionMs   *uint64      `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
 	Volume       uint64       `json:"volume" yaml:"volume"`
+	RepeatMode   RepeatMode   `json:"repeat_mode" yaml:"repeat_mode"`
+	Shuffle      bool         `json:"shuffle" yaml:"shuffle"`
+	Error        *string      `json:"error,omitempty" yaml:"error,omitempty"`
+	CanUndo      bool         `json:"can_undo" yaml:"can_undo"`
 	Queue        []QueueItem  `json:"queue" yaml:"queue"`
 }
 
@@ -398,10 +411,22 @@ type CmdEnqueue struct {
 	AtIndex  *uint64   `json:"at_index,omitempty" yaml:"at_index,omitempty"`
 }
 
+// CmdEnqueueNext represents a structured data type
+type CmdEnqueueNext struct {
+	Op       string    `json:"op" yaml:"op"`
+	TrackIds []TrackId `json:"track_ids" yaml:"track_ids"`
+}
+
 // CmdRemove represents a structured data type
 type CmdRemove struct {
 	Op    string `json:"op" yaml:"op"`
 	Index uint64 `json:"index" yaml:"index"`
+}
+
+// CmdRemoveItem represents a structured data type
+type CmdRemoveItem struct {
+	Op          string `json:"op" yaml:"op"`
+	QueueItemId uint64 `json:"queue_item_id" yaml:"queue_item_id"`
 }
 
 // CmdReorder represents a structured data type
@@ -411,6 +436,13 @@ type CmdReorder struct {
 	ToIndex   uint64 `json:"to_index" yaml:"to_index"`
 }
 
+// CmdMoveItem represents a structured data type
+type CmdMoveItem struct {
+	Op                string  `json:"op" yaml:"op"`
+	QueueItemId       uint64  `json:"queue_item_id" yaml:"queue_item_id"`
+	BeforeQueueItemId *uint64 `json:"before_queue_item_id,omitempty" yaml:"before_queue_item_id,omitempty"`
+}
+
 // CmdClear represents a structured data type
 type CmdClear struct {
 	Op string `json:"op" yaml:"op"`
@@ -418,8 +450,17 @@ type CmdClear struct {
 
 // CmdPlay represents a structured data type
 type CmdPlay struct {
-	Op    string  `json:"op" yaml:"op"`
-	Index *uint64 `json:"index,omitempty" yaml:"index,omitempty"`
+	Op          string  `json:"op" yaml:"op"`
+	Index       *uint64 `json:"index,omitempty" yaml:"index,omitempty"`
+	QueueItemId *uint64 `json:"queue_item_id,omitempty" yaml:"queue_item_id,omitempty"`
+}
+
+// CmdReplaceAndPlay represents a structured data type
+type CmdReplaceAndPlay struct {
+	Op         string    `json:"op" yaml:"op"`
+	TrackIds   []TrackId `json:"track_ids" yaml:"track_ids"`
+	StartIndex *uint64   `json:"start_index,omitempty" yaml:"start_index,omitempty"`
+	PositionMs *uint64   `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
 }
 
 // CmdPause represents a structured data type
@@ -449,6 +490,47 @@ type CmdVolume struct {
 	Volume uint64 `json:"volume" yaml:"volume"`
 }
 
+// CmdSetRepeat represents a structured data type
+type CmdSetRepeat struct {
+	Op         string     `json:"op" yaml:"op"`
+	RepeatMode RepeatMode `json:"repeat_mode" yaml:"repeat_mode"`
+}
+
+// CmdSetShuffle represents a structured data type
+type CmdSetShuffle struct {
+	Op      string `json:"op" yaml:"op"`
+	Shuffle bool   `json:"shuffle" yaml:"shuffle"`
+}
+
+// CmdUndo represents a structured data type
+type CmdUndo struct {
+	Op string `json:"op" yaml:"op"`
+}
+
+// CmdPlaybackCompleted represents a structured data type
+type CmdPlaybackCompleted struct {
+	Op          string `json:"op" yaml:"op"`
+	PlaybackId  string `json:"playback_id" yaml:"playback_id"`
+	QueueItemId uint64 `json:"queue_item_id" yaml:"queue_item_id"`
+}
+
+// CmdPlaybackFailed represents a structured data type
+type CmdPlaybackFailed struct {
+	Op          string `json:"op" yaml:"op"`
+	PlaybackId  string `json:"playback_id" yaml:"playback_id"`
+	QueueItemId uint64 `json:"queue_item_id" yaml:"queue_item_id"`
+	Error       string `json:"error" yaml:"error"`
+}
+
+// CmdPlaybackState represents a structured data type
+type CmdPlaybackState struct {
+	Op          string       `json:"op" yaml:"op"`
+	PlaybackId  string       `json:"playback_id" yaml:"playback_id"`
+	QueueItemId uint64       `json:"queue_item_id" yaml:"queue_item_id"`
+	Status      PlayerStatus `json:"status" yaml:"status"`
+	PositionMs  uint64       `json:"position_ms" yaml:"position_ms"`
+}
+
 // PlayerCommand is a type alias
 type PlayerCommand interface{}
 
@@ -475,30 +557,35 @@ type ShareResult struct {
 
 // MediaOpen represents a structured data type
 type MediaOpen struct {
-	Kind    string     `json:"kind" yaml:"kind"`
-	TrackId TrackId    `json:"track_id" yaml:"track_id"`
-	Pref    StreamPref `json:"pref" yaml:"pref"`
+	Kind     string     `json:"kind" yaml:"kind"`
+	StreamId string     `json:"stream_id" yaml:"stream_id"`
+	TrackId  TrackId    `json:"track_id" yaml:"track_id"`
+	Pref     StreamPref `json:"pref" yaml:"pref"`
 }
 
 // MediaSeek represents a structured data type
 type MediaSeek struct {
 	Kind       string `json:"kind" yaml:"kind"`
+	StreamId   string `json:"stream_id" yaml:"stream_id"`
 	PositionMs uint64 `json:"position_ms" yaml:"position_ms"`
 }
 
 // MediaPause represents a structured data type
 type MediaPause struct {
-	Kind string `json:"kind" yaml:"kind"`
+	Kind     string `json:"kind" yaml:"kind"`
+	StreamId string `json:"stream_id" yaml:"stream_id"`
 }
 
 // MediaResume represents a structured data type
 type MediaResume struct {
-	Kind string `json:"kind" yaml:"kind"`
+	Kind     string `json:"kind" yaml:"kind"`
+	StreamId string `json:"stream_id" yaml:"stream_id"`
 }
 
 // MediaStop represents a structured data type
 type MediaStop struct {
-	Kind string `json:"kind" yaml:"kind"`
+	Kind     string `json:"kind" yaml:"kind"`
+	StreamId string `json:"stream_id" yaml:"stream_id"`
 }
 
 // MediaControl is a type alias
@@ -507,6 +594,7 @@ type MediaControl interface{}
 // MediaHeader represents a structured data type
 type MediaHeader struct {
 	Kind             string  `json:"kind" yaml:"kind"`
+	StreamId         string  `json:"stream_id" yaml:"stream_id"`
 	Codec            Codec   `json:"codec" yaml:"codec"`
 	Transcoded       bool    `json:"transcoded" yaml:"transcoded"`
 	SampleRate       uint64  `json:"sample_rate" yaml:"sample_rate"`
@@ -523,6 +611,7 @@ type MediaEndReason string
 // MediaChunk represents a structured data type
 type MediaChunk struct {
 	Kind        string  `json:"kind" yaml:"kind"`
+	StreamId    string  `json:"stream_id" yaml:"stream_id"`
 	Seq         uint64  `json:"seq" yaml:"seq"`
 	TimestampMs *uint64 `json:"timestamp_ms,omitempty" yaml:"timestamp_ms,omitempty"`
 	Data        []byte  `json:"data" yaml:"data"`
@@ -530,14 +619,16 @@ type MediaChunk struct {
 
 // MediaEnd represents a structured data type
 type MediaEnd struct {
-	Kind   string          `json:"kind" yaml:"kind"`
-	Reason *MediaEndReason `json:"reason,omitempty" yaml:"reason,omitempty"`
+	Kind     string          `json:"kind" yaml:"kind"`
+	StreamId string          `json:"stream_id" yaml:"stream_id"`
+	Reason   *MediaEndReason `json:"reason,omitempty" yaml:"reason,omitempty"`
 }
 
 // MediaFail represents a structured data type
 type MediaFail struct {
-	Kind  string       `json:"kind" yaml:"kind"`
-	Error ServiceError `json:"error" yaml:"error"`
+	Kind     string       `json:"kind" yaml:"kind"`
+	StreamId string       `json:"stream_id" yaml:"stream_id"`
+	Error    ServiceError `json:"error" yaml:"error"`
 }
 
 // MediaEvent is a type alias
@@ -568,11 +659,13 @@ type RegisterNodeResponse struct {
 
 // DirLoad represents a structured data type
 type DirLoad struct {
-	Op         string     `json:"op" yaml:"op"`
-	PlayerId   PlayerId   `json:"player_id" yaml:"player_id"`
-	TrackId    TrackId    `json:"track_id" yaml:"track_id"`
-	Pref       StreamPref `json:"pref" yaml:"pref"`
-	PositionMs *uint64    `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
+	Op          string     `json:"op" yaml:"op"`
+	PlayerId    PlayerId   `json:"player_id" yaml:"player_id"`
+	QueueItemId uint64     `json:"queue_item_id" yaml:"queue_item_id"`
+	PlaybackId  string     `json:"playback_id" yaml:"playback_id"`
+	TrackId     TrackId    `json:"track_id" yaml:"track_id"`
+	Pref        StreamPref `json:"pref" yaml:"pref"`
+	PositionMs  *uint64    `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
 }
 
 // DirPause represents a structured data type
@@ -606,8 +699,12 @@ type NodeDirective interface{}
 // NodeReport represents a structured data type
 type NodeReport struct {
 	PlayerId     PlayerId     `json:"player_id" yaml:"player_id"`
+	Event        *NodeEvent   `json:"event,omitempty" yaml:"event,omitempty"`
 	Status       PlayerStatus `json:"status" yaml:"status"`
+	QueueItemId  *uint64      `json:"queue_item_id,omitempty" yaml:"queue_item_id,omitempty"`
+	PlaybackId   *string      `json:"playback_id,omitempty" yaml:"playback_id,omitempty"`
 	PositionMs   *uint64      `json:"position_ms,omitempty" yaml:"position_ms,omitempty"`
+	Error        *string      `json:"error,omitempty" yaml:"error,omitempty"`
 	AudioBlocked *bool        `json:"audio_blocked,omitempty" yaml:"audio_blocked,omitempty"`
 }
 

@@ -18,6 +18,13 @@ Role = "admin" / "member" / "guest"
 ;; Playback status shared by the player and node surfaces.
 PlayerStatus = "stopped" / "playing" / "paused"
 
+;; Queue policy belongs to one player. It does not belong to a controller.
+RepeatMode = "off" / "all" / "one"
+
+;; An output reports physical playback facts. The server applies these facts to the
+;; authoritative player state and decides the next action.
+NodeEvent = "ready" / "state" / "completed" / "failed"
+
 ;; Edge-decodable / transcode-source codecs (§1). Opus, HE-AAC and WMA are read only via
 ;; transcode (§5.6); listing them here lets the UI show the real source codec.
 Codec = "mp3" / "aac" / "vorbis" / "flac" / "alac" / "opus" / "wav" / "wma"

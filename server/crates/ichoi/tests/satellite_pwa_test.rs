@@ -303,8 +303,12 @@ fn a_satellite_that_cannot_make_sound_says_so_to_every_controller() {
         &node_ctx,
         NodeReport {
             player_id: player_id.clone(),
+            event: Some(NodeEvent::State),
             status: PlayerStatus::Stopped,
+            queue_item_id: None,
+            playback_id: None,
             position_ms: None,
+            error: None,
             audio_blocked: Some(true),
         },
     )
@@ -316,8 +320,12 @@ fn a_satellite_that_cannot_make_sound_says_so_to_every_controller() {
         &node_ctx,
         NodeReport {
             player_id: player_id.clone(),
+            event: Some(NodeEvent::State),
             status: PlayerStatus::Playing,
+            queue_item_id: None,
+            playback_id: None,
             position_ms: Some(1_000),
+            error: None,
             audio_blocked: Some(false),
         },
     )
@@ -451,9 +459,10 @@ fn satellite_is_a_named_session_confined_to_its_own_player_and_queue() {
             &identity,
             CommandRequest {
                 player_id: kitchen_player.id,
-                command: PlayerCommand::Variant4(CmdPlay {
+                command: PlayerCommand::Variant7(CmdPlay {
                     op: "play".into(),
                     index: Some(0),
+                    queue_item_id: None,
                 }),
             },
         )
@@ -466,7 +475,7 @@ fn satellite_is_a_named_session_confined_to_its_own_player_and_queue() {
             &identity,
             CommandRequest {
                 player_id: bedroom_player.id,
-                command: PlayerCommand::Variant3(CmdClear { op: "clear".into() }),
+                command: PlayerCommand::Variant6(CmdClear { op: "clear".into() }),
             },
         )
         .expect_err("satellite must not control another satellite");
@@ -477,7 +486,7 @@ fn satellite_is_a_named_session_confined_to_its_own_player_and_queue() {
             &identity,
             CommandRequest {
                 player_id: "private:person".into(),
-                command: PlayerCommand::Variant3(CmdClear { op: "clear".into() }),
+                command: PlayerCommand::Variant6(CmdClear { op: "clear".into() }),
             },
         )
         .expect_err("satellite must not control a private player");

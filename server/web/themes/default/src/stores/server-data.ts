@@ -183,6 +183,8 @@ export class PlayerStateStore {
 
   accept(state: PlayerState): void {
     if (this.disposed) return;
+    const current = this.cache.get(state.player_id);
+    if (current && state.revision < current.revision) return;
     this.cache.set(state.player_id, state);
     this.events.emit(state.player_id, state);
   }
