@@ -176,7 +176,6 @@ export function ServersProvider(props: ParentProps): JSX.Element {
   async function provisionSatellite(
     rec: ServerRecord,
     api: ServerApi,
-    dataStore: ServerDataStore,
   ): Promise<void> {
     const output = satelliteOutput();
     const registered = await api.node.register({
@@ -196,16 +195,12 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     const session = await api.session.whoami();
     patch(rec.id, { session, satellitePlayerId: player.id });
 
-    // A node-session report is also the server-side presence claim. Mirror the persisted
-    // player state instead of resetting it when this PWA reconnects.
-    let off: (() => void) | undefined;
-    off = dataStore.playerStates.watch(player.id, (state) => {
-      api.node.report({
-        player_id: player.id,
-        status: state.status,
-        position_ms: state.position_ms,
-      });
-      off?.();
+    // Claim output presence without replacing the persisted playback state. The server sends
+    // the current directive after this report, so reconnect is the only reconciliation path.
+    api.node.report({
+      player_id: player.id,
+      event: "ready",
+      status: "stopped",
     });
   }
 
@@ -226,7 +221,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
         if (state === "ready" && nodeToken && initialProvisionComplete && !reprovisioning) {
           reprovisioning = true;
           void reloadSatelliteForUpdate(rec.url)
-            .then((reloading) => reloading ? undefined : provisionSatellite(rec, api, dataStore))
+            .then((reloading) => reloading ? undefined : provisionSatellite(rec, api))
             .catch((e) => patch(rec.id, { state: "error", detail: String(e) }))
             .finally(() => {
               reprovisioning = false;
@@ -239,7 +234,7 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     live.set(rec.id, { conn, api, data: dataStore });
     await conn.connect();
     if (nodeToken) {
-      await provisionSatellite(rec, api, dataStore);
+      await provisionSatellite(rec, api);
       initialProvisionComplete = true;
       await reloadSatelliteForUpdate(rec.url);
       return;

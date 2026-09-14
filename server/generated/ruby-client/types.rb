@@ -28,6 +28,10 @@ require "time"
 
 # PlayerStatus is an alias for String.
 
+# RepeatMode is an alias for String.
+
+# NodeEvent is an alias for String.
+
 # Codec is an alias for String.
 
 # TranscodeCodec is an alias for String.
@@ -323,25 +327,32 @@ Player = Data.define(:id, :kind, :name, :node_id, :device_id, :owner, :audio_blo
   end
 end
 
+# queue_item_id [Integer]
 # track_id [TrackId]
 # library [Library]
 # title [String]
 # artist [String]
 # duration_ms [Integer]
-QueueItem = Data.define(:track_id, :library, :title, :artist, :duration_ms) do
-  def initialize(track_id:, library: nil, title: nil, artist: nil, duration_ms: nil)
+QueueItem = Data.define(:queue_item_id, :track_id, :library, :title, :artist, :duration_ms) do
+  def initialize(queue_item_id:, track_id:, library: nil, title: nil, artist: nil, duration_ms: nil)
     super
   end
 end
 
 # player_id [PlayerId]
+# revision [Integer]
 # status [PlayerStatus]
 # current_index [Integer]
+# playback_id [String]
 # position_ms [Integer]
 # volume [Integer]
+# repeat_mode [RepeatMode]
+# shuffle [Boolean]
+# error [String]
+# can_undo [Boolean]
 # queue [Array<QueueItem>]
-PlayerState = Data.define(:player_id, :status, :current_index, :position_ms, :volume, :queue) do
-  def initialize(player_id:, status:, queue:, current_index: nil, position_ms: nil, volume: 100)
+PlayerState = Data.define(:player_id, :revision, :status, :current_index, :playback_id, :position_ms, :volume, :repeat_mode, :shuffle, :error, :can_undo, :queue) do
+  def initialize(player_id:, revision:, status:, repeat_mode:, queue:, current_index: nil, playback_id: nil, position_ms: nil, volume: 100, shuffle: false, error: nil, can_undo: false)
     super
   end
 
@@ -380,8 +391,16 @@ CmdEnqueue = Data.define(:op, :track_ids, :at_index) do
 end
 
 # op [String]
+# track_ids [Array<TrackId>]
+CmdEnqueueNext = Data.define(:op, :track_ids)
+
+# op [String]
 # index [Integer]
 CmdRemove = Data.define(:op, :index)
+
+# op [String]
+# queue_item_id [Integer]
+CmdRemoveItem = Data.define(:op, :queue_item_id)
 
 # op [String]
 # from_index [Integer]
@@ -389,12 +408,32 @@ CmdRemove = Data.define(:op, :index)
 CmdReorder = Data.define(:op, :from_index, :to_index)
 
 # op [String]
+# queue_item_id [Integer]
+# before_queue_item_id [Integer]
+CmdMoveItem = Data.define(:op, :queue_item_id, :before_queue_item_id) do
+  def initialize(op:, queue_item_id:, before_queue_item_id: nil)
+    super
+  end
+end
+
+# op [String]
 CmdClear = Data.define(:op)
 
 # op [String]
 # index [Integer]
-CmdPlay = Data.define(:op, :index) do
-  def initialize(op:, index: nil)
+# queue_item_id [Integer]
+CmdPlay = Data.define(:op, :index, :queue_item_id) do
+  def initialize(op:, index: nil, queue_item_id: nil)
+    super
+  end
+end
+
+# op [String]
+# track_ids [Array<TrackId>]
+# start_index [Integer]
+# position_ms [Integer]
+CmdReplaceAndPlay = Data.define(:op, :track_ids, :start_index, :position_ms) do
+  def initialize(op:, track_ids:, start_index: 0, position_ms: 0)
     super
   end
 end
@@ -422,7 +461,43 @@ CmdVolume = Data.define(:op, :volume) do
   end
 end
 
-# PlayerCommand is an alias for CmdEnqueue | CmdRemove | CmdReorder | CmdClear | CmdPlay | CmdPause | CmdNext | CmdPrevious | CmdSeek | CmdVolume.
+# op [String]
+# repeat_mode [RepeatMode]
+CmdSetRepeat = Data.define(:op, :repeat_mode)
+
+# op [String]
+# shuffle [Boolean]
+CmdSetShuffle = Data.define(:op, :shuffle)
+
+# op [String]
+CmdUndo = Data.define(:op)
+
+# op [String]
+# playback_id [String]
+# queue_item_id [Integer]
+CmdPlaybackCompleted = Data.define(:op, :playback_id, :queue_item_id)
+
+# op [String]
+# playback_id [String]
+# queue_item_id [Integer]
+# error [String]
+CmdPlaybackFailed = Data.define(:op, :playback_id, :queue_item_id, :error) do
+  # Raises ArgumentError on the first constraint violation.
+  def validate
+    raise ArgumentError, "field 'error' must have at least 1 elements" if error.length < 1
+    raise ArgumentError, "field 'error' must have at most 1024 elements" if error.length > 1024
+    nil
+  end
+end
+
+# op [String]
+# playback_id [String]
+# queue_item_id [Integer]
+# status [PlayerStatus]
+# position_ms [Integer]
+CmdPlaybackState = Data.define(:op, :playback_id, :queue_item_id, :status, :position_ms)
+
+# PlayerCommand is an alias for CmdEnqueue | CmdEnqueueNext | CmdRemove | CmdRemoveItem | CmdReorder | CmdMoveItem | CmdClear | CmdPlay | CmdReplaceAndPlay | CmdPause | CmdNext | CmdPrevious | CmdSeek | CmdVolume | CmdSetRepeat | CmdSetShuffle | CmdUndo | CmdPlaybackCompleted | CmdPlaybackFailed | CmdPlaybackState.
 
 # player_id [PlayerId]
 # command [PlayerCommand]
@@ -449,26 +524,32 @@ DisableShareRequest = Data.define(:player_id)
 ShareResult = Data.define(:player)
 
 # kind [String]
+# stream_id [String]
 # track_id [TrackId]
 # pref [StreamPref]
-MediaOpen = Data.define(:kind, :track_id, :pref)
+MediaOpen = Data.define(:kind, :stream_id, :track_id, :pref)
 
 # kind [String]
+# stream_id [String]
 # position_ms [Integer]
-MediaSeek = Data.define(:kind, :position_ms)
+MediaSeek = Data.define(:kind, :stream_id, :position_ms)
 
 # kind [String]
-MediaPause = Data.define(:kind)
+# stream_id [String]
+MediaPause = Data.define(:kind, :stream_id)
 
 # kind [String]
-MediaResume = Data.define(:kind)
+# stream_id [String]
+MediaResume = Data.define(:kind, :stream_id)
 
 # kind [String]
-MediaStop = Data.define(:kind)
+# stream_id [String]
+MediaStop = Data.define(:kind, :stream_id)
 
 # MediaControl is an alias for MediaOpen | MediaSeek | MediaPause | MediaResume | MediaStop.
 
 # kind [String]
+# stream_id [String]
 # codec [Codec]
 # transcoded [Boolean]
 # sample_rate [Integer]
@@ -477,8 +558,8 @@ MediaStop = Data.define(:kind)
 # trim_start_samples [Integer]
 # trim_end_samples [Integer]
 # codec_config [String]
-MediaHeader = Data.define(:kind, :codec, :transcoded, :sample_rate, :channels, :duration_ms, :trim_start_samples, :trim_end_samples, :codec_config) do
-  def initialize(kind:, codec:, transcoded:, sample_rate:, channels:, duration_ms: nil, trim_start_samples: 0, trim_end_samples: 0, codec_config: nil)
+MediaHeader = Data.define(:kind, :stream_id, :codec, :transcoded, :sample_rate, :channels, :duration_ms, :trim_start_samples, :trim_end_samples, :codec_config) do
+  def initialize(kind:, stream_id:, codec:, transcoded:, sample_rate:, channels:, duration_ms: nil, trim_start_samples: 0, trim_end_samples: 0, codec_config: nil)
     super
   end
 end
@@ -486,26 +567,29 @@ end
 # MediaEndReason is an alias for String.
 
 # kind [String]
+# stream_id [String]
 # seq [Integer]
 # timestamp_ms [Integer]
 # data [String]
-MediaChunk = Data.define(:kind, :seq, :timestamp_ms, :data) do
-  def initialize(kind:, seq:, data:, timestamp_ms: nil)
+MediaChunk = Data.define(:kind, :stream_id, :seq, :timestamp_ms, :data) do
+  def initialize(kind:, stream_id:, seq:, data:, timestamp_ms: nil)
     super
   end
 end
 
 # kind [String]
+# stream_id [String]
 # reason [MediaEndReason]
-MediaEnd = Data.define(:kind, :reason) do
-  def initialize(kind:, reason: nil)
+MediaEnd = Data.define(:kind, :stream_id, :reason) do
+  def initialize(kind:, stream_id:, reason: nil)
     super
   end
 end
 
 # kind [String]
+# stream_id [String]
 # error [ServiceError]
-MediaFail = Data.define(:kind, :error)
+MediaFail = Data.define(:kind, :stream_id, :error)
 
 # MediaEvent is an alias for MediaHeader | MediaChunk | MediaEnd | MediaFail.
 
@@ -532,11 +616,13 @@ RegisterNodeResponse = Data.define(:node_id, :players)
 
 # op [String]
 # player_id [PlayerId]
+# queue_item_id [Integer]
+# playback_id [String]
 # track_id [TrackId]
 # pref [StreamPref]
 # position_ms [Integer]
-DirLoad = Data.define(:op, :player_id, :track_id, :pref, :position_ms) do
-  def initialize(op:, player_id:, track_id:, pref:, position_ms: nil)
+DirLoad = Data.define(:op, :player_id, :queue_item_id, :playback_id, :track_id, :pref, :position_ms) do
+  def initialize(op:, player_id:, queue_item_id:, playback_id:, track_id:, pref:, position_ms: nil)
     super
   end
 end
@@ -567,12 +653,23 @@ end
 # NodeDirective is an alias for DirLoad | DirPause | DirResume | DirStop | DirVolume.
 
 # player_id [PlayerId]
+# event [NodeEvent]
 # status [PlayerStatus]
+# queue_item_id [Integer]
+# playback_id [String]
 # position_ms [Integer]
+# error [String]
 # audio_blocked [Boolean]
-NodeReport = Data.define(:player_id, :status, :position_ms, :audio_blocked) do
-  def initialize(player_id:, status:, position_ms: nil, audio_blocked: false)
+NodeReport = Data.define(:player_id, :event, :status, :queue_item_id, :playback_id, :position_ms, :error, :audio_blocked) do
+  def initialize(player_id:, status:, event: "state", queue_item_id: nil, playback_id: nil, position_ms: nil, error: nil, audio_blocked: false)
     super
+  end
+
+  # Raises ArgumentError on the first constraint violation.
+  def validate
+    raise ArgumentError, "field 'error' must have at least 1 elements" if !error.nil? && error.length < 1
+    raise ArgumentError, "field 'error' must have at most 1024 elements" if !error.nil? && error.length > 1024
+    nil
   end
 end
 

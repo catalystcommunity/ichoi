@@ -354,6 +354,8 @@ public static class Codec
     {
         Role csilTyped => RoleToCborValue(csilTyped),
         PlayerStatus csilTyped => PlayerStatusToCborValue(csilTyped),
+        RepeatMode csilTyped => RepeatModeToCborValue(csilTyped),
+        NodeEvent csilTyped => NodeEventToCborValue(csilTyped),
         Codec csilTyped => CodecToCborValue(csilTyped),
         TranscodeCodec csilTyped => TranscodeCodecToCborValue(csilTyped),
         StreamPref csilTyped => StreamPrefToCborValue(csilTyped),
@@ -408,15 +410,25 @@ public static class Codec
         ListPlayersResponse csilTyped => ListPlayersResponseToCborValue(csilTyped),
         SubscribeRequest csilTyped => SubscribeRequestToCborValue(csilTyped),
         CmdEnqueue csilTyped => CmdEnqueueToCborValue(csilTyped),
+        CmdEnqueueNext csilTyped => CmdEnqueueNextToCborValue(csilTyped),
         CmdRemove csilTyped => CmdRemoveToCborValue(csilTyped),
+        CmdRemoveItem csilTyped => CmdRemoveItemToCborValue(csilTyped),
         CmdReorder csilTyped => CmdReorderToCborValue(csilTyped),
+        CmdMoveItem csilTyped => CmdMoveItemToCborValue(csilTyped),
         CmdClear csilTyped => CmdClearToCborValue(csilTyped),
         CmdPlay csilTyped => CmdPlayToCborValue(csilTyped),
+        CmdReplaceAndPlay csilTyped => CmdReplaceAndPlayToCborValue(csilTyped),
         CmdPause csilTyped => CmdPauseToCborValue(csilTyped),
         CmdNext csilTyped => CmdNextToCborValue(csilTyped),
         CmdPrevious csilTyped => CmdPreviousToCborValue(csilTyped),
         CmdSeek csilTyped => CmdSeekToCborValue(csilTyped),
         CmdVolume csilTyped => CmdVolumeToCborValue(csilTyped),
+        CmdSetRepeat csilTyped => CmdSetRepeatToCborValue(csilTyped),
+        CmdSetShuffle csilTyped => CmdSetShuffleToCborValue(csilTyped),
+        CmdUndo csilTyped => CmdUndoToCborValue(csilTyped),
+        CmdPlaybackCompleted csilTyped => CmdPlaybackCompletedToCborValue(csilTyped),
+        CmdPlaybackFailed csilTyped => CmdPlaybackFailedToCborValue(csilTyped),
+        CmdPlaybackState csilTyped => CmdPlaybackStateToCborValue(csilTyped),
         PlayerCommand csilTyped => PlayerCommandToCborValue(csilTyped),
         CommandRequest csilTyped => CommandRequestToCborValue(csilTyped),
         EnableShareRequest csilTyped => EnableShareRequestToCborValue(csilTyped),
@@ -495,6 +507,8 @@ public static class Codec
     {
         if (csilType == typeof(Role)) return RoleFromCborValue(value);
         if (csilType == typeof(PlayerStatus)) return PlayerStatusFromCborValue(value);
+        if (csilType == typeof(RepeatMode)) return RepeatModeFromCborValue(value);
+        if (csilType == typeof(NodeEvent)) return NodeEventFromCborValue(value);
         if (csilType == typeof(Codec)) return CodecFromCborValue(value);
         if (csilType == typeof(TranscodeCodec)) return TranscodeCodecFromCborValue(value);
         if (csilType == typeof(StreamPref)) return StreamPrefFromCborValue(value);
@@ -549,15 +563,25 @@ public static class Codec
         if (csilType == typeof(ListPlayersResponse)) return ListPlayersResponseFromCborValue(value);
         if (csilType == typeof(SubscribeRequest)) return SubscribeRequestFromCborValue(value);
         if (csilType == typeof(CmdEnqueue)) return CmdEnqueueFromCborValue(value);
+        if (csilType == typeof(CmdEnqueueNext)) return CmdEnqueueNextFromCborValue(value);
         if (csilType == typeof(CmdRemove)) return CmdRemoveFromCborValue(value);
+        if (csilType == typeof(CmdRemoveItem)) return CmdRemoveItemFromCborValue(value);
         if (csilType == typeof(CmdReorder)) return CmdReorderFromCborValue(value);
+        if (csilType == typeof(CmdMoveItem)) return CmdMoveItemFromCborValue(value);
         if (csilType == typeof(CmdClear)) return CmdClearFromCborValue(value);
         if (csilType == typeof(CmdPlay)) return CmdPlayFromCborValue(value);
+        if (csilType == typeof(CmdReplaceAndPlay)) return CmdReplaceAndPlayFromCborValue(value);
         if (csilType == typeof(CmdPause)) return CmdPauseFromCborValue(value);
         if (csilType == typeof(CmdNext)) return CmdNextFromCborValue(value);
         if (csilType == typeof(CmdPrevious)) return CmdPreviousFromCborValue(value);
         if (csilType == typeof(CmdSeek)) return CmdSeekFromCborValue(value);
         if (csilType == typeof(CmdVolume)) return CmdVolumeFromCborValue(value);
+        if (csilType == typeof(CmdSetRepeat)) return CmdSetRepeatFromCborValue(value);
+        if (csilType == typeof(CmdSetShuffle)) return CmdSetShuffleFromCborValue(value);
+        if (csilType == typeof(CmdUndo)) return CmdUndoFromCborValue(value);
+        if (csilType == typeof(CmdPlaybackCompleted)) return CmdPlaybackCompletedFromCborValue(value);
+        if (csilType == typeof(CmdPlaybackFailed)) return CmdPlaybackFailedFromCborValue(value);
+        if (csilType == typeof(CmdPlaybackState)) return CmdPlaybackStateFromCborValue(value);
         if (csilType == typeof(PlayerCommand)) return PlayerCommandFromCborValue(value);
         if (csilType == typeof(CommandRequest)) return CommandRequestFromCborValue(value);
         if (csilType == typeof(EnableShareRequest)) return EnableShareRequestFromCborValue(value);
@@ -666,6 +690,44 @@ public static class Codec
         "playing" => PlayerStatus.Playing,
         "paused" => PlayerStatus.Paused,
         _ => throw new CborException("invalid PlayerStatus value"),
+    };
+
+    /// <summary>The bare-literal CBOR value for a RepeatMode.</summary>
+    public static CborValue RepeatModeToCborValue(RepeatMode value) => value switch
+    {
+        RepeatMode.Off => new CborValue.Text("off"),
+        RepeatMode.All => new CborValue.Text("all"),
+        RepeatMode.One => new CborValue.Text("one"),
+        _ => throw new CborException("invalid RepeatMode"),
+    };
+
+    /// <summary>Reconstruct a RepeatMode from its bare-literal CBOR value.</summary>
+    public static RepeatMode RepeatModeFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "off" => RepeatMode.Off,
+        "all" => RepeatMode.All,
+        "one" => RepeatMode.One,
+        _ => throw new CborException("invalid RepeatMode value"),
+    };
+
+    /// <summary>The bare-literal CBOR value for a NodeEvent.</summary>
+    public static CborValue NodeEventToCborValue(NodeEvent value) => value switch
+    {
+        NodeEvent.Ready => new CborValue.Text("ready"),
+        NodeEvent.State => new CborValue.Text("state"),
+        NodeEvent.Completed => new CborValue.Text("completed"),
+        NodeEvent.Failed => new CborValue.Text("failed"),
+        _ => throw new CborException("invalid NodeEvent"),
+    };
+
+    /// <summary>Reconstruct a NodeEvent from its bare-literal CBOR value.</summary>
+    public static NodeEvent NodeEventFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "ready" => NodeEvent.Ready,
+        "state" => NodeEvent.State,
+        "completed" => NodeEvent.Completed,
+        "failed" => NodeEvent.Failed,
+        _ => throw new CborException("invalid NodeEvent value"),
     };
 
     /// <summary>The bare-literal CBOR value for a Codec.</summary>
@@ -1929,24 +1991,27 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(csilV4)));
         }
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
         return new CborValue.Map(csilEntries);
     }
 
     /// <summary>Reconstruct a QueueItem from a decoded CBOR value tree.</summary>
     public static QueueItem QueueItemFromCborValue(CborValue value)
     {
-        var csilField0 = Cbor.AsText(Cbor.Require(value, "track_id"));
-        Library? csilField1 = Cbor.MapGet(value, "library") is { } csilRaw1 ? LibraryFromCborValue(csilRaw1) : null;
-        string? csilField2 = Cbor.MapGet(value, "title") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
-        string? csilField3 = Cbor.MapGet(value, "artist") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
-        ulong? csilField4 = Cbor.MapGet(value, "duration_ms") is { } csilRaw4 ? Cbor.AsU64(csilRaw4) : null;
+        var csilField0 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "track_id"));
+        Library? csilField2 = Cbor.MapGet(value, "library") is { } csilRaw2 ? LibraryFromCborValue(csilRaw2) : null;
+        string? csilField3 = Cbor.MapGet(value, "title") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
+        string? csilField4 = Cbor.MapGet(value, "artist") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
+        ulong? csilField5 = Cbor.MapGet(value, "duration_ms") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
         return new QueueItem
         {
-            TrackId = csilField0,
-            Library = csilField1,
-            Title = csilField2,
-            Artist = csilField3,
-            DurationMs = csilField4,
+            QueueItemId = csilField0,
+            TrackId = csilField1,
+            Library = csilField2,
+            Title = csilField3,
+            Artist = csilField4,
+            DurationMs = csilField5,
         };
     }
 
@@ -1954,17 +2019,29 @@ public static class Codec
     public static CborValue PlayerStateToCborValue(PlayerState value)
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        if (value.Error is { } csilV0)
+        {
+            csilEntries.Add((new CborValue.Text("error"), new CborValue.Text(csilV0)));
+        }
         csilEntries.Add((new CborValue.Text("queue"), new CborValue.Array(value.Queue.Select(csilElem => (CborValue)QueueItemToCborValue(csilElem)).ToList())));
         csilEntries.Add((new CborValue.Text("status"), PlayerStatusToCborValue(value.Status)));
         csilEntries.Add((new CborValue.Text("volume"), new CborValue.Uint(value.Volume)));
+        csilEntries.Add((new CborValue.Text("shuffle"), new CborValue.Bool(value.Shuffle)));
+        csilEntries.Add((new CborValue.Text("can_undo"), new CborValue.Bool(value.CanUndo)));
+        csilEntries.Add((new CborValue.Text("revision"), new CborValue.Uint(value.Revision)));
         csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
-        if (value.PositionMs is { } csilV4)
+        if (value.PlaybackId is { } csilV8)
         {
-            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV4)));
+            csilEntries.Add((new CborValue.Text("playback_id"), new CborValue.Text(csilV8)));
         }
-        if (value.CurrentIndex is { } csilV5)
+        if (value.PositionMs is { } csilV9)
         {
-            csilEntries.Add((new CborValue.Text("current_index"), new CborValue.Uint(csilV5)));
+            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV9)));
+        }
+        csilEntries.Add((new CborValue.Text("repeat_mode"), RepeatModeToCborValue(value.RepeatMode)));
+        if (value.CurrentIndex is { } csilV11)
+        {
+            csilEntries.Add((new CborValue.Text("current_index"), new CborValue.Uint(csilV11)));
         }
         return new CborValue.Map(csilEntries);
     }
@@ -1973,19 +2050,31 @@ public static class Codec
     public static PlayerState PlayerStateFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
-        var csilField1 = PlayerStatusFromCborValue(Cbor.Require(value, "status"));
-        ulong? csilField2 = Cbor.MapGet(value, "current_index") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
-        ulong? csilField3 = Cbor.MapGet(value, "position_ms") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
-        var csilField4 = Cbor.AsU64(Cbor.Require(value, "volume"));
-        var csilField5 = Cbor.AsArray(Cbor.Require(value, "queue")).Select(csilElem => QueueItemFromCborValue(csilElem)).ToList();
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "revision"));
+        var csilField2 = PlayerStatusFromCborValue(Cbor.Require(value, "status"));
+        ulong? csilField3 = Cbor.MapGet(value, "current_index") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        string? csilField4 = Cbor.MapGet(value, "playback_id") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
+        ulong? csilField5 = Cbor.MapGet(value, "position_ms") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
+        var csilField6 = Cbor.AsU64(Cbor.Require(value, "volume"));
+        var csilField7 = RepeatModeFromCborValue(Cbor.Require(value, "repeat_mode"));
+        var csilField8 = Cbor.AsBool(Cbor.Require(value, "shuffle"));
+        string? csilField9 = Cbor.MapGet(value, "error") is { } csilRaw9 ? Cbor.AsText(csilRaw9) : null;
+        var csilField10 = Cbor.AsBool(Cbor.Require(value, "can_undo"));
+        var csilField11 = Cbor.AsArray(Cbor.Require(value, "queue")).Select(csilElem => QueueItemFromCborValue(csilElem)).ToList();
         return new PlayerState
         {
             PlayerId = csilField0,
-            Status = csilField1,
-            CurrentIndex = csilField2,
-            PositionMs = csilField3,
-            Volume = csilField4,
-            Queue = csilField5,
+            Revision = csilField1,
+            Status = csilField2,
+            CurrentIndex = csilField3,
+            PlaybackId = csilField4,
+            PositionMs = csilField5,
+            Volume = csilField6,
+            RepeatMode = csilField7,
+            Shuffle = csilField8,
+            Error = csilField9,
+            CanUndo = csilField10,
+            Queue = csilField11,
         };
     }
 
@@ -2079,6 +2168,27 @@ public static class Codec
         };
     }
 
+    /// <summary>The canonical CBOR value tree for a CmdEnqueueNext.</summary>
+    public static CborValue CmdEnqueueNextToCborValue(CmdEnqueueNext value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("enqueue-next")));
+        csilEntries.Add((new CborValue.Text("track_ids"), new CborValue.Array(value.TrackIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdEnqueueNext from a decoded CBOR value tree.</summary>
+    public static CmdEnqueueNext CmdEnqueueNextFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("enqueue-next"), "enqueue-next");
+        var csilField1 = Cbor.AsArray(Cbor.Require(value, "track_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        return new CmdEnqueueNext
+        {
+            Op = csilField0,
+            TrackIds = csilField1,
+        };
+    }
+
     /// <summary>The canonical CBOR value tree for a CmdRemove.</summary>
     public static CborValue CmdRemoveToCborValue(CmdRemove value)
     {
@@ -2097,6 +2207,27 @@ public static class Codec
         {
             Op = csilField0,
             Index = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdRemoveItem.</summary>
+    public static CborValue CmdRemoveItemToCborValue(CmdRemoveItem value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("remove-item")));
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdRemoveItem from a decoded CBOR value tree.</summary>
+    public static CmdRemoveItem CmdRemoveItemFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("remove-item"), "remove-item");
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        return new CmdRemoveItem
+        {
+            Op = csilField0,
+            QueueItemId = csilField1,
         };
     }
 
@@ -2121,6 +2252,33 @@ public static class Codec
             Op = csilField0,
             FromIndex = csilField1,
             ToIndex = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdMoveItem.</summary>
+    public static CborValue CmdMoveItemToCborValue(CmdMoveItem value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("move-item")));
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
+        if (value.BeforeQueueItemId is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("before_queue_item_id"), new CborValue.Uint(csilV2)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdMoveItem from a decoded CBOR value tree.</summary>
+    public static CmdMoveItem CmdMoveItemFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("move-item"), "move-item");
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        ulong? csilField2 = Cbor.MapGet(value, "before_queue_item_id") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
+        return new CmdMoveItem
+        {
+            Op = csilField0,
+            QueueItemId = csilField1,
+            BeforeQueueItemId = csilField2,
         };
     }
 
@@ -2151,6 +2309,10 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("index"), new CborValue.Uint(csilV1)));
         }
+        if (value.QueueItemId is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(csilV2)));
+        }
         return new CborValue.Map(csilEntries);
     }
 
@@ -2159,10 +2321,45 @@ public static class Codec
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("play"), "play");
         ulong? csilField1 = Cbor.MapGet(value, "index") is { } csilRaw1 ? Cbor.AsU64(csilRaw1) : null;
+        ulong? csilField2 = Cbor.MapGet(value, "queue_item_id") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
         return new CmdPlay
         {
             Op = csilField0,
             Index = csilField1,
+            QueueItemId = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdReplaceAndPlay.</summary>
+    public static CborValue CmdReplaceAndPlayToCborValue(CmdReplaceAndPlay value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("replace-and-play")));
+        csilEntries.Add((new CborValue.Text("track_ids"), new CborValue.Array(value.TrackIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        if (value.PositionMs is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV2)));
+        }
+        if (value.StartIndex is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("start_index"), new CborValue.Uint(csilV3)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdReplaceAndPlay from a decoded CBOR value tree.</summary>
+    public static CmdReplaceAndPlay CmdReplaceAndPlayFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("replace-and-play"), "replace-and-play");
+        var csilField1 = Cbor.AsArray(Cbor.Require(value, "track_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        ulong? csilField2 = Cbor.MapGet(value, "start_index") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
+        ulong? csilField3 = Cbor.MapGet(value, "position_ms") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        return new CmdReplaceAndPlay
+        {
+            Op = csilField0,
+            TrackIds = csilField1,
+            StartIndex = csilField2,
+            PositionMs = csilField3,
         };
     }
 
@@ -2262,19 +2459,170 @@ public static class Codec
         };
     }
 
+    /// <summary>The canonical CBOR value tree for a CmdSetRepeat.</summary>
+    public static CborValue CmdSetRepeatToCborValue(CmdSetRepeat value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("set-repeat")));
+        csilEntries.Add((new CborValue.Text("repeat_mode"), RepeatModeToCborValue(value.RepeatMode)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdSetRepeat from a decoded CBOR value tree.</summary>
+    public static CmdSetRepeat CmdSetRepeatFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("set-repeat"), "set-repeat");
+        var csilField1 = RepeatModeFromCborValue(Cbor.Require(value, "repeat_mode"));
+        return new CmdSetRepeat
+        {
+            Op = csilField0,
+            RepeatMode = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdSetShuffle.</summary>
+    public static CborValue CmdSetShuffleToCborValue(CmdSetShuffle value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("set-shuffle")));
+        csilEntries.Add((new CborValue.Text("shuffle"), new CborValue.Bool(value.Shuffle)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdSetShuffle from a decoded CBOR value tree.</summary>
+    public static CmdSetShuffle CmdSetShuffleFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("set-shuffle"), "set-shuffle");
+        var csilField1 = Cbor.AsBool(Cbor.Require(value, "shuffle"));
+        return new CmdSetShuffle
+        {
+            Op = csilField0,
+            Shuffle = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdUndo.</summary>
+    public static CborValue CmdUndoToCborValue(CmdUndo value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("undo")));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdUndo from a decoded CBOR value tree.</summary>
+    public static CmdUndo CmdUndoFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("undo"), "undo");
+        return new CmdUndo
+        {
+            Op = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdPlaybackCompleted.</summary>
+    public static CborValue CmdPlaybackCompletedToCborValue(CmdPlaybackCompleted value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("playback-completed")));
+        csilEntries.Add((new CborValue.Text("playback_id"), new CborValue.Text(value.PlaybackId)));
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdPlaybackCompleted from a decoded CBOR value tree.</summary>
+    public static CmdPlaybackCompleted CmdPlaybackCompletedFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("playback-completed"), "playback-completed");
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "playback_id"));
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        return new CmdPlaybackCompleted
+        {
+            Op = csilField0,
+            PlaybackId = csilField1,
+            QueueItemId = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdPlaybackFailed.</summary>
+    public static CborValue CmdPlaybackFailedToCborValue(CmdPlaybackFailed value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("playback-failed")));
+        csilEntries.Add((new CborValue.Text("error"), new CborValue.Text(value.Error)));
+        csilEntries.Add((new CborValue.Text("playback_id"), new CborValue.Text(value.PlaybackId)));
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdPlaybackFailed from a decoded CBOR value tree.</summary>
+    public static CmdPlaybackFailed CmdPlaybackFailedFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("playback-failed"), "playback-failed");
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "playback_id"));
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        var csilField3 = Cbor.AsText(Cbor.Require(value, "error"));
+        return new CmdPlaybackFailed
+        {
+            Op = csilField0,
+            PlaybackId = csilField1,
+            QueueItemId = csilField2,
+            Error = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a CmdPlaybackState.</summary>
+    public static CborValue CmdPlaybackStateToCborValue(CmdPlaybackState value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("op"), new CborValue.Text("playback-state")));
+        csilEntries.Add((new CborValue.Text("status"), PlayerStatusToCborValue(value.Status)));
+        csilEntries.Add((new CborValue.Text("playback_id"), new CborValue.Text(value.PlaybackId)));
+        csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(value.PositionMs)));
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a CmdPlaybackState from a decoded CBOR value tree.</summary>
+    public static CmdPlaybackState CmdPlaybackStateFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("playback-state"), "playback-state");
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "playback_id"));
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        var csilField3 = PlayerStatusFromCborValue(Cbor.Require(value, "status"));
+        var csilField4 = Cbor.AsU64(Cbor.Require(value, "position_ms"));
+        return new CmdPlaybackState
+        {
+            Op = csilField0,
+            PlaybackId = csilField1,
+            QueueItemId = csilField2,
+            Status = csilField3,
+            PositionMs = csilField4,
+        };
+    }
+
     /// <summary>The tagged-sum CBOR value for a PlayerCommand: [variant_index, value].</summary>
     public static CborValue PlayerCommandToCborValue(PlayerCommand value) => value switch
     {
         PlayerCommandCmdEnqueue csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(0), (CborValue)CmdEnqueueToCborValue(csilArm.Value) }),
-        PlayerCommandCmdRemove csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(1), (CborValue)CmdRemoveToCborValue(csilArm.Value) }),
-        PlayerCommandCmdReorder csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(2), (CborValue)CmdReorderToCborValue(csilArm.Value) }),
-        PlayerCommandCmdClear csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(3), (CborValue)CmdClearToCborValue(csilArm.Value) }),
-        PlayerCommandCmdPlay csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(4), (CborValue)CmdPlayToCborValue(csilArm.Value) }),
-        PlayerCommandCmdPause csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(5), (CborValue)CmdPauseToCborValue(csilArm.Value) }),
-        PlayerCommandCmdNext csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(6), (CborValue)CmdNextToCborValue(csilArm.Value) }),
-        PlayerCommandCmdPrevious csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(7), (CborValue)CmdPreviousToCborValue(csilArm.Value) }),
-        PlayerCommandCmdSeek csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(8), (CborValue)CmdSeekToCborValue(csilArm.Value) }),
-        PlayerCommandCmdVolume csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(9), (CborValue)CmdVolumeToCborValue(csilArm.Value) }),
+        PlayerCommandCmdEnqueueNext csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(1), (CborValue)CmdEnqueueNextToCborValue(csilArm.Value) }),
+        PlayerCommandCmdRemove csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(2), (CborValue)CmdRemoveToCborValue(csilArm.Value) }),
+        PlayerCommandCmdRemoveItem csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(3), (CborValue)CmdRemoveItemToCborValue(csilArm.Value) }),
+        PlayerCommandCmdReorder csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(4), (CborValue)CmdReorderToCborValue(csilArm.Value) }),
+        PlayerCommandCmdMoveItem csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(5), (CborValue)CmdMoveItemToCborValue(csilArm.Value) }),
+        PlayerCommandCmdClear csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(6), (CborValue)CmdClearToCborValue(csilArm.Value) }),
+        PlayerCommandCmdPlay csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(7), (CborValue)CmdPlayToCborValue(csilArm.Value) }),
+        PlayerCommandCmdReplaceAndPlay csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(8), (CborValue)CmdReplaceAndPlayToCborValue(csilArm.Value) }),
+        PlayerCommandCmdPause csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(9), (CborValue)CmdPauseToCborValue(csilArm.Value) }),
+        PlayerCommandCmdNext csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(10), (CborValue)CmdNextToCborValue(csilArm.Value) }),
+        PlayerCommandCmdPrevious csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(11), (CborValue)CmdPreviousToCborValue(csilArm.Value) }),
+        PlayerCommandCmdSeek csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(12), (CborValue)CmdSeekToCborValue(csilArm.Value) }),
+        PlayerCommandCmdVolume csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(13), (CborValue)CmdVolumeToCborValue(csilArm.Value) }),
+        PlayerCommandCmdSetRepeat csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(14), (CborValue)CmdSetRepeatToCborValue(csilArm.Value) }),
+        PlayerCommandCmdSetShuffle csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(15), (CborValue)CmdSetShuffleToCborValue(csilArm.Value) }),
+        PlayerCommandCmdUndo csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(16), (CborValue)CmdUndoToCborValue(csilArm.Value) }),
+        PlayerCommandCmdPlaybackCompleted csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(17), (CborValue)CmdPlaybackCompletedToCborValue(csilArm.Value) }),
+        PlayerCommandCmdPlaybackFailed csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(18), (CborValue)CmdPlaybackFailedToCborValue(csilArm.Value) }),
+        PlayerCommandCmdPlaybackState csilArm => new CborValue.Array(new CborValue[] { new CborValue.Uint(19), (CborValue)CmdPlaybackStateToCborValue(csilArm.Value) }),
         _ => throw new CborException("invalid PlayerCommand"),
     };
 
@@ -2285,15 +2633,25 @@ public static class Codec
         return Cbor.AsU64(csilArr[0]) switch
         {
         0 => new PlayerCommandCmdEnqueue(CmdEnqueueFromCborValue(csilArr[1])),
-        1 => new PlayerCommandCmdRemove(CmdRemoveFromCborValue(csilArr[1])),
-        2 => new PlayerCommandCmdReorder(CmdReorderFromCborValue(csilArr[1])),
-        3 => new PlayerCommandCmdClear(CmdClearFromCborValue(csilArr[1])),
-        4 => new PlayerCommandCmdPlay(CmdPlayFromCborValue(csilArr[1])),
-        5 => new PlayerCommandCmdPause(CmdPauseFromCborValue(csilArr[1])),
-        6 => new PlayerCommandCmdNext(CmdNextFromCborValue(csilArr[1])),
-        7 => new PlayerCommandCmdPrevious(CmdPreviousFromCborValue(csilArr[1])),
-        8 => new PlayerCommandCmdSeek(CmdSeekFromCborValue(csilArr[1])),
-        9 => new PlayerCommandCmdVolume(CmdVolumeFromCborValue(csilArr[1])),
+        1 => new PlayerCommandCmdEnqueueNext(CmdEnqueueNextFromCborValue(csilArr[1])),
+        2 => new PlayerCommandCmdRemove(CmdRemoveFromCborValue(csilArr[1])),
+        3 => new PlayerCommandCmdRemoveItem(CmdRemoveItemFromCborValue(csilArr[1])),
+        4 => new PlayerCommandCmdReorder(CmdReorderFromCborValue(csilArr[1])),
+        5 => new PlayerCommandCmdMoveItem(CmdMoveItemFromCborValue(csilArr[1])),
+        6 => new PlayerCommandCmdClear(CmdClearFromCborValue(csilArr[1])),
+        7 => new PlayerCommandCmdPlay(CmdPlayFromCborValue(csilArr[1])),
+        8 => new PlayerCommandCmdReplaceAndPlay(CmdReplaceAndPlayFromCborValue(csilArr[1])),
+        9 => new PlayerCommandCmdPause(CmdPauseFromCborValue(csilArr[1])),
+        10 => new PlayerCommandCmdNext(CmdNextFromCborValue(csilArr[1])),
+        11 => new PlayerCommandCmdPrevious(CmdPreviousFromCborValue(csilArr[1])),
+        12 => new PlayerCommandCmdSeek(CmdSeekFromCborValue(csilArr[1])),
+        13 => new PlayerCommandCmdVolume(CmdVolumeFromCborValue(csilArr[1])),
+        14 => new PlayerCommandCmdSetRepeat(CmdSetRepeatFromCborValue(csilArr[1])),
+        15 => new PlayerCommandCmdSetShuffle(CmdSetShuffleFromCborValue(csilArr[1])),
+        16 => new PlayerCommandCmdUndo(CmdUndoFromCborValue(csilArr[1])),
+        17 => new PlayerCommandCmdPlaybackCompleted(CmdPlaybackCompletedFromCborValue(csilArr[1])),
+        18 => new PlayerCommandCmdPlaybackFailed(CmdPlaybackFailedFromCborValue(csilArr[1])),
+        19 => new PlayerCommandCmdPlaybackState(CmdPlaybackStateFromCborValue(csilArr[1])),
             _ => throw new CborException("invalid PlayerCommand variant"),
         };
     }
@@ -2383,6 +2741,7 @@ public static class Codec
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("open")));
         csilEntries.Add((new CborValue.Text("pref"), StreamPrefToCborValue(value.Pref)));
         csilEntries.Add((new CborValue.Text("track_id"), new CborValue.Text(value.TrackId)));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2390,13 +2749,15 @@ public static class Codec
     public static MediaOpen MediaOpenFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("open"), "open");
-        var csilField1 = Cbor.AsText(Cbor.Require(value, "track_id"));
-        var csilField2 = StreamPrefFromCborValue(Cbor.Require(value, "pref"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
+        var csilField2 = Cbor.AsText(Cbor.Require(value, "track_id"));
+        var csilField3 = StreamPrefFromCborValue(Cbor.Require(value, "pref"));
         return new MediaOpen
         {
             Kind = csilField0,
-            TrackId = csilField1,
-            Pref = csilField2,
+            StreamId = csilField1,
+            TrackId = csilField2,
+            Pref = csilField3,
         };
     }
 
@@ -2405,6 +2766,7 @@ public static class Codec
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("seek")));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(value.PositionMs)));
         return new CborValue.Map(csilEntries);
     }
@@ -2413,11 +2775,13 @@ public static class Codec
     public static MediaSeek MediaSeekFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("seek"), "seek");
-        var csilField1 = Cbor.AsU64(Cbor.Require(value, "position_ms"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "position_ms"));
         return new MediaSeek
         {
             Kind = csilField0,
-            PositionMs = csilField1,
+            StreamId = csilField1,
+            PositionMs = csilField2,
         };
     }
 
@@ -2426,6 +2790,7 @@ public static class Codec
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("pause")));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2433,9 +2798,11 @@ public static class Codec
     public static MediaPause MediaPauseFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("pause"), "pause");
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
         return new MediaPause
         {
             Kind = csilField0,
+            StreamId = csilField1,
         };
     }
 
@@ -2444,6 +2811,7 @@ public static class Codec
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("resume")));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2451,9 +2819,11 @@ public static class Codec
     public static MediaResume MediaResumeFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("resume"), "resume");
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
         return new MediaResume
         {
             Kind = csilField0,
+            StreamId = csilField1,
         };
     }
 
@@ -2462,6 +2832,7 @@ public static class Codec
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("stop")));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2469,9 +2840,11 @@ public static class Codec
     public static MediaStop MediaStopFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("stop"), "stop");
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
         return new MediaStop
         {
             Kind = csilField0,
+            StreamId = csilField1,
         };
     }
 
@@ -2508,15 +2881,16 @@ public static class Codec
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("header")));
         csilEntries.Add((new CborValue.Text("codec"), CodecToCborValue(value.Codec)));
         csilEntries.Add((new CborValue.Text("channels"), new CborValue.Uint(value.Channels)));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         csilEntries.Add((new CborValue.Text("transcoded"), new CborValue.Bool(value.Transcoded)));
-        if (value.DurationMs is { } csilV4)
+        if (value.DurationMs is { } csilV5)
         {
-            csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(csilV4)));
+            csilEntries.Add((new CborValue.Text("duration_ms"), new CborValue.Uint(csilV5)));
         }
         csilEntries.Add((new CborValue.Text("sample_rate"), new CborValue.Uint(value.SampleRate)));
-        if (value.CodecConfig is { } csilV6)
+        if (value.CodecConfig is { } csilV7)
         {
-            csilEntries.Add((new CborValue.Text("codec_config"), new CborValue.Bytes(csilV6)));
+            csilEntries.Add((new CborValue.Text("codec_config"), new CborValue.Bytes(csilV7)));
         }
         csilEntries.Add((new CborValue.Text("trim_end_samples"), new CborValue.Uint(value.TrimEndSamples)));
         csilEntries.Add((new CborValue.Text("trim_start_samples"), new CborValue.Uint(value.TrimStartSamples)));
@@ -2527,25 +2901,27 @@ public static class Codec
     public static MediaHeader MediaHeaderFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("header"), "header");
-        var csilField1 = CodecFromCborValue(Cbor.Require(value, "codec"));
-        var csilField2 = Cbor.AsBool(Cbor.Require(value, "transcoded"));
-        var csilField3 = Cbor.AsU64(Cbor.Require(value, "sample_rate"));
-        var csilField4 = Cbor.AsU64(Cbor.Require(value, "channels"));
-        ulong? csilField5 = Cbor.MapGet(value, "duration_ms") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
-        var csilField6 = Cbor.AsU64(Cbor.Require(value, "trim_start_samples"));
-        var csilField7 = Cbor.AsU64(Cbor.Require(value, "trim_end_samples"));
-        byte[]? csilField8 = Cbor.MapGet(value, "codec_config") is { } csilRaw8 ? Cbor.AsBytes(csilRaw8) : null;
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
+        var csilField2 = CodecFromCborValue(Cbor.Require(value, "codec"));
+        var csilField3 = Cbor.AsBool(Cbor.Require(value, "transcoded"));
+        var csilField4 = Cbor.AsU64(Cbor.Require(value, "sample_rate"));
+        var csilField5 = Cbor.AsU64(Cbor.Require(value, "channels"));
+        ulong? csilField6 = Cbor.MapGet(value, "duration_ms") is { } csilRaw6 ? Cbor.AsU64(csilRaw6) : null;
+        var csilField7 = Cbor.AsU64(Cbor.Require(value, "trim_start_samples"));
+        var csilField8 = Cbor.AsU64(Cbor.Require(value, "trim_end_samples"));
+        byte[]? csilField9 = Cbor.MapGet(value, "codec_config") is { } csilRaw9 ? Cbor.AsBytes(csilRaw9) : null;
         return new MediaHeader
         {
             Kind = csilField0,
-            Codec = csilField1,
-            Transcoded = csilField2,
-            SampleRate = csilField3,
-            Channels = csilField4,
-            DurationMs = csilField5,
-            TrimStartSamples = csilField6,
-            TrimEndSamples = csilField7,
-            CodecConfig = csilField8,
+            StreamId = csilField1,
+            Codec = csilField2,
+            Transcoded = csilField3,
+            SampleRate = csilField4,
+            Channels = csilField5,
+            DurationMs = csilField6,
+            TrimStartSamples = csilField7,
+            TrimEndSamples = csilField8,
+            CodecConfig = csilField9,
         };
     }
 
@@ -2572,9 +2948,10 @@ public static class Codec
         csilEntries.Add((new CborValue.Text("seq"), new CborValue.Uint(value.Seq)));
         csilEntries.Add((new CborValue.Text("data"), new CborValue.Bytes(value.Data)));
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("chunk")));
-        if (value.TimestampMs is { } csilV3)
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
+        if (value.TimestampMs is { } csilV4)
         {
-            csilEntries.Add((new CborValue.Text("timestamp_ms"), new CborValue.Uint(csilV3)));
+            csilEntries.Add((new CborValue.Text("timestamp_ms"), new CborValue.Uint(csilV4)));
         }
         return new CborValue.Map(csilEntries);
     }
@@ -2583,15 +2960,17 @@ public static class Codec
     public static MediaChunk MediaChunkFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("chunk"), "chunk");
-        var csilField1 = Cbor.AsU64(Cbor.Require(value, "seq"));
-        ulong? csilField2 = Cbor.MapGet(value, "timestamp_ms") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
-        var csilField3 = Cbor.AsBytes(Cbor.Require(value, "data"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "seq"));
+        ulong? csilField3 = Cbor.MapGet(value, "timestamp_ms") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        var csilField4 = Cbor.AsBytes(Cbor.Require(value, "data"));
         return new MediaChunk
         {
             Kind = csilField0,
-            Seq = csilField1,
-            TimestampMs = csilField2,
-            Data = csilField3,
+            StreamId = csilField1,
+            Seq = csilField2,
+            TimestampMs = csilField3,
+            Data = csilField4,
         };
     }
 
@@ -2604,6 +2983,7 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("reason"), MediaEndReasonToCborValue(csilV1)));
         }
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2611,11 +2991,13 @@ public static class Codec
     public static MediaEnd MediaEndFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("end"), "end");
-        MediaEndReason? csilField1 = Cbor.MapGet(value, "reason") is { } csilRaw1 ? MediaEndReasonFromCborValue(csilRaw1) : null;
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
+        MediaEndReason? csilField2 = Cbor.MapGet(value, "reason") is { } csilRaw2 ? MediaEndReasonFromCborValue(csilRaw2) : null;
         return new MediaEnd
         {
             Kind = csilField0,
-            Reason = csilField1,
+            StreamId = csilField1,
+            Reason = csilField2,
         };
     }
 
@@ -2625,6 +3007,7 @@ public static class Codec
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
         csilEntries.Add((new CborValue.Text("kind"), new CborValue.Text("error")));
         csilEntries.Add((new CborValue.Text("error"), ServiceErrorToCborValue(value.Error)));
+        csilEntries.Add((new CborValue.Text("stream_id"), new CborValue.Text(value.StreamId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2632,11 +3015,13 @@ public static class Codec
     public static MediaFail MediaFailFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "kind"), new CborValue.Text("error"), "error");
-        var csilField1 = ServiceErrorFromCborValue(Cbor.Require(value, "error"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "stream_id"));
+        var csilField2 = ServiceErrorFromCborValue(Cbor.Require(value, "error"));
         return new MediaFail
         {
             Kind = csilField0,
-            Error = csilField1,
+            StreamId = csilField1,
+            Error = csilField2,
         };
     }
 
@@ -2753,10 +3138,12 @@ public static class Codec
         csilEntries.Add((new CborValue.Text("pref"), StreamPrefToCborValue(value.Pref)));
         csilEntries.Add((new CborValue.Text("track_id"), new CborValue.Text(value.TrackId)));
         csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
-        if (value.PositionMs is { } csilV4)
+        csilEntries.Add((new CborValue.Text("playback_id"), new CborValue.Text(value.PlaybackId)));
+        if (value.PositionMs is { } csilV5)
         {
-            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV4)));
+            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV5)));
         }
+        csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(value.QueueItemId)));
         return new CborValue.Map(csilEntries);
     }
 
@@ -2765,16 +3152,20 @@ public static class Codec
     {
         var csilField0 = Cbor.ExpectLiteral(Cbor.Require(value, "op"), new CborValue.Text("load"), "load");
         var csilField1 = Cbor.AsText(Cbor.Require(value, "player_id"));
-        var csilField2 = Cbor.AsText(Cbor.Require(value, "track_id"));
-        var csilField3 = StreamPrefFromCborValue(Cbor.Require(value, "pref"));
-        ulong? csilField4 = Cbor.MapGet(value, "position_ms") is { } csilRaw4 ? Cbor.AsU64(csilRaw4) : null;
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "queue_item_id"));
+        var csilField3 = Cbor.AsText(Cbor.Require(value, "playback_id"));
+        var csilField4 = Cbor.AsText(Cbor.Require(value, "track_id"));
+        var csilField5 = StreamPrefFromCborValue(Cbor.Require(value, "pref"));
+        ulong? csilField6 = Cbor.MapGet(value, "position_ms") is { } csilRaw6 ? Cbor.AsU64(csilRaw6) : null;
         return new DirLoad
         {
             Op = csilField0,
             PlayerId = csilField1,
-            TrackId = csilField2,
-            Pref = csilField3,
-            PositionMs = csilField4,
+            QueueItemId = csilField2,
+            PlaybackId = csilField3,
+            TrackId = csilField4,
+            Pref = csilField5,
+            PositionMs = csilField6,
         };
     }
 
@@ -2895,15 +3286,31 @@ public static class Codec
     public static CborValue NodeReportToCborValue(NodeReport value)
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        if (value.Error is { } csilV0)
+        {
+            csilEntries.Add((new CborValue.Text("error"), new CborValue.Text(csilV0)));
+        }
+        if (value.Event is { } csilV1)
+        {
+            csilEntries.Add((new CborValue.Text("event"), NodeEventToCborValue(csilV1)));
+        }
         csilEntries.Add((new CborValue.Text("status"), PlayerStatusToCborValue(value.Status)));
         csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
-        if (value.PositionMs is { } csilV2)
+        if (value.PlaybackId is { } csilV4)
         {
-            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV2)));
+            csilEntries.Add((new CborValue.Text("playback_id"), new CborValue.Text(csilV4)));
         }
-        if (value.AudioBlocked is { } csilV3)
+        if (value.PositionMs is { } csilV5)
         {
-            csilEntries.Add((new CborValue.Text("audio_blocked"), new CborValue.Bool(csilV3)));
+            csilEntries.Add((new CborValue.Text("position_ms"), new CborValue.Uint(csilV5)));
+        }
+        if (value.AudioBlocked is { } csilV6)
+        {
+            csilEntries.Add((new CborValue.Text("audio_blocked"), new CborValue.Bool(csilV6)));
+        }
+        if (value.QueueItemId is { } csilV7)
+        {
+            csilEntries.Add((new CborValue.Text("queue_item_id"), new CborValue.Uint(csilV7)));
         }
         return new CborValue.Map(csilEntries);
     }
@@ -2912,15 +3319,23 @@ public static class Codec
     public static NodeReport NodeReportFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
-        var csilField1 = PlayerStatusFromCborValue(Cbor.Require(value, "status"));
-        ulong? csilField2 = Cbor.MapGet(value, "position_ms") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
-        bool? csilField3 = Cbor.MapGet(value, "audio_blocked") is { } csilRaw3 ? Cbor.AsBool(csilRaw3) : null;
+        NodeEvent? csilField1 = Cbor.MapGet(value, "event") is { } csilRaw1 ? NodeEventFromCborValue(csilRaw1) : null;
+        var csilField2 = PlayerStatusFromCborValue(Cbor.Require(value, "status"));
+        ulong? csilField3 = Cbor.MapGet(value, "queue_item_id") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        string? csilField4 = Cbor.MapGet(value, "playback_id") is { } csilRaw4 ? Cbor.AsText(csilRaw4) : null;
+        ulong? csilField5 = Cbor.MapGet(value, "position_ms") is { } csilRaw5 ? Cbor.AsU64(csilRaw5) : null;
+        string? csilField6 = Cbor.MapGet(value, "error") is { } csilRaw6 ? Cbor.AsText(csilRaw6) : null;
+        bool? csilField7 = Cbor.MapGet(value, "audio_blocked") is { } csilRaw7 ? Cbor.AsBool(csilRaw7) : null;
         return new NodeReport
         {
             PlayerId = csilField0,
-            Status = csilField1,
-            PositionMs = csilField2,
-            AudioBlocked = csilField3,
+            Event = csilField1,
+            Status = csilField2,
+            QueueItemId = csilField3,
+            PlaybackId = csilField4,
+            PositionMs = csilField5,
+            Error = csilField6,
+            AudioBlocked = csilField7,
         };
     }
 

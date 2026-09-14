@@ -836,17 +836,23 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
                     Message::Binary(bytes) => {
                         let app2 = app.clone();
                         let id2 = ident.clone();
-                        let (new_ident, reply, effects) = tokio::task::spawn_blocking(move || {
+                        let (new_ident, mut reply, effects) = tokio::task::spawn_blocking(move || {
                             transport::handle_events_frame(&app2, id2, allow_guest, &bytes)
                         })
                         .await
                         .unwrap_or((Identity::Anonymous, None, transport::FrameEffects::default()));
                         ident = new_ident;
-                        if let Some((player_id, active)) = effects.player_subscription {
+                        if let Some((ref player_id, active)) = effects.player_subscription {
                             if active {
-                                app.subs.subscribe(player_id, conn_id, tx.clone());
+                                app.subs.subscribe(player_id.clone(), conn_id, tx.clone());
+                                reply = transport::player_subscription_snapshot(
+                                    &app,
+                                    &ident,
+                                    player_id,
+                                )
+                                .or(reply);
                             } else {
-                                app.subs.unsubscribe(&player_id, conn_id);
+                                app.subs.unsubscribe(player_id, conn_id);
                             }
                         }
                         if let Some(player_id) = effects.attach {
@@ -857,8 +863,9 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
                             }
                         }
                         if let Some(player_id) = effects.node_session {
-                            if app.nodes.subscribe(player_id, conn_id, tx.clone()) {
+                            if app.nodes.subscribe(player_id.clone(), conn_id, tx.clone()) {
                                 app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
+                                let _ = app.reconcile_player_output(&player_id);
                             }
                         }
                         if let Some(active) = effects.watch_changes {

@@ -19,7 +19,7 @@ RegisterNodeRequest = {
 RegisterNodeResponse = { node_id: NodeId, players: [* Player] }
 
 ;; Server -> node directives for this node's targets, discriminated on `op`.
-DirLoad   = { op: "load", player_id: PlayerId, track_id: TrackId, pref: StreamPref, ? position_ms: uint }
+DirLoad   = { op: "load", player_id: PlayerId, queue_item_id: uint, playback_id: text, track_id: TrackId, pref: StreamPref, ? position_ms: uint }
 DirPause  = { op: "pause", player_id: PlayerId }
 DirResume = { op: "resume", player_id: PlayerId }
 DirStop   = { op: "stop", player_id: PlayerId }
@@ -31,8 +31,12 @@ NodeDirective = DirLoad / DirPause / DirResume / DirStop / DirVolume
 ;; not yet satisfied). A native node never sets it. §6.4.
 NodeReport = {
     player_id: PlayerId,
+    ? event: NodeEvent .default "state",
     status: PlayerStatus,
+    ? queue_item_id: uint,
+    ? playback_id: text,
     ? position_ms: uint,
+    ? error: text .size (1..1024),
     ? audio_blocked: bool .default false
 }
 

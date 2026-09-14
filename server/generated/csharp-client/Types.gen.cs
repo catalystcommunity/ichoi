@@ -36,6 +36,28 @@ public enum PlayerStatus
     Paused,
 }
 
+public enum RepeatMode
+{
+    // wire value: off
+    Off,
+    // wire value: all
+    All,
+    // wire value: one
+    One,
+}
+
+public enum NodeEvent
+{
+    // wire value: ready
+    Ready,
+    // wire value: state
+    State,
+    // wire value: completed
+    Completed,
+    // wire value: failed
+    Failed,
+}
+
 public enum Codec
 {
     // wire value: mp3
@@ -545,6 +567,8 @@ public sealed record Player
 
 public sealed record QueueItem
 {
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
     // CBOR key: track_id
     public required TrackId TrackId { get; init; }
     // CBOR key: library
@@ -561,14 +585,26 @@ public sealed record PlayerState
 {
     // CBOR key: player_id
     public required PlayerId PlayerId { get; init; }
+    // CBOR key: revision
+    public required ulong Revision { get; init; }
     // CBOR key: status
     public required PlayerStatus Status { get; init; }
     // CBOR key: current_index
     public ulong? CurrentIndex { get; init; }
+    // CBOR key: playback_id
+    public string? PlaybackId { get; init; }
     // CBOR key: position_ms
     public ulong? PositionMs { get; init; }
     // CBOR key: volume
     public required ulong Volume { get; init; }
+    // CBOR key: repeat_mode
+    public required RepeatMode RepeatMode { get; init; }
+    // CBOR key: shuffle
+    public required bool Shuffle { get; init; }
+    // CBOR key: error
+    public string? Error { get; init; }
+    // CBOR key: can_undo
+    public required bool CanUndo { get; init; }
     // CBOR key: queue
     public required System.Collections.Generic.List<QueueItem> Queue { get; init; }
 
@@ -612,12 +648,28 @@ public sealed record CmdEnqueue
     public ulong? AtIndex { get; init; }
 }
 
+public sealed record CmdEnqueueNext
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: track_ids
+    public required System.Collections.Generic.List<TrackId> TrackIds { get; init; }
+}
+
 public sealed record CmdRemove
 {
     // CBOR key: op
     public required string Op { get; init; }
     // CBOR key: index
     public required ulong Index { get; init; }
+}
+
+public sealed record CmdRemoveItem
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
 }
 
 public sealed record CmdReorder
@@ -628,6 +680,16 @@ public sealed record CmdReorder
     public required ulong FromIndex { get; init; }
     // CBOR key: to_index
     public required ulong ToIndex { get; init; }
+}
+
+public sealed record CmdMoveItem
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
+    // CBOR key: before_queue_item_id
+    public ulong? BeforeQueueItemId { get; init; }
 }
 
 public sealed record CmdClear
@@ -642,6 +704,20 @@ public sealed record CmdPlay
     public required string Op { get; init; }
     // CBOR key: index
     public ulong? Index { get; init; }
+    // CBOR key: queue_item_id
+    public ulong? QueueItemId { get; init; }
+}
+
+public sealed record CmdReplaceAndPlay
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: track_ids
+    public required System.Collections.Generic.List<TrackId> TrackIds { get; init; }
+    // CBOR key: start_index
+    public ulong? StartIndex { get; init; }
+    // CBOR key: position_ms
+    public ulong? PositionMs { get; init; }
 }
 
 public sealed record CmdPause
@@ -687,28 +763,119 @@ public sealed record CmdVolume
     }
 }
 
+public sealed record CmdSetRepeat
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: repeat_mode
+    public required RepeatMode RepeatMode { get; init; }
+}
+
+public sealed record CmdSetShuffle
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: shuffle
+    public required bool Shuffle { get; init; }
+}
+
+public sealed record CmdUndo
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+}
+
+public sealed record CmdPlaybackCompleted
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: playback_id
+    public required string PlaybackId { get; init; }
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
+}
+
+public sealed record CmdPlaybackFailed
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: playback_id
+    public required string PlaybackId { get; init; }
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
+    // CBOR key: error
+    public required string Error { get; init; }
+
+    /// <summary>Throws System.ArgumentException when a field violates a CSIL constraint.</summary>
+    public void Validate()
+    {
+        if (Error.Length < 1)
+        {
+            throw new System.ArgumentException("field 'Error' must have at least 1 elements");
+        }
+        if (Error.Length > 1024)
+        {
+            throw new System.ArgumentException("field 'Error' must have at most 1024 elements");
+        }
+    }
+}
+
+public sealed record CmdPlaybackState
+{
+    // CBOR key: op
+    public required string Op { get; init; }
+    // CBOR key: playback_id
+    public required string PlaybackId { get; init; }
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
+    // CBOR key: status
+    public required PlayerStatus Status { get; init; }
+    // CBOR key: position_ms
+    public required ulong PositionMs { get; init; }
+}
+
 // Closed discriminated union; consume with an exhaustive `switch` expression.
 public abstract record PlayerCommand;
 // variant 0 'CmdEnqueue'
 public sealed record PlayerCommandCmdEnqueue(CmdEnqueue Value) : PlayerCommand;
-// variant 1 'CmdRemove'
+// variant 1 'CmdEnqueueNext'
+public sealed record PlayerCommandCmdEnqueueNext(CmdEnqueueNext Value) : PlayerCommand;
+// variant 2 'CmdRemove'
 public sealed record PlayerCommandCmdRemove(CmdRemove Value) : PlayerCommand;
-// variant 2 'CmdReorder'
+// variant 3 'CmdRemoveItem'
+public sealed record PlayerCommandCmdRemoveItem(CmdRemoveItem Value) : PlayerCommand;
+// variant 4 'CmdReorder'
 public sealed record PlayerCommandCmdReorder(CmdReorder Value) : PlayerCommand;
-// variant 3 'CmdClear'
+// variant 5 'CmdMoveItem'
+public sealed record PlayerCommandCmdMoveItem(CmdMoveItem Value) : PlayerCommand;
+// variant 6 'CmdClear'
 public sealed record PlayerCommandCmdClear(CmdClear Value) : PlayerCommand;
-// variant 4 'CmdPlay'
+// variant 7 'CmdPlay'
 public sealed record PlayerCommandCmdPlay(CmdPlay Value) : PlayerCommand;
-// variant 5 'CmdPause'
+// variant 8 'CmdReplaceAndPlay'
+public sealed record PlayerCommandCmdReplaceAndPlay(CmdReplaceAndPlay Value) : PlayerCommand;
+// variant 9 'CmdPause'
 public sealed record PlayerCommandCmdPause(CmdPause Value) : PlayerCommand;
-// variant 6 'CmdNext'
+// variant 10 'CmdNext'
 public sealed record PlayerCommandCmdNext(CmdNext Value) : PlayerCommand;
-// variant 7 'CmdPrevious'
+// variant 11 'CmdPrevious'
 public sealed record PlayerCommandCmdPrevious(CmdPrevious Value) : PlayerCommand;
-// variant 8 'CmdSeek'
+// variant 12 'CmdSeek'
 public sealed record PlayerCommandCmdSeek(CmdSeek Value) : PlayerCommand;
-// variant 9 'CmdVolume'
+// variant 13 'CmdVolume'
 public sealed record PlayerCommandCmdVolume(CmdVolume Value) : PlayerCommand;
+// variant 14 'CmdSetRepeat'
+public sealed record PlayerCommandCmdSetRepeat(CmdSetRepeat Value) : PlayerCommand;
+// variant 15 'CmdSetShuffle'
+public sealed record PlayerCommandCmdSetShuffle(CmdSetShuffle Value) : PlayerCommand;
+// variant 16 'CmdUndo'
+public sealed record PlayerCommandCmdUndo(CmdUndo Value) : PlayerCommand;
+// variant 17 'CmdPlaybackCompleted'
+public sealed record PlayerCommandCmdPlaybackCompleted(CmdPlaybackCompleted Value) : PlayerCommand;
+// variant 18 'CmdPlaybackFailed'
+public sealed record PlayerCommandCmdPlaybackFailed(CmdPlaybackFailed Value) : PlayerCommand;
+// variant 19 'CmdPlaybackState'
+public sealed record PlayerCommandCmdPlaybackState(CmdPlaybackState Value) : PlayerCommand;
 
 public sealed record CommandRequest
 {
@@ -756,6 +923,8 @@ public sealed record MediaOpen
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
     // CBOR key: track_id
     public required TrackId TrackId { get; init; }
     // CBOR key: pref
@@ -766,6 +935,8 @@ public sealed record MediaSeek
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
     // CBOR key: position_ms
     public required ulong PositionMs { get; init; }
 }
@@ -774,18 +945,24 @@ public sealed record MediaPause
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
 }
 
 public sealed record MediaResume
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
 }
 
 public sealed record MediaStop
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
 }
 
 // Closed discriminated union; consume with an exhaustive `switch` expression.
@@ -805,6 +982,8 @@ public sealed record MediaHeader
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
     // CBOR key: codec
     public required Codec Codec { get; init; }
     // CBOR key: transcoded
@@ -835,6 +1014,8 @@ public sealed record MediaChunk
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
     // CBOR key: seq
     public required ulong Seq { get; init; }
     // CBOR key: timestamp_ms
@@ -847,6 +1028,8 @@ public sealed record MediaEnd
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
     // CBOR key: reason
     public MediaEndReason? Reason { get; init; }
 }
@@ -855,6 +1038,8 @@ public sealed record MediaFail
 {
     // CBOR key: kind
     public required string Kind { get; init; }
+    // CBOR key: stream_id
+    public required string StreamId { get; init; }
     // CBOR key: error
     public required ServiceError Error { get; init; }
 }
@@ -910,6 +1095,10 @@ public sealed record DirLoad
     public required string Op { get; init; }
     // CBOR key: player_id
     public required PlayerId PlayerId { get; init; }
+    // CBOR key: queue_item_id
+    public required ulong QueueItemId { get; init; }
+    // CBOR key: playback_id
+    public required string PlaybackId { get; init; }
     // CBOR key: track_id
     public required TrackId TrackId { get; init; }
     // CBOR key: pref
@@ -978,12 +1167,36 @@ public sealed record NodeReport
 {
     // CBOR key: player_id
     public required PlayerId PlayerId { get; init; }
+    // CBOR key: event
+    public NodeEvent? Event { get; init; }
     // CBOR key: status
     public required PlayerStatus Status { get; init; }
+    // CBOR key: queue_item_id
+    public ulong? QueueItemId { get; init; }
+    // CBOR key: playback_id
+    public string? PlaybackId { get; init; }
     // CBOR key: position_ms
     public ulong? PositionMs { get; init; }
+    // CBOR key: error
+    public string? Error { get; init; }
     // CBOR key: audio_blocked
     public bool? AudioBlocked { get; init; }
+
+    /// <summary>Throws System.ArgumentException when a field violates a CSIL constraint.</summary>
+    public void Validate()
+    {
+        if (Error is { } errorValue)
+        {
+            if (errorValue.Length < 1)
+            {
+                throw new System.ArgumentException("field 'Error' must have at least 1 elements");
+            }
+            if (errorValue.Length > 1024)
+            {
+                throw new System.ArgumentException("field 'Error' must have at most 1024 elements");
+            }
+        }
+    }
 }
 
 public sealed record Account

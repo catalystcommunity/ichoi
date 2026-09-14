@@ -10,6 +10,8 @@
 
 export type Role = "admin" | "member" | "guest";
 export type PlayerStatus = "stopped" | "playing" | "paused";
+export type RepeatMode = "off" | "all" | "one";
+export type NodeEvent = "ready" | "state" | "completed" | "failed";
 export type Codec = "mp3" | "aac" | "vorbis" | "flac" | "alac" | "opus" | "wav";
 export type TranscodeCodec = "aac" | "mp3";
 
@@ -256,6 +258,7 @@ export interface Player {
 }
 
 export interface QueueItem {
+  queue_item_id: number;
   track_id: string;
   library?: Library;
   title?: string;
@@ -265,10 +268,16 @@ export interface QueueItem {
 
 export interface PlayerState {
   player_id: string;
+  revision: number;
   status: PlayerStatus;
   current_index?: number;
+  playback_id?: string;
   position_ms?: number;
   volume: number;
+  repeat_mode: RepeatMode;
+  shuffle: boolean;
+  error?: string;
+  can_undo: boolean;
   queue: QueueItem[];
 }
 
@@ -310,15 +319,25 @@ export interface DataChange {
 // Transport/queue commands, discriminated on `op`.
 export type PlayerCommand =
   | { op: "enqueue"; track_ids: string[]; at_index?: number }
+  | { op: "enqueue-next"; track_ids: string[] }
   | { op: "remove"; index: number }
+  | { op: "remove-item"; queue_item_id: number }
   | { op: "reorder"; from_index: number; to_index: number }
+  | { op: "move-item"; queue_item_id: number; before_queue_item_id?: number }
   | { op: "clear" }
-  | { op: "play"; index?: number }
+  | { op: "play"; index?: number; queue_item_id?: number }
+  | { op: "replace-and-play"; track_ids: string[]; start_index?: number; position_ms?: number }
   | { op: "pause" }
   | { op: "next" }
   | { op: "previous" }
   | { op: "seek"; position_ms: number }
-  | { op: "volume"; volume: number };
+  | { op: "volume"; volume: number }
+  | { op: "set-repeat"; repeat_mode: RepeatMode }
+  | { op: "set-shuffle"; shuffle: boolean }
+  | { op: "undo" }
+  | { op: "playback-completed"; playback_id: string; queue_item_id: number }
+  | { op: "playback-failed"; playback_id: string; queue_item_id: number; error: string }
+  | { op: "playback-state"; playback_id: string; queue_item_id: number; status: PlayerStatus; position_ms: number };
 
 export interface CommandRequest {
   player_id: string;
@@ -339,16 +358,17 @@ export interface ShareResult {
 
 // Client -> server control, discriminated on `kind`.
 export type MediaControl =
-  | { kind: "open"; track_id: string; pref: StreamPref }
-  | { kind: "seek"; position_ms: number }
-  | { kind: "pause" }
-  | { kind: "resume" }
-  | { kind: "stop" };
+  | { kind: "open"; stream_id: string; track_id: string; pref: StreamPref }
+  | { kind: "seek"; stream_id: string; position_ms: number }
+  | { kind: "pause"; stream_id: string }
+  | { kind: "resume"; stream_id: string }
+  | { kind: "stop"; stream_id: string };
 
 export type MediaEndReason = "eos" | "stopped";
 
 export interface MediaHeader {
   kind: "header";
+  stream_id: string;
   codec: Codec;
   transcoded: boolean;
   sample_rate: number;
@@ -360,16 +380,19 @@ export interface MediaHeader {
 }
 export interface MediaChunk {
   kind: "chunk";
+  stream_id: string;
   seq: number;
   timestamp_ms?: number;
   data: Uint8Array;
 }
 export interface MediaEnd {
   kind: "end";
+  stream_id: string;
   reason?: MediaEndReason;
 }
 export interface MediaFail {
   kind: "error";
+  stream_id: string;
   error: ServiceError;
 }
 export type MediaEvent = MediaHeader | MediaChunk | MediaEnd | MediaFail;
@@ -395,8 +418,12 @@ export interface RegisterNodeResponse {
 }
 export interface NodeReport {
   player_id: string;
+  event?: NodeEvent;
   status: PlayerStatus;
+  queue_item_id?: number;
+  playback_id?: string;
   position_ms?: number;
+  error?: string;
   audio_blocked?: boolean;
 }
 

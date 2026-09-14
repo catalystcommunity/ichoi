@@ -606,6 +606,10 @@ static inline int csilc_enc_Role(csilc_buf *b, const Role *v);
 static inline int csilc_dec_Role(const csilc_value *src, CsilCodecArena *a, Role *out);
 static inline int csilc_enc_PlayerStatus(csilc_buf *b, const PlayerStatus *v);
 static inline int csilc_dec_PlayerStatus(const csilc_value *src, CsilCodecArena *a, PlayerStatus *out);
+static inline int csilc_enc_RepeatMode(csilc_buf *b, const RepeatMode *v);
+static inline int csilc_dec_RepeatMode(const csilc_value *src, CsilCodecArena *a, RepeatMode *out);
+static inline int csilc_enc_NodeEvent(csilc_buf *b, const NodeEvent *v);
+static inline int csilc_dec_NodeEvent(const csilc_value *src, CsilCodecArena *a, NodeEvent *out);
 static inline int csilc_enc_Codec(csilc_buf *b, const Codec *v);
 static inline int csilc_dec_Codec(const csilc_value *src, CsilCodecArena *a, Codec *out);
 static inline int csilc_enc_TranscodeCodec(csilc_buf *b, const TranscodeCodec *v);
@@ -714,14 +718,22 @@ static inline int csilc_enc_SubscribeRequest(csilc_buf *b, const SubscribeReques
 static inline int csilc_dec_SubscribeRequest(const csilc_value *m, CsilCodecArena *a, SubscribeRequest *out);
 static inline int csilc_enc_CmdEnqueue(csilc_buf *b, const CmdEnqueue *v);
 static inline int csilc_dec_CmdEnqueue(const csilc_value *m, CsilCodecArena *a, CmdEnqueue *out);
+static inline int csilc_enc_CmdEnqueueNext(csilc_buf *b, const CmdEnqueueNext *v);
+static inline int csilc_dec_CmdEnqueueNext(const csilc_value *m, CsilCodecArena *a, CmdEnqueueNext *out);
 static inline int csilc_enc_CmdRemove(csilc_buf *b, const CmdRemove *v);
 static inline int csilc_dec_CmdRemove(const csilc_value *m, CsilCodecArena *a, CmdRemove *out);
+static inline int csilc_enc_CmdRemoveItem(csilc_buf *b, const CmdRemoveItem *v);
+static inline int csilc_dec_CmdRemoveItem(const csilc_value *m, CsilCodecArena *a, CmdRemoveItem *out);
 static inline int csilc_enc_CmdReorder(csilc_buf *b, const CmdReorder *v);
 static inline int csilc_dec_CmdReorder(const csilc_value *m, CsilCodecArena *a, CmdReorder *out);
+static inline int csilc_enc_CmdMoveItem(csilc_buf *b, const CmdMoveItem *v);
+static inline int csilc_dec_CmdMoveItem(const csilc_value *m, CsilCodecArena *a, CmdMoveItem *out);
 static inline int csilc_enc_CmdClear(csilc_buf *b, const CmdClear *v);
 static inline int csilc_dec_CmdClear(const csilc_value *m, CsilCodecArena *a, CmdClear *out);
 static inline int csilc_enc_CmdPlay(csilc_buf *b, const CmdPlay *v);
 static inline int csilc_dec_CmdPlay(const csilc_value *m, CsilCodecArena *a, CmdPlay *out);
+static inline int csilc_enc_CmdReplaceAndPlay(csilc_buf *b, const CmdReplaceAndPlay *v);
+static inline int csilc_dec_CmdReplaceAndPlay(const csilc_value *m, CsilCodecArena *a, CmdReplaceAndPlay *out);
 static inline int csilc_enc_CmdPause(csilc_buf *b, const CmdPause *v);
 static inline int csilc_dec_CmdPause(const csilc_value *m, CsilCodecArena *a, CmdPause *out);
 static inline int csilc_enc_CmdNext(csilc_buf *b, const CmdNext *v);
@@ -732,6 +744,18 @@ static inline int csilc_enc_CmdSeek(csilc_buf *b, const CmdSeek *v);
 static inline int csilc_dec_CmdSeek(const csilc_value *m, CsilCodecArena *a, CmdSeek *out);
 static inline int csilc_enc_CmdVolume(csilc_buf *b, const CmdVolume *v);
 static inline int csilc_dec_CmdVolume(const csilc_value *m, CsilCodecArena *a, CmdVolume *out);
+static inline int csilc_enc_CmdSetRepeat(csilc_buf *b, const CmdSetRepeat *v);
+static inline int csilc_dec_CmdSetRepeat(const csilc_value *m, CsilCodecArena *a, CmdSetRepeat *out);
+static inline int csilc_enc_CmdSetShuffle(csilc_buf *b, const CmdSetShuffle *v);
+static inline int csilc_dec_CmdSetShuffle(const csilc_value *m, CsilCodecArena *a, CmdSetShuffle *out);
+static inline int csilc_enc_CmdUndo(csilc_buf *b, const CmdUndo *v);
+static inline int csilc_dec_CmdUndo(const csilc_value *m, CsilCodecArena *a, CmdUndo *out);
+static inline int csilc_enc_CmdPlaybackCompleted(csilc_buf *b, const CmdPlaybackCompleted *v);
+static inline int csilc_dec_CmdPlaybackCompleted(const csilc_value *m, CsilCodecArena *a, CmdPlaybackCompleted *out);
+static inline int csilc_enc_CmdPlaybackFailed(csilc_buf *b, const CmdPlaybackFailed *v);
+static inline int csilc_dec_CmdPlaybackFailed(const csilc_value *m, CsilCodecArena *a, CmdPlaybackFailed *out);
+static inline int csilc_enc_CmdPlaybackState(csilc_buf *b, const CmdPlaybackState *v);
+static inline int csilc_dec_CmdPlaybackState(const csilc_value *m, CsilCodecArena *a, CmdPlaybackState *out);
 static inline int csilc_enc_PlayerCommand(csilc_buf *b, const PlayerCommand *v);
 static inline int csilc_dec_PlayerCommand(const csilc_value *m, CsilCodecArena *a, PlayerCommand *out);
 static inline int csilc_enc_CommandRequest(csilc_buf *b, const CommandRequest *v);
@@ -919,6 +943,57 @@ static inline int csilc_dec_PlayerStatus(const csilc_value *src, CsilCodecArena 
         if (strlen(csilc_PlayerStatus_names[csilc_i]) == src->as.bytes.len &&
             memcmp(csilc_PlayerStatus_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
             *out = (PlayerStatus)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static CSILC_UNUSED const char *const csilc_RepeatMode_names[] = {
+    "off",
+    "all",
+    "one",
+};
+/* csilc_enc_RepeatMode writes the RepeatMode variant's wire text. */
+static inline int csilc_enc_RepeatMode(csilc_buf *b, const RepeatMode *v) {
+    const char *csilc_s = csilc_RepeatMode_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_RepeatMode matches the wire text back to a RepeatMode variant. */
+static inline int csilc_dec_RepeatMode(const csilc_value *src, CsilCodecArena *a, RepeatMode *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_RepeatMode_names) / sizeof(csilc_RepeatMode_names[0]); csilc_i++) {
+        if (strlen(csilc_RepeatMode_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_RepeatMode_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (RepeatMode)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static CSILC_UNUSED const char *const csilc_NodeEvent_names[] = {
+    "ready",
+    "state",
+    "completed",
+    "failed",
+};
+/* csilc_enc_NodeEvent writes the NodeEvent variant's wire text. */
+static inline int csilc_enc_NodeEvent(csilc_buf *b, const NodeEvent *v) {
+    const char *csilc_s = csilc_NodeEvent_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_NodeEvent matches the wire text back to a NodeEvent variant. */
+static inline int csilc_dec_NodeEvent(const csilc_value *src, CsilCodecArena *a, NodeEvent *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_NodeEvent_names) / sizeof(csilc_NodeEvent_names[0]); csilc_i++) {
+        if (strlen(csilc_NodeEvent_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_NodeEvent_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (NodeEvent)csilc_i;
             return 0;
         }
     }
@@ -2678,7 +2753,7 @@ static inline int csilc_dec_Player(const csilc_value *m, CsilCodecArena *a, Play
 
 /* csilc_enc_QueueItem writes QueueItem as a canonical CBOR map. */
 static inline int csilc_enc_QueueItem(csilc_buf *b, const QueueItem *v) {
-    size_t csilc_n = 1;
+    size_t csilc_n = 2;
     if (v->title) csilc_n++;
     if (v->artist) csilc_n++;
     if (v->library) csilc_n++;
@@ -2702,6 +2777,8 @@ static inline int csilc_enc_QueueItem(csilc_buf *b, const QueueItem *v) {
         if (csilc_w_text(b, "duration_ms", 11)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->duration_ms)))) return -1;
     }
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
     return 0;
 }
 
@@ -2732,15 +2809,23 @@ static inline int csilc_dec_QueueItem(const csilc_value *m, CsilCodecArena *a, Q
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->duration_ms = csilc_p;
     }
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
     return 0;
 }
 
 /* csilc_enc_PlayerState writes PlayerState as a canonical CBOR map. */
 static inline int csilc_enc_PlayerState(csilc_buf *b, const PlayerState *v) {
-    size_t csilc_n = 4;
+    size_t csilc_n = 8;
+    if (v->error) csilc_n++;
+    if (v->playback_id) csilc_n++;
     if (v->position_ms) csilc_n++;
     if (v->current_index) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (v->error) {
+        if (csilc_w_text(b, "error", 5)) return -1;
+        if (csilc_w_text(b, (v->error), (v->error) ? strlen(v->error) : 0)) return -1;
+    }
     if (csilc_w_text(b, "queue", 5)) return -1;
     if (csilc_w_array_head(b, v->queue_count)) return -1;
     for (size_t csilc_i = 0; csilc_i < v->queue_count; csilc_i++) {
@@ -2750,12 +2835,24 @@ static inline int csilc_enc_PlayerState(csilc_buf *b, const PlayerState *v) {
     if (csilc_enc_PlayerStatus(b, &(v->status))) return -1;
     if (csilc_w_text(b, "volume", 6)) return -1;
     if (csilc_w_uint(b, (uint64_t)(v->volume))) return -1;
+    if (csilc_w_text(b, "shuffle", 7)) return -1;
+    if (csilc_w_bool(b, (v->shuffle))) return -1;
+    if (csilc_w_text(b, "can_undo", 8)) return -1;
+    if (csilc_w_bool(b, (v->can_undo))) return -1;
+    if (csilc_w_text(b, "revision", 8)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->revision))) return -1;
     if (csilc_w_text(b, "player_id", 9)) return -1;
     if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
+    if (v->playback_id) {
+        if (csilc_w_text(b, "playback_id", 11)) return -1;
+        if (csilc_w_text(b, (v->playback_id), (v->playback_id) ? strlen(v->playback_id) : 0)) return -1;
+    }
     if (v->position_ms) {
         if (csilc_w_text(b, "position_ms", 11)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->position_ms)))) return -1;
     }
+    if (csilc_w_text(b, "repeat_mode", 11)) return -1;
+    if (csilc_enc_RepeatMode(b, &(v->repeat_mode))) return -1;
     if (v->current_index) {
         if (csilc_w_text(b, "current_index", 13)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->current_index)))) return -1;
@@ -2768,6 +2865,8 @@ static inline int csilc_dec_PlayerState(const csilc_value *m, CsilCodecArena *a,
     (void)a;
     const csilc_value *csilc_f;
     if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "error");
+    out->error = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
     csilc_f = csilc_map_get(m, "queue");
     if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
     out->queue_count = csilc_f->as.array.count;
@@ -2783,8 +2882,16 @@ static inline int csilc_dec_PlayerState(const csilc_value *m, CsilCodecArena *a,
     if (csilc_dec_PlayerStatus(csilc_f, a, &(out->status))) return -1;
     csilc_f = csilc_map_get(m, "volume");
     if (!csilc_as_u64(csilc_f, &(out->volume))) return -1;
+    csilc_f = csilc_map_get(m, "shuffle");
+    if (!csilc_as_bool(csilc_f, &(out->shuffle))) return -1;
+    csilc_f = csilc_map_get(m, "can_undo");
+    if (!csilc_as_bool(csilc_f, &(out->can_undo))) return -1;
+    csilc_f = csilc_map_get(m, "revision");
+    if (!csilc_as_u64(csilc_f, &(out->revision))) return -1;
     csilc_f = csilc_map_get(m, "player_id");
     if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
+    csilc_f = csilc_map_get(m, "playback_id");
+    out->playback_id = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
     csilc_f = csilc_map_get(m, "position_ms");
     out->position_ms = NULL;
     if (csilc_f) {
@@ -2793,6 +2900,8 @@ static inline int csilc_dec_PlayerState(const csilc_value *m, CsilCodecArena *a,
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->position_ms = csilc_p;
     }
+    csilc_f = csilc_map_get(m, "repeat_mode");
+    if (csilc_dec_RepeatMode(csilc_f, a, &(out->repeat_mode))) return -1;
     csilc_f = csilc_map_get(m, "current_index");
     out->current_index = NULL;
     if (csilc_f) {
@@ -2943,6 +3052,41 @@ static inline int csilc_dec_CmdEnqueue(const csilc_value *m, CsilCodecArena *a, 
     return 0;
 }
 
+/* csilc_enc_CmdEnqueueNext writes CmdEnqueueNext as a canonical CBOR map. */
+static inline int csilc_enc_CmdEnqueueNext(csilc_buf *b, const CmdEnqueueNext *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "enqueue-next", 12)) return -1;
+    if (csilc_w_text(b, "track_ids", 9)) return -1;
+    if (csilc_w_array_head(b, v->track_ids_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->track_ids_count; csilc_i++) {
+        if (csilc_w_text(b, (v->track_ids[csilc_i]), (v->track_ids[csilc_i]) ? strlen(v->track_ids[csilc_i]) : 0)) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_CmdEnqueueNext reads CmdEnqueueNext from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdEnqueueNext(const csilc_value *m, CsilCodecArena *a, CmdEnqueueNext *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "enqueue-next") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "track_ids");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->track_ids_count = csilc_f->as.array.count;
+    out->track_ids = NULL;
+    if (out->track_ids_count) {
+        out->track_ids = (TrackId *)csilc_arena_alloc(a, out->track_ids_count * sizeof(TrackId));
+        if (!out->track_ids) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->track_ids_count; csilc_i++) {
+            if (!csilc_get_text(&csilc_f->as.array.items[csilc_i], &(out->track_ids[csilc_i]))) return -1;
+        }
+    }
+    return 0;
+}
+
 /* csilc_enc_CmdRemove writes CmdRemove as a canonical CBOR map. */
 static inline int csilc_enc_CmdRemove(csilc_buf *b, const CmdRemove *v) {
     size_t csilc_n = 2;
@@ -2963,6 +3107,29 @@ static inline int csilc_dec_CmdRemove(const csilc_value *m, CsilCodecArena *a, C
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "remove") != 0) return -1; (out->op) = csilc_lit; }
     csilc_f = csilc_map_get(m, "index");
     if (!csilc_as_u64(csilc_f, &(out->index))) return -1;
+    return 0;
+}
+
+/* csilc_enc_CmdRemoveItem writes CmdRemoveItem as a canonical CBOR map. */
+static inline int csilc_enc_CmdRemoveItem(csilc_buf *b, const CmdRemoveItem *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "remove-item", 11)) return -1;
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdRemoveItem reads CmdRemoveItem from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdRemoveItem(const csilc_value *m, CsilCodecArena *a, CmdRemoveItem *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "remove-item") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
     return 0;
 }
 
@@ -2993,6 +3160,42 @@ static inline int csilc_dec_CmdReorder(const csilc_value *m, CsilCodecArena *a, 
     return 0;
 }
 
+/* csilc_enc_CmdMoveItem writes CmdMoveItem as a canonical CBOR map. */
+static inline int csilc_enc_CmdMoveItem(csilc_buf *b, const CmdMoveItem *v) {
+    size_t csilc_n = 2;
+    if (v->before_queue_item_id) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "move-item", 9)) return -1;
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
+    if (v->before_queue_item_id) {
+        if (csilc_w_text(b, "before_queue_item_id", 20)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->before_queue_item_id)))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_CmdMoveItem reads CmdMoveItem from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdMoveItem(const csilc_value *m, CsilCodecArena *a, CmdMoveItem *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "move-item") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
+    csilc_f = csilc_map_get(m, "before_queue_item_id");
+    out->before_queue_item_id = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->before_queue_item_id = csilc_p;
+    }
+    return 0;
+}
+
 /* csilc_enc_CmdClear writes CmdClear as a canonical CBOR map. */
 static inline int csilc_enc_CmdClear(csilc_buf *b, const CmdClear *v) {
     size_t csilc_n = 1;
@@ -3016,12 +3219,17 @@ static inline int csilc_dec_CmdClear(const csilc_value *m, CsilCodecArena *a, Cm
 static inline int csilc_enc_CmdPlay(csilc_buf *b, const CmdPlay *v) {
     size_t csilc_n = 1;
     if (v->index) csilc_n++;
+    if (v->queue_item_id) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "op", 2)) return -1;
     if (csilc_w_text(b, "play", 4)) return -1;
     if (v->index) {
         if (csilc_w_text(b, "index", 5)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->index)))) return -1;
+    }
+    if (v->queue_item_id) {
+        if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->queue_item_id)))) return -1;
     }
     return 0;
 }
@@ -3040,6 +3248,75 @@ static inline int csilc_dec_CmdPlay(const csilc_value *m, CsilCodecArena *a, Cmd
         if (!csilc_p) return -1;
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->index = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    out->queue_item_id = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->queue_item_id = csilc_p;
+    }
+    return 0;
+}
+
+/* csilc_enc_CmdReplaceAndPlay writes CmdReplaceAndPlay as a canonical CBOR map. */
+static inline int csilc_enc_CmdReplaceAndPlay(csilc_buf *b, const CmdReplaceAndPlay *v) {
+    size_t csilc_n = 2;
+    if (v->position_ms) csilc_n++;
+    if (v->start_index) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "replace-and-play", 16)) return -1;
+    if (csilc_w_text(b, "track_ids", 9)) return -1;
+    if (csilc_w_array_head(b, v->track_ids_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->track_ids_count; csilc_i++) {
+        if (csilc_w_text(b, (v->track_ids[csilc_i]), (v->track_ids[csilc_i]) ? strlen(v->track_ids[csilc_i]) : 0)) return -1;
+    }
+    if (v->position_ms) {
+        if (csilc_w_text(b, "position_ms", 11)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->position_ms)))) return -1;
+    }
+    if (v->start_index) {
+        if (csilc_w_text(b, "start_index", 11)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->start_index)))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_CmdReplaceAndPlay reads CmdReplaceAndPlay from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdReplaceAndPlay(const csilc_value *m, CsilCodecArena *a, CmdReplaceAndPlay *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "replace-and-play") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "track_ids");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->track_ids_count = csilc_f->as.array.count;
+    out->track_ids = NULL;
+    if (out->track_ids_count) {
+        out->track_ids = (TrackId *)csilc_arena_alloc(a, out->track_ids_count * sizeof(TrackId));
+        if (!out->track_ids) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->track_ids_count; csilc_i++) {
+            if (!csilc_get_text(&csilc_f->as.array.items[csilc_i], &(out->track_ids[csilc_i]))) return -1;
+        }
+    }
+    csilc_f = csilc_map_get(m, "position_ms");
+    out->position_ms = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->position_ms = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "start_index");
+    out->start_index = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->start_index = csilc_p;
     }
     return 0;
 }
@@ -3147,6 +3424,164 @@ static inline int csilc_dec_CmdVolume(const csilc_value *m, CsilCodecArena *a, C
     return 0;
 }
 
+/* csilc_enc_CmdSetRepeat writes CmdSetRepeat as a canonical CBOR map. */
+static inline int csilc_enc_CmdSetRepeat(csilc_buf *b, const CmdSetRepeat *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "set-repeat", 10)) return -1;
+    if (csilc_w_text(b, "repeat_mode", 11)) return -1;
+    if (csilc_enc_RepeatMode(b, &(v->repeat_mode))) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdSetRepeat reads CmdSetRepeat from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdSetRepeat(const csilc_value *m, CsilCodecArena *a, CmdSetRepeat *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "set-repeat") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "repeat_mode");
+    if (csilc_dec_RepeatMode(csilc_f, a, &(out->repeat_mode))) return -1;
+    return 0;
+}
+
+/* csilc_enc_CmdSetShuffle writes CmdSetShuffle as a canonical CBOR map. */
+static inline int csilc_enc_CmdSetShuffle(csilc_buf *b, const CmdSetShuffle *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "set-shuffle", 11)) return -1;
+    if (csilc_w_text(b, "shuffle", 7)) return -1;
+    if (csilc_w_bool(b, (v->shuffle))) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdSetShuffle reads CmdSetShuffle from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdSetShuffle(const csilc_value *m, CsilCodecArena *a, CmdSetShuffle *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "set-shuffle") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "shuffle");
+    if (!csilc_as_bool(csilc_f, &(out->shuffle))) return -1;
+    return 0;
+}
+
+/* csilc_enc_CmdUndo writes CmdUndo as a canonical CBOR map. */
+static inline int csilc_enc_CmdUndo(csilc_buf *b, const CmdUndo *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "undo", 4)) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdUndo reads CmdUndo from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdUndo(const csilc_value *m, CsilCodecArena *a, CmdUndo *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "undo") != 0) return -1; (out->op) = csilc_lit; }
+    return 0;
+}
+
+/* csilc_enc_CmdPlaybackCompleted writes CmdPlaybackCompleted as a canonical CBOR map. */
+static inline int csilc_enc_CmdPlaybackCompleted(csilc_buf *b, const CmdPlaybackCompleted *v) {
+    size_t csilc_n = 3;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "playback-completed", 18)) return -1;
+    if (csilc_w_text(b, "playback_id", 11)) return -1;
+    if (csilc_w_text(b, (v->playback_id), (v->playback_id) ? strlen(v->playback_id) : 0)) return -1;
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdPlaybackCompleted reads CmdPlaybackCompleted from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdPlaybackCompleted(const csilc_value *m, CsilCodecArena *a, CmdPlaybackCompleted *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "playback-completed") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "playback_id");
+    if (!csilc_get_text(csilc_f, &(out->playback_id))) return -1;
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_CmdPlaybackFailed writes CmdPlaybackFailed as a canonical CBOR map. */
+static inline int csilc_enc_CmdPlaybackFailed(csilc_buf *b, const CmdPlaybackFailed *v) {
+    size_t csilc_n = 4;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "playback-failed", 15)) return -1;
+    if (csilc_w_text(b, "error", 5)) return -1;
+    if (csilc_w_text(b, (v->error), (v->error) ? strlen(v->error) : 0)) return -1;
+    if (csilc_w_text(b, "playback_id", 11)) return -1;
+    if (csilc_w_text(b, (v->playback_id), (v->playback_id) ? strlen(v->playback_id) : 0)) return -1;
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdPlaybackFailed reads CmdPlaybackFailed from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdPlaybackFailed(const csilc_value *m, CsilCodecArena *a, CmdPlaybackFailed *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "playback-failed") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "error");
+    if (!csilc_get_text(csilc_f, &(out->error))) return -1;
+    csilc_f = csilc_map_get(m, "playback_id");
+    if (!csilc_get_text(csilc_f, &(out->playback_id))) return -1;
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_CmdPlaybackState writes CmdPlaybackState as a canonical CBOR map. */
+static inline int csilc_enc_CmdPlaybackState(csilc_buf *b, const CmdPlaybackState *v) {
+    size_t csilc_n = 5;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "op", 2)) return -1;
+    if (csilc_w_text(b, "playback-state", 14)) return -1;
+    if (csilc_w_text(b, "status", 6)) return -1;
+    if (csilc_enc_PlayerStatus(b, &(v->status))) return -1;
+    if (csilc_w_text(b, "playback_id", 11)) return -1;
+    if (csilc_w_text(b, (v->playback_id), (v->playback_id) ? strlen(v->playback_id) : 0)) return -1;
+    if (csilc_w_text(b, "position_ms", 11)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->position_ms))) return -1;
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
+    return 0;
+}
+
+/* csilc_dec_CmdPlaybackState reads CmdPlaybackState from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_CmdPlaybackState(const csilc_value *m, CsilCodecArena *a, CmdPlaybackState *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "op");
+    { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "playback-state") != 0) return -1; (out->op) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "status");
+    if (csilc_dec_PlayerStatus(csilc_f, a, &(out->status))) return -1;
+    csilc_f = csilc_map_get(m, "playback_id");
+    if (!csilc_get_text(csilc_f, &(out->playback_id))) return -1;
+    csilc_f = csilc_map_get(m, "position_ms");
+    if (!csilc_as_u64(csilc_f, &(out->position_ms))) return -1;
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
+    return 0;
+}
+
 /* csilc_enc_PlayerCommand writes the union as a tagged sum [variant_index, value]. */
 static inline int csilc_enc_PlayerCommand(csilc_buf *b, const PlayerCommand *v) {
     if (csilc_w_array_head(b, 2)) return -1;
@@ -3155,41 +3590,81 @@ static inline int csilc_enc_PlayerCommand(csilc_buf *b, const PlayerCommand *v) 
         if (csilc_w_uint(b, 0)) return -1;
         if (csilc_enc_CmdEnqueue(b, &(v->u.cmd_enqueue))) return -1;
         break;
-    case PLAYER_COMMAND_CMD_REMOVE:
+    case PLAYER_COMMAND_CMD_ENQUEUE_NEXT:
         if (csilc_w_uint(b, 1)) return -1;
+        if (csilc_enc_CmdEnqueueNext(b, &(v->u.cmd_enqueue_next))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_REMOVE:
+        if (csilc_w_uint(b, 2)) return -1;
         if (csilc_enc_CmdRemove(b, &(v->u.cmd_remove))) return -1;
         break;
+    case PLAYER_COMMAND_CMD_REMOVE_ITEM:
+        if (csilc_w_uint(b, 3)) return -1;
+        if (csilc_enc_CmdRemoveItem(b, &(v->u.cmd_remove_item))) return -1;
+        break;
     case PLAYER_COMMAND_CMD_REORDER:
-        if (csilc_w_uint(b, 2)) return -1;
+        if (csilc_w_uint(b, 4)) return -1;
         if (csilc_enc_CmdReorder(b, &(v->u.cmd_reorder))) return -1;
         break;
+    case PLAYER_COMMAND_CMD_MOVE_ITEM:
+        if (csilc_w_uint(b, 5)) return -1;
+        if (csilc_enc_CmdMoveItem(b, &(v->u.cmd_move_item))) return -1;
+        break;
     case PLAYER_COMMAND_CMD_CLEAR:
-        if (csilc_w_uint(b, 3)) return -1;
+        if (csilc_w_uint(b, 6)) return -1;
         if (csilc_enc_CmdClear(b, &(v->u.cmd_clear))) return -1;
         break;
     case PLAYER_COMMAND_CMD_PLAY:
-        if (csilc_w_uint(b, 4)) return -1;
+        if (csilc_w_uint(b, 7)) return -1;
         if (csilc_enc_CmdPlay(b, &(v->u.cmd_play))) return -1;
         break;
+    case PLAYER_COMMAND_CMD_REPLACE_AND_PLAY:
+        if (csilc_w_uint(b, 8)) return -1;
+        if (csilc_enc_CmdReplaceAndPlay(b, &(v->u.cmd_replace_and_play))) return -1;
+        break;
     case PLAYER_COMMAND_CMD_PAUSE:
-        if (csilc_w_uint(b, 5)) return -1;
+        if (csilc_w_uint(b, 9)) return -1;
         if (csilc_enc_CmdPause(b, &(v->u.cmd_pause))) return -1;
         break;
     case PLAYER_COMMAND_CMD_NEXT:
-        if (csilc_w_uint(b, 6)) return -1;
+        if (csilc_w_uint(b, 10)) return -1;
         if (csilc_enc_CmdNext(b, &(v->u.cmd_next))) return -1;
         break;
     case PLAYER_COMMAND_CMD_PREVIOUS:
-        if (csilc_w_uint(b, 7)) return -1;
+        if (csilc_w_uint(b, 11)) return -1;
         if (csilc_enc_CmdPrevious(b, &(v->u.cmd_previous))) return -1;
         break;
     case PLAYER_COMMAND_CMD_SEEK:
-        if (csilc_w_uint(b, 8)) return -1;
+        if (csilc_w_uint(b, 12)) return -1;
         if (csilc_enc_CmdSeek(b, &(v->u.cmd_seek))) return -1;
         break;
     case PLAYER_COMMAND_CMD_VOLUME:
-        if (csilc_w_uint(b, 9)) return -1;
+        if (csilc_w_uint(b, 13)) return -1;
         if (csilc_enc_CmdVolume(b, &(v->u.cmd_volume))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_SET_REPEAT:
+        if (csilc_w_uint(b, 14)) return -1;
+        if (csilc_enc_CmdSetRepeat(b, &(v->u.cmd_set_repeat))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_SET_SHUFFLE:
+        if (csilc_w_uint(b, 15)) return -1;
+        if (csilc_enc_CmdSetShuffle(b, &(v->u.cmd_set_shuffle))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_UNDO:
+        if (csilc_w_uint(b, 16)) return -1;
+        if (csilc_enc_CmdUndo(b, &(v->u.cmd_undo))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_PLAYBACK_COMPLETED:
+        if (csilc_w_uint(b, 17)) return -1;
+        if (csilc_enc_CmdPlaybackCompleted(b, &(v->u.cmd_playback_completed))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_PLAYBACK_FAILED:
+        if (csilc_w_uint(b, 18)) return -1;
+        if (csilc_enc_CmdPlaybackFailed(b, &(v->u.cmd_playback_failed))) return -1;
+        break;
+    case PLAYER_COMMAND_CMD_PLAYBACK_STATE:
+        if (csilc_w_uint(b, 19)) return -1;
+        if (csilc_enc_CmdPlaybackState(b, &(v->u.cmd_playback_state))) return -1;
         break;
     default: return -1;
     }
@@ -3208,40 +3683,80 @@ static inline int csilc_dec_PlayerCommand(const csilc_value *m, CsilCodecArena *
         if (csilc_dec_CmdEnqueue(&m->as.array.items[1], a, &(out->u.cmd_enqueue))) return -1;
         return 0;
     case 1:
+        out->tag = PLAYER_COMMAND_CMD_ENQUEUE_NEXT;
+        if (csilc_dec_CmdEnqueueNext(&m->as.array.items[1], a, &(out->u.cmd_enqueue_next))) return -1;
+        return 0;
+    case 2:
         out->tag = PLAYER_COMMAND_CMD_REMOVE;
         if (csilc_dec_CmdRemove(&m->as.array.items[1], a, &(out->u.cmd_remove))) return -1;
         return 0;
-    case 2:
+    case 3:
+        out->tag = PLAYER_COMMAND_CMD_REMOVE_ITEM;
+        if (csilc_dec_CmdRemoveItem(&m->as.array.items[1], a, &(out->u.cmd_remove_item))) return -1;
+        return 0;
+    case 4:
         out->tag = PLAYER_COMMAND_CMD_REORDER;
         if (csilc_dec_CmdReorder(&m->as.array.items[1], a, &(out->u.cmd_reorder))) return -1;
         return 0;
-    case 3:
+    case 5:
+        out->tag = PLAYER_COMMAND_CMD_MOVE_ITEM;
+        if (csilc_dec_CmdMoveItem(&m->as.array.items[1], a, &(out->u.cmd_move_item))) return -1;
+        return 0;
+    case 6:
         out->tag = PLAYER_COMMAND_CMD_CLEAR;
         if (csilc_dec_CmdClear(&m->as.array.items[1], a, &(out->u.cmd_clear))) return -1;
         return 0;
-    case 4:
+    case 7:
         out->tag = PLAYER_COMMAND_CMD_PLAY;
         if (csilc_dec_CmdPlay(&m->as.array.items[1], a, &(out->u.cmd_play))) return -1;
         return 0;
-    case 5:
+    case 8:
+        out->tag = PLAYER_COMMAND_CMD_REPLACE_AND_PLAY;
+        if (csilc_dec_CmdReplaceAndPlay(&m->as.array.items[1], a, &(out->u.cmd_replace_and_play))) return -1;
+        return 0;
+    case 9:
         out->tag = PLAYER_COMMAND_CMD_PAUSE;
         if (csilc_dec_CmdPause(&m->as.array.items[1], a, &(out->u.cmd_pause))) return -1;
         return 0;
-    case 6:
+    case 10:
         out->tag = PLAYER_COMMAND_CMD_NEXT;
         if (csilc_dec_CmdNext(&m->as.array.items[1], a, &(out->u.cmd_next))) return -1;
         return 0;
-    case 7:
+    case 11:
         out->tag = PLAYER_COMMAND_CMD_PREVIOUS;
         if (csilc_dec_CmdPrevious(&m->as.array.items[1], a, &(out->u.cmd_previous))) return -1;
         return 0;
-    case 8:
+    case 12:
         out->tag = PLAYER_COMMAND_CMD_SEEK;
         if (csilc_dec_CmdSeek(&m->as.array.items[1], a, &(out->u.cmd_seek))) return -1;
         return 0;
-    case 9:
+    case 13:
         out->tag = PLAYER_COMMAND_CMD_VOLUME;
         if (csilc_dec_CmdVolume(&m->as.array.items[1], a, &(out->u.cmd_volume))) return -1;
+        return 0;
+    case 14:
+        out->tag = PLAYER_COMMAND_CMD_SET_REPEAT;
+        if (csilc_dec_CmdSetRepeat(&m->as.array.items[1], a, &(out->u.cmd_set_repeat))) return -1;
+        return 0;
+    case 15:
+        out->tag = PLAYER_COMMAND_CMD_SET_SHUFFLE;
+        if (csilc_dec_CmdSetShuffle(&m->as.array.items[1], a, &(out->u.cmd_set_shuffle))) return -1;
+        return 0;
+    case 16:
+        out->tag = PLAYER_COMMAND_CMD_UNDO;
+        if (csilc_dec_CmdUndo(&m->as.array.items[1], a, &(out->u.cmd_undo))) return -1;
+        return 0;
+    case 17:
+        out->tag = PLAYER_COMMAND_CMD_PLAYBACK_COMPLETED;
+        if (csilc_dec_CmdPlaybackCompleted(&m->as.array.items[1], a, &(out->u.cmd_playback_completed))) return -1;
+        return 0;
+    case 18:
+        out->tag = PLAYER_COMMAND_CMD_PLAYBACK_FAILED;
+        if (csilc_dec_CmdPlaybackFailed(&m->as.array.items[1], a, &(out->u.cmd_playback_failed))) return -1;
+        return 0;
+    case 19:
+        out->tag = PLAYER_COMMAND_CMD_PLAYBACK_STATE;
+        if (csilc_dec_CmdPlaybackState(&m->as.array.items[1], a, &(out->u.cmd_playback_state))) return -1;
         return 0;
     default: return -1;
     }
@@ -3332,7 +3847,7 @@ static inline int csilc_dec_ShareResult(const csilc_value *m, CsilCodecArena *a,
 
 /* csilc_enc_MediaOpen writes MediaOpen as a canonical CBOR map. */
 static inline int csilc_enc_MediaOpen(csilc_buf *b, const MediaOpen *v) {
-    size_t csilc_n = 3;
+    size_t csilc_n = 4;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "open", 4)) return -1;
@@ -3340,6 +3855,8 @@ static inline int csilc_enc_MediaOpen(csilc_buf *b, const MediaOpen *v) {
     if (csilc_enc_StreamPref(b, &(v->pref))) return -1;
     if (csilc_w_text(b, "track_id", 8)) return -1;
     if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     return 0;
 }
 
@@ -3354,15 +3871,19 @@ static inline int csilc_dec_MediaOpen(const csilc_value *m, CsilCodecArena *a, M
     if (csilc_dec_StreamPref(csilc_f, a, &(out->pref))) return -1;
     csilc_f = csilc_map_get(m, "track_id");
     if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     return 0;
 }
 
 /* csilc_enc_MediaSeek writes MediaSeek as a canonical CBOR map. */
 static inline int csilc_enc_MediaSeek(csilc_buf *b, const MediaSeek *v) {
-    size_t csilc_n = 2;
+    size_t csilc_n = 3;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "seek", 4)) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     if (csilc_w_text(b, "position_ms", 11)) return -1;
     if (csilc_w_uint(b, (uint64_t)(v->position_ms))) return -1;
     return 0;
@@ -3375,6 +3896,8 @@ static inline int csilc_dec_MediaSeek(const csilc_value *m, CsilCodecArena *a, M
     if (!m || m->kind != CSILC_MAP) return -1;
     csilc_f = csilc_map_get(m, "kind");
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "seek") != 0) return -1; (out->kind) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     csilc_f = csilc_map_get(m, "position_ms");
     if (!csilc_as_u64(csilc_f, &(out->position_ms))) return -1;
     return 0;
@@ -3382,10 +3905,12 @@ static inline int csilc_dec_MediaSeek(const csilc_value *m, CsilCodecArena *a, M
 
 /* csilc_enc_MediaPause writes MediaPause as a canonical CBOR map. */
 static inline int csilc_enc_MediaPause(csilc_buf *b, const MediaPause *v) {
-    size_t csilc_n = 1;
+    size_t csilc_n = 2;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "pause", 5)) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     return 0;
 }
 
@@ -3396,15 +3921,19 @@ static inline int csilc_dec_MediaPause(const csilc_value *m, CsilCodecArena *a, 
     if (!m || m->kind != CSILC_MAP) return -1;
     csilc_f = csilc_map_get(m, "kind");
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "pause") != 0) return -1; (out->kind) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     return 0;
 }
 
 /* csilc_enc_MediaResume writes MediaResume as a canonical CBOR map. */
 static inline int csilc_enc_MediaResume(csilc_buf *b, const MediaResume *v) {
-    size_t csilc_n = 1;
+    size_t csilc_n = 2;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "resume", 6)) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     return 0;
 }
 
@@ -3415,15 +3944,19 @@ static inline int csilc_dec_MediaResume(const csilc_value *m, CsilCodecArena *a,
     if (!m || m->kind != CSILC_MAP) return -1;
     csilc_f = csilc_map_get(m, "kind");
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "resume") != 0) return -1; (out->kind) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     return 0;
 }
 
 /* csilc_enc_MediaStop writes MediaStop as a canonical CBOR map. */
 static inline int csilc_enc_MediaStop(csilc_buf *b, const MediaStop *v) {
-    size_t csilc_n = 1;
+    size_t csilc_n = 2;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "stop", 4)) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     return 0;
 }
 
@@ -3434,6 +3967,8 @@ static inline int csilc_dec_MediaStop(const csilc_value *m, CsilCodecArena *a, M
     if (!m || m->kind != CSILC_MAP) return -1;
     csilc_f = csilc_map_get(m, "kind");
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "stop") != 0) return -1; (out->kind) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     return 0;
 }
 
@@ -3499,7 +4034,7 @@ static inline int csilc_dec_MediaControl(const csilc_value *m, CsilCodecArena *a
 
 /* csilc_enc_MediaHeader writes MediaHeader as a canonical CBOR map. */
 static inline int csilc_enc_MediaHeader(csilc_buf *b, const MediaHeader *v) {
-    size_t csilc_n = 7;
+    size_t csilc_n = 8;
     if (v->duration_ms) csilc_n++;
     if (v->codec_config) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
@@ -3509,6 +4044,8 @@ static inline int csilc_enc_MediaHeader(csilc_buf *b, const MediaHeader *v) {
     if (csilc_enc_Codec(b, &(v->codec))) return -1;
     if (csilc_w_text(b, "channels", 8)) return -1;
     if (csilc_w_uint(b, (uint64_t)(v->channels))) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     if (csilc_w_text(b, "transcoded", 10)) return -1;
     if (csilc_w_bool(b, (v->transcoded))) return -1;
     if (v->duration_ms) {
@@ -3539,6 +4076,8 @@ static inline int csilc_dec_MediaHeader(const csilc_value *m, CsilCodecArena *a,
     if (csilc_dec_Codec(csilc_f, a, &(out->codec))) return -1;
     csilc_f = csilc_map_get(m, "channels");
     if (!csilc_as_u64(csilc_f, &(out->channels))) return -1;
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     csilc_f = csilc_map_get(m, "transcoded");
     if (!csilc_as_bool(csilc_f, &(out->transcoded))) return -1;
     csilc_f = csilc_map_get(m, "duration_ms");
@@ -3592,7 +4131,7 @@ static inline int csilc_dec_MediaEndReason(const csilc_value *src, CsilCodecAren
 
 /* csilc_enc_MediaChunk writes MediaChunk as a canonical CBOR map. */
 static inline int csilc_enc_MediaChunk(csilc_buf *b, const MediaChunk *v) {
-    size_t csilc_n = 3;
+    size_t csilc_n = 4;
     if (v->timestamp_ms) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "seq", 3)) return -1;
@@ -3601,6 +4140,8 @@ static inline int csilc_enc_MediaChunk(csilc_buf *b, const MediaChunk *v) {
     if (csilc_w_bytes(b, (v->data).data, (v->data).len)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "chunk", 5)) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     if (v->timestamp_ms) {
         if (csilc_w_text(b, "timestamp_ms", 12)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->timestamp_ms)))) return -1;
@@ -3619,6 +4160,8 @@ static inline int csilc_dec_MediaChunk(const csilc_value *m, CsilCodecArena *a, 
     if (!csilc_get_bytes(csilc_f, &(out->data).data, &(out->data).len)) return -1;
     csilc_f = csilc_map_get(m, "kind");
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "chunk") != 0) return -1; (out->kind) = csilc_lit; }
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     csilc_f = csilc_map_get(m, "timestamp_ms");
     out->timestamp_ms = NULL;
     if (csilc_f) {
@@ -3632,7 +4175,7 @@ static inline int csilc_dec_MediaChunk(const csilc_value *m, CsilCodecArena *a, 
 
 /* csilc_enc_MediaEnd writes MediaEnd as a canonical CBOR map. */
 static inline int csilc_enc_MediaEnd(csilc_buf *b, const MediaEnd *v) {
-    size_t csilc_n = 1;
+    size_t csilc_n = 2;
     if (v->reason) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
@@ -3641,6 +4184,8 @@ static inline int csilc_enc_MediaEnd(csilc_buf *b, const MediaEnd *v) {
         if (csilc_w_text(b, "reason", 6)) return -1;
         if (csilc_enc_MediaEndReason(b, &((*v->reason)))) return -1;
     }
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     return 0;
 }
 
@@ -3659,17 +4204,21 @@ static inline int csilc_dec_MediaEnd(const csilc_value *m, CsilCodecArena *a, Me
         if (csilc_dec_MediaEndReason(csilc_f, a, &((*csilc_p)))) return -1;
         out->reason = csilc_p;
     }
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     return 0;
 }
 
 /* csilc_enc_MediaFail writes MediaFail as a canonical CBOR map. */
 static inline int csilc_enc_MediaFail(csilc_buf *b, const MediaFail *v) {
-    size_t csilc_n = 2;
+    size_t csilc_n = 3;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "kind", 4)) return -1;
     if (csilc_w_text(b, "error", 5)) return -1;
     if (csilc_w_text(b, "error", 5)) return -1;
     if (csilc_enc_ServiceError(b, &(v->error))) return -1;
+    if (csilc_w_text(b, "stream_id", 9)) return -1;
+    if (csilc_w_text(b, (v->stream_id), (v->stream_id) ? strlen(v->stream_id) : 0)) return -1;
     return 0;
 }
 
@@ -3682,6 +4231,8 @@ static inline int csilc_dec_MediaFail(const csilc_value *m, CsilCodecArena *a, M
     { char *csilc_lit; if (!csilc_get_text(csilc_f, &csilc_lit) || strcmp(csilc_lit, "error") != 0) return -1; (out->kind) = csilc_lit; }
     csilc_f = csilc_map_get(m, "error");
     if (csilc_dec_ServiceError(csilc_f, a, &(out->error))) return -1;
+    csilc_f = csilc_map_get(m, "stream_id");
+    if (!csilc_get_text(csilc_f, &(out->stream_id))) return -1;
     return 0;
 }
 
@@ -3867,7 +4418,7 @@ static inline int csilc_dec_RegisterNodeResponse(const csilc_value *m, CsilCodec
 
 /* csilc_enc_DirLoad writes DirLoad as a canonical CBOR map. */
 static inline int csilc_enc_DirLoad(csilc_buf *b, const DirLoad *v) {
-    size_t csilc_n = 4;
+    size_t csilc_n = 6;
     if (v->position_ms) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "op", 2)) return -1;
@@ -3878,10 +4429,14 @@ static inline int csilc_enc_DirLoad(csilc_buf *b, const DirLoad *v) {
     if (csilc_w_text(b, (v->track_id), (v->track_id) ? strlen(v->track_id) : 0)) return -1;
     if (csilc_w_text(b, "player_id", 9)) return -1;
     if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
+    if (csilc_w_text(b, "playback_id", 11)) return -1;
+    if (csilc_w_text(b, (v->playback_id), (v->playback_id) ? strlen(v->playback_id) : 0)) return -1;
     if (v->position_ms) {
         if (csilc_w_text(b, "position_ms", 11)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->position_ms)))) return -1;
     }
+    if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->queue_item_id))) return -1;
     return 0;
 }
 
@@ -3898,6 +4453,8 @@ static inline int csilc_dec_DirLoad(const csilc_value *m, CsilCodecArena *a, Dir
     if (!csilc_get_text(csilc_f, &(out->track_id))) return -1;
     csilc_f = csilc_map_get(m, "player_id");
     if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
+    csilc_f = csilc_map_get(m, "playback_id");
+    if (!csilc_get_text(csilc_f, &(out->playback_id))) return -1;
     csilc_f = csilc_map_get(m, "position_ms");
     out->position_ms = NULL;
     if (csilc_f) {
@@ -3906,6 +4463,8 @@ static inline int csilc_dec_DirLoad(const csilc_value *m, CsilCodecArena *a, Dir
         if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
         out->position_ms = csilc_p;
     }
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    if (!csilc_as_u64(csilc_f, &(out->queue_item_id))) return -1;
     return 0;
 }
 
@@ -4068,13 +4627,29 @@ static inline int csilc_dec_NodeDirective(const csilc_value *m, CsilCodecArena *
 /* csilc_enc_NodeReport writes NodeReport as a canonical CBOR map. */
 static inline int csilc_enc_NodeReport(csilc_buf *b, const NodeReport *v) {
     size_t csilc_n = 2;
+    if (v->error) csilc_n++;
+    if (v->event) csilc_n++;
+    if (v->playback_id) csilc_n++;
     if (v->position_ms) csilc_n++;
     if (v->audio_blocked) csilc_n++;
+    if (v->queue_item_id) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (v->error) {
+        if (csilc_w_text(b, "error", 5)) return -1;
+        if (csilc_w_text(b, (v->error), (v->error) ? strlen(v->error) : 0)) return -1;
+    }
+    if (v->event) {
+        if (csilc_w_text(b, "event", 5)) return -1;
+        if (csilc_enc_NodeEvent(b, &((*v->event)))) return -1;
+    }
     if (csilc_w_text(b, "status", 6)) return -1;
     if (csilc_enc_PlayerStatus(b, &(v->status))) return -1;
     if (csilc_w_text(b, "player_id", 9)) return -1;
     if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
+    if (v->playback_id) {
+        if (csilc_w_text(b, "playback_id", 11)) return -1;
+        if (csilc_w_text(b, (v->playback_id), (v->playback_id) ? strlen(v->playback_id) : 0)) return -1;
+    }
     if (v->position_ms) {
         if (csilc_w_text(b, "position_ms", 11)) return -1;
         if (csilc_w_uint(b, (uint64_t)((*v->position_ms)))) return -1;
@@ -4082,6 +4657,10 @@ static inline int csilc_enc_NodeReport(csilc_buf *b, const NodeReport *v) {
     if (v->audio_blocked) {
         if (csilc_w_text(b, "audio_blocked", 13)) return -1;
         if (csilc_w_bool(b, ((*v->audio_blocked)))) return -1;
+    }
+    if (v->queue_item_id) {
+        if (csilc_w_text(b, "queue_item_id", 13)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->queue_item_id)))) return -1;
     }
     return 0;
 }
@@ -4091,10 +4670,22 @@ static inline int csilc_dec_NodeReport(const csilc_value *m, CsilCodecArena *a, 
     (void)a;
     const csilc_value *csilc_f;
     if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "error");
+    out->error = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "event");
+    out->event = NULL;
+    if (csilc_f) {
+        NodeEvent *csilc_p = (NodeEvent *)csilc_arena_alloc(a, sizeof(NodeEvent));
+        if (!csilc_p) return -1;
+        if (csilc_dec_NodeEvent(csilc_f, a, &((*csilc_p)))) return -1;
+        out->event = csilc_p;
+    }
     csilc_f = csilc_map_get(m, "status");
     if (csilc_dec_PlayerStatus(csilc_f, a, &(out->status))) return -1;
     csilc_f = csilc_map_get(m, "player_id");
     if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
+    csilc_f = csilc_map_get(m, "playback_id");
+    out->playback_id = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
     csilc_f = csilc_map_get(m, "position_ms");
     out->position_ms = NULL;
     if (csilc_f) {
@@ -4110,6 +4701,14 @@ static inline int csilc_dec_NodeReport(const csilc_value *m, CsilCodecArena *a, 
         if (!csilc_p) return -1;
         if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
         out->audio_blocked = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "queue_item_id");
+    out->queue_item_id = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->queue_item_id = csilc_p;
     }
     return 0;
 }
@@ -5539,6 +6138,52 @@ static inline int csil_decode_PlayerStatus(const uint8_t *in, size_t len, Player
     return 0;
 }
 
+/* Encode a RepeatMode to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_RepeatMode(const RepeatMode *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_RepeatMode(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a RepeatMode. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_RepeatMode(const uint8_t *in, size_t len, RepeatMode *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_RepeatMode(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a NodeEvent to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_NodeEvent(const NodeEvent *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_NodeEvent(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a NodeEvent. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_NodeEvent(const uint8_t *in, size_t len, NodeEvent *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_NodeEvent(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a Codec to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_Codec(const Codec *v, uint8_t **out, size_t *out_len) {
@@ -6781,6 +7426,29 @@ static inline int csil_decode_CmdEnqueue(const uint8_t *in, size_t len, CmdEnque
     return 0;
 }
 
+/* Encode a CmdEnqueueNext to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdEnqueueNext(const CmdEnqueueNext *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdEnqueueNext(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdEnqueueNext. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdEnqueueNext(const uint8_t *in, size_t len, CmdEnqueueNext *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdEnqueueNext(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a CmdRemove to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_CmdRemove(const CmdRemove *v, uint8_t **out, size_t *out_len) {
@@ -6804,6 +7472,29 @@ static inline int csil_decode_CmdRemove(const uint8_t *in, size_t len, CmdRemove
     return 0;
 }
 
+/* Encode a CmdRemoveItem to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdRemoveItem(const CmdRemoveItem *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdRemoveItem(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdRemoveItem. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdRemoveItem(const uint8_t *in, size_t len, CmdRemoveItem *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdRemoveItem(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a CmdReorder to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_CmdReorder(const CmdReorder *v, uint8_t **out, size_t *out_len) {
@@ -6823,6 +7514,29 @@ static inline int csil_decode_CmdReorder(const uint8_t *in, size_t len, CmdReord
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_CmdReorder(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdMoveItem to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdMoveItem(const CmdMoveItem *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdMoveItem(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdMoveItem. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdMoveItem(const uint8_t *in, size_t len, CmdMoveItem *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdMoveItem(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }
@@ -6869,6 +7583,29 @@ static inline int csil_decode_CmdPlay(const uint8_t *in, size_t len, CmdPlay *ou
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_CmdPlay(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdReplaceAndPlay to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdReplaceAndPlay(const CmdReplaceAndPlay *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdReplaceAndPlay(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdReplaceAndPlay. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdReplaceAndPlay(const uint8_t *in, size_t len, CmdReplaceAndPlay *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdReplaceAndPlay(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }
@@ -6984,6 +7721,144 @@ static inline int csil_decode_CmdVolume(const uint8_t *in, size_t len, CmdVolume
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_CmdVolume(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdSetRepeat to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdSetRepeat(const CmdSetRepeat *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdSetRepeat(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdSetRepeat. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdSetRepeat(const uint8_t *in, size_t len, CmdSetRepeat *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdSetRepeat(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdSetShuffle to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdSetShuffle(const CmdSetShuffle *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdSetShuffle(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdSetShuffle. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdSetShuffle(const uint8_t *in, size_t len, CmdSetShuffle *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdSetShuffle(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdUndo to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdUndo(const CmdUndo *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdUndo(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdUndo. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdUndo(const uint8_t *in, size_t len, CmdUndo *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdUndo(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdPlaybackCompleted to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdPlaybackCompleted(const CmdPlaybackCompleted *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdPlaybackCompleted(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdPlaybackCompleted. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdPlaybackCompleted(const uint8_t *in, size_t len, CmdPlaybackCompleted *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdPlaybackCompleted(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdPlaybackFailed to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdPlaybackFailed(const CmdPlaybackFailed *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdPlaybackFailed(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdPlaybackFailed. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdPlaybackFailed(const uint8_t *in, size_t len, CmdPlaybackFailed *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdPlaybackFailed(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a CmdPlaybackState to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_CmdPlaybackState(const CmdPlaybackState *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_CmdPlaybackState(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a CmdPlaybackState. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_CmdPlaybackState(const uint8_t *in, size_t len, CmdPlaybackState *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_CmdPlaybackState(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

@@ -6,10 +6,16 @@ import java.util.List;
 
 public record PlayerState(
     PlayerId playerId /* wire: "player_id" */,
+    long revision /* wire: "revision" */,
     PlayerStatus status /* wire: "status" */,
     Long currentIndex /* wire: "current_index" */,
+    String playbackId /* wire: "playback_id" */,
     Long positionMs /* wire: "position_ms" */,
     long volume /* wire: "volume" */,
+    RepeatMode repeatMode /* wire: "repeat_mode" */,
+    boolean shuffle /* wire: "shuffle" */,
+    String error /* wire: "error" */,
+    boolean canUndo /* wire: "can_undo" */,
     List<QueueItem> queue /* wire: "queue" */
 ) {
     public PlayerState {

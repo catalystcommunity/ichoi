@@ -58,6 +58,23 @@ pub enum PlayerStatus {
     Paused,
 }
 
+/// RepeatMode variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum RepeatMode {
+    Off,
+    All,
+    One,
+}
+
+/// NodeEvent variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum NodeEvent {
+    Ready,
+    State,
+    Completed,
+    Failed,
+}
+
 /// Codec variants
 #[derive(Debug, Clone, PartialEq)]
 pub enum Codec {
@@ -442,6 +459,7 @@ pub struct Player {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct QueueItem {
+    pub queue_item_id: u64,
     pub track_id: TrackId,
     pub library: Option<Library>,
     pub title: Option<String>,
@@ -452,12 +470,20 @@ pub struct QueueItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlayerState {
     pub player_id: PlayerId,
+    pub revision: u64,
     pub status: PlayerStatus,
     pub current_index: Option<u64>,
+    pub playback_id: Option<String>,
     pub position_ms: Option<u64>,
     /// constraint: <= 100
     /// default: 100
     pub volume: u64,
+    pub repeat_mode: RepeatMode,
+    /// default: false
+    pub shuffle: bool,
+    pub error: Option<String>,
+    /// default: false
+    pub can_undo: bool,
     pub queue: Vec<QueueItem>,
 }
 
@@ -502,9 +528,21 @@ pub struct CmdEnqueue {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CmdEnqueueNext {
+    pub op: String,
+    pub track_ids: Vec<TrackId>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CmdRemove {
     pub op: String,
     pub index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdRemoveItem {
+    pub op: String,
+    pub queue_item_id: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -512,6 +550,13 @@ pub struct CmdReorder {
     pub op: String,
     pub from_index: u64,
     pub to_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdMoveItem {
+    pub op: String,
+    pub queue_item_id: u64,
+    pub before_queue_item_id: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -523,6 +568,17 @@ pub struct CmdClear {
 pub struct CmdPlay {
     pub op: String,
     pub index: Option<u64>,
+    pub queue_item_id: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdReplaceAndPlay {
+    pub op: String,
+    pub track_ids: Vec<TrackId>,
+    /// default: 0
+    pub start_index: Option<u64>,
+    /// default: 0
+    pub position_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -569,19 +625,87 @@ impl CmdVolume {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdSetRepeat {
+    pub op: String,
+    pub repeat_mode: RepeatMode,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdSetShuffle {
+    pub op: String,
+    pub shuffle: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdUndo {
+    pub op: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdPlaybackCompleted {
+    pub op: String,
+    pub playback_id: String,
+    pub queue_item_id: u64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdPlaybackFailed {
+    pub op: String,
+    pub playback_id: String,
+    pub queue_item_id: u64,
+    /// constraint: size in 1..=1024
+    pub error: String,
+}
+
+impl CmdPlaybackFailed {
+    /// Validate this value against the constraints declared in the CSIL spec.
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        {
+            let v = &self.error;
+            if v.is_empty() || v.len() > 1024usize {
+                return Err(ValidationError {
+                    field: "error".to_string(),
+                    message: "length must be in 1..=1024".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CmdPlaybackState {
+    pub op: String,
+    pub playback_id: String,
+    pub queue_item_id: u64,
+    pub status: PlayerStatus,
+    pub position_ms: u64,
+}
+
 /// PlayerCommand variants
 #[derive(Debug, Clone, PartialEq)]
 pub enum PlayerCommand {
     Variant0(CmdEnqueue),
-    Variant1(CmdRemove),
-    Variant2(CmdReorder),
-    Variant3(CmdClear),
-    Variant4(CmdPlay),
-    Variant5(CmdPause),
-    Variant6(CmdNext),
-    Variant7(CmdPrevious),
-    Variant8(CmdSeek),
-    Variant9(CmdVolume),
+    Variant1(CmdEnqueueNext),
+    Variant2(CmdRemove),
+    Variant3(CmdRemoveItem),
+    Variant4(CmdReorder),
+    Variant5(CmdMoveItem),
+    Variant6(CmdClear),
+    Variant7(CmdPlay),
+    Variant8(CmdReplaceAndPlay),
+    Variant9(CmdPause),
+    Variant10(CmdNext),
+    Variant11(CmdPrevious),
+    Variant12(CmdSeek),
+    Variant13(CmdVolume),
+    Variant14(CmdSetRepeat),
+    Variant15(CmdSetShuffle),
+    Variant16(CmdUndo),
+    Variant17(CmdPlaybackCompleted),
+    Variant18(CmdPlaybackFailed),
+    Variant19(CmdPlaybackState),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -625,6 +749,7 @@ pub struct ShareResult {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaOpen {
     pub kind: String,
+    pub stream_id: String,
     pub track_id: TrackId,
     pub pref: StreamPref,
 }
@@ -632,22 +757,26 @@ pub struct MediaOpen {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaSeek {
     pub kind: String,
+    pub stream_id: String,
     pub position_ms: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaPause {
     pub kind: String,
+    pub stream_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaResume {
     pub kind: String,
+    pub stream_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaStop {
     pub kind: String,
+    pub stream_id: String,
 }
 
 /// MediaControl variants
@@ -663,6 +792,7 @@ pub enum MediaControl {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaHeader {
     pub kind: String,
+    pub stream_id: String,
     pub codec: Codec,
     pub transcoded: bool,
     pub sample_rate: u64,
@@ -685,6 +815,7 @@ pub enum MediaEndReason {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaChunk {
     pub kind: String,
+    pub stream_id: String,
     pub seq: u64,
     pub timestamp_ms: Option<u64>,
     pub data: Vec<u8>,
@@ -693,12 +824,14 @@ pub struct MediaChunk {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaEnd {
     pub kind: String,
+    pub stream_id: String,
     pub reason: Option<MediaEndReason>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct MediaFail {
     pub kind: String,
+    pub stream_id: String,
     pub error: ServiceError,
 }
 
@@ -739,6 +872,8 @@ pub struct RegisterNodeResponse {
 pub struct DirLoad {
     pub op: String,
     pub player_id: PlayerId,
+    pub queue_item_id: u64,
+    pub playback_id: String,
     pub track_id: TrackId,
     pub pref: StreamPref,
     pub position_ms: Option<u64>,
@@ -799,10 +934,31 @@ pub enum NodeDirective {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NodeReport {
     pub player_id: PlayerId,
+    /// default: "state"
+    pub event: Option<NodeEvent>,
     pub status: PlayerStatus,
+    pub queue_item_id: Option<u64>,
+    pub playback_id: Option<String>,
     pub position_ms: Option<u64>,
+    /// constraint: size in 1..=1024
+    pub error: Option<String>,
     /// default: false
     pub audio_blocked: Option<bool>,
+}
+
+impl NodeReport {
+    /// Validate this value against the constraints declared in the CSIL spec.
+    pub fn validate(&self) -> Result<(), ValidationError> {
+        if let Some(v) = &self.error {
+            if v.is_empty() || v.len() > 1024usize {
+                return Err(ValidationError {
+                    field: "error".to_string(),
+                    message: "length must be in 1..=1024".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

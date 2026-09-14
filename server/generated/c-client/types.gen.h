@@ -27,6 +27,21 @@ typedef enum PlayerStatus {
     PLAYER_STATUS_PAUSED,
 } PlayerStatus;
 
+/* RepeatMode is an enumeration. */
+typedef enum RepeatMode {
+    REPEAT_MODE_OFF,
+    REPEAT_MODE_ALL,
+    REPEAT_MODE_ONE,
+} RepeatMode;
+
+/* NodeEvent is an enumeration. */
+typedef enum NodeEvent {
+    NODE_EVENT_READY,
+    NODE_EVENT_STATE,
+    NODE_EVENT_COMPLETED,
+    NODE_EVENT_FAILED,
+} NodeEvent;
+
 /* Codec is an enumeration. */
 typedef enum Codec {
     CODEC_MP3,
@@ -160,15 +175,25 @@ typedef struct ListPlayersRequest ListPlayersRequest;
 typedef struct ListPlayersResponse ListPlayersResponse;
 typedef struct SubscribeRequest SubscribeRequest;
 typedef struct CmdEnqueue CmdEnqueue;
+typedef struct CmdEnqueueNext CmdEnqueueNext;
 typedef struct CmdRemove CmdRemove;
+typedef struct CmdRemoveItem CmdRemoveItem;
 typedef struct CmdReorder CmdReorder;
+typedef struct CmdMoveItem CmdMoveItem;
 typedef struct CmdClear CmdClear;
 typedef struct CmdPlay CmdPlay;
+typedef struct CmdReplaceAndPlay CmdReplaceAndPlay;
 typedef struct CmdPause CmdPause;
 typedef struct CmdNext CmdNext;
 typedef struct CmdPrevious CmdPrevious;
 typedef struct CmdSeek CmdSeek;
 typedef struct CmdVolume CmdVolume;
+typedef struct CmdSetRepeat CmdSetRepeat;
+typedef struct CmdSetShuffle CmdSetShuffle;
+typedef struct CmdUndo CmdUndo;
+typedef struct CmdPlaybackCompleted CmdPlaybackCompleted;
+typedef struct CmdPlaybackFailed CmdPlaybackFailed;
+typedef struct CmdPlaybackState CmdPlaybackState;
 typedef struct PlayerCommand PlayerCommand;
 typedef struct CommandRequest CommandRequest;
 typedef struct EnableShareRequest EnableShareRequest;
@@ -575,6 +600,7 @@ typedef struct Player {
 
 /* QueueItem is a structured data type. */
 typedef struct QueueItem {
+    uint64_t queue_item_id;
     TrackId track_id;
     Library *library;
     char *title;
@@ -585,10 +611,16 @@ typedef struct QueueItem {
 /* PlayerState is a structured data type. */
 typedef struct PlayerState {
     PlayerId player_id;
+    uint64_t revision;
     PlayerStatus status;
     uint64_t *current_index;
+    char *playback_id;
     uint64_t *position_ms;
     uint64_t volume;
+    RepeatMode repeat_mode;
+    bool shuffle;
+    char *error;
+    bool can_undo;
     QueueItem *queue;
     size_t queue_count;
 } PlayerState;
@@ -618,11 +650,24 @@ typedef struct CmdEnqueue {
     uint64_t *at_index;
 } CmdEnqueue;
 
+/* CmdEnqueueNext is a structured data type. */
+typedef struct CmdEnqueueNext {
+    char *op;
+    TrackId *track_ids;
+    size_t track_ids_count;
+} CmdEnqueueNext;
+
 /* CmdRemove is a structured data type. */
 typedef struct CmdRemove {
     char *op;
     uint64_t index;
 } CmdRemove;
+
+/* CmdRemoveItem is a structured data type. */
+typedef struct CmdRemoveItem {
+    char *op;
+    uint64_t queue_item_id;
+} CmdRemoveItem;
 
 /* CmdReorder is a structured data type. */
 typedef struct CmdReorder {
@@ -630,6 +675,13 @@ typedef struct CmdReorder {
     uint64_t from_index;
     uint64_t to_index;
 } CmdReorder;
+
+/* CmdMoveItem is a structured data type. */
+typedef struct CmdMoveItem {
+    char *op;
+    uint64_t queue_item_id;
+    uint64_t *before_queue_item_id;
+} CmdMoveItem;
 
 /* CmdClear is a structured data type. */
 typedef struct CmdClear {
@@ -640,7 +692,17 @@ typedef struct CmdClear {
 typedef struct CmdPlay {
     char *op;
     uint64_t *index;
+    uint64_t *queue_item_id;
 } CmdPlay;
+
+/* CmdReplaceAndPlay is a structured data type. */
+typedef struct CmdReplaceAndPlay {
+    char *op;
+    TrackId *track_ids;
+    size_t track_ids_count;
+    uint64_t *start_index;
+    uint64_t *position_ms;
+} CmdReplaceAndPlay;
 
 /* CmdPause is a structured data type. */
 typedef struct CmdPause {
@@ -669,33 +731,94 @@ typedef struct CmdVolume {
     uint64_t volume;
 } CmdVolume;
 
+/* CmdSetRepeat is a structured data type. */
+typedef struct CmdSetRepeat {
+    char *op;
+    RepeatMode repeat_mode;
+} CmdSetRepeat;
+
+/* CmdSetShuffle is a structured data type. */
+typedef struct CmdSetShuffle {
+    char *op;
+    bool shuffle;
+} CmdSetShuffle;
+
+/* CmdUndo is a structured data type. */
+typedef struct CmdUndo {
+    char *op;
+} CmdUndo;
+
+/* CmdPlaybackCompleted is a structured data type. */
+typedef struct CmdPlaybackCompleted {
+    char *op;
+    char *playback_id;
+    uint64_t queue_item_id;
+} CmdPlaybackCompleted;
+
+/* CmdPlaybackFailed is a structured data type. */
+typedef struct CmdPlaybackFailed {
+    char *op;
+    char *playback_id;
+    uint64_t queue_item_id;
+    char *error;
+} CmdPlaybackFailed;
+
+/* CmdPlaybackState is a structured data type. */
+typedef struct CmdPlaybackState {
+    char *op;
+    char *playback_id;
+    uint64_t queue_item_id;
+    PlayerStatus status;
+    uint64_t position_ms;
+} CmdPlaybackState;
+
 /* PlayerCommand is a tagged union. */
 typedef enum PlayerCommandTag {
     PLAYER_COMMAND_CMD_ENQUEUE,
+    PLAYER_COMMAND_CMD_ENQUEUE_NEXT,
     PLAYER_COMMAND_CMD_REMOVE,
+    PLAYER_COMMAND_CMD_REMOVE_ITEM,
     PLAYER_COMMAND_CMD_REORDER,
+    PLAYER_COMMAND_CMD_MOVE_ITEM,
     PLAYER_COMMAND_CMD_CLEAR,
     PLAYER_COMMAND_CMD_PLAY,
+    PLAYER_COMMAND_CMD_REPLACE_AND_PLAY,
     PLAYER_COMMAND_CMD_PAUSE,
     PLAYER_COMMAND_CMD_NEXT,
     PLAYER_COMMAND_CMD_PREVIOUS,
     PLAYER_COMMAND_CMD_SEEK,
     PLAYER_COMMAND_CMD_VOLUME,
+    PLAYER_COMMAND_CMD_SET_REPEAT,
+    PLAYER_COMMAND_CMD_SET_SHUFFLE,
+    PLAYER_COMMAND_CMD_UNDO,
+    PLAYER_COMMAND_CMD_PLAYBACK_COMPLETED,
+    PLAYER_COMMAND_CMD_PLAYBACK_FAILED,
+    PLAYER_COMMAND_CMD_PLAYBACK_STATE,
 } PlayerCommandTag;
 
 typedef struct PlayerCommand {
     PlayerCommandTag tag;
     union {
         CmdEnqueue cmd_enqueue;
+        CmdEnqueueNext cmd_enqueue_next;
         CmdRemove cmd_remove;
+        CmdRemoveItem cmd_remove_item;
         CmdReorder cmd_reorder;
+        CmdMoveItem cmd_move_item;
         CmdClear cmd_clear;
         CmdPlay cmd_play;
+        CmdReplaceAndPlay cmd_replace_and_play;
         CmdPause cmd_pause;
         CmdNext cmd_next;
         CmdPrevious cmd_previous;
         CmdSeek cmd_seek;
         CmdVolume cmd_volume;
+        CmdSetRepeat cmd_set_repeat;
+        CmdSetShuffle cmd_set_shuffle;
+        CmdUndo cmd_undo;
+        CmdPlaybackCompleted cmd_playback_completed;
+        CmdPlaybackFailed cmd_playback_failed;
+        CmdPlaybackState cmd_playback_state;
     } u;
 } PlayerCommand;
 
@@ -723,6 +846,7 @@ typedef struct ShareResult {
 /* MediaOpen is a structured data type. */
 typedef struct MediaOpen {
     char *kind;
+    char *stream_id;
     TrackId track_id;
     StreamPref pref;
 } MediaOpen;
@@ -730,22 +854,26 @@ typedef struct MediaOpen {
 /* MediaSeek is a structured data type. */
 typedef struct MediaSeek {
     char *kind;
+    char *stream_id;
     uint64_t position_ms;
 } MediaSeek;
 
 /* MediaPause is a structured data type. */
 typedef struct MediaPause {
     char *kind;
+    char *stream_id;
 } MediaPause;
 
 /* MediaResume is a structured data type. */
 typedef struct MediaResume {
     char *kind;
+    char *stream_id;
 } MediaResume;
 
 /* MediaStop is a structured data type. */
 typedef struct MediaStop {
     char *kind;
+    char *stream_id;
 } MediaStop;
 
 /* MediaControl is a tagged union. */
@@ -771,6 +899,7 @@ typedef struct MediaControl {
 /* MediaHeader is a structured data type. */
 typedef struct MediaHeader {
     char *kind;
+    char *stream_id;
     Codec codec;
     bool transcoded;
     uint64_t sample_rate;
@@ -784,6 +913,7 @@ typedef struct MediaHeader {
 /* MediaChunk is a structured data type. */
 typedef struct MediaChunk {
     char *kind;
+    char *stream_id;
     uint64_t seq;
     uint64_t *timestamp_ms;
     CsilBytes data;
@@ -792,12 +922,14 @@ typedef struct MediaChunk {
 /* MediaEnd is a structured data type. */
 typedef struct MediaEnd {
     char *kind;
+    char *stream_id;
     MediaEndReason *reason;
 } MediaEnd;
 
 /* MediaFail is a structured data type. */
 typedef struct MediaFail {
     char *kind;
+    char *stream_id;
     ServiceError error;
 } MediaFail;
 
@@ -849,6 +981,8 @@ typedef struct RegisterNodeResponse {
 typedef struct DirLoad {
     char *op;
     PlayerId player_id;
+    uint64_t queue_item_id;
+    char *playback_id;
     TrackId track_id;
     StreamPref pref;
     uint64_t *position_ms;
@@ -902,8 +1036,12 @@ typedef struct NodeDirective {
 /* NodeReport is a structured data type. */
 typedef struct NodeReport {
     PlayerId player_id;
+    NodeEvent *event;
     PlayerStatus status;
+    uint64_t *queue_item_id;
+    char *playback_id;
     uint64_t *position_ms;
+    char *error;
     bool *audio_blocked;
 } NodeReport;
 

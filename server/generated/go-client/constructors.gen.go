@@ -95,9 +95,13 @@ func NewPlayer() *Player {
 
 // NewPlayerState creates a PlayerState with default values:
 //   - volume: 100
+//   - shuffle: false
+//   - can_undo: false
 func NewPlayerState() *PlayerState {
 	return &PlayerState{
-		Volume: 100,
+		Volume:  100,
+		Shuffle: false,
+		CanUndo: false,
 	}
 }
 
@@ -106,6 +110,16 @@ func NewPlayerState() *PlayerState {
 func NewSubscribeRequest() *SubscribeRequest {
 	return &SubscribeRequest{
 		Active: func() *bool { v := bool(true); return &v }(),
+	}
+}
+
+// NewCmdReplaceAndPlay creates a CmdReplaceAndPlay with default values:
+//   - start_index: 0
+//   - position_ms: 0
+func NewCmdReplaceAndPlay() *CmdReplaceAndPlay {
+	return &CmdReplaceAndPlay{
+		StartIndex: func() *uint64 { v := uint64(0); return &v }(),
+		PositionMs: func() *uint64 { v := uint64(0); return &v }(),
 	}
 }
 
@@ -136,9 +150,11 @@ func NewAudioOutput() *AudioOutput {
 }
 
 // NewNodeReport creates a NodeReport with default values:
+//   - event: "state"
 //   - audio_blocked: false
 func NewNodeReport() *NodeReport {
 	return &NodeReport{
+		Event:        func() *NodeEvent { v := NodeEvent("state"); return &v }(),
 		AudioBlocked: func() *bool { v := bool(false); return &v }(),
 	}
 }

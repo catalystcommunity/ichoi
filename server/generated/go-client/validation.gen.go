@@ -34,6 +34,17 @@ func (v *CmdVolume) Validate() error {
 	return nil
 }
 
+// ValidateCmdPlaybackFailed validates the CmdPlaybackFailed struct
+func (v *CmdPlaybackFailed) Validate() error {
+	if len(v.Error) < 1 {
+		return fmt.Errorf("field 'Error' must have at least 1 elements")
+	}
+	if len(v.Error) > 1024 {
+		return fmt.Errorf("field 'Error' must have at most 1024 elements")
+	}
+	return nil
+}
+
 // ValidateEnableShareRequest validates the EnableShareRequest struct
 func (v *EnableShareRequest) Validate() error {
 	if v.Suffix != nil {
@@ -53,6 +64,21 @@ func (v *EnableShareRequest) Validate() error {
 func (v *DirVolume) Validate() error {
 	if v.Volume > 100 {
 		return fmt.Errorf("field 'Volume' must be <= 100")
+	}
+	return nil
+}
+
+// ValidateNodeReport validates the NodeReport struct
+func (v *NodeReport) Validate() error {
+	if v.Error != nil {
+		if len((*v.Error)) < 1 {
+			return fmt.Errorf("field 'Error' must have at least 1 elements")
+		}
+	}
+	if v.Error != nil {
+		if len((*v.Error)) > 1024 {
+			return fmt.Errorf("field 'Error' must have at most 1024 elements")
+		}
 	}
 	return nil
 }

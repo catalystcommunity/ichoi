@@ -1316,13 +1316,28 @@ pub fn set_queue(
     player_id: &str,
     track_ids: &[String],
 ) -> QueryResult<()> {
+    let entries = track_ids
+        .iter()
+        .cloned()
+        .map(|track_id| (None, track_id))
+        .collect::<Vec<_>>();
+    set_queue_entries(conn, player_id, &entries)
+}
+
+/// Replace a player's queue while retaining stable ids for existing entries.
+pub fn set_queue_entries(
+    conn: &mut SqliteConnection,
+    player_id: &str,
+    entries: &[(Option<i32>, String)],
+) -> QueryResult<()> {
     conn.transaction(|conn| {
         diesel::delete(
             player_queue_items::table.filter(player_queue_items::player_id.eq(player_id)),
         )
         .execute(conn)?;
-        for (i, track_id) in track_ids.iter().enumerate() {
+        for (i, (id, track_id)) in entries.iter().enumerate() {
             let row = NewQueueItem {
+                id: *id,
                 player_id: player_id.to_string(),
                 track_id: track_id.clone(),
                 position: i as i32,
@@ -1333,4 +1348,90 @@ pub fn set_queue(
         }
         Ok(())
     })
+}
+
+pub fn save_player_undo(
+    conn: &mut SqliteConnection,
+    state: &PlayerStateRow,
+    queue: &[QueueItem],
+) -> QueryResult<()> {
+    conn.transaction(|conn| {
+        let saved = PlayerUndoState {
+            player_id: state.player_id.clone(),
+            status: state.status.clone(),
+            current_queue_item_id: state.current_queue_item_id,
+            position_ms: state.position_ms,
+            playback_id: state.playback_id.clone(),
+            error: state.error.clone(),
+            listener_account_id: state.listener_account_id.clone(),
+        };
+        diesel::insert_into(player_undo_state::table)
+            .values(&saved)
+            .on_conflict(player_undo_state::player_id)
+            .do_update()
+            .set(&saved)
+            .execute(conn)?;
+        diesel::delete(
+            player_undo_queue_items::table
+                .filter(player_undo_queue_items::player_id.eq(&state.player_id)),
+        )
+        .execute(conn)?;
+        for item in queue {
+            diesel::insert_into(player_undo_queue_items::table)
+                .values(PlayerUndoQueueItem {
+                    player_id: state.player_id.clone(),
+                    queue_item_id: item.id,
+                    track_id: item.track_id.clone(),
+                    position: item.position,
+                })
+                .execute(conn)?;
+        }
+        Ok(())
+    })
+}
+
+pub fn player_undo_state(
+    conn: &mut SqliteConnection,
+    player_id: &str,
+) -> QueryResult<Option<PlayerUndoState>> {
+    player_undo_state::table
+        .find(player_id)
+        .select(PlayerUndoState::as_select())
+        .first(conn)
+        .optional()
+}
+
+pub fn player_undo_queue(
+    conn: &mut SqliteConnection,
+    player_id: &str,
+) -> QueryResult<Vec<PlayerUndoQueueItem>> {
+    player_undo_queue_items::table
+        .filter(player_undo_queue_items::player_id.eq(player_id))
+        .order(player_undo_queue_items::position.asc())
+        .select(PlayerUndoQueueItem::as_select())
+        .load(conn)
+}
+
+pub fn clear_player_undo(conn: &mut SqliteConnection, player_id: &str) -> QueryResult<()> {
+    conn.transaction(|conn| {
+        diesel::delete(
+            player_undo_queue_items::table.filter(player_undo_queue_items::player_id.eq(player_id)),
+        )
+        .execute(conn)?;
+        diesel::delete(player_undo_state::table.find(player_id)).execute(conn)?;
+        Ok(())
+    })
+}
+
+pub fn insert_listen(
+    conn: &mut SqliteConnection,
+    account_id: &str,
+    track_id: &str,
+) -> QueryResult<usize> {
+    diesel::insert_into(listens::table)
+        .values((
+            listens::account_id.eq(account_id),
+            listens::track_id.eq(track_id),
+        ))
+        .execute(conn)
 }

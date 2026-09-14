@@ -3,6 +3,8 @@
 mod common;
 
 use common::DataMap;
+use ichoi::transport::decode_event_envelope;
+use libichoi::csil::codec::decode_player_state;
 use libichoi::csil::services::{LibraryService, NodeService, PlayerService};
 use libichoi::csil::types::*;
 use libichoi::csil_channel::decode_node_directive;
@@ -191,7 +193,7 @@ fn anonymous_cannot_control_shared_device_once_users_exist() {
             &common::ctx_anon(),
             CommandRequest {
                 player_id: "speaker-1".into(),
-                command: PlayerCommand::Variant5(CmdPause { op: "pause".into() }),
+                command: PlayerCommand::Variant9(CmdPause { op: "pause".into() }),
             },
         )
         .expect_err("anonymous control is not allowed once accounts exist");
@@ -294,9 +296,10 @@ fn control_enqueues_and_plays() {
     // Play it.
     let play = CommandRequest {
         player_id: "player-1".to_string(),
-        command: PlayerCommand::Variant4(CmdPlay {
+        command: PlayerCommand::Variant7(CmdPlay {
             op: "play".to_string(),
             index: None,
+            queue_item_id: None,
         }),
     };
     let state = app.control(&common::ctx_anon(), play).expect("play");
@@ -365,9 +368,10 @@ fn satellite_player_receives_load_directive() {
         &common::ctx_anon(),
         CommandRequest {
             player_id: player_id.clone(),
-            command: PlayerCommand::Variant4(CmdPlay {
+            command: PlayerCommand::Variant7(CmdPlay {
                 op: "play".to_string(),
                 index: None,
+                queue_item_id: None,
             }),
         },
     )
@@ -389,7 +393,7 @@ fn satellite_player_receives_load_directive() {
             &common::ctx_anon(),
             CommandRequest {
                 player_id,
-                command: PlayerCommand::Variant9(CmdVolume {
+                command: PlayerCommand::Variant13(CmdVolume {
                     op: "volume".into(),
                     volume: 37,
                 }),
@@ -404,4 +408,155 @@ fn satellite_player_receives_load_directive() {
         panic!("expected volume directive")
     };
     assert_eq!(volume.volume, 37);
+}
+
+#[test]
+fn output_completion_advances_one_player_and_pushes_every_subscriber() {
+    let (app, pool) = common::test_app();
+    {
+        let mut conn = pool.get().unwrap();
+        common::create_artist(&mut conn, &DataMap::new());
+        common::create_album(&mut conn, &DataMap::new());
+        common::create_track(&mut conn, &DataMap::new());
+        let mut second = DataMap::new();
+        second.insert("id".into(), "track-2".into());
+        second.insert(
+            "root_relative_path".into(),
+            "Test Artist/Test Album/02.flac".into(),
+        );
+        common::create_track(&mut conn, &second);
+        for player_id in ["player-1", "player-2"] {
+            ichoi::db::store::create_player(
+                &mut conn,
+                &ichoi::db::models::Player {
+                    id: player_id.into(),
+                    kind: "shared".into(),
+                    output_device_id: None,
+                    owner_account_id: None,
+                    name: player_id.into(),
+                    name_suffix: None,
+                },
+            )
+            .unwrap();
+        }
+    }
+
+    let (first_tx, mut first_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (second_tx, mut second_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (other_tx, mut other_rx) = tokio::sync::mpsc::unbounded_channel();
+    app.subs.subscribe("player-1".into(), 1, first_tx);
+    app.subs.subscribe("player-1".into(), 2, second_tx);
+    app.subs.subscribe("player-2".into(), 3, other_tx);
+
+    let playing = app
+        .control(
+            &common::ctx_anon(),
+            CommandRequest {
+                player_id: "player-1".into(),
+                command: PlayerCommand::Variant8(CmdReplaceAndPlay {
+                    op: "replace-and-play".into(),
+                    track_ids: vec!["track-1".into(), "track-2".into()],
+                    start_index: Some(0),
+                    position_ms: Some(0),
+                }),
+            },
+        )
+        .expect("start player one");
+    let original_revision = playing.revision;
+    let original_playback = playing.playback_id.clone().expect("playback id");
+    let original_item = playing.queue[0].queue_item_id;
+
+    for receiver in [&mut first_rx, &mut second_rx] {
+        let frame = receiver.try_recv().expect("state pushed to subscriber");
+        let envelope = decode_event_envelope(&frame).expect("decode state envelope");
+        let pushed = decode_player_state(&envelope.payload).expect("decode player state");
+        assert_eq!(pushed.revision, original_revision);
+    }
+    assert!(
+        other_rx.try_recv().is_err(),
+        "player two must not receive player one state"
+    );
+
+    let uncorrelated = app
+        .record_node_report(NodeReport {
+            player_id: "player-1".into(),
+            event: Some(NodeEvent::State),
+            status: PlayerStatus::Stopped,
+            queue_item_id: None,
+            playback_id: None,
+            position_ms: None,
+            error: None,
+            audio_blocked: Some(true),
+        })
+        .expect("ignore uncorrelated output state");
+    assert!(matches!(uncorrelated.status, PlayerStatus::Playing));
+    assert_eq!(uncorrelated.revision, original_revision);
+    for receiver in [&mut first_rx, &mut second_rx] {
+        let frame = receiver
+            .try_recv()
+            .expect("health state pushed to subscriber");
+        let envelope = decode_event_envelope(&frame).expect("decode health state envelope");
+        let pushed = decode_player_state(&envelope.payload).expect("decode health player state");
+        assert_eq!(pushed.revision, original_revision);
+        assert!(matches!(pushed.status, PlayerStatus::Playing));
+    }
+
+    let advanced = app
+        .record_node_report(NodeReport {
+            player_id: "player-1".into(),
+            event: Some(NodeEvent::Completed),
+            status: PlayerStatus::Stopped,
+            queue_item_id: Some(original_item),
+            playback_id: Some(original_playback.clone()),
+            position_ms: None,
+            error: None,
+            audio_blocked: None,
+        })
+        .expect("complete first item");
+    assert!(matches!(advanced.status, PlayerStatus::Playing));
+    assert_eq!(advanced.current_index, Some(1));
+    assert_ne!(
+        advanced.playback_id.as_deref(),
+        Some(original_playback.as_str())
+    );
+    assert!(advanced.revision > original_revision);
+
+    for receiver in [&mut first_rx, &mut second_rx] {
+        let frame = receiver.try_recv().expect("advance pushed to subscriber");
+        let envelope = decode_event_envelope(&frame).expect("decode advance envelope");
+        let pushed = decode_player_state(&envelope.payload).expect("decode advanced state");
+        assert_eq!(pushed.current_index, Some(1));
+        assert_eq!(pushed.revision, advanced.revision);
+    }
+    assert!(
+        other_rx.try_recv().is_err(),
+        "player two must remain independent"
+    );
+
+    let stale = app
+        .record_node_report(NodeReport {
+            player_id: "player-1".into(),
+            event: Some(NodeEvent::Completed),
+            status: PlayerStatus::Stopped,
+            queue_item_id: Some(original_item),
+            playback_id: Some(original_playback),
+            position_ms: None,
+            error: None,
+            audio_blocked: None,
+        })
+        .expect("ignore stale completion");
+    assert_eq!(stale.revision, advanced.revision);
+    assert_eq!(stale.current_index, Some(1));
+
+    let other = app
+        .get_state(
+            &common::ctx_anon(),
+            SubscribeRequest {
+                player_id: "player-2".into(),
+                active: None,
+            },
+        )
+        .expect("load player two");
+    assert!(other.queue.is_empty());
+    assert_eq!(other.revision, 0);
 }

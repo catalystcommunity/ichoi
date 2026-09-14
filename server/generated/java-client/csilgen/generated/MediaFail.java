@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record MediaFail(
     String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */,
     ServiceError error /* wire: "error" */
 ) {
 }

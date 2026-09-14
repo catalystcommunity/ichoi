@@ -2498,7 +2498,7 @@ pub fn decode_player(csil_data: &[u8]) -> Result<Player, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a QueueItem.
 fn csil_enc_queue_item(csil_v: &QueueItem) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);
     if let Some(csil_inner) = &csil_v.title {
         csil_entries.push((cbor_text("title"), cbor_text(csil_inner)));
     }
@@ -2512,11 +2512,17 @@ fn csil_enc_queue_item(csil_v: &QueueItem) -> CsilCborValue {
     if let Some(csil_inner) = &csil_v.duration_ms {
         csil_entries.push((cbor_text("duration_ms"), cbor_uint(*csil_inner)));
     }
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
     CsilCborValue::Map(csil_entries)
 }
 
 /// Reconstruct a QueueItem from a decoded CBOR value tree.
 fn csil_dec_queue_item(csil_root: &CsilCborValue) -> Result<QueueItem, CsilCborError> {
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
     let track_id = {
         let csil_field = cbor_require(csil_root, "track_id")?;
         let csil_decode = cbor_as_text;
@@ -2551,6 +2557,7 @@ fn csil_dec_queue_item(csil_root: &CsilCborValue) -> Result<QueueItem, CsilCborE
         None => None,
     };
     Ok(QueueItem {
+        queue_item_id,
         track_id,
         library,
         title,
@@ -2572,17 +2579,30 @@ pub fn decode_queue_item(csil_data: &[u8]) -> Result<QueueItem, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a PlayerState.
 fn csil_enc_player_state(csil_v: &PlayerState) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(12);
+    if let Some(csil_inner) = &csil_v.error {
+        csil_entries.push((cbor_text("error"), cbor_text(csil_inner)));
+    }
     csil_entries.push((
         cbor_text("queue"),
         cbor_enc_array(&csil_v.queue, csil_enc_queue_item),
     ));
     csil_entries.push((cbor_text("status"), csil_enc_player_status(&csil_v.status)));
     csil_entries.push((cbor_text("volume"), cbor_uint(csil_v.volume)));
+    csil_entries.push((cbor_text("shuffle"), cbor_bool(csil_v.shuffle)));
+    csil_entries.push((cbor_text("can_undo"), cbor_bool(csil_v.can_undo)));
+    csil_entries.push((cbor_text("revision"), cbor_uint(csil_v.revision)));
     csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
+    if let Some(csil_inner) = &csil_v.playback_id {
+        csil_entries.push((cbor_text("playback_id"), cbor_text(csil_inner)));
+    }
     if let Some(csil_inner) = &csil_v.position_ms {
         csil_entries.push((cbor_text("position_ms"), cbor_uint(*csil_inner)));
     }
+    csil_entries.push((
+        cbor_text("repeat_mode"),
+        csil_enc_repeat_mode(&csil_v.repeat_mode),
+    ));
     if let Some(csil_inner) = &csil_v.current_index {
         csil_entries.push((cbor_text("current_index"), cbor_uint(*csil_inner)));
     }
@@ -2596,6 +2616,11 @@ fn csil_dec_player_state(csil_root: &CsilCborValue) -> Result<PlayerState, CsilC
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
+    let revision = {
+        let csil_field = cbor_require(csil_root, "revision")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
     let status = {
         let csil_field = cbor_require(csil_root, "status")?;
         let csil_decode = csil_dec_player_status;
@@ -2604,6 +2629,13 @@ fn csil_dec_player_state(csil_root: &CsilCborValue) -> Result<PlayerState, CsilC
     let current_index = match cbor_map_get(csil_root, "current_index") {
         Some(csil_field) => {
             let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let playback_id = match cbor_map_get(csil_root, "playback_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
             Some(csil_decode(csil_field)?)
         }
         None => None,
@@ -2620,6 +2652,28 @@ fn csil_dec_player_state(csil_root: &CsilCborValue) -> Result<PlayerState, CsilC
         let csil_decode = cbor_as_u64;
         csil_decode(csil_field)?
     };
+    let repeat_mode = {
+        let csil_field = cbor_require(csil_root, "repeat_mode")?;
+        let csil_decode = csil_dec_repeat_mode;
+        csil_decode(csil_field)?
+    };
+    let shuffle = {
+        let csil_field = cbor_require(csil_root, "shuffle")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    let error = match cbor_map_get(csil_root, "error") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let can_undo = {
+        let csil_field = cbor_require(csil_root, "can_undo")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
     let queue = {
         let csil_field = cbor_require(csil_root, "queue")?;
         let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_queue_item);
@@ -2627,10 +2681,16 @@ fn csil_dec_player_state(csil_root: &CsilCborValue) -> Result<PlayerState, CsilC
     };
     Ok(PlayerState {
         player_id,
+        revision,
         status,
         current_index,
+        playback_id,
         position_ms,
         volume,
+        repeat_mode,
+        shuffle,
+        error,
+        can_undo,
         queue,
     })
 }
@@ -2809,6 +2869,46 @@ pub fn decode_cmd_enqueue(csil_data: &[u8]) -> Result<CmdEnqueue, CsilCborError>
     csil_dec_cmd_enqueue(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a CmdEnqueueNext.
+fn csil_enc_cmd_enqueue_next(csil_v: &CmdEnqueueNext) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("op"), cbor_text("enqueue-next")));
+    csil_entries.push((
+        cbor_text("track_ids"),
+        cbor_enc_array(&csil_v.track_ids, |csil_elem| cbor_text(csil_elem)),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdEnqueueNext from a decoded CBOR value tree.
+fn csil_dec_cmd_enqueue_next(csil_root: &CsilCborValue) -> Result<CmdEnqueueNext, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("enqueue-next"))?;
+            Ok("enqueue-next".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let track_ids = {
+        let csil_field = cbor_require(csil_root, "track_ids")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, cbor_as_text);
+        csil_decode(csil_field)?
+    };
+    Ok(CmdEnqueueNext { op, track_ids })
+}
+
+/// Encode a CmdEnqueueNext to canonical CSIL CBOR bytes.
+pub fn encode_cmd_enqueue_next(csil_v: &CmdEnqueueNext) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_enqueue_next(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdEnqueueNext.
+pub fn decode_cmd_enqueue_next(csil_data: &[u8]) -> Result<CmdEnqueueNext, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_enqueue_next(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a CmdRemove.
 fn csil_enc_cmd_remove(csil_v: &CmdRemove) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
@@ -2844,6 +2944,43 @@ pub fn encode_cmd_remove(csil_v: &CmdRemove) -> Vec<u8> {
 pub fn decode_cmd_remove(csil_data: &[u8]) -> Result<CmdRemove, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_cmd_remove(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdRemoveItem.
+fn csil_enc_cmd_remove_item(csil_v: &CmdRemoveItem) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("op"), cbor_text("remove-item")));
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdRemoveItem from a decoded CBOR value tree.
+fn csil_dec_cmd_remove_item(csil_root: &CsilCborValue) -> Result<CmdRemoveItem, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("remove-item"))?;
+            Ok("remove-item".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(CmdRemoveItem { op, queue_item_id })
+}
+
+/// Encode a CmdRemoveItem to canonical CSIL CBOR bytes.
+pub fn encode_cmd_remove_item(csil_v: &CmdRemoveItem) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_remove_item(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdRemoveItem.
+pub fn decode_cmd_remove_item(csil_data: &[u8]) -> Result<CmdRemoveItem, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_remove_item(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a CmdReorder.
@@ -2893,6 +3030,57 @@ pub fn decode_cmd_reorder(csil_data: &[u8]) -> Result<CmdReorder, CsilCborError>
     csil_dec_cmd_reorder(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a CmdMoveItem.
+fn csil_enc_cmd_move_item(csil_v: &CmdMoveItem) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("op"), cbor_text("move-item")));
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
+    if let Some(csil_inner) = &csil_v.before_queue_item_id {
+        csil_entries.push((cbor_text("before_queue_item_id"), cbor_uint(*csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdMoveItem from a decoded CBOR value tree.
+fn csil_dec_cmd_move_item(csil_root: &CsilCborValue) -> Result<CmdMoveItem, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("move-item"))?;
+            Ok("move-item".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let before_queue_item_id = match cbor_map_get(csil_root, "before_queue_item_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(CmdMoveItem {
+        op,
+        queue_item_id,
+        before_queue_item_id,
+    })
+}
+
+/// Encode a CmdMoveItem to canonical CSIL CBOR bytes.
+pub fn encode_cmd_move_item(csil_v: &CmdMoveItem) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_move_item(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdMoveItem.
+pub fn decode_cmd_move_item(csil_data: &[u8]) -> Result<CmdMoveItem, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_move_item(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a CmdClear.
 fn csil_enc_cmd_clear(_csil_v: &CmdClear) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
@@ -2926,10 +3114,13 @@ pub fn decode_cmd_clear(csil_data: &[u8]) -> Result<CmdClear, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a CmdPlay.
 fn csil_enc_cmd_play(csil_v: &CmdPlay) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
     csil_entries.push((cbor_text("op"), cbor_text("play")));
     if let Some(csil_inner) = &csil_v.index {
         csil_entries.push((cbor_text("index"), cbor_uint(*csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.queue_item_id {
+        csil_entries.push((cbor_text("queue_item_id"), cbor_uint(*csil_inner)));
     }
     CsilCborValue::Map(csil_entries)
 }
@@ -2951,7 +3142,18 @@ fn csil_dec_cmd_play(csil_root: &CsilCborValue) -> Result<CmdPlay, CsilCborError
         }
         None => None,
     };
-    Ok(CmdPlay { op, index })
+    let queue_item_id = match cbor_map_get(csil_root, "queue_item_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(CmdPlay {
+        op,
+        index,
+        queue_item_id,
+    })
 }
 
 /// Encode a CmdPlay to canonical CSIL CBOR bytes.
@@ -2963,6 +3165,73 @@ pub fn encode_cmd_play(csil_v: &CmdPlay) -> Vec<u8> {
 pub fn decode_cmd_play(csil_data: &[u8]) -> Result<CmdPlay, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_cmd_play(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdReplaceAndPlay.
+fn csil_enc_cmd_replace_and_play(csil_v: &CmdReplaceAndPlay) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("op"), cbor_text("replace-and-play")));
+    csil_entries.push((
+        cbor_text("track_ids"),
+        cbor_enc_array(&csil_v.track_ids, |csil_elem| cbor_text(csil_elem)),
+    ));
+    if let Some(csil_inner) = &csil_v.position_ms {
+        csil_entries.push((cbor_text("position_ms"), cbor_uint(*csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.start_index {
+        csil_entries.push((cbor_text("start_index"), cbor_uint(*csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdReplaceAndPlay from a decoded CBOR value tree.
+fn csil_dec_cmd_replace_and_play(
+    csil_root: &CsilCborValue,
+) -> Result<CmdReplaceAndPlay, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("replace-and-play"))?;
+            Ok("replace-and-play".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let track_ids = {
+        let csil_field = cbor_require(csil_root, "track_ids")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, cbor_as_text);
+        csil_decode(csil_field)?
+    };
+    let start_index = match cbor_map_get(csil_root, "start_index") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let position_ms = match cbor_map_get(csil_root, "position_ms") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(CmdReplaceAndPlay {
+        op,
+        track_ids,
+        start_index,
+        position_ms,
+    })
+}
+
+/// Encode a CmdReplaceAndPlay to canonical CSIL CBOR bytes.
+pub fn encode_cmd_replace_and_play(csil_v: &CmdReplaceAndPlay) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_replace_and_play(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdReplaceAndPlay.
+pub fn decode_cmd_replace_and_play(csil_data: &[u8]) -> Result<CmdReplaceAndPlay, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_replace_and_play(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a CmdPause.
@@ -3132,6 +3401,284 @@ pub fn decode_cmd_volume(csil_data: &[u8]) -> Result<CmdVolume, CsilCborError> {
     csil_dec_cmd_volume(&csil_root)
 }
 
+/// Build the canonical CBOR value tree for a CmdSetRepeat.
+fn csil_enc_cmd_set_repeat(csil_v: &CmdSetRepeat) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("op"), cbor_text("set-repeat")));
+    csil_entries.push((
+        cbor_text("repeat_mode"),
+        csil_enc_repeat_mode(&csil_v.repeat_mode),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdSetRepeat from a decoded CBOR value tree.
+fn csil_dec_cmd_set_repeat(csil_root: &CsilCborValue) -> Result<CmdSetRepeat, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("set-repeat"))?;
+            Ok("set-repeat".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let repeat_mode = {
+        let csil_field = cbor_require(csil_root, "repeat_mode")?;
+        let csil_decode = csil_dec_repeat_mode;
+        csil_decode(csil_field)?
+    };
+    Ok(CmdSetRepeat { op, repeat_mode })
+}
+
+/// Encode a CmdSetRepeat to canonical CSIL CBOR bytes.
+pub fn encode_cmd_set_repeat(csil_v: &CmdSetRepeat) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_set_repeat(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdSetRepeat.
+pub fn decode_cmd_set_repeat(csil_data: &[u8]) -> Result<CmdSetRepeat, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_set_repeat(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdSetShuffle.
+fn csil_enc_cmd_set_shuffle(csil_v: &CmdSetShuffle) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("op"), cbor_text("set-shuffle")));
+    csil_entries.push((cbor_text("shuffle"), cbor_bool(csil_v.shuffle)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdSetShuffle from a decoded CBOR value tree.
+fn csil_dec_cmd_set_shuffle(csil_root: &CsilCborValue) -> Result<CmdSetShuffle, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("set-shuffle"))?;
+            Ok("set-shuffle".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let shuffle = {
+        let csil_field = cbor_require(csil_root, "shuffle")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    Ok(CmdSetShuffle { op, shuffle })
+}
+
+/// Encode a CmdSetShuffle to canonical CSIL CBOR bytes.
+pub fn encode_cmd_set_shuffle(csil_v: &CmdSetShuffle) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_set_shuffle(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdSetShuffle.
+pub fn decode_cmd_set_shuffle(csil_data: &[u8]) -> Result<CmdSetShuffle, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_set_shuffle(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdUndo.
+fn csil_enc_cmd_undo(_csil_v: &CmdUndo) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("op"), cbor_text("undo")));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdUndo from a decoded CBOR value tree.
+fn csil_dec_cmd_undo(csil_root: &CsilCborValue) -> Result<CmdUndo, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("undo"))?;
+            Ok("undo".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    Ok(CmdUndo { op })
+}
+
+/// Encode a CmdUndo to canonical CSIL CBOR bytes.
+pub fn encode_cmd_undo(csil_v: &CmdUndo) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_undo(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdUndo.
+pub fn decode_cmd_undo(csil_data: &[u8]) -> Result<CmdUndo, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_undo(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdPlaybackCompleted.
+fn csil_enc_cmd_playback_completed(csil_v: &CmdPlaybackCompleted) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("op"), cbor_text("playback-completed")));
+    csil_entries.push((cbor_text("playback_id"), cbor_text(&csil_v.playback_id)));
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdPlaybackCompleted from a decoded CBOR value tree.
+fn csil_dec_cmd_playback_completed(
+    csil_root: &CsilCborValue,
+) -> Result<CmdPlaybackCompleted, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("playback-completed"))?;
+            Ok("playback-completed".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let playback_id = {
+        let csil_field = cbor_require(csil_root, "playback_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(CmdPlaybackCompleted {
+        op,
+        playback_id,
+        queue_item_id,
+    })
+}
+
+/// Encode a CmdPlaybackCompleted to canonical CSIL CBOR bytes.
+pub fn encode_cmd_playback_completed(csil_v: &CmdPlaybackCompleted) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_playback_completed(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdPlaybackCompleted.
+pub fn decode_cmd_playback_completed(
+    csil_data: &[u8],
+) -> Result<CmdPlaybackCompleted, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_playback_completed(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdPlaybackFailed.
+fn csil_enc_cmd_playback_failed(csil_v: &CmdPlaybackFailed) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("op"), cbor_text("playback-failed")));
+    csil_entries.push((cbor_text("error"), cbor_text(&csil_v.error)));
+    csil_entries.push((cbor_text("playback_id"), cbor_text(&csil_v.playback_id)));
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdPlaybackFailed from a decoded CBOR value tree.
+fn csil_dec_cmd_playback_failed(
+    csil_root: &CsilCborValue,
+) -> Result<CmdPlaybackFailed, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("playback-failed"))?;
+            Ok("playback-failed".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let playback_id = {
+        let csil_field = cbor_require(csil_root, "playback_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let error = {
+        let csil_field = cbor_require(csil_root, "error")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(CmdPlaybackFailed {
+        op,
+        playback_id,
+        queue_item_id,
+        error,
+    })
+}
+
+/// Encode a CmdPlaybackFailed to canonical CSIL CBOR bytes.
+pub fn encode_cmd_playback_failed(csil_v: &CmdPlaybackFailed) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_playback_failed(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdPlaybackFailed.
+pub fn decode_cmd_playback_failed(csil_data: &[u8]) -> Result<CmdPlaybackFailed, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_playback_failed(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a CmdPlaybackState.
+fn csil_enc_cmd_playback_state(csil_v: &CmdPlaybackState) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
+    csil_entries.push((cbor_text("op"), cbor_text("playback-state")));
+    csil_entries.push((cbor_text("status"), csil_enc_player_status(&csil_v.status)));
+    csil_entries.push((cbor_text("playback_id"), cbor_text(&csil_v.playback_id)));
+    csil_entries.push((cbor_text("position_ms"), cbor_uint(csil_v.position_ms)));
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a CmdPlaybackState from a decoded CBOR value tree.
+fn csil_dec_cmd_playback_state(
+    csil_root: &CsilCborValue,
+) -> Result<CmdPlaybackState, CsilCborError> {
+    let op = {
+        let csil_field = cbor_require(csil_root, "op")?;
+        let csil_decode = |csil_v| {
+            cbor_expect_value(csil_v, &cbor_text("playback-state"))?;
+            Ok("playback-state".to_string())
+        };
+        csil_decode(csil_field)?
+    };
+    let playback_id = {
+        let csil_field = cbor_require(csil_root, "playback_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let status = {
+        let csil_field = cbor_require(csil_root, "status")?;
+        let csil_decode = csil_dec_player_status;
+        csil_decode(csil_field)?
+    };
+    let position_ms = {
+        let csil_field = cbor_require(csil_root, "position_ms")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(CmdPlaybackState {
+        op,
+        playback_id,
+        queue_item_id,
+        status,
+        position_ms,
+    })
+}
+
+/// Encode a CmdPlaybackState to canonical CSIL CBOR bytes.
+pub fn encode_cmd_playback_state(csil_v: &CmdPlaybackState) -> Vec<u8> {
+    cbor_encode(&csil_enc_cmd_playback_state(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a CmdPlaybackState.
+pub fn decode_cmd_playback_state(csil_data: &[u8]) -> Result<CmdPlaybackState, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_cmd_playback_state(&csil_root)
+}
+
 /// Build the canonical CBOR value tree for a CommandRequest.
 fn csil_enc_command_request(csil_v: &CommandRequest) -> CsilCborValue {
     let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
@@ -3265,10 +3812,11 @@ pub fn decode_share_result(csil_data: &[u8]) -> Result<ShareResult, CsilCborErro
 
 /// Build the canonical CBOR value tree for a MediaOpen.
 fn csil_enc_media_open(csil_v: &MediaOpen) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
     csil_entries.push((cbor_text("kind"), cbor_text("open")));
     csil_entries.push((cbor_text("pref"), csil_enc_stream_pref(&csil_v.pref)));
     csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3280,6 +3828,11 @@ fn csil_dec_media_open(csil_root: &CsilCborValue) -> Result<MediaOpen, CsilCborE
             cbor_expect_value(csil_v, &cbor_text("open"))?;
             Ok("open".to_string())
         };
+        csil_decode(csil_field)?
+    };
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
     let track_id = {
@@ -3294,6 +3847,7 @@ fn csil_dec_media_open(csil_root: &CsilCborValue) -> Result<MediaOpen, CsilCborE
     };
     Ok(MediaOpen {
         kind,
+        stream_id,
         track_id,
         pref,
     })
@@ -3312,8 +3866,9 @@ pub fn decode_media_open(csil_data: &[u8]) -> Result<MediaOpen, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a MediaSeek.
 fn csil_enc_media_seek(csil_v: &MediaSeek) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
     csil_entries.push((cbor_text("kind"), cbor_text("seek")));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     csil_entries.push((cbor_text("position_ms"), cbor_uint(csil_v.position_ms)));
     CsilCborValue::Map(csil_entries)
 }
@@ -3328,12 +3883,21 @@ fn csil_dec_media_seek(csil_root: &CsilCborValue) -> Result<MediaSeek, CsilCborE
         };
         csil_decode(csil_field)?
     };
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
     let position_ms = {
         let csil_field = cbor_require(csil_root, "position_ms")?;
         let csil_decode = cbor_as_u64;
         csil_decode(csil_field)?
     };
-    Ok(MediaSeek { kind, position_ms })
+    Ok(MediaSeek {
+        kind,
+        stream_id,
+        position_ms,
+    })
 }
 
 /// Encode a MediaSeek to canonical CSIL CBOR bytes.
@@ -3348,9 +3912,10 @@ pub fn decode_media_seek(csil_data: &[u8]) -> Result<MediaSeek, CsilCborError> {
 }
 
 /// Build the canonical CBOR value tree for a MediaPause.
-fn csil_enc_media_pause(_csil_v: &MediaPause) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+fn csil_enc_media_pause(csil_v: &MediaPause) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
     csil_entries.push((cbor_text("kind"), cbor_text("pause")));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3364,7 +3929,12 @@ fn csil_dec_media_pause(csil_root: &CsilCborValue) -> Result<MediaPause, CsilCbo
         };
         csil_decode(csil_field)?
     };
-    Ok(MediaPause { kind })
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(MediaPause { kind, stream_id })
 }
 
 /// Encode a MediaPause to canonical CSIL CBOR bytes.
@@ -3379,9 +3949,10 @@ pub fn decode_media_pause(csil_data: &[u8]) -> Result<MediaPause, CsilCborError>
 }
 
 /// Build the canonical CBOR value tree for a MediaResume.
-fn csil_enc_media_resume(_csil_v: &MediaResume) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+fn csil_enc_media_resume(csil_v: &MediaResume) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
     csil_entries.push((cbor_text("kind"), cbor_text("resume")));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3395,7 +3966,12 @@ fn csil_dec_media_resume(csil_root: &CsilCborValue) -> Result<MediaResume, CsilC
         };
         csil_decode(csil_field)?
     };
-    Ok(MediaResume { kind })
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(MediaResume { kind, stream_id })
 }
 
 /// Encode a MediaResume to canonical CSIL CBOR bytes.
@@ -3410,9 +3986,10 @@ pub fn decode_media_resume(csil_data: &[u8]) -> Result<MediaResume, CsilCborErro
 }
 
 /// Build the canonical CBOR value tree for a MediaStop.
-fn csil_enc_media_stop(_csil_v: &MediaStop) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+fn csil_enc_media_stop(csil_v: &MediaStop) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
     csil_entries.push((cbor_text("kind"), cbor_text("stop")));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3426,7 +4003,12 @@ fn csil_dec_media_stop(csil_root: &CsilCborValue) -> Result<MediaStop, CsilCborE
         };
         csil_decode(csil_field)?
     };
-    Ok(MediaStop { kind })
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(MediaStop { kind, stream_id })
 }
 
 /// Encode a MediaStop to canonical CSIL CBOR bytes.
@@ -3442,10 +4024,11 @@ pub fn decode_media_stop(csil_data: &[u8]) -> Result<MediaStop, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a MediaHeader.
 fn csil_enc_media_header(csil_v: &MediaHeader) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(9);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(10);
     csil_entries.push((cbor_text("kind"), cbor_text("header")));
     csil_entries.push((cbor_text("codec"), csil_enc_codec(&csil_v.codec)));
     csil_entries.push((cbor_text("channels"), cbor_uint(csil_v.channels)));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     csil_entries.push((cbor_text("transcoded"), cbor_bool(csil_v.transcoded)));
     if let Some(csil_inner) = &csil_v.duration_ms {
         csil_entries.push((cbor_text("duration_ms"), cbor_uint(*csil_inner)));
@@ -3473,6 +4056,11 @@ fn csil_dec_media_header(csil_root: &CsilCborValue) -> Result<MediaHeader, CsilC
             cbor_expect_value(csil_v, &cbor_text("header"))?;
             Ok("header".to_string())
         };
+        csil_decode(csil_field)?
+    };
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
     let codec = {
@@ -3521,6 +4109,7 @@ fn csil_dec_media_header(csil_root: &CsilCborValue) -> Result<MediaHeader, CsilC
     };
     Ok(MediaHeader {
         kind,
+        stream_id,
         codec,
         transcoded,
         sample_rate,
@@ -3545,10 +4134,11 @@ pub fn decode_media_header(csil_data: &[u8]) -> Result<MediaHeader, CsilCborErro
 
 /// Build the canonical CBOR value tree for a MediaChunk.
 fn csil_enc_media_chunk(csil_v: &MediaChunk) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
     csil_entries.push((cbor_text("seq"), cbor_uint(csil_v.seq)));
     csil_entries.push((cbor_text("data"), cbor_bytes(&csil_v.data)));
     csil_entries.push((cbor_text("kind"), cbor_text("chunk")));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     if let Some(csil_inner) = &csil_v.timestamp_ms {
         csil_entries.push((cbor_text("timestamp_ms"), cbor_uint(*csil_inner)));
     }
@@ -3563,6 +4153,11 @@ fn csil_dec_media_chunk(csil_root: &CsilCborValue) -> Result<MediaChunk, CsilCbo
             cbor_expect_value(csil_v, &cbor_text("chunk"))?;
             Ok("chunk".to_string())
         };
+        csil_decode(csil_field)?
+    };
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
     let seq = {
@@ -3584,6 +4179,7 @@ fn csil_dec_media_chunk(csil_root: &CsilCborValue) -> Result<MediaChunk, CsilCbo
     };
     Ok(MediaChunk {
         kind,
+        stream_id,
         seq,
         timestamp_ms,
         data,
@@ -3603,11 +4199,12 @@ pub fn decode_media_chunk(csil_data: &[u8]) -> Result<MediaChunk, CsilCborError>
 
 /// Build the canonical CBOR value tree for a MediaEnd.
 fn csil_enc_media_end(csil_v: &MediaEnd) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
     csil_entries.push((cbor_text("kind"), cbor_text("end")));
     if let Some(csil_inner) = &csil_v.reason {
         csil_entries.push((cbor_text("reason"), csil_enc_media_end_reason(csil_inner)));
     }
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3621,6 +4218,11 @@ fn csil_dec_media_end(csil_root: &CsilCborValue) -> Result<MediaEnd, CsilCborErr
         };
         csil_decode(csil_field)?
     };
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
     let reason = match cbor_map_get(csil_root, "reason") {
         Some(csil_field) => {
             let csil_decode = csil_dec_media_end_reason;
@@ -3628,7 +4230,11 @@ fn csil_dec_media_end(csil_root: &CsilCborValue) -> Result<MediaEnd, CsilCborErr
         }
         None => None,
     };
-    Ok(MediaEnd { kind, reason })
+    Ok(MediaEnd {
+        kind,
+        stream_id,
+        reason,
+    })
 }
 
 /// Encode a MediaEnd to canonical CSIL CBOR bytes.
@@ -3644,9 +4250,10 @@ pub fn decode_media_end(csil_data: &[u8]) -> Result<MediaEnd, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a MediaFail.
 fn csil_enc_media_fail(csil_v: &MediaFail) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
     csil_entries.push((cbor_text("kind"), cbor_text("error")));
     csil_entries.push((cbor_text("error"), csil_enc_service_error(&csil_v.error)));
+    csil_entries.push((cbor_text("stream_id"), cbor_text(&csil_v.stream_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3660,12 +4267,21 @@ fn csil_dec_media_fail(csil_root: &CsilCborValue) -> Result<MediaFail, CsilCborE
         };
         csil_decode(csil_field)?
     };
+    let stream_id = {
+        let csil_field = cbor_require(csil_root, "stream_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
     let error = {
         let csil_field = cbor_require(csil_root, "error")?;
         let csil_decode = csil_dec_service_error;
         csil_decode(csil_field)?
     };
-    Ok(MediaFail { kind, error })
+    Ok(MediaFail {
+        kind,
+        stream_id,
+        error,
+    })
 }
 
 /// Encode a MediaFail to canonical CSIL CBOR bytes.
@@ -3845,14 +4461,16 @@ pub fn decode_register_node_response(
 
 /// Build the canonical CBOR value tree for a DirLoad.
 fn csil_enc_dir_load(csil_v: &DirLoad) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(7);
     csil_entries.push((cbor_text("op"), cbor_text("load")));
     csil_entries.push((cbor_text("pref"), csil_enc_stream_pref(&csil_v.pref)));
     csil_entries.push((cbor_text("track_id"), cbor_text(&csil_v.track_id)));
     csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
+    csil_entries.push((cbor_text("playback_id"), cbor_text(&csil_v.playback_id)));
     if let Some(csil_inner) = &csil_v.position_ms {
         csil_entries.push((cbor_text("position_ms"), cbor_uint(*csil_inner)));
     }
+    csil_entries.push((cbor_text("queue_item_id"), cbor_uint(csil_v.queue_item_id)));
     CsilCborValue::Map(csil_entries)
 }
 
@@ -3868,6 +4486,16 @@ fn csil_dec_dir_load(csil_root: &CsilCborValue) -> Result<DirLoad, CsilCborError
     };
     let player_id = {
         let csil_field = cbor_require(csil_root, "player_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let queue_item_id = {
+        let csil_field = cbor_require(csil_root, "queue_item_id")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let playback_id = {
+        let csil_field = cbor_require(csil_root, "playback_id")?;
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
@@ -3891,6 +4519,8 @@ fn csil_dec_dir_load(csil_root: &CsilCborValue) -> Result<DirLoad, CsilCborError
     Ok(DirLoad {
         op,
         player_id,
+        queue_item_id,
+        playback_id,
         track_id,
         pref,
         position_ms,
@@ -4068,14 +4698,26 @@ pub fn decode_dir_volume(csil_data: &[u8]) -> Result<DirVolume, CsilCborError> {
 
 /// Build the canonical CBOR value tree for a NodeReport.
 fn csil_enc_node_report(csil_v: &NodeReport) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(8);
+    if let Some(csil_inner) = &csil_v.error {
+        csil_entries.push((cbor_text("error"), cbor_text(csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.event {
+        csil_entries.push((cbor_text("event"), csil_enc_node_event(csil_inner)));
+    }
     csil_entries.push((cbor_text("status"), csil_enc_player_status(&csil_v.status)));
     csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
+    if let Some(csil_inner) = &csil_v.playback_id {
+        csil_entries.push((cbor_text("playback_id"), cbor_text(csil_inner)));
+    }
     if let Some(csil_inner) = &csil_v.position_ms {
         csil_entries.push((cbor_text("position_ms"), cbor_uint(*csil_inner)));
     }
     if let Some(csil_inner) = &csil_v.audio_blocked {
         csil_entries.push((cbor_text("audio_blocked"), cbor_bool(*csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.queue_item_id {
+        csil_entries.push((cbor_text("queue_item_id"), cbor_uint(*csil_inner)));
     }
     CsilCborValue::Map(csil_entries)
 }
@@ -4087,14 +4729,42 @@ fn csil_dec_node_report(csil_root: &CsilCborValue) -> Result<NodeReport, CsilCbo
         let csil_decode = cbor_as_text;
         csil_decode(csil_field)?
     };
+    let event = match cbor_map_get(csil_root, "event") {
+        Some(csil_field) => {
+            let csil_decode = csil_dec_node_event;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let status = {
         let csil_field = cbor_require(csil_root, "status")?;
         let csil_decode = csil_dec_player_status;
         csil_decode(csil_field)?
     };
+    let queue_item_id = match cbor_map_get(csil_root, "queue_item_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let playback_id = match cbor_map_get(csil_root, "playback_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let position_ms = match cbor_map_get(csil_root, "position_ms") {
         Some(csil_field) => {
             let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let error = match cbor_map_get(csil_root, "error") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
             Some(csil_decode(csil_field)?)
         }
         None => None,
@@ -4108,8 +4778,12 @@ fn csil_dec_node_report(csil_root: &CsilCborValue) -> Result<NodeReport, CsilCbo
     };
     Ok(NodeReport {
         player_id,
+        event,
         status,
+        queue_item_id,
+        playback_id,
         position_ms,
+        error,
         audio_blocked,
     })
 }
@@ -5971,6 +6645,52 @@ fn csil_dec_player_status(csil_v: &CsilCborValue) -> Result<PlayerStatus, CsilCb
     }
 }
 
+/// Encode a RepeatMode enum as its bare literal value.
+fn csil_enc_repeat_mode(csil_v: &RepeatMode) -> CsilCborValue {
+    match csil_v {
+        RepeatMode::Off => cbor_text("off"),
+        RepeatMode::All => cbor_text("all"),
+        RepeatMode::One => cbor_text("one"),
+    }
+}
+
+/// Decode a bare literal value into a RepeatMode enum.
+fn csil_dec_repeat_mode(csil_v: &CsilCborValue) -> Result<RepeatMode, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "off" => Ok(RepeatMode::Off),
+        "all" => Ok(RepeatMode::All),
+        "one" => Ok(RepeatMode::One),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown RepeatMode value {csil_other:?}"
+        ))),
+    }
+}
+
+/// Encode a NodeEvent enum as its bare literal value.
+fn csil_enc_node_event(csil_v: &NodeEvent) -> CsilCborValue {
+    match csil_v {
+        NodeEvent::Ready => cbor_text("ready"),
+        NodeEvent::State => cbor_text("state"),
+        NodeEvent::Completed => cbor_text("completed"),
+        NodeEvent::Failed => cbor_text("failed"),
+    }
+}
+
+/// Decode a bare literal value into a NodeEvent enum.
+fn csil_dec_node_event(csil_v: &CsilCborValue) -> Result<NodeEvent, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "ready" => Ok(NodeEvent::Ready),
+        "state" => Ok(NodeEvent::State),
+        "completed" => Ok(NodeEvent::Completed),
+        "failed" => Ok(NodeEvent::Failed),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown NodeEvent value {csil_other:?}"
+        ))),
+    }
+}
+
 /// Encode a Codec enum as its bare literal value.
 fn csil_enc_codec(csil_v: &Codec) -> CsilCborValue {
     match csil_v {
@@ -6141,33 +6861,71 @@ fn csil_enc_player_command(csil_v: &PlayerCommand) -> CsilCborValue {
         PlayerCommand::Variant0(csil_x) => {
             CsilCborValue::Array(vec![CsilCborValue::Uint(0), csil_enc_cmd_enqueue(csil_x)])
         }
-        PlayerCommand::Variant1(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(1), csil_enc_cmd_remove(csil_x)])
-        }
+        PlayerCommand::Variant1(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(1),
+            csil_enc_cmd_enqueue_next(csil_x),
+        ]),
         PlayerCommand::Variant2(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(2), csil_enc_cmd_reorder(csil_x)])
+            CsilCborValue::Array(vec![CsilCborValue::Uint(2), csil_enc_cmd_remove(csil_x)])
         }
-        PlayerCommand::Variant3(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(3), csil_enc_cmd_clear(csil_x)])
-        }
+        PlayerCommand::Variant3(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(3),
+            csil_enc_cmd_remove_item(csil_x),
+        ]),
         PlayerCommand::Variant4(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(4), csil_enc_cmd_play(csil_x)])
+            CsilCborValue::Array(vec![CsilCborValue::Uint(4), csil_enc_cmd_reorder(csil_x)])
         }
         PlayerCommand::Variant5(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(5), csil_enc_cmd_pause(csil_x)])
+            CsilCborValue::Array(vec![CsilCborValue::Uint(5), csil_enc_cmd_move_item(csil_x)])
         }
         PlayerCommand::Variant6(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(6), csil_enc_cmd_next(csil_x)])
+            CsilCborValue::Array(vec![CsilCborValue::Uint(6), csil_enc_cmd_clear(csil_x)])
         }
         PlayerCommand::Variant7(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(7), csil_enc_cmd_previous(csil_x)])
+            CsilCborValue::Array(vec![CsilCborValue::Uint(7), csil_enc_cmd_play(csil_x)])
         }
-        PlayerCommand::Variant8(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(8), csil_enc_cmd_seek(csil_x)])
-        }
+        PlayerCommand::Variant8(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(8),
+            csil_enc_cmd_replace_and_play(csil_x),
+        ]),
         PlayerCommand::Variant9(csil_x) => {
-            CsilCborValue::Array(vec![CsilCborValue::Uint(9), csil_enc_cmd_volume(csil_x)])
+            CsilCborValue::Array(vec![CsilCborValue::Uint(9), csil_enc_cmd_pause(csil_x)])
         }
+        PlayerCommand::Variant10(csil_x) => {
+            CsilCborValue::Array(vec![CsilCborValue::Uint(10), csil_enc_cmd_next(csil_x)])
+        }
+        PlayerCommand::Variant11(csil_x) => {
+            CsilCborValue::Array(vec![CsilCborValue::Uint(11), csil_enc_cmd_previous(csil_x)])
+        }
+        PlayerCommand::Variant12(csil_x) => {
+            CsilCborValue::Array(vec![CsilCborValue::Uint(12), csil_enc_cmd_seek(csil_x)])
+        }
+        PlayerCommand::Variant13(csil_x) => {
+            CsilCborValue::Array(vec![CsilCborValue::Uint(13), csil_enc_cmd_volume(csil_x)])
+        }
+        PlayerCommand::Variant14(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(14),
+            csil_enc_cmd_set_repeat(csil_x),
+        ]),
+        PlayerCommand::Variant15(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(15),
+            csil_enc_cmd_set_shuffle(csil_x),
+        ]),
+        PlayerCommand::Variant16(csil_x) => {
+            CsilCborValue::Array(vec![CsilCborValue::Uint(16), csil_enc_cmd_undo(csil_x)])
+        }
+        PlayerCommand::Variant17(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(17),
+            csil_enc_cmd_playback_completed(csil_x),
+        ]),
+        PlayerCommand::Variant18(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(18),
+            csil_enc_cmd_playback_failed(csil_x),
+        ]),
+        PlayerCommand::Variant19(csil_x) => CsilCborValue::Array(vec![
+            CsilCborValue::Uint(19),
+            csil_enc_cmd_playback_state(csil_x),
+        ]),
     }
 }
 
@@ -6194,40 +6952,80 @@ fn csil_dec_player_command(csil_v: &CsilCborValue) -> Result<PlayerCommand, Csil
             Ok(PlayerCommand::Variant0(csil_decode(&csil_arr[1])?))
         }
         1 => {
-            let csil_decode = csil_dec_cmd_remove;
+            let csil_decode = csil_dec_cmd_enqueue_next;
             Ok(PlayerCommand::Variant1(csil_decode(&csil_arr[1])?))
         }
         2 => {
-            let csil_decode = csil_dec_cmd_reorder;
+            let csil_decode = csil_dec_cmd_remove;
             Ok(PlayerCommand::Variant2(csil_decode(&csil_arr[1])?))
         }
         3 => {
-            let csil_decode = csil_dec_cmd_clear;
+            let csil_decode = csil_dec_cmd_remove_item;
             Ok(PlayerCommand::Variant3(csil_decode(&csil_arr[1])?))
         }
         4 => {
-            let csil_decode = csil_dec_cmd_play;
+            let csil_decode = csil_dec_cmd_reorder;
             Ok(PlayerCommand::Variant4(csil_decode(&csil_arr[1])?))
         }
         5 => {
-            let csil_decode = csil_dec_cmd_pause;
+            let csil_decode = csil_dec_cmd_move_item;
             Ok(PlayerCommand::Variant5(csil_decode(&csil_arr[1])?))
         }
         6 => {
-            let csil_decode = csil_dec_cmd_next;
+            let csil_decode = csil_dec_cmd_clear;
             Ok(PlayerCommand::Variant6(csil_decode(&csil_arr[1])?))
         }
         7 => {
-            let csil_decode = csil_dec_cmd_previous;
+            let csil_decode = csil_dec_cmd_play;
             Ok(PlayerCommand::Variant7(csil_decode(&csil_arr[1])?))
         }
         8 => {
-            let csil_decode = csil_dec_cmd_seek;
+            let csil_decode = csil_dec_cmd_replace_and_play;
             Ok(PlayerCommand::Variant8(csil_decode(&csil_arr[1])?))
         }
         9 => {
-            let csil_decode = csil_dec_cmd_volume;
+            let csil_decode = csil_dec_cmd_pause;
             Ok(PlayerCommand::Variant9(csil_decode(&csil_arr[1])?))
+        }
+        10 => {
+            let csil_decode = csil_dec_cmd_next;
+            Ok(PlayerCommand::Variant10(csil_decode(&csil_arr[1])?))
+        }
+        11 => {
+            let csil_decode = csil_dec_cmd_previous;
+            Ok(PlayerCommand::Variant11(csil_decode(&csil_arr[1])?))
+        }
+        12 => {
+            let csil_decode = csil_dec_cmd_seek;
+            Ok(PlayerCommand::Variant12(csil_decode(&csil_arr[1])?))
+        }
+        13 => {
+            let csil_decode = csil_dec_cmd_volume;
+            Ok(PlayerCommand::Variant13(csil_decode(&csil_arr[1])?))
+        }
+        14 => {
+            let csil_decode = csil_dec_cmd_set_repeat;
+            Ok(PlayerCommand::Variant14(csil_decode(&csil_arr[1])?))
+        }
+        15 => {
+            let csil_decode = csil_dec_cmd_set_shuffle;
+            Ok(PlayerCommand::Variant15(csil_decode(&csil_arr[1])?))
+        }
+        16 => {
+            let csil_decode = csil_dec_cmd_undo;
+            Ok(PlayerCommand::Variant16(csil_decode(&csil_arr[1])?))
+        }
+        17 => {
+            let csil_decode = csil_dec_cmd_playback_completed;
+            Ok(PlayerCommand::Variant17(csil_decode(&csil_arr[1])?))
+        }
+        18 => {
+            let csil_decode = csil_dec_cmd_playback_failed;
+            Ok(PlayerCommand::Variant18(csil_decode(&csil_arr[1])?))
+        }
+        19 => {
+            let csil_decode = csil_dec_cmd_playback_state;
+            Ok(PlayerCommand::Variant19(csil_decode(&csil_arr[1])?))
         }
         csil_other => Err(CsilCborError(format!(
             "csil cbor: unknown PlayerCommand variant {csil_other}"

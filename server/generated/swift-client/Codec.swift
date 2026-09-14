@@ -312,6 +312,44 @@ public extension PlayerStatus {
     static func fromCbor(_ bytes: [UInt8]) throws -> PlayerStatus { try PlayerStatus(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension RepeatMode {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = RepeatMode(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> RepeatMode { try RepeatMode(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension NodeEvent {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = NodeEvent(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> NodeEvent { try NodeEvent(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension Codec {
     /// The CBOR value tree for this enum: its wire string verbatim.
     func toCborValue() -> CsilCborValue { .text(self.rawValue) }
@@ -1489,17 +1527,19 @@ public extension QueueItem {
         if let csilV = self.library { csilEntries.append(("library", csilV.toCborValue())) }
         csilEntries.append(("track_id", .text(self.trackId)))
         if let csilV = self.durationMs { csilEntries.append(("duration_ms", .uint(csilV))) }
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
         let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
         let library: Library? = if let csilV = CsilCbor.mapGet(cborValue, "library") { try Library(cborValue: csilV) } else { nil }
         let title: String? = if let csilV = CsilCbor.mapGet(cborValue, "title") { try CsilCbor.asText(csilV) } else { nil }
         let artist: String? = if let csilV = CsilCbor.mapGet(cborValue, "artist") { try CsilCbor.asText(csilV) } else { nil }
         let durationMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "duration_ms") { try CsilCbor.asU64(csilV) } else { nil }
-        self.init(trackId: trackId, library: library, title: title, artist: artist, durationMs: durationMs)
+        self.init(queueItemId: queueItemId, trackId: trackId, library: library, title: title, artist: artist, durationMs: durationMs)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -1513,11 +1553,17 @@ public extension PlayerState {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        if let csilV = self.error { csilEntries.append(("error", .text(csilV))) }
         csilEntries.append(("queue", CsilCborValue.array(self.queue.map { $0.toCborValue() })))
         csilEntries.append(("status", self.status.toCborValue()))
         csilEntries.append(("volume", .uint(self.volume)))
+        csilEntries.append(("shuffle", .bool(self.shuffle)))
+        csilEntries.append(("can_undo", .bool(self.canUndo)))
+        csilEntries.append(("revision", .uint(self.revision)))
         csilEntries.append(("player_id", .text(self.playerId)))
+        if let csilV = self.playbackId { csilEntries.append(("playback_id", .text(csilV))) }
         if let csilV = self.positionMs { csilEntries.append(("position_ms", .uint(csilV))) }
+        csilEntries.append(("repeat_mode", self.repeatMode.toCborValue()))
         if let csilV = self.currentIndex { csilEntries.append(("current_index", .uint(csilV))) }
         return .map(csilEntries)
     }
@@ -1525,12 +1571,18 @@ public extension PlayerState {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let playerId = try CsilCbor.asText((try CsilCbor.require(cborValue, "player_id")))
+        let revision = try CsilCbor.asU64((try CsilCbor.require(cborValue, "revision")))
         let status = try PlayerStatus(cborValue: (try CsilCbor.require(cborValue, "status")))
         let currentIndex: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "current_index") { try CsilCbor.asU64(csilV) } else { nil }
+        let playbackId: String? = if let csilV = CsilCbor.mapGet(cborValue, "playback_id") { try CsilCbor.asText(csilV) } else { nil }
         let positionMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "position_ms") { try CsilCbor.asU64(csilV) } else { nil }
         let volume = try CsilCbor.asU64((try CsilCbor.require(cborValue, "volume")))
+        let repeatMode = try RepeatMode(cborValue: (try CsilCbor.require(cborValue, "repeat_mode")))
+        let shuffle = try CsilCbor.asBool((try CsilCbor.require(cborValue, "shuffle")))
+        let error: String? = if let csilV = CsilCbor.mapGet(cborValue, "error") { try CsilCbor.asText(csilV) } else { nil }
+        let canUndo = try CsilCbor.asBool((try CsilCbor.require(cborValue, "can_undo")))
         let queue = try CsilCbor.asArray((try CsilCbor.require(cborValue, "queue"))).map { try QueueItem(cborValue: $0) }
-        self.init(playerId: playerId, status: status, currentIndex: currentIndex, positionMs: positionMs, volume: volume, queue: queue)
+        self.init(playerId: playerId, revision: revision, status: status, currentIndex: currentIndex, playbackId: playbackId, positionMs: positionMs, volume: volume, repeatMode: repeatMode, shuffle: shuffle, error: error, canUndo: canUndo, queue: queue)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -1630,6 +1682,29 @@ public extension CmdEnqueue {
     static func fromCbor(_ bytes: [UInt8]) throws -> CmdEnqueue { try CmdEnqueue(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension CmdEnqueueNext {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("enqueue-next")))
+        csilEntries.append(("track_ids", CsilCborValue.array(self.trackIds.map { .text($0) })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("enqueue-next"), "enqueue-next")
+        let trackIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "track_ids"))).map { try CsilCbor.asText($0) }
+        self.init(op: op, trackIds: trackIds)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdEnqueueNext { try CmdEnqueueNext(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension CmdRemove {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
@@ -1651,6 +1726,29 @@ public extension CmdRemove {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> CmdRemove { try CmdRemove(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdRemoveItem {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("remove-item")))
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("remove-item"), "remove-item")
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
+        self.init(op: op, queueItemId: queueItemId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdRemoveItem { try CmdRemoveItem(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension CmdReorder {
@@ -1676,6 +1774,31 @@ public extension CmdReorder {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> CmdReorder { try CmdReorder(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdMoveItem {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("move-item")))
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
+        if let csilV = self.beforeQueueItemId { csilEntries.append(("before_queue_item_id", .uint(csilV))) }
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("move-item"), "move-item")
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
+        let beforeQueueItemId: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "before_queue_item_id") { try CsilCbor.asU64(csilV) } else { nil }
+        self.init(op: op, queueItemId: queueItemId, beforeQueueItemId: beforeQueueItemId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdMoveItem { try CmdMoveItem(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension CmdClear {
@@ -1705,6 +1828,7 @@ public extension CmdPlay {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("op", .text("play")))
         if let csilV = self.index { csilEntries.append(("index", .uint(csilV))) }
+        if let csilV = self.queueItemId { csilEntries.append(("queue_item_id", .uint(csilV))) }
         return .map(csilEntries)
     }
 
@@ -1712,7 +1836,8 @@ public extension CmdPlay {
     init(cborValue: CsilCborValue) throws {
         let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("play"), "play")
         let index: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "index") { try CsilCbor.asU64(csilV) } else { nil }
-        self.init(op: op, index: index)
+        let queueItemId: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "queue_item_id") { try CsilCbor.asU64(csilV) } else { nil }
+        self.init(op: op, index: index, queueItemId: queueItemId)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -1720,6 +1845,33 @@ public extension CmdPlay {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> CmdPlay { try CmdPlay(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdReplaceAndPlay {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("replace-and-play")))
+        csilEntries.append(("track_ids", CsilCborValue.array(self.trackIds.map { .text($0) })))
+        if let csilV = self.positionMs { csilEntries.append(("position_ms", .uint(csilV))) }
+        if let csilV = self.startIndex { csilEntries.append(("start_index", .uint(csilV))) }
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("replace-and-play"), "replace-and-play")
+        let trackIds = try CsilCbor.asArray((try CsilCbor.require(cborValue, "track_ids"))).map { try CsilCbor.asText($0) }
+        let startIndex: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "start_index") { try CsilCbor.asU64(csilV) } else { nil }
+        let positionMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "position_ms") { try CsilCbor.asU64(csilV) } else { nil }
+        self.init(op: op, trackIds: trackIds, startIndex: startIndex, positionMs: positionMs)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdReplaceAndPlay { try CmdReplaceAndPlay(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension CmdPause {
@@ -1831,6 +1983,154 @@ public extension CmdVolume {
     static func fromCbor(_ bytes: [UInt8]) throws -> CmdVolume { try CmdVolume(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public extension CmdSetRepeat {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("set-repeat")))
+        csilEntries.append(("repeat_mode", self.repeatMode.toCborValue()))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("set-repeat"), "set-repeat")
+        let repeatMode = try RepeatMode(cborValue: (try CsilCbor.require(cborValue, "repeat_mode")))
+        self.init(op: op, repeatMode: repeatMode)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdSetRepeat { try CmdSetRepeat(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdSetShuffle {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("set-shuffle")))
+        csilEntries.append(("shuffle", .bool(self.shuffle)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("set-shuffle"), "set-shuffle")
+        let shuffle = try CsilCbor.asBool((try CsilCbor.require(cborValue, "shuffle")))
+        self.init(op: op, shuffle: shuffle)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdSetShuffle { try CmdSetShuffle(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdUndo {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("undo")))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("undo"), "undo")
+        self.init(op: op)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdUndo { try CmdUndo(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdPlaybackCompleted {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("playback-completed")))
+        csilEntries.append(("playback_id", .text(self.playbackId)))
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("playback-completed"), "playback-completed")
+        let playbackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "playback_id")))
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
+        self.init(op: op, playbackId: playbackId, queueItemId: queueItemId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdPlaybackCompleted { try CmdPlaybackCompleted(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdPlaybackFailed {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("playback-failed")))
+        csilEntries.append(("error", .text(self.error)))
+        csilEntries.append(("playback_id", .text(self.playbackId)))
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("playback-failed"), "playback-failed")
+        let playbackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "playback_id")))
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
+        let error = try CsilCbor.asText((try CsilCbor.require(cborValue, "error")))
+        self.init(op: op, playbackId: playbackId, queueItemId: queueItemId, error: error)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdPlaybackFailed { try CmdPlaybackFailed(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension CmdPlaybackState {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append(("op", .text("playback-state")))
+        csilEntries.append(("status", self.status.toCborValue()))
+        csilEntries.append(("playback_id", .text(self.playbackId)))
+        csilEntries.append(("position_ms", .uint(self.positionMs)))
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("playback-state"), "playback-state")
+        let playbackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "playback_id")))
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
+        let status = try PlayerStatus(cborValue: (try CsilCbor.require(cborValue, "status")))
+        let positionMs = try CsilCbor.asU64((try CsilCbor.require(cborValue, "position_ms")))
+        self.init(op: op, playbackId: playbackId, queueItemId: queueItemId, status: status, positionMs: positionMs)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> CmdPlaybackState { try CmdPlaybackState(cborValue: CsilCbor.decode(bytes)) }
+}
+
 public extension PlayerCommand {
     /// The CBOR value tree for this variant: a `[index, payload]` tagged sum
     /// (0-based declaration order is the wire contract).
@@ -1838,24 +2138,44 @@ public extension PlayerCommand {
         switch self {
         case .cmdEnqueue(let csilV):
             return .array([.uint(0), csilV.toCborValue()])
-        case .cmdRemove(let csilV):
+        case .cmdEnqueueNext(let csilV):
             return .array([.uint(1), csilV.toCborValue()])
-        case .cmdReorder(let csilV):
+        case .cmdRemove(let csilV):
             return .array([.uint(2), csilV.toCborValue()])
-        case .cmdClear(let csilV):
+        case .cmdRemoveItem(let csilV):
             return .array([.uint(3), csilV.toCborValue()])
-        case .cmdPlay(let csilV):
+        case .cmdReorder(let csilV):
             return .array([.uint(4), csilV.toCborValue()])
-        case .cmdPause(let csilV):
+        case .cmdMoveItem(let csilV):
             return .array([.uint(5), csilV.toCborValue()])
-        case .cmdNext(let csilV):
+        case .cmdClear(let csilV):
             return .array([.uint(6), csilV.toCborValue()])
-        case .cmdPrevious(let csilV):
+        case .cmdPlay(let csilV):
             return .array([.uint(7), csilV.toCborValue()])
-        case .cmdSeek(let csilV):
+        case .cmdReplaceAndPlay(let csilV):
             return .array([.uint(8), csilV.toCborValue()])
-        case .cmdVolume(let csilV):
+        case .cmdPause(let csilV):
             return .array([.uint(9), csilV.toCborValue()])
+        case .cmdNext(let csilV):
+            return .array([.uint(10), csilV.toCborValue()])
+        case .cmdPrevious(let csilV):
+            return .array([.uint(11), csilV.toCborValue()])
+        case .cmdSeek(let csilV):
+            return .array([.uint(12), csilV.toCborValue()])
+        case .cmdVolume(let csilV):
+            return .array([.uint(13), csilV.toCborValue()])
+        case .cmdSetRepeat(let csilV):
+            return .array([.uint(14), csilV.toCborValue()])
+        case .cmdSetShuffle(let csilV):
+            return .array([.uint(15), csilV.toCborValue()])
+        case .cmdUndo(let csilV):
+            return .array([.uint(16), csilV.toCborValue()])
+        case .cmdPlaybackCompleted(let csilV):
+            return .array([.uint(17), csilV.toCborValue()])
+        case .cmdPlaybackFailed(let csilV):
+            return .array([.uint(18), csilV.toCborValue()])
+        case .cmdPlaybackState(let csilV):
+            return .array([.uint(19), csilV.toCborValue()])
         }
     }
 
@@ -1867,15 +2187,25 @@ public extension PlayerCommand {
         let csilPayload = csilElems[1]
         switch csilIndex {
         case 0: self = .cmdEnqueue(try CmdEnqueue(cborValue: csilPayload))
-        case 1: self = .cmdRemove(try CmdRemove(cborValue: csilPayload))
-        case 2: self = .cmdReorder(try CmdReorder(cborValue: csilPayload))
-        case 3: self = .cmdClear(try CmdClear(cborValue: csilPayload))
-        case 4: self = .cmdPlay(try CmdPlay(cborValue: csilPayload))
-        case 5: self = .cmdPause(try CmdPause(cborValue: csilPayload))
-        case 6: self = .cmdNext(try CmdNext(cborValue: csilPayload))
-        case 7: self = .cmdPrevious(try CmdPrevious(cborValue: csilPayload))
-        case 8: self = .cmdSeek(try CmdSeek(cborValue: csilPayload))
-        case 9: self = .cmdVolume(try CmdVolume(cborValue: csilPayload))
+        case 1: self = .cmdEnqueueNext(try CmdEnqueueNext(cborValue: csilPayload))
+        case 2: self = .cmdRemove(try CmdRemove(cborValue: csilPayload))
+        case 3: self = .cmdRemoveItem(try CmdRemoveItem(cborValue: csilPayload))
+        case 4: self = .cmdReorder(try CmdReorder(cborValue: csilPayload))
+        case 5: self = .cmdMoveItem(try CmdMoveItem(cborValue: csilPayload))
+        case 6: self = .cmdClear(try CmdClear(cborValue: csilPayload))
+        case 7: self = .cmdPlay(try CmdPlay(cborValue: csilPayload))
+        case 8: self = .cmdReplaceAndPlay(try CmdReplaceAndPlay(cborValue: csilPayload))
+        case 9: self = .cmdPause(try CmdPause(cborValue: csilPayload))
+        case 10: self = .cmdNext(try CmdNext(cborValue: csilPayload))
+        case 11: self = .cmdPrevious(try CmdPrevious(cborValue: csilPayload))
+        case 12: self = .cmdSeek(try CmdSeek(cborValue: csilPayload))
+        case 13: self = .cmdVolume(try CmdVolume(cborValue: csilPayload))
+        case 14: self = .cmdSetRepeat(try CmdSetRepeat(cborValue: csilPayload))
+        case 15: self = .cmdSetShuffle(try CmdSetShuffle(cborValue: csilPayload))
+        case 16: self = .cmdUndo(try CmdUndo(cborValue: csilPayload))
+        case 17: self = .cmdPlaybackCompleted(try CmdPlaybackCompleted(cborValue: csilPayload))
+        case 18: self = .cmdPlaybackFailed(try CmdPlaybackFailed(cborValue: csilPayload))
+        case 19: self = .cmdPlaybackState(try CmdPlaybackState(cborValue: csilPayload))
         default: throw CsilCborError.typeMismatch
         }
     }
@@ -1980,15 +2310,17 @@ public extension MediaOpen {
         csilEntries.append(("kind", .text("open")))
         csilEntries.append(("pref", self.pref.toCborValue()))
         csilEntries.append(("track_id", .text(self.trackId)))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("open"), "open")
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
         let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
         let pref = try StreamPref(cborValue: (try CsilCbor.require(cborValue, "pref")))
-        self.init(kind: kind, trackId: trackId, pref: pref)
+        self.init(kind: kind, streamId: streamId, trackId: trackId, pref: pref)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2003,6 +2335,7 @@ public extension MediaSeek {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("kind", .text("seek")))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         csilEntries.append(("position_ms", .uint(self.positionMs)))
         return .map(csilEntries)
     }
@@ -2010,8 +2343,9 @@ public extension MediaSeek {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("seek"), "seek")
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
         let positionMs = try CsilCbor.asU64((try CsilCbor.require(cborValue, "position_ms")))
-        self.init(kind: kind, positionMs: positionMs)
+        self.init(kind: kind, streamId: streamId, positionMs: positionMs)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2026,13 +2360,15 @@ public extension MediaPause {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("kind", .text("pause")))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("pause"), "pause")
-        self.init(kind: kind)
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
+        self.init(kind: kind, streamId: streamId)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2047,13 +2383,15 @@ public extension MediaResume {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("kind", .text("resume")))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("resume"), "resume")
-        self.init(kind: kind)
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
+        self.init(kind: kind, streamId: streamId)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2068,13 +2406,15 @@ public extension MediaStop {
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("kind", .text("stop")))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("stop"), "stop")
-        self.init(kind: kind)
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
+        self.init(kind: kind, streamId: streamId)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2132,6 +2472,7 @@ public extension MediaHeader {
         csilEntries.append(("kind", .text("header")))
         csilEntries.append(("codec", self.codec.toCborValue()))
         csilEntries.append(("channels", .uint(self.channels)))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         csilEntries.append(("transcoded", .bool(self.transcoded)))
         if let csilV = self.durationMs { csilEntries.append(("duration_ms", .uint(csilV))) }
         csilEntries.append(("sample_rate", .uint(self.sampleRate)))
@@ -2144,6 +2485,7 @@ public extension MediaHeader {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("header"), "header")
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
         let codec = try Codec(cborValue: (try CsilCbor.require(cborValue, "codec")))
         let transcoded = try CsilCbor.asBool((try CsilCbor.require(cborValue, "transcoded")))
         let sampleRate = try CsilCbor.asU64((try CsilCbor.require(cborValue, "sample_rate")))
@@ -2152,7 +2494,7 @@ public extension MediaHeader {
         let trimStartSamples = try CsilCbor.asU64((try CsilCbor.require(cborValue, "trim_start_samples")))
         let trimEndSamples = try CsilCbor.asU64((try CsilCbor.require(cborValue, "trim_end_samples")))
         let codecConfig: [UInt8]? = if let csilV = CsilCbor.mapGet(cborValue, "codec_config") { try CsilCbor.asBytes(csilV) } else { nil }
-        self.init(kind: kind, codec: codec, transcoded: transcoded, sampleRate: sampleRate, channels: channels, durationMs: durationMs, trimStartSamples: trimStartSamples, trimEndSamples: trimEndSamples, codecConfig: codecConfig)
+        self.init(kind: kind, streamId: streamId, codec: codec, transcoded: transcoded, sampleRate: sampleRate, channels: channels, durationMs: durationMs, trimStartSamples: trimStartSamples, trimEndSamples: trimEndSamples, codecConfig: codecConfig)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2188,6 +2530,7 @@ public extension MediaChunk {
         csilEntries.append(("seq", .uint(self.seq)))
         csilEntries.append(("data", .bytes(self.data)))
         csilEntries.append(("kind", .text("chunk")))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         if let csilV = self.timestampMs { csilEntries.append(("timestamp_ms", .uint(csilV))) }
         return .map(csilEntries)
     }
@@ -2195,10 +2538,11 @@ public extension MediaChunk {
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("chunk"), "chunk")
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
         let seq = try CsilCbor.asU64((try CsilCbor.require(cborValue, "seq")))
         let timestampMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "timestamp_ms") { try CsilCbor.asU64(csilV) } else { nil }
         let data = try CsilCbor.asBytes((try CsilCbor.require(cborValue, "data")))
-        self.init(kind: kind, seq: seq, timestampMs: timestampMs, data: data)
+        self.init(kind: kind, streamId: streamId, seq: seq, timestampMs: timestampMs, data: data)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2214,14 +2558,16 @@ public extension MediaEnd {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("kind", .text("end")))
         if let csilV = self.reason { csilEntries.append(("reason", csilV.toCborValue())) }
+        csilEntries.append(("stream_id", .text(self.streamId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("end"), "end")
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
         let reason: MediaEndReason? = if let csilV = CsilCbor.mapGet(cborValue, "reason") { try MediaEndReason(cborValue: csilV) } else { nil }
-        self.init(kind: kind, reason: reason)
+        self.init(kind: kind, streamId: streamId, reason: reason)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2237,14 +2583,16 @@ public extension MediaFail {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
         csilEntries.append(("kind", .text("error")))
         csilEntries.append(("error", self.error.toCborValue()))
+        csilEntries.append(("stream_id", .text(self.streamId)))
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let kind = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "kind")), .text("error"), "error")
+        let streamId = try CsilCbor.asText((try CsilCbor.require(cborValue, "stream_id")))
         let error = try ServiceError(cborValue: (try CsilCbor.require(cborValue, "error")))
-        self.init(kind: kind, error: error)
+        self.init(kind: kind, streamId: streamId, error: error)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2379,7 +2727,9 @@ public extension DirLoad {
         csilEntries.append(("pref", self.pref.toCborValue()))
         csilEntries.append(("track_id", .text(self.trackId)))
         csilEntries.append(("player_id", .text(self.playerId)))
+        csilEntries.append(("playback_id", .text(self.playbackId)))
         if let csilV = self.positionMs { csilEntries.append(("position_ms", .uint(csilV))) }
+        csilEntries.append(("queue_item_id", .uint(self.queueItemId)))
         return .map(csilEntries)
     }
 
@@ -2387,10 +2737,12 @@ public extension DirLoad {
     init(cborValue: CsilCborValue) throws {
         let op = try CsilCbor.expectLiteral((try CsilCbor.require(cborValue, "op")), .text("load"), "load")
         let playerId = try CsilCbor.asText((try CsilCbor.require(cborValue, "player_id")))
+        let queueItemId = try CsilCbor.asU64((try CsilCbor.require(cborValue, "queue_item_id")))
+        let playbackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "playback_id")))
         let trackId = try CsilCbor.asText((try CsilCbor.require(cborValue, "track_id")))
         let pref = try StreamPref(cborValue: (try CsilCbor.require(cborValue, "pref")))
         let positionMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "position_ms") { try CsilCbor.asU64(csilV) } else { nil }
-        self.init(op: op, playerId: playerId, trackId: trackId, pref: pref, positionMs: positionMs)
+        self.init(op: op, playerId: playerId, queueItemId: queueItemId, playbackId: playbackId, trackId: trackId, pref: pref, positionMs: positionMs)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -2539,20 +2891,28 @@ public extension NodeReport {
     /// The CBOR value tree for this record (deep, canonical key order).
     func toCborValue() -> CsilCborValue {
         var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        if let csilV = self.error { csilEntries.append(("error", .text(csilV))) }
+        if let csilV = self.event { csilEntries.append(("event", csilV.toCborValue())) }
         csilEntries.append(("status", self.status.toCborValue()))
         csilEntries.append(("player_id", .text(self.playerId)))
+        if let csilV = self.playbackId { csilEntries.append(("playback_id", .text(csilV))) }
         if let csilV = self.positionMs { csilEntries.append(("position_ms", .uint(csilV))) }
         if let csilV = self.audioBlocked { csilEntries.append(("audio_blocked", .bool(csilV))) }
+        if let csilV = self.queueItemId { csilEntries.append(("queue_item_id", .uint(csilV))) }
         return .map(csilEntries)
     }
 
     /// Reconstruct this record from a decoded CBOR value tree.
     init(cborValue: CsilCborValue) throws {
         let playerId = try CsilCbor.asText((try CsilCbor.require(cborValue, "player_id")))
+        let event: NodeEvent? = if let csilV = CsilCbor.mapGet(cborValue, "event") { try NodeEvent(cborValue: csilV) } else { nil }
         let status = try PlayerStatus(cborValue: (try CsilCbor.require(cborValue, "status")))
+        let queueItemId: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "queue_item_id") { try CsilCbor.asU64(csilV) } else { nil }
+        let playbackId: String? = if let csilV = CsilCbor.mapGet(cborValue, "playback_id") { try CsilCbor.asText(csilV) } else { nil }
         let positionMs: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "position_ms") { try CsilCbor.asU64(csilV) } else { nil }
+        let error: String? = if let csilV = CsilCbor.mapGet(cborValue, "error") { try CsilCbor.asText(csilV) } else { nil }
         let audioBlocked: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "audio_blocked") { try CsilCbor.asBool(csilV) } else { nil }
-        self.init(playerId: playerId, status: status, positionMs: positionMs, audioBlocked: audioBlocked)
+        self.init(playerId: playerId, event: event, status: status, queueItemId: queueItemId, playbackId: playbackId, positionMs: positionMs, error: error, audioBlocked: audioBlocked)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.

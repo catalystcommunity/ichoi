@@ -3,6 +3,7 @@
 package csilgen.generated;
 
 public record MediaStop(
-    String kind /* wire: "kind" */
+    String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */
 ) {
 }

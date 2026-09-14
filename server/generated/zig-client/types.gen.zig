@@ -35,6 +35,38 @@ pub const PlayerStatus = enum {
     }
 };
 
+/// RepeatMode is an enumeration.
+pub const RepeatMode = enum {
+    off,
+    all,
+    one,
+
+    pub fn wire_name(self: RepeatMode) []const u8 {
+        return switch (self) {
+            .off => "off",
+            .all => "all",
+            .one => "one",
+        };
+    }
+};
+
+/// NodeEvent is an enumeration.
+pub const NodeEvent = enum {
+    ready,
+    state,
+    completed,
+    failed,
+
+    pub fn wire_name(self: NodeEvent) []const u8 {
+        return switch (self) {
+            .ready => "ready",
+            .state => "state",
+            .completed => "completed",
+            .failed => "failed",
+        };
+    }
+};
+
 /// Codec is an enumeration.
 pub const Codec = enum {
     mp3,
@@ -377,10 +409,22 @@ pub const CmdEnqueue = struct {
     at_index: ?u64 = null,
 };
 
+/// CmdEnqueueNext is a structured data type.
+pub const CmdEnqueueNext = struct {
+    op: []const u8,
+    track_ids: []TrackId,
+};
+
 /// CmdRemove is a structured data type.
 pub const CmdRemove = struct {
     op: []const u8,
     index: u64,
+};
+
+/// CmdRemoveItem is a structured data type.
+pub const CmdRemoveItem = struct {
+    op: []const u8,
+    queue_item_id: u64,
 };
 
 /// CmdReorder is a structured data type.
@@ -388,6 +432,13 @@ pub const CmdReorder = struct {
     op: []const u8,
     from_index: u64,
     to_index: u64,
+};
+
+/// CmdMoveItem is a structured data type.
+pub const CmdMoveItem = struct {
+    op: []const u8,
+    queue_item_id: u64,
+    before_queue_item_id: ?u64 = null,
 };
 
 /// CmdClear is a structured data type.
@@ -399,6 +450,15 @@ pub const CmdClear = struct {
 pub const CmdPlay = struct {
     op: []const u8,
     index: ?u64 = null,
+    queue_item_id: ?u64 = null,
+};
+
+/// CmdReplaceAndPlay is a structured data type.
+pub const CmdReplaceAndPlay = struct {
+    op: []const u8,
+    track_ids: []TrackId,
+    start_index: ?u64 = null,
+    position_ms: ?u64 = null,
 };
 
 /// CmdPause is a structured data type.
@@ -428,33 +488,30 @@ pub const CmdVolume = struct {
     volume: u64,
 };
 
-/// PlayerCommand is a tagged union.
-pub const PlayerCommand = union(enum) {
-    cmd_enqueue: CmdEnqueue,
-    cmd_remove: CmdRemove,
-    cmd_reorder: CmdReorder,
-    cmd_clear: CmdClear,
-    cmd_play: CmdPlay,
-    cmd_pause: CmdPause,
-    cmd_next: CmdNext,
-    cmd_previous: CmdPrevious,
-    cmd_seek: CmdSeek,
-    cmd_volume: CmdVolume,
+/// CmdSetShuffle is a structured data type.
+pub const CmdSetShuffle = struct {
+    op: []const u8,
+    shuffle: bool,
+};
 
-    pub fn variant_name(self: PlayerCommand) []const u8 {
-        return switch (self) {
-            .cmd_enqueue => "CmdEnqueue",
-            .cmd_remove => "CmdRemove",
-            .cmd_reorder => "CmdReorder",
-            .cmd_clear => "CmdClear",
-            .cmd_play => "CmdPlay",
-            .cmd_pause => "CmdPause",
-            .cmd_next => "CmdNext",
-            .cmd_previous => "CmdPrevious",
-            .cmd_seek => "CmdSeek",
-            .cmd_volume => "CmdVolume",
-        };
-    }
+/// CmdUndo is a structured data type.
+pub const CmdUndo = struct {
+    op: []const u8,
+};
+
+/// CmdPlaybackCompleted is a structured data type.
+pub const CmdPlaybackCompleted = struct {
+    op: []const u8,
+    playback_id: []const u8,
+    queue_item_id: u64,
+};
+
+/// CmdPlaybackFailed is a structured data type.
+pub const CmdPlaybackFailed = struct {
+    op: []const u8,
+    playback_id: []const u8,
+    queue_item_id: u64,
+    @"error": []const u8,
 };
 
 /// EnableShareRequest is a structured data type.
@@ -465,27 +522,32 @@ pub const EnableShareRequest = struct {
 /// MediaSeek is a structured data type.
 pub const MediaSeek = struct {
     kind: []const u8,
+    stream_id: []const u8,
     position_ms: u64,
 };
 
 /// MediaPause is a structured data type.
 pub const MediaPause = struct {
     kind: []const u8,
+    stream_id: []const u8,
 };
 
 /// MediaResume is a structured data type.
 pub const MediaResume = struct {
     kind: []const u8,
+    stream_id: []const u8,
 };
 
 /// MediaStop is a structured data type.
 pub const MediaStop = struct {
     kind: []const u8,
+    stream_id: []const u8,
 };
 
 /// MediaChunk is a structured data type.
 pub const MediaChunk = struct {
     kind: []const u8,
+    stream_id: []const u8,
     seq: u64,
     timestamp_ms: ?u64 = null,
     data: []const u8,
@@ -494,12 +556,14 @@ pub const MediaChunk = struct {
 /// MediaEnd is a structured data type.
 pub const MediaEnd = struct {
     kind: []const u8,
+    stream_id: []const u8,
     reason: ?MediaEndReason = null,
 };
 
 /// MediaFail is a structured data type.
 pub const MediaFail = struct {
     kind: []const u8,
+    stream_id: []const u8,
     @"error": ServiceError,
 };
 
@@ -877,6 +941,7 @@ pub const Player = struct {
 
 /// QueueItem is a structured data type.
 pub const QueueItem = struct {
+    queue_item_id: u64,
     track_id: TrackId,
     library: ?Library = null,
     title: ?[]const u8 = null,
@@ -887,10 +952,16 @@ pub const QueueItem = struct {
 /// PlayerState is a structured data type.
 pub const PlayerState = struct {
     player_id: PlayerId,
+    revision: u64,
     status: PlayerStatus,
     current_index: ?u64 = null,
+    playback_id: ?[]const u8 = null,
     position_ms: ?u64 = null,
     volume: u64,
+    repeat_mode: RepeatMode,
+    shuffle: bool,
+    @"error": ?[]const u8 = null,
+    can_undo: bool,
     queue: []QueueItem,
 };
 
@@ -898,6 +969,70 @@ pub const PlayerState = struct {
 pub const SubscribeRequest = struct {
     player_id: PlayerId,
     active: ?bool = null,
+};
+
+/// CmdSetRepeat is a structured data type.
+pub const CmdSetRepeat = struct {
+    op: []const u8,
+    repeat_mode: RepeatMode,
+};
+
+/// CmdPlaybackState is a structured data type.
+pub const CmdPlaybackState = struct {
+    op: []const u8,
+    playback_id: []const u8,
+    queue_item_id: u64,
+    status: PlayerStatus,
+    position_ms: u64,
+};
+
+/// PlayerCommand is a tagged union.
+pub const PlayerCommand = union(enum) {
+    cmd_enqueue: CmdEnqueue,
+    cmd_enqueue_next: CmdEnqueueNext,
+    cmd_remove: CmdRemove,
+    cmd_remove_item: CmdRemoveItem,
+    cmd_reorder: CmdReorder,
+    cmd_move_item: CmdMoveItem,
+    cmd_clear: CmdClear,
+    cmd_play: CmdPlay,
+    cmd_replace_and_play: CmdReplaceAndPlay,
+    cmd_pause: CmdPause,
+    cmd_next: CmdNext,
+    cmd_previous: CmdPrevious,
+    cmd_seek: CmdSeek,
+    cmd_volume: CmdVolume,
+    cmd_set_repeat: CmdSetRepeat,
+    cmd_set_shuffle: CmdSetShuffle,
+    cmd_undo: CmdUndo,
+    cmd_playback_completed: CmdPlaybackCompleted,
+    cmd_playback_failed: CmdPlaybackFailed,
+    cmd_playback_state: CmdPlaybackState,
+
+    pub fn variant_name(self: PlayerCommand) []const u8 {
+        return switch (self) {
+            .cmd_enqueue => "CmdEnqueue",
+            .cmd_enqueue_next => "CmdEnqueueNext",
+            .cmd_remove => "CmdRemove",
+            .cmd_remove_item => "CmdRemoveItem",
+            .cmd_reorder => "CmdReorder",
+            .cmd_move_item => "CmdMoveItem",
+            .cmd_clear => "CmdClear",
+            .cmd_play => "CmdPlay",
+            .cmd_replace_and_play => "CmdReplaceAndPlay",
+            .cmd_pause => "CmdPause",
+            .cmd_next => "CmdNext",
+            .cmd_previous => "CmdPrevious",
+            .cmd_seek => "CmdSeek",
+            .cmd_volume => "CmdVolume",
+            .cmd_set_repeat => "CmdSetRepeat",
+            .cmd_set_shuffle => "CmdSetShuffle",
+            .cmd_undo => "CmdUndo",
+            .cmd_playback_completed => "CmdPlaybackCompleted",
+            .cmd_playback_failed => "CmdPlaybackFailed",
+            .cmd_playback_state => "CmdPlaybackState",
+        };
+    }
 };
 
 /// CommandRequest is a structured data type.
@@ -919,6 +1054,7 @@ pub const ShareResult = struct {
 /// MediaOpen is a structured data type.
 pub const MediaOpen = struct {
     kind: []const u8,
+    stream_id: []const u8,
     track_id: TrackId,
     pref: StreamPref,
 };
@@ -945,6 +1081,7 @@ pub const MediaControl = union(enum) {
 /// MediaHeader is a structured data type.
 pub const MediaHeader = struct {
     kind: []const u8,
+    stream_id: []const u8,
     codec: Codec,
     transcoded: bool,
     sample_rate: u64,
@@ -991,6 +1128,8 @@ pub const RegisterNodeResponse = struct {
 pub const DirLoad = struct {
     op: []const u8,
     player_id: PlayerId,
+    queue_item_id: u64,
+    playback_id: []const u8,
     track_id: TrackId,
     pref: StreamPref,
     position_ms: ?u64 = null,
@@ -1043,8 +1182,12 @@ pub const NodeDirective = union(enum) {
 /// NodeReport is a structured data type.
 pub const NodeReport = struct {
     player_id: PlayerId,
+    event: ?NodeEvent = null,
     status: PlayerStatus,
+    queue_item_id: ?u64 = null,
+    playback_id: ?[]const u8 = null,
     position_ms: ?u64 = null,
+    @"error": ?[]const u8 = null,
     audio_blocked: ?bool = null,
 };
 

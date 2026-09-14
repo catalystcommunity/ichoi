@@ -222,6 +222,34 @@ diesel::table! {
         current_index -> Nullable<Integer>,
         position_ms -> Nullable<BigInt>,
         volume -> Integer,
+        repeat_mode -> Text,
+        shuffle -> Integer,
+        revision -> BigInt,
+        playback_id -> Nullable<Text>,
+        current_queue_item_id -> Nullable<Integer>,
+        error -> Nullable<Text>,
+        listener_account_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    player_undo_state (player_id) {
+        player_id -> Text,
+        status -> Text,
+        current_queue_item_id -> Nullable<Integer>,
+        position_ms -> Nullable<BigInt>,
+        playback_id -> Nullable<Text>,
+        error -> Nullable<Text>,
+        listener_account_id -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    player_undo_queue_items (player_id, queue_item_id) {
+        player_id -> Text,
+        queue_item_id -> Integer,
+        track_id -> Text,
+        position -> Integer,
     }
 }
 
@@ -290,6 +318,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     players,
     player_queue_items,
     player_state,
+    player_undo_state,
+    player_undo_queue_items,
     listens,
     stars,
     audiobook_progress,

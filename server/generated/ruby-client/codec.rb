@@ -173,24 +173,44 @@ module CsilCbor
     case value
     when CmdEnqueue
       [0, (value).csil_to_tree]
-    when CmdRemove
+    when CmdEnqueueNext
       [1, (value).csil_to_tree]
-    when CmdReorder
+    when CmdRemove
       [2, (value).csil_to_tree]
-    when CmdClear
+    when CmdRemoveItem
       [3, (value).csil_to_tree]
-    when CmdPlay
+    when CmdReorder
       [4, (value).csil_to_tree]
-    when CmdPause
+    when CmdMoveItem
       [5, (value).csil_to_tree]
-    when CmdNext
+    when CmdClear
       [6, (value).csil_to_tree]
-    when CmdPrevious
+    when CmdPlay
       [7, (value).csil_to_tree]
-    when CmdSeek
+    when CmdReplaceAndPlay
       [8, (value).csil_to_tree]
-    when CmdVolume
+    when CmdPause
       [9, (value).csil_to_tree]
+    when CmdNext
+      [10, (value).csil_to_tree]
+    when CmdPrevious
+      [11, (value).csil_to_tree]
+    when CmdSeek
+      [12, (value).csil_to_tree]
+    when CmdVolume
+      [13, (value).csil_to_tree]
+    when CmdSetRepeat
+      [14, (value).csil_to_tree]
+    when CmdSetShuffle
+      [15, (value).csil_to_tree]
+    when CmdUndo
+      [16, (value).csil_to_tree]
+    when CmdPlaybackCompleted
+      [17, (value).csil_to_tree]
+    when CmdPlaybackFailed
+      [18, (value).csil_to_tree]
+    when CmdPlaybackState
+      [19, (value).csil_to_tree]
     else
       raise ArgumentError, "csilgen: value does not match any PlayerCommand variant"
     end
@@ -203,23 +223,43 @@ module CsilCbor
     when 0
       CmdEnqueue.csil_from_tree(csil_inner)
     when 1
-      CmdRemove.csil_from_tree(csil_inner)
+      CmdEnqueueNext.csil_from_tree(csil_inner)
     when 2
-      CmdReorder.csil_from_tree(csil_inner)
+      CmdRemove.csil_from_tree(csil_inner)
     when 3
-      CmdClear.csil_from_tree(csil_inner)
+      CmdRemoveItem.csil_from_tree(csil_inner)
     when 4
-      CmdPlay.csil_from_tree(csil_inner)
+      CmdReorder.csil_from_tree(csil_inner)
     when 5
-      CmdPause.csil_from_tree(csil_inner)
+      CmdMoveItem.csil_from_tree(csil_inner)
     when 6
-      CmdNext.csil_from_tree(csil_inner)
+      CmdClear.csil_from_tree(csil_inner)
     when 7
-      CmdPrevious.csil_from_tree(csil_inner)
+      CmdPlay.csil_from_tree(csil_inner)
     when 8
-      CmdSeek.csil_from_tree(csil_inner)
+      CmdReplaceAndPlay.csil_from_tree(csil_inner)
     when 9
+      CmdPause.csil_from_tree(csil_inner)
+    when 10
+      CmdNext.csil_from_tree(csil_inner)
+    when 11
+      CmdPrevious.csil_from_tree(csil_inner)
+    when 12
+      CmdSeek.csil_from_tree(csil_inner)
+    when 13
       CmdVolume.csil_from_tree(csil_inner)
+    when 14
+      CmdSetRepeat.csil_from_tree(csil_inner)
+    when 15
+      CmdSetShuffle.csil_from_tree(csil_inner)
+    when 16
+      CmdUndo.csil_from_tree(csil_inner)
+    when 17
+      CmdPlaybackCompleted.csil_from_tree(csil_inner)
+    when 18
+      CmdPlaybackFailed.csil_from_tree(csil_inner)
+    when 19
+      CmdPlaybackState.csil_from_tree(csil_inner)
     else
       raise ArgumentError, "csilgen: unknown PlayerCommand variant index #{csil_idx}"
     end
@@ -1602,6 +1642,7 @@ class QueueItem
     csil_map["library"] = (library) unless library.nil?
     csil_map["track_id"] = track_id
     csil_map["duration_ms"] = duration_ms unless duration_ms.nil?
+    csil_map["queue_item_id"] = queue_item_id
     csil_map
   end
 
@@ -1611,6 +1652,7 @@ class QueueItem
 
   def self.csil_from_tree(node)
     new(
+      queue_item_id: node["queue_item_id"],
       track_id: node["track_id"],
       library: (node.key?("library") ? (case (node["library"])
 when "music" then "music"
@@ -1634,11 +1676,17 @@ class PlayerState
 
   def csil_to_tree
     csil_map = {}
+    csil_map["error"] = error unless error.nil?
     csil_map["queue"] = (queue).map { |csil_e| (csil_e).csil_to_tree }
     csil_map["status"] = (status)
     csil_map["volume"] = volume
+    csil_map["shuffle"] = shuffle
+    csil_map["can_undo"] = can_undo
+    csil_map["revision"] = revision
     csil_map["player_id"] = player_id
+    csil_map["playback_id"] = playback_id unless playback_id.nil?
     csil_map["position_ms"] = position_ms unless position_ms.nil?
+    csil_map["repeat_mode"] = (repeat_mode)
     csil_map["current_index"] = current_index unless current_index.nil?
     csil_map
   end
@@ -1650,6 +1698,7 @@ class PlayerState
   def self.csil_from_tree(node)
     new(
       player_id: node["player_id"],
+      revision: node["revision"],
       status: (case (node["status"])
 when "stopped" then "stopped"
 when "playing" then "playing"
@@ -1658,8 +1707,19 @@ else
   raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
 end),
       current_index: (node.key?("current_index") ? node["current_index"] : nil),
+      playback_id: (node.key?("playback_id") ? node["playback_id"] : nil),
       position_ms: (node.key?("position_ms") ? node["position_ms"] : nil),
       volume: node["volume"],
+      repeat_mode: (case (node["repeat_mode"])
+when "off" then "off"
+when "all" then "all"
+when "one" then "one"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["repeat_mode"]).inspect}"
+end),
+      shuffle: node["shuffle"],
+      error: (node.key?("error") ? node["error"] : nil),
+      can_undo: node["can_undo"],
       queue: (node["queue"]).map { |csil_e| QueueItem.csil_from_tree(csil_e) }
     )
   end
@@ -1772,6 +1832,32 @@ class CmdEnqueue
   end
 end
 
+# CBOR codec for CmdEnqueueNext: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdEnqueueNext
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["track_ids"] = (track_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      track_ids: (node["track_ids"]).map { |csil_e| csil_e }
+    )
+  end
+end
+
 # CBOR codec for CmdRemove: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class CmdRemove
@@ -1794,6 +1880,32 @@ class CmdRemove
     new(
       op: node["op"],
       index: node["index"]
+    )
+  end
+end
+
+# CBOR codec for CmdRemoveItem: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdRemoveItem
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["queue_item_id"] = queue_item_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      queue_item_id: node["queue_item_id"]
     )
   end
 end
@@ -1822,6 +1934,34 @@ class CmdReorder
       op: node["op"],
       from_index: node["from_index"],
       to_index: node["to_index"]
+    )
+  end
+end
+
+# CBOR codec for CmdMoveItem: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdMoveItem
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["queue_item_id"] = queue_item_id
+    csil_map["before_queue_item_id"] = before_queue_item_id unless before_queue_item_id.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      queue_item_id: node["queue_item_id"],
+      before_queue_item_id: (node.key?("before_queue_item_id") ? node["before_queue_item_id"] : nil)
     )
   end
 end
@@ -1861,6 +2001,7 @@ class CmdPlay
     csil_map = {}
     csil_map["op"] = (op)
     csil_map["index"] = index unless index.nil?
+    csil_map["queue_item_id"] = queue_item_id unless queue_item_id.nil?
     csil_map
   end
 
@@ -1871,7 +2012,38 @@ class CmdPlay
   def self.csil_from_tree(node)
     new(
       op: node["op"],
-      index: (node.key?("index") ? node["index"] : nil)
+      index: (node.key?("index") ? node["index"] : nil),
+      queue_item_id: (node.key?("queue_item_id") ? node["queue_item_id"] : nil)
+    )
+  end
+end
+
+# CBOR codec for CmdReplaceAndPlay: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdReplaceAndPlay
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["track_ids"] = (track_ids).map { |csil_e| csil_e }
+    csil_map["position_ms"] = position_ms unless position_ms.nil?
+    csil_map["start_index"] = start_index unless start_index.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      track_ids: (node["track_ids"]).map { |csil_e| csil_e },
+      start_index: (node.key?("start_index") ? node["start_index"] : nil),
+      position_ms: (node.key?("position_ms") ? node["position_ms"] : nil)
     )
   end
 end
@@ -2000,6 +2172,184 @@ class CmdVolume
   end
 end
 
+# CBOR codec for CmdSetRepeat: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdSetRepeat
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["repeat_mode"] = (repeat_mode)
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      repeat_mode: (case (node["repeat_mode"])
+when "off" then "off"
+when "all" then "all"
+when "one" then "one"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["repeat_mode"]).inspect}"
+end)
+    )
+  end
+end
+
+# CBOR codec for CmdSetShuffle: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdSetShuffle
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["shuffle"] = shuffle
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      shuffle: node["shuffle"]
+    )
+  end
+end
+
+# CBOR codec for CmdUndo: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdUndo
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"]
+    )
+  end
+end
+
+# CBOR codec for CmdPlaybackCompleted: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdPlaybackCompleted
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["playback_id"] = playback_id
+    csil_map["queue_item_id"] = queue_item_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      playback_id: node["playback_id"],
+      queue_item_id: node["queue_item_id"]
+    )
+  end
+end
+
+# CBOR codec for CmdPlaybackFailed: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdPlaybackFailed
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["error"] = error
+    csil_map["playback_id"] = playback_id
+    csil_map["queue_item_id"] = queue_item_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      playback_id: node["playback_id"],
+      queue_item_id: node["queue_item_id"],
+      error: node["error"]
+    )
+  end
+end
+
+# CBOR codec for CmdPlaybackState: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class CmdPlaybackState
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["op"] = (op)
+    csil_map["status"] = (status)
+    csil_map["playback_id"] = playback_id
+    csil_map["position_ms"] = position_ms
+    csil_map["queue_item_id"] = queue_item_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      op: node["op"],
+      playback_id: node["playback_id"],
+      queue_item_id: node["queue_item_id"],
+      status: (case (node["status"])
+when "stopped" then "stopped"
+when "playing" then "playing"
+when "paused" then "paused"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
+end),
+      position_ms: node["position_ms"]
+    )
+  end
+end
+
 # CBOR codec for CommandRequest: a map keyed by the verbatim CSIL field names in
 # canonical RFC 8949 order.
 class CommandRequest
@@ -2110,6 +2460,7 @@ class MediaOpen
     csil_map["kind"] = (kind)
     csil_map["pref"] = (pref).csil_to_tree
     csil_map["track_id"] = track_id
+    csil_map["stream_id"] = stream_id
     csil_map
   end
 
@@ -2120,6 +2471,7 @@ class MediaOpen
   def self.csil_from_tree(node)
     new(
       kind: node["kind"],
+      stream_id: node["stream_id"],
       track_id: node["track_id"],
       pref: StreamPref.csil_from_tree(node["pref"])
     )
@@ -2136,6 +2488,7 @@ class MediaSeek
   def csil_to_tree
     csil_map = {}
     csil_map["kind"] = (kind)
+    csil_map["stream_id"] = stream_id
     csil_map["position_ms"] = position_ms
     csil_map
   end
@@ -2147,6 +2500,7 @@ class MediaSeek
   def self.csil_from_tree(node)
     new(
       kind: node["kind"],
+      stream_id: node["stream_id"],
       position_ms: node["position_ms"]
     )
   end
@@ -2162,6 +2516,7 @@ class MediaPause
   def csil_to_tree
     csil_map = {}
     csil_map["kind"] = (kind)
+    csil_map["stream_id"] = stream_id
     csil_map
   end
 
@@ -2171,7 +2526,8 @@ class MediaPause
 
   def self.csil_from_tree(node)
     new(
-      kind: node["kind"]
+      kind: node["kind"],
+      stream_id: node["stream_id"]
     )
   end
 end
@@ -2186,6 +2542,7 @@ class MediaResume
   def csil_to_tree
     csil_map = {}
     csil_map["kind"] = (kind)
+    csil_map["stream_id"] = stream_id
     csil_map
   end
 
@@ -2195,7 +2552,8 @@ class MediaResume
 
   def self.csil_from_tree(node)
     new(
-      kind: node["kind"]
+      kind: node["kind"],
+      stream_id: node["stream_id"]
     )
   end
 end
@@ -2210,6 +2568,7 @@ class MediaStop
   def csil_to_tree
     csil_map = {}
     csil_map["kind"] = (kind)
+    csil_map["stream_id"] = stream_id
     csil_map
   end
 
@@ -2219,7 +2578,8 @@ class MediaStop
 
   def self.csil_from_tree(node)
     new(
-      kind: node["kind"]
+      kind: node["kind"],
+      stream_id: node["stream_id"]
     )
   end
 end
@@ -2236,6 +2596,7 @@ class MediaHeader
     csil_map["kind"] = (kind)
     csil_map["codec"] = (codec)
     csil_map["channels"] = channels
+    csil_map["stream_id"] = stream_id
     csil_map["transcoded"] = transcoded
     csil_map["duration_ms"] = duration_ms unless duration_ms.nil?
     csil_map["sample_rate"] = sample_rate
@@ -2252,6 +2613,7 @@ class MediaHeader
   def self.csil_from_tree(node)
     new(
       kind: node["kind"],
+      stream_id: node["stream_id"],
       codec: (case (node["codec"])
 when "mp3" then "mp3"
 when "aac" then "aac"
@@ -2287,6 +2649,7 @@ class MediaChunk
     csil_map["seq"] = seq
     csil_map["data"] = (data).b
     csil_map["kind"] = (kind)
+    csil_map["stream_id"] = stream_id
     csil_map["timestamp_ms"] = timestamp_ms unless timestamp_ms.nil?
     csil_map
   end
@@ -2298,6 +2661,7 @@ class MediaChunk
   def self.csil_from_tree(node)
     new(
       kind: node["kind"],
+      stream_id: node["stream_id"],
       seq: node["seq"],
       timestamp_ms: (node.key?("timestamp_ms") ? node["timestamp_ms"] : nil),
       data: node["data"]
@@ -2316,6 +2680,7 @@ class MediaEnd
     csil_map = {}
     csil_map["kind"] = (kind)
     csil_map["reason"] = (reason) unless reason.nil?
+    csil_map["stream_id"] = stream_id
     csil_map
   end
 
@@ -2326,6 +2691,7 @@ class MediaEnd
   def self.csil_from_tree(node)
     new(
       kind: node["kind"],
+      stream_id: node["stream_id"],
       reason: (node.key?("reason") ? (case (node["reason"])
 when "eos" then "eos"
 when "stopped" then "stopped"
@@ -2347,6 +2713,7 @@ class MediaFail
     csil_map = {}
     csil_map["kind"] = (kind)
     csil_map["error"] = (error).csil_to_tree
+    csil_map["stream_id"] = stream_id
     csil_map
   end
 
@@ -2357,6 +2724,7 @@ class MediaFail
   def self.csil_from_tree(node)
     new(
       kind: node["kind"],
+      stream_id: node["stream_id"],
       error: ServiceError.csil_from_tree(node["error"])
     )
   end
@@ -2463,7 +2831,9 @@ class DirLoad
     csil_map["pref"] = (pref).csil_to_tree
     csil_map["track_id"] = track_id
     csil_map["player_id"] = player_id
+    csil_map["playback_id"] = playback_id
     csil_map["position_ms"] = position_ms unless position_ms.nil?
+    csil_map["queue_item_id"] = queue_item_id
     csil_map
   end
 
@@ -2475,6 +2845,8 @@ class DirLoad
     new(
       op: node["op"],
       player_id: node["player_id"],
+      queue_item_id: node["queue_item_id"],
+      playback_id: node["playback_id"],
       track_id: node["track_id"],
       pref: StreamPref.csil_from_tree(node["pref"]),
       position_ms: (node.key?("position_ms") ? node["position_ms"] : nil)
@@ -2597,10 +2969,14 @@ class NodeReport
 
   def csil_to_tree
     csil_map = {}
+    csil_map["error"] = error unless error.nil?
+    csil_map["event"] = (event) unless event.nil?
     csil_map["status"] = (status)
     csil_map["player_id"] = player_id
+    csil_map["playback_id"] = playback_id unless playback_id.nil?
     csil_map["position_ms"] = position_ms unless position_ms.nil?
     csil_map["audio_blocked"] = audio_blocked unless audio_blocked.nil?
+    csil_map["queue_item_id"] = queue_item_id unless queue_item_id.nil?
     csil_map
   end
 
@@ -2611,6 +2987,14 @@ class NodeReport
   def self.csil_from_tree(node)
     new(
       player_id: node["player_id"],
+      event: (node.key?("event") ? (case (node["event"])
+when "ready" then "ready"
+when "state" then "state"
+when "completed" then "completed"
+when "failed" then "failed"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["event"]).inspect}"
+end) : nil),
       status: (case (node["status"])
 when "stopped" then "stopped"
 when "playing" then "playing"
@@ -2618,7 +3002,10 @@ when "paused" then "paused"
 else
   raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
 end),
+      queue_item_id: (node.key?("queue_item_id") ? node["queue_item_id"] : nil),
+      playback_id: (node.key?("playback_id") ? node["playback_id"] : nil),
       position_ms: (node.key?("position_ms") ? node["position_ms"] : nil),
+      error: (node.key?("error") ? node["error"] : nil),
       audio_blocked: (node.key?("audio_blocked") ? node["audio_blocked"] : nil)
     )
   end

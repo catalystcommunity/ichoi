@@ -1,8 +1,10 @@
 //! Native CSIL/TCP surface. Binary clients use length-prefixed CSIL-Events envelopes.
 //! The old line-delimited JSON form remains for shell/debug tooling only.
 
+use std::collections::HashMap;
 use std::io::Read;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 
 use libichoi::csil::codec::decode_node_report;
 use libichoi::csil::types::{
@@ -20,6 +22,7 @@ use crate::handlers::{App, Ctx, Identity};
 use crate::{media, transport};
 
 static TCP_CONN_ID: AtomicU64 = AtomicU64::new(10_000);
+type MediaOutput = (String, Option<Vec<u8>>);
 
 #[derive(Deserialize)]
 struct WireEnvelope {
@@ -88,9 +91,11 @@ where
     let (mut read_half, mut write_half) = tokio::io::split(stream);
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let (node_tx, mut node_rx) = mpsc::unbounded_channel::<Vec<u8>>();
+    let (media_tx, mut media_rx) = mpsc::unbounded_channel::<MediaOutput>();
     let (in_tx, mut in_rx) = mpsc::unbounded_channel::<anyhow::Result<Vec<u8>>>();
     let conn_id = TCP_CONN_ID.fetch_add(1, Ordering::Relaxed);
     let mut ident = Identity::Anonymous;
+    let mut media_cancels = HashMap::<String, Arc<AtomicBool>>::new();
 
     tokio::spawn(async move {
         loop {
@@ -116,21 +121,20 @@ where
                 let frame = frame?;
                 let app2 = app.clone();
                 let ident_in = ident.clone();
-                let (ident_out, reply, effects) =
+                let (ident_out, mut reply, effects) =
                     tokio::task::spawn_blocking(move || {
                         let allow_guest =
                             app2.config.access_mode == crate::config::AccessMode::Open;
                         transport::handle_events_frame(&app2, ident_in, allow_guest, &frame)
                     }).await?;
                 ident = ident_out;
-                if let Some(reply) = reply {
-                    write_frame(&mut write_half, &reply).await?;
-                }
-                if let Some((player_id, active)) = effects.player_subscription {
+                if let Some((ref player_id, active)) = effects.player_subscription {
                     if active {
-                        app.subs.subscribe(player_id, conn_id, tx.clone());
+                        app.subs.subscribe(player_id.clone(), conn_id, tx.clone());
+                        reply = transport::player_subscription_snapshot(&app, &ident, player_id)
+                            .or(reply);
                     } else {
-                        app.subs.unsubscribe(&player_id, conn_id);
+                        app.subs.unsubscribe(player_id, conn_id);
                     }
                 }
                 if let Some(player_id) = effects.attach {
@@ -139,8 +143,9 @@ where
                     }
                 }
                 if let Some(player_id) = effects.node_session {
-                    if app.nodes.subscribe(player_id, conn_id, node_tx.clone()) {
+                    if app.nodes.subscribe(player_id.clone(), conn_id, node_tx.clone()) {
                         app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
+                        let _ = app.reconcile_player_output(&player_id);
                     }
                 }
                 if let Some(active) = effects.watch_changes {
@@ -150,8 +155,23 @@ where
                         app.changes.unsubscribe(conn_id);
                     }
                 }
+                // Send the snapshot that was read after attach. A later state change is queued
+                // behind it on this connection.
+                if let Some(reply) = reply {
+                    write_frame(&mut write_half, &reply).await?;
+                }
                 if let Some(open) = effects.media_open {
-                    spawn_media_stream(app.clone(), open, tx.clone());
+                    let stream_id = open.stream_id.clone();
+                    let cancel = Arc::new(AtomicBool::new(false));
+                    if let Some(previous) = media_cancels.insert(stream_id, cancel.clone()) {
+                        previous.store(true, Ordering::Relaxed);
+                    }
+                    spawn_media_stream(app.clone(), open, cancel, media_tx.clone());
+                }
+                if let Some(stream_id) = effects.media_stop {
+                    if let Some(cancel) = media_cancels.get(&stream_id) {
+                        cancel.store(true, Ordering::Relaxed);
+                    }
                 }
             }
             Some(frame) = rx.recv() => {
@@ -165,6 +185,18 @@ where
                     payload,
                 });
                 write_frame(&mut write_half, &frame).await?;
+            }
+            Some((stream_id, frame)) = media_rx.recv() => {
+                if let Some(frame) = frame {
+                    let active = media_cancels
+                        .get(&stream_id)
+                        .is_some_and(|cancel| !cancel.load(Ordering::Relaxed));
+                    if active {
+                        write_frame(&mut write_half, &frame).await?;
+                    }
+                } else {
+                    media_cancels.remove(&stream_id);
+                }
             }
         }
     }
@@ -207,26 +239,38 @@ where
     Ok(())
 }
 
-fn spawn_media_stream(app: App, open: MediaOpen, tx: mpsc::UnboundedSender<Vec<u8>>) {
+fn spawn_media_stream(
+    app: App,
+    open: MediaOpen,
+    cancel: Arc<AtomicBool>,
+    tx: mpsc::UnboundedSender<MediaOutput>,
+) {
     tokio::task::spawn_blocking(move || {
-        if let Err(e) = send_media_stream(app, open, &tx) {
+        let stream_id = open.stream_id.clone();
+        if let Err(e) = send_media_stream(app, open, &cancel, &tx) {
             let fail = MediaEvent::Variant3(MediaFail {
-                kind: "fail".to_string(),
+                kind: "error".to_string(),
+                stream_id: stream_id.clone(),
                 error: ServiceError {
                     code: 500,
                     message: e.to_string(),
                 },
             });
-            let _ = tx.send(media_frame(&fail));
+            if !cancel.load(Ordering::Relaxed) {
+                let _ = tx.send((stream_id.clone(), Some(media_frame(&fail))));
+            }
         }
+        let _ = tx.send((stream_id, None));
     });
 }
 
 fn send_media_stream(
     app: App,
     open: MediaOpen,
-    tx: &mpsc::UnboundedSender<Vec<u8>>,
+    cancel: &AtomicBool,
+    tx: &mpsc::UnboundedSender<MediaOutput>,
 ) -> anyhow::Result<()> {
+    let stream_id = open.stream_id.clone();
     let mut conn = app.pool.get()?;
     let track = store::get_track(&mut conn, &open.track_id)?
         .ok_or_else(|| anyhow::anyhow!("track not found"))?;
@@ -255,6 +299,7 @@ fn send_media_stream(
     };
     let header = MediaEvent::Variant0(MediaHeader {
         kind: "header".to_string(),
+        stream_id: stream_id.clone(),
         codec,
         transcoded: plan.transcode.is_some(),
         sample_rate: track.sample_rate.max(0) as u64,
@@ -264,7 +309,7 @@ fn send_media_stream(
         trim_end_samples: 0,
         codec_config: None,
     });
-    tx.send(media_frame(&header))?;
+    tx.send((stream_id.clone(), Some(media_frame(&header))))?;
 
     let mut seq = 0u64;
     if let Some(spec) = plan.transcode {
@@ -275,45 +320,58 @@ fn send_media_stream(
             .stdout
             .take()
             .ok_or_else(|| anyhow::anyhow!("ffmpeg stdout unavailable"))?;
-        send_reader_chunks(&mut stdout, tx, &mut seq)?;
+        if send_reader_chunks(&mut stdout, &stream_id, cancel, tx, &mut seq)? {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(());
+        }
         let status = child.wait()?;
         if !status.success() {
             anyhow::bail!("ffmpeg exited with status {status}");
         }
     } else {
         let mut file = std::fs::File::open(path)?;
-        send_reader_chunks(&mut file, tx, &mut seq)?;
+        if send_reader_chunks(&mut file, &stream_id, cancel, tx, &mut seq)? {
+            return Ok(());
+        }
     }
 
     let end = MediaEvent::Variant2(MediaEnd {
         kind: "end".to_string(),
+        stream_id: stream_id.clone(),
         reason: Some(MediaEndReason::Eos),
     });
-    tx.send(media_frame(&end))?;
+    tx.send((stream_id, Some(media_frame(&end))))?;
     Ok(())
 }
 
 fn send_reader_chunks(
     reader: &mut dyn Read,
-    tx: &mpsc::UnboundedSender<Vec<u8>>,
+    stream_id: &str,
+    cancel: &AtomicBool,
+    tx: &mpsc::UnboundedSender<MediaOutput>,
     seq: &mut u64,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<bool> {
     let mut buf = [0u8; 16 * 1024];
     loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Ok(true);
+        }
         let n = reader.read(&mut buf)?;
         if n == 0 {
             break;
         }
         let chunk = MediaEvent::Variant1(MediaChunk {
             kind: "chunk".to_string(),
+            stream_id: stream_id.to_string(),
             seq: *seq,
             timestamp_ms: None,
             data: buf[..n].to_vec(),
         });
-        tx.send(media_frame(&chunk))?;
+        tx.send((stream_id.to_string(), Some(media_frame(&chunk))))?;
         *seq += 1;
     }
-    Ok(())
+    Ok(false)
 }
 
 fn media_frame(event: &MediaEvent) -> Vec<u8> {
@@ -396,6 +454,7 @@ fn handle_node_session_line(
     if app.nodes.subscribe(player_id.clone(), conn_id, tx) {
         app.changes
             .publish(libichoi::csil::types::ChangeTopic::Players);
+        let _ = app.reconcile_player_output(&player_id);
     }
     Some(player_id)
 }

@@ -1559,11 +1559,13 @@ def _encode_queue_item_value(v: "QueueItem") -> Dict[Any, Any]:
     csil_x = v.duration_ms
     if csil_x is not None:
         csil_m["duration_ms"] = csil_x
+    csil_m["queue_item_id"] = v.queue_item_id
     return csil_m
 
 def _decode_queue_item_value(tree: Any) -> "QueueItem":
     tree = _csil_expect_map(tree)
     return QueueItem(
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
         track_id=_csil_expect_text(tree["track_id"]),
         library=(None if tree.get("library") is None else _decode_library_value(tree["library"])),
         title=(None if tree.get("title") is None else _csil_expect_text(tree["title"])),
@@ -1585,13 +1587,23 @@ QueueItem.from_cbor = staticmethod(_queue_item_from_cbor)
 
 def _encode_player_state_value(v: "PlayerState") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
+    csil_x = v.error
+    if csil_x is not None:
+        csil_m["error"] = csil_x
     csil_m["queue"] = [_encode_queue_item_value(csil_e) for csil_e in v.queue]
     csil_m["status"] = v.status
     csil_m["volume"] = v.volume
+    csil_m["shuffle"] = v.shuffle
+    csil_m["can_undo"] = v.can_undo
+    csil_m["revision"] = v.revision
     csil_m["player_id"] = v.player_id
+    csil_x = v.playback_id
+    if csil_x is not None:
+        csil_m["playback_id"] = csil_x
     csil_x = v.position_ms
     if csil_x is not None:
         csil_m["position_ms"] = csil_x
+    csil_m["repeat_mode"] = v.repeat_mode
     csil_x = v.current_index
     if csil_x is not None:
         csil_m["current_index"] = csil_x
@@ -1601,10 +1613,16 @@ def _decode_player_state_value(tree: Any) -> "PlayerState":
     tree = _csil_expect_map(tree)
     return PlayerState(
         player_id=_csil_expect_text(tree["player_id"]),
+        revision=_csil_expect_uint(tree["revision"]),
         status=_decode_player_status_value(tree["status"]),
         current_index=(None if tree.get("current_index") is None else _csil_expect_uint(tree["current_index"])),
+        playback_id=(None if tree.get("playback_id") is None else _csil_expect_text(tree["playback_id"])),
         position_ms=(None if tree.get("position_ms") is None else _csil_expect_uint(tree["position_ms"])),
         volume=_csil_expect_uint(tree["volume"]),
+        repeat_mode=_decode_repeat_mode_value(tree["repeat_mode"]),
+        shuffle=_csil_expect_bool(tree["shuffle"]),
+        error=(None if tree.get("error") is None else _csil_expect_text(tree["error"])),
+        can_undo=_csil_expect_bool(tree["can_undo"]),
         queue=[_decode_queue_item_value(csil_e) for csil_e in _csil_expect_array(tree["queue"])],
     )
 
@@ -1724,6 +1742,31 @@ def _cmd_enqueue_from_cbor(data: bytes) -> "CmdEnqueue":
 CmdEnqueue.to_cbor = _cmd_enqueue_to_cbor
 CmdEnqueue.from_cbor = staticmethod(_cmd_enqueue_from_cbor)
 
+def _encode_cmd_enqueue_next_value(v: "CmdEnqueueNext") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "enqueue-next"
+    csil_m["track_ids"] = v.track_ids
+    return csil_m
+
+def _decode_cmd_enqueue_next_value(tree: Any) -> "CmdEnqueueNext":
+    tree = _csil_expect_map(tree)
+    return CmdEnqueueNext(
+        op=_csil_expect_literal(tree["op"], "enqueue-next"),
+        track_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["track_ids"])],
+    )
+
+
+def _cmd_enqueue_next_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_enqueue_next_value(self))
+
+
+def _cmd_enqueue_next_from_cbor(data: bytes) -> "CmdEnqueueNext":
+    return _decode_cmd_enqueue_next_value(cbor_decode(data))
+
+
+CmdEnqueueNext.to_cbor = _cmd_enqueue_next_to_cbor
+CmdEnqueueNext.from_cbor = staticmethod(_cmd_enqueue_next_from_cbor)
+
 def _encode_cmd_remove_value(v: "CmdRemove") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["op"] = "remove"
@@ -1748,6 +1791,31 @@ def _cmd_remove_from_cbor(data: bytes) -> "CmdRemove":
 
 CmdRemove.to_cbor = _cmd_remove_to_cbor
 CmdRemove.from_cbor = staticmethod(_cmd_remove_from_cbor)
+
+def _encode_cmd_remove_item_value(v: "CmdRemoveItem") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "remove-item"
+    csil_m["queue_item_id"] = v.queue_item_id
+    return csil_m
+
+def _decode_cmd_remove_item_value(tree: Any) -> "CmdRemoveItem":
+    tree = _csil_expect_map(tree)
+    return CmdRemoveItem(
+        op=_csil_expect_literal(tree["op"], "remove-item"),
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
+    )
+
+
+def _cmd_remove_item_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_remove_item_value(self))
+
+
+def _cmd_remove_item_from_cbor(data: bytes) -> "CmdRemoveItem":
+    return _decode_cmd_remove_item_value(cbor_decode(data))
+
+
+CmdRemoveItem.to_cbor = _cmd_remove_item_to_cbor
+CmdRemoveItem.from_cbor = staticmethod(_cmd_remove_item_from_cbor)
 
 def _encode_cmd_reorder_value(v: "CmdReorder") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -1775,6 +1843,35 @@ def _cmd_reorder_from_cbor(data: bytes) -> "CmdReorder":
 
 CmdReorder.to_cbor = _cmd_reorder_to_cbor
 CmdReorder.from_cbor = staticmethod(_cmd_reorder_from_cbor)
+
+def _encode_cmd_move_item_value(v: "CmdMoveItem") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "move-item"
+    csil_m["queue_item_id"] = v.queue_item_id
+    csil_x = v.before_queue_item_id
+    if csil_x is not None:
+        csil_m["before_queue_item_id"] = csil_x
+    return csil_m
+
+def _decode_cmd_move_item_value(tree: Any) -> "CmdMoveItem":
+    tree = _csil_expect_map(tree)
+    return CmdMoveItem(
+        op=_csil_expect_literal(tree["op"], "move-item"),
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
+        before_queue_item_id=(None if tree.get("before_queue_item_id") is None else _csil_expect_uint(tree["before_queue_item_id"])),
+    )
+
+
+def _cmd_move_item_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_move_item_value(self))
+
+
+def _cmd_move_item_from_cbor(data: bytes) -> "CmdMoveItem":
+    return _decode_cmd_move_item_value(cbor_decode(data))
+
+
+CmdMoveItem.to_cbor = _cmd_move_item_to_cbor
+CmdMoveItem.from_cbor = staticmethod(_cmd_move_item_from_cbor)
 
 def _encode_cmd_clear_value(v: "CmdClear") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -1805,6 +1902,9 @@ def _encode_cmd_play_value(v: "CmdPlay") -> Dict[Any, Any]:
     csil_x = v.index
     if csil_x is not None:
         csil_m["index"] = csil_x
+    csil_x = v.queue_item_id
+    if csil_x is not None:
+        csil_m["queue_item_id"] = csil_x
     return csil_m
 
 def _decode_cmd_play_value(tree: Any) -> "CmdPlay":
@@ -1812,6 +1912,7 @@ def _decode_cmd_play_value(tree: Any) -> "CmdPlay":
     return CmdPlay(
         op=_csil_expect_literal(tree["op"], "play"),
         index=(None if tree.get("index") is None else _csil_expect_uint(tree["index"])),
+        queue_item_id=(None if tree.get("queue_item_id") is None else _csil_expect_uint(tree["queue_item_id"])),
     )
 
 
@@ -1825,6 +1926,39 @@ def _cmd_play_from_cbor(data: bytes) -> "CmdPlay":
 
 CmdPlay.to_cbor = _cmd_play_to_cbor
 CmdPlay.from_cbor = staticmethod(_cmd_play_from_cbor)
+
+def _encode_cmd_replace_and_play_value(v: "CmdReplaceAndPlay") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "replace-and-play"
+    csil_m["track_ids"] = v.track_ids
+    csil_x = v.position_ms
+    if csil_x is not None:
+        csil_m["position_ms"] = csil_x
+    csil_x = v.start_index
+    if csil_x is not None:
+        csil_m["start_index"] = csil_x
+    return csil_m
+
+def _decode_cmd_replace_and_play_value(tree: Any) -> "CmdReplaceAndPlay":
+    tree = _csil_expect_map(tree)
+    return CmdReplaceAndPlay(
+        op=_csil_expect_literal(tree["op"], "replace-and-play"),
+        track_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["track_ids"])],
+        start_index=(None if tree.get("start_index") is None else _csil_expect_uint(tree["start_index"])),
+        position_ms=(None if tree.get("position_ms") is None else _csil_expect_uint(tree["position_ms"])),
+    )
+
+
+def _cmd_replace_and_play_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_replace_and_play_value(self))
+
+
+def _cmd_replace_and_play_from_cbor(data: bytes) -> "CmdReplaceAndPlay":
+    return _decode_cmd_replace_and_play_value(cbor_decode(data))
+
+
+CmdReplaceAndPlay.to_cbor = _cmd_replace_and_play_to_cbor
+CmdReplaceAndPlay.from_cbor = staticmethod(_cmd_replace_and_play_from_cbor)
 
 def _encode_cmd_pause_value(v: "CmdPause") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -1945,6 +2079,166 @@ def _cmd_volume_from_cbor(data: bytes) -> "CmdVolume":
 CmdVolume.to_cbor = _cmd_volume_to_cbor
 CmdVolume.from_cbor = staticmethod(_cmd_volume_from_cbor)
 
+def _encode_cmd_set_repeat_value(v: "CmdSetRepeat") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "set-repeat"
+    csil_m["repeat_mode"] = v.repeat_mode
+    return csil_m
+
+def _decode_cmd_set_repeat_value(tree: Any) -> "CmdSetRepeat":
+    tree = _csil_expect_map(tree)
+    return CmdSetRepeat(
+        op=_csil_expect_literal(tree["op"], "set-repeat"),
+        repeat_mode=_decode_repeat_mode_value(tree["repeat_mode"]),
+    )
+
+
+def _cmd_set_repeat_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_set_repeat_value(self))
+
+
+def _cmd_set_repeat_from_cbor(data: bytes) -> "CmdSetRepeat":
+    return _decode_cmd_set_repeat_value(cbor_decode(data))
+
+
+CmdSetRepeat.to_cbor = _cmd_set_repeat_to_cbor
+CmdSetRepeat.from_cbor = staticmethod(_cmd_set_repeat_from_cbor)
+
+def _encode_cmd_set_shuffle_value(v: "CmdSetShuffle") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "set-shuffle"
+    csil_m["shuffle"] = v.shuffle
+    return csil_m
+
+def _decode_cmd_set_shuffle_value(tree: Any) -> "CmdSetShuffle":
+    tree = _csil_expect_map(tree)
+    return CmdSetShuffle(
+        op=_csil_expect_literal(tree["op"], "set-shuffle"),
+        shuffle=_csil_expect_bool(tree["shuffle"]),
+    )
+
+
+def _cmd_set_shuffle_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_set_shuffle_value(self))
+
+
+def _cmd_set_shuffle_from_cbor(data: bytes) -> "CmdSetShuffle":
+    return _decode_cmd_set_shuffle_value(cbor_decode(data))
+
+
+CmdSetShuffle.to_cbor = _cmd_set_shuffle_to_cbor
+CmdSetShuffle.from_cbor = staticmethod(_cmd_set_shuffle_from_cbor)
+
+def _encode_cmd_undo_value(v: "CmdUndo") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "undo"
+    return csil_m
+
+def _decode_cmd_undo_value(tree: Any) -> "CmdUndo":
+    tree = _csil_expect_map(tree)
+    return CmdUndo(
+        op=_csil_expect_literal(tree["op"], "undo"),
+    )
+
+
+def _cmd_undo_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_undo_value(self))
+
+
+def _cmd_undo_from_cbor(data: bytes) -> "CmdUndo":
+    return _decode_cmd_undo_value(cbor_decode(data))
+
+
+CmdUndo.to_cbor = _cmd_undo_to_cbor
+CmdUndo.from_cbor = staticmethod(_cmd_undo_from_cbor)
+
+def _encode_cmd_playback_completed_value(v: "CmdPlaybackCompleted") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "playback-completed"
+    csil_m["playback_id"] = v.playback_id
+    csil_m["queue_item_id"] = v.queue_item_id
+    return csil_m
+
+def _decode_cmd_playback_completed_value(tree: Any) -> "CmdPlaybackCompleted":
+    tree = _csil_expect_map(tree)
+    return CmdPlaybackCompleted(
+        op=_csil_expect_literal(tree["op"], "playback-completed"),
+        playback_id=_csil_expect_text(tree["playback_id"]),
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
+    )
+
+
+def _cmd_playback_completed_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_playback_completed_value(self))
+
+
+def _cmd_playback_completed_from_cbor(data: bytes) -> "CmdPlaybackCompleted":
+    return _decode_cmd_playback_completed_value(cbor_decode(data))
+
+
+CmdPlaybackCompleted.to_cbor = _cmd_playback_completed_to_cbor
+CmdPlaybackCompleted.from_cbor = staticmethod(_cmd_playback_completed_from_cbor)
+
+def _encode_cmd_playback_failed_value(v: "CmdPlaybackFailed") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "playback-failed"
+    csil_m["error"] = v.error
+    csil_m["playback_id"] = v.playback_id
+    csil_m["queue_item_id"] = v.queue_item_id
+    return csil_m
+
+def _decode_cmd_playback_failed_value(tree: Any) -> "CmdPlaybackFailed":
+    tree = _csil_expect_map(tree)
+    return CmdPlaybackFailed(
+        op=_csil_expect_literal(tree["op"], "playback-failed"),
+        playback_id=_csil_expect_text(tree["playback_id"]),
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
+        error=_csil_expect_text(tree["error"]),
+    )
+
+
+def _cmd_playback_failed_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_playback_failed_value(self))
+
+
+def _cmd_playback_failed_from_cbor(data: bytes) -> "CmdPlaybackFailed":
+    return _decode_cmd_playback_failed_value(cbor_decode(data))
+
+
+CmdPlaybackFailed.to_cbor = _cmd_playback_failed_to_cbor
+CmdPlaybackFailed.from_cbor = staticmethod(_cmd_playback_failed_from_cbor)
+
+def _encode_cmd_playback_state_value(v: "CmdPlaybackState") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["op"] = "playback-state"
+    csil_m["status"] = v.status
+    csil_m["playback_id"] = v.playback_id
+    csil_m["position_ms"] = v.position_ms
+    csil_m["queue_item_id"] = v.queue_item_id
+    return csil_m
+
+def _decode_cmd_playback_state_value(tree: Any) -> "CmdPlaybackState":
+    tree = _csil_expect_map(tree)
+    return CmdPlaybackState(
+        op=_csil_expect_literal(tree["op"], "playback-state"),
+        playback_id=_csil_expect_text(tree["playback_id"]),
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
+        status=_decode_player_status_value(tree["status"]),
+        position_ms=_csil_expect_uint(tree["position_ms"]),
+    )
+
+
+def _cmd_playback_state_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_cmd_playback_state_value(self))
+
+
+def _cmd_playback_state_from_cbor(data: bytes) -> "CmdPlaybackState":
+    return _decode_cmd_playback_state_value(cbor_decode(data))
+
+
+CmdPlaybackState.to_cbor = _cmd_playback_state_to_cbor
+CmdPlaybackState.from_cbor = staticmethod(_cmd_playback_state_from_cbor)
+
 def _encode_command_request_value(v: "CommandRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["command"] = _encode_player_command_value(v.command)
@@ -2046,12 +2340,14 @@ def _encode_media_open_value(v: "MediaOpen") -> Dict[Any, Any]:
     csil_m["kind"] = "open"
     csil_m["pref"] = _encode_stream_pref_value(v.pref)
     csil_m["track_id"] = v.track_id
+    csil_m["stream_id"] = v.stream_id
     return csil_m
 
 def _decode_media_open_value(tree: Any) -> "MediaOpen":
     tree = _csil_expect_map(tree)
     return MediaOpen(
         kind=_csil_expect_literal(tree["kind"], "open"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
         track_id=_csil_expect_text(tree["track_id"]),
         pref=_decode_stream_pref_value(tree["pref"]),
     )
@@ -2071,6 +2367,7 @@ MediaOpen.from_cbor = staticmethod(_media_open_from_cbor)
 def _encode_media_seek_value(v: "MediaSeek") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["kind"] = "seek"
+    csil_m["stream_id"] = v.stream_id
     csil_m["position_ms"] = v.position_ms
     return csil_m
 
@@ -2078,6 +2375,7 @@ def _decode_media_seek_value(tree: Any) -> "MediaSeek":
     tree = _csil_expect_map(tree)
     return MediaSeek(
         kind=_csil_expect_literal(tree["kind"], "seek"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
         position_ms=_csil_expect_uint(tree["position_ms"]),
     )
 
@@ -2096,12 +2394,14 @@ MediaSeek.from_cbor = staticmethod(_media_seek_from_cbor)
 def _encode_media_pause_value(v: "MediaPause") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["kind"] = "pause"
+    csil_m["stream_id"] = v.stream_id
     return csil_m
 
 def _decode_media_pause_value(tree: Any) -> "MediaPause":
     tree = _csil_expect_map(tree)
     return MediaPause(
         kind=_csil_expect_literal(tree["kind"], "pause"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
     )
 
 
@@ -2119,12 +2419,14 @@ MediaPause.from_cbor = staticmethod(_media_pause_from_cbor)
 def _encode_media_resume_value(v: "MediaResume") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["kind"] = "resume"
+    csil_m["stream_id"] = v.stream_id
     return csil_m
 
 def _decode_media_resume_value(tree: Any) -> "MediaResume":
     tree = _csil_expect_map(tree)
     return MediaResume(
         kind=_csil_expect_literal(tree["kind"], "resume"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
     )
 
 
@@ -2142,12 +2444,14 @@ MediaResume.from_cbor = staticmethod(_media_resume_from_cbor)
 def _encode_media_stop_value(v: "MediaStop") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["kind"] = "stop"
+    csil_m["stream_id"] = v.stream_id
     return csil_m
 
 def _decode_media_stop_value(tree: Any) -> "MediaStop":
     tree = _csil_expect_map(tree)
     return MediaStop(
         kind=_csil_expect_literal(tree["kind"], "stop"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
     )
 
 
@@ -2167,6 +2471,7 @@ def _encode_media_header_value(v: "MediaHeader") -> Dict[Any, Any]:
     csil_m["kind"] = "header"
     csil_m["codec"] = v.codec
     csil_m["channels"] = v.channels
+    csil_m["stream_id"] = v.stream_id
     csil_m["transcoded"] = v.transcoded
     csil_x = v.duration_ms
     if csil_x is not None:
@@ -2183,6 +2488,7 @@ def _decode_media_header_value(tree: Any) -> "MediaHeader":
     tree = _csil_expect_map(tree)
     return MediaHeader(
         kind=_csil_expect_literal(tree["kind"], "header"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
         codec=_decode_codec_value(tree["codec"]),
         transcoded=_csil_expect_bool(tree["transcoded"]),
         sample_rate=_csil_expect_uint(tree["sample_rate"]),
@@ -2210,6 +2516,7 @@ def _encode_media_chunk_value(v: "MediaChunk") -> Dict[Any, Any]:
     csil_m["seq"] = v.seq
     csil_m["data"] = v.data
     csil_m["kind"] = "chunk"
+    csil_m["stream_id"] = v.stream_id
     csil_x = v.timestamp_ms
     if csil_x is not None:
         csil_m["timestamp_ms"] = csil_x
@@ -2219,6 +2526,7 @@ def _decode_media_chunk_value(tree: Any) -> "MediaChunk":
     tree = _csil_expect_map(tree)
     return MediaChunk(
         kind=_csil_expect_literal(tree["kind"], "chunk"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
         seq=_csil_expect_uint(tree["seq"]),
         timestamp_ms=(None if tree.get("timestamp_ms") is None else _csil_expect_uint(tree["timestamp_ms"])),
         data=_csil_expect_bytes(tree["data"]),
@@ -2242,12 +2550,14 @@ def _encode_media_end_value(v: "MediaEnd") -> Dict[Any, Any]:
     csil_x = v.reason
     if csil_x is not None:
         csil_m["reason"] = csil_x
+    csil_m["stream_id"] = v.stream_id
     return csil_m
 
 def _decode_media_end_value(tree: Any) -> "MediaEnd":
     tree = _csil_expect_map(tree)
     return MediaEnd(
         kind=_csil_expect_literal(tree["kind"], "end"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
         reason=(None if tree.get("reason") is None else _decode_media_end_reason_value(tree["reason"])),
     )
 
@@ -2267,12 +2577,14 @@ def _encode_media_fail_value(v: "MediaFail") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
     csil_m["kind"] = "error"
     csil_m["error"] = _encode_service_error_value(v.error)
+    csil_m["stream_id"] = v.stream_id
     return csil_m
 
 def _decode_media_fail_value(tree: Any) -> "MediaFail":
     tree = _csil_expect_map(tree)
     return MediaFail(
         kind=_csil_expect_literal(tree["kind"], "error"),
+        stream_id=_csil_expect_text(tree["stream_id"]),
         error=_decode_service_error_value(tree["error"]),
     )
 
@@ -2381,9 +2693,11 @@ def _encode_dir_load_value(v: "DirLoad") -> Dict[Any, Any]:
     csil_m["pref"] = _encode_stream_pref_value(v.pref)
     csil_m["track_id"] = v.track_id
     csil_m["player_id"] = v.player_id
+    csil_m["playback_id"] = v.playback_id
     csil_x = v.position_ms
     if csil_x is not None:
         csil_m["position_ms"] = csil_x
+    csil_m["queue_item_id"] = v.queue_item_id
     return csil_m
 
 def _decode_dir_load_value(tree: Any) -> "DirLoad":
@@ -2391,6 +2705,8 @@ def _decode_dir_load_value(tree: Any) -> "DirLoad":
     return DirLoad(
         op=_csil_expect_literal(tree["op"], "load"),
         player_id=_csil_expect_text(tree["player_id"]),
+        queue_item_id=_csil_expect_uint(tree["queue_item_id"]),
+        playback_id=_csil_expect_text(tree["playback_id"]),
         track_id=_csil_expect_text(tree["track_id"]),
         pref=_decode_stream_pref_value(tree["pref"]),
         position_ms=(None if tree.get("position_ms") is None else _csil_expect_uint(tree["position_ms"])),
@@ -2512,22 +2828,38 @@ DirVolume.from_cbor = staticmethod(_dir_volume_from_cbor)
 
 def _encode_node_report_value(v: "NodeReport") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
+    csil_x = v.error
+    if csil_x is not None:
+        csil_m["error"] = csil_x
+    csil_x = v.event
+    if csil_x is not None:
+        csil_m["event"] = csil_x
     csil_m["status"] = v.status
     csil_m["player_id"] = v.player_id
+    csil_x = v.playback_id
+    if csil_x is not None:
+        csil_m["playback_id"] = csil_x
     csil_x = v.position_ms
     if csil_x is not None:
         csil_m["position_ms"] = csil_x
     csil_x = v.audio_blocked
     if csil_x is not None:
         csil_m["audio_blocked"] = csil_x
+    csil_x = v.queue_item_id
+    if csil_x is not None:
+        csil_m["queue_item_id"] = csil_x
     return csil_m
 
 def _decode_node_report_value(tree: Any) -> "NodeReport":
     tree = _csil_expect_map(tree)
     return NodeReport(
         player_id=_csil_expect_text(tree["player_id"]),
+        event=(None if tree.get("event") is None else _decode_node_event_value(tree["event"])),
         status=_decode_player_status_value(tree["status"]),
+        queue_item_id=(None if tree.get("queue_item_id") is None else _csil_expect_uint(tree["queue_item_id"])),
+        playback_id=(None if tree.get("playback_id") is None else _csil_expect_text(tree["playback_id"])),
         position_ms=(None if tree.get("position_ms") is None else _csil_expect_uint(tree["position_ms"])),
+        error=(None if tree.get("error") is None else _csil_expect_text(tree["error"])),
         audio_blocked=(None if tree.get("audio_blocked") is None else _csil_expect_bool(tree["audio_blocked"])),
     )
 
@@ -3621,24 +3953,44 @@ DataChange.from_cbor = staticmethod(_data_change_from_cbor)
 def _encode_player_command_value(csil_v):
     if isinstance(csil_v, CmdEnqueue):
         return [0, _encode_cmd_enqueue_value(csil_v)]
+    if isinstance(csil_v, CmdEnqueueNext):
+        return [1, _encode_cmd_enqueue_next_value(csil_v)]
     if isinstance(csil_v, CmdRemove):
-        return [1, _encode_cmd_remove_value(csil_v)]
+        return [2, _encode_cmd_remove_value(csil_v)]
+    if isinstance(csil_v, CmdRemoveItem):
+        return [3, _encode_cmd_remove_item_value(csil_v)]
     if isinstance(csil_v, CmdReorder):
-        return [2, _encode_cmd_reorder_value(csil_v)]
+        return [4, _encode_cmd_reorder_value(csil_v)]
+    if isinstance(csil_v, CmdMoveItem):
+        return [5, _encode_cmd_move_item_value(csil_v)]
     if isinstance(csil_v, CmdClear):
-        return [3, _encode_cmd_clear_value(csil_v)]
+        return [6, _encode_cmd_clear_value(csil_v)]
     if isinstance(csil_v, CmdPlay):
-        return [4, _encode_cmd_play_value(csil_v)]
+        return [7, _encode_cmd_play_value(csil_v)]
+    if isinstance(csil_v, CmdReplaceAndPlay):
+        return [8, _encode_cmd_replace_and_play_value(csil_v)]
     if isinstance(csil_v, CmdPause):
-        return [5, _encode_cmd_pause_value(csil_v)]
+        return [9, _encode_cmd_pause_value(csil_v)]
     if isinstance(csil_v, CmdNext):
-        return [6, _encode_cmd_next_value(csil_v)]
+        return [10, _encode_cmd_next_value(csil_v)]
     if isinstance(csil_v, CmdPrevious):
-        return [7, _encode_cmd_previous_value(csil_v)]
+        return [11, _encode_cmd_previous_value(csil_v)]
     if isinstance(csil_v, CmdSeek):
-        return [8, _encode_cmd_seek_value(csil_v)]
+        return [12, _encode_cmd_seek_value(csil_v)]
     if isinstance(csil_v, CmdVolume):
-        return [9, _encode_cmd_volume_value(csil_v)]
+        return [13, _encode_cmd_volume_value(csil_v)]
+    if isinstance(csil_v, CmdSetRepeat):
+        return [14, _encode_cmd_set_repeat_value(csil_v)]
+    if isinstance(csil_v, CmdSetShuffle):
+        return [15, _encode_cmd_set_shuffle_value(csil_v)]
+    if isinstance(csil_v, CmdUndo):
+        return [16, _encode_cmd_undo_value(csil_v)]
+    if isinstance(csil_v, CmdPlaybackCompleted):
+        return [17, _encode_cmd_playback_completed_value(csil_v)]
+    if isinstance(csil_v, CmdPlaybackFailed):
+        return [18, _encode_cmd_playback_failed_value(csil_v)]
+    if isinstance(csil_v, CmdPlaybackState):
+        return [19, _encode_cmd_playback_state_value(csil_v)]
     raise ValueError("csil cbor: value does not match any player_command variant")
 
 
@@ -3650,23 +4002,43 @@ def _decode_player_command_value(csil_tree):
     if csil_idx == 0:
         return _decode_cmd_enqueue_value(csil_val)
     if csil_idx == 1:
-        return _decode_cmd_remove_value(csil_val)
+        return _decode_cmd_enqueue_next_value(csil_val)
     if csil_idx == 2:
-        return _decode_cmd_reorder_value(csil_val)
+        return _decode_cmd_remove_value(csil_val)
     if csil_idx == 3:
-        return _decode_cmd_clear_value(csil_val)
+        return _decode_cmd_remove_item_value(csil_val)
     if csil_idx == 4:
-        return _decode_cmd_play_value(csil_val)
+        return _decode_cmd_reorder_value(csil_val)
     if csil_idx == 5:
-        return _decode_cmd_pause_value(csil_val)
+        return _decode_cmd_move_item_value(csil_val)
     if csil_idx == 6:
-        return _decode_cmd_next_value(csil_val)
+        return _decode_cmd_clear_value(csil_val)
     if csil_idx == 7:
-        return _decode_cmd_previous_value(csil_val)
+        return _decode_cmd_play_value(csil_val)
     if csil_idx == 8:
-        return _decode_cmd_seek_value(csil_val)
+        return _decode_cmd_replace_and_play_value(csil_val)
     if csil_idx == 9:
+        return _decode_cmd_pause_value(csil_val)
+    if csil_idx == 10:
+        return _decode_cmd_next_value(csil_val)
+    if csil_idx == 11:
+        return _decode_cmd_previous_value(csil_val)
+    if csil_idx == 12:
+        return _decode_cmd_seek_value(csil_val)
+    if csil_idx == 13:
         return _decode_cmd_volume_value(csil_val)
+    if csil_idx == 14:
+        return _decode_cmd_set_repeat_value(csil_val)
+    if csil_idx == 15:
+        return _decode_cmd_set_shuffle_value(csil_val)
+    if csil_idx == 16:
+        return _decode_cmd_undo_value(csil_val)
+    if csil_idx == 17:
+        return _decode_cmd_playback_completed_value(csil_val)
+    if csil_idx == 18:
+        return _decode_cmd_playback_failed_value(csil_val)
+    if csil_idx == 19:
+        return _decode_cmd_playback_state_value(csil_val)
     raise CsilDecodeError("csil cbor: unknown player_command variant")
 
 
@@ -3773,6 +4145,20 @@ def _decode_player_status_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("stopped", "playing", "paused"):
         raise CsilDecodeError(f"csil cbor: unknown player_status value {csil_v!r}")
+    return csil_v
+
+
+def _decode_repeat_mode_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("off", "all", "one"):
+        raise CsilDecodeError(f"csil cbor: unknown repeat_mode value {csil_v!r}")
+    return csil_v
+
+
+def _decode_node_event_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("ready", "state", "completed", "failed"):
+        raise CsilDecodeError(f"csil cbor: unknown node_event value {csil_v!r}")
     return csil_v
 
 

@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record MediaSeek(
     String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */,
     long positionMs /* wire: "position_ms" */
 ) {
 }

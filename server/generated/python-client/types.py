@@ -32,6 +32,10 @@ Role = Union[str, str, str]
 
 PlayerStatus = Union[str, str, str]
 
+RepeatMode = Union[str, str, str]
+
+NodeEvent = Union[str, str, str, str]
+
 Codec = Union[str, str, str, str, str, str, str, str]
 
 TranscodeCodec = Union[str, str]
@@ -1346,6 +1350,7 @@ class Player:
 
 @dataclass
 class QueueItem:
+    queue_item_id: int
     track_id: TrackId
     library: Optional[Library] = None
     title: Optional[str] = None
@@ -1354,6 +1359,8 @@ class QueueItem:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
         if hasattr(self, 'track_id') and self.track_id is not None:
             result['track_id'] = self.track_id
         if hasattr(self, 'library') and self.library is not None:
@@ -1369,7 +1376,7 @@ class QueueItem:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'QueueItem':
         """Create instance from dictionary."""
-        return cls(track_id=data.get('track_id'), library=data.get('library'), title=data.get('title'), artist=data.get('artist'), duration_ms=data.get('duration_ms'))
+        return cls(queue_item_id=data.get('queue_item_id'), track_id=data.get('track_id'), library=data.get('library'), title=data.get('title'), artist=data.get('artist'), duration_ms=data.get('duration_ms'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1384,24 +1391,42 @@ class QueueItem:
 @dataclass
 class PlayerState:
     player_id: PlayerId
+    revision: int
     status: PlayerStatus
+    repeat_mode: RepeatMode
     queue: List[QueueItem]
     current_index: Optional[int] = None
+    playback_id: Optional[str] = None
     position_ms: Optional[int] = None
     volume: int = 100
+    shuffle: bool = False
+    error: Optional[str] = None
+    can_undo: bool = False
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'player_id') and self.player_id is not None:
             result['player_id'] = self.player_id
+        if hasattr(self, 'revision') and self.revision is not None:
+            result['revision'] = self.revision
         if hasattr(self, 'status') and self.status is not None:
             result['status'] = self.status
         if hasattr(self, 'current_index') and self.current_index is not None:
             result['current_index'] = self.current_index
+        if hasattr(self, 'playback_id') and self.playback_id is not None:
+            result['playback_id'] = self.playback_id
         if hasattr(self, 'position_ms') and self.position_ms is not None:
             result['position_ms'] = self.position_ms
         if hasattr(self, 'volume') and self.volume is not None:
             result['volume'] = self.volume
+        if hasattr(self, 'repeat_mode') and self.repeat_mode is not None:
+            result['repeat_mode'] = self.repeat_mode
+        if hasattr(self, 'shuffle') and self.shuffle is not None:
+            result['shuffle'] = self.shuffle
+        if hasattr(self, 'error') and self.error is not None:
+            result['error'] = self.error
+        if hasattr(self, 'can_undo') and self.can_undo is not None:
+            result['can_undo'] = self.can_undo
         if hasattr(self, 'queue') and self.queue is not None:
             result['queue'] = self.queue
         return result
@@ -1409,7 +1434,7 @@ class PlayerState:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PlayerState':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), status=data.get('status'), current_index=data.get('current_index'), position_ms=data.get('position_ms'), volume=data.get('volume'), queue=data.get('queue'))
+        return cls(player_id=data.get('player_id'), revision=data.get('revision'), status=data.get('status'), current_index=data.get('current_index'), playback_id=data.get('playback_id'), position_ms=data.get('position_ms'), volume=data.get('volume'), repeat_mode=data.get('repeat_mode'), shuffle=data.get('shuffle'), error=data.get('error'), can_undo=data.get('can_undo'), queue=data.get('queue'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1541,6 +1566,34 @@ class CmdEnqueue:
 
 
 @dataclass
+class CmdEnqueueNext:
+    op: str
+    track_ids: List[TrackId]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'track_ids') and self.track_ids is not None:
+            result['track_ids'] = self.track_ids
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdEnqueueNext':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), track_ids=data.get('track_ids'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdEnqueueNext':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
 class CmdRemove:
     op: str
     index: int
@@ -1564,6 +1617,34 @@ class CmdRemove:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'CmdRemove':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CmdRemoveItem:
+    op: str
+    queue_item_id: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdRemoveItem':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), queue_item_id=data.get('queue_item_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdRemoveItem':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -1600,6 +1681,37 @@ class CmdReorder:
 
 
 @dataclass
+class CmdMoveItem:
+    op: str
+    queue_item_id: int
+    before_queue_item_id: Optional[int] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        if hasattr(self, 'before_queue_item_id') and self.before_queue_item_id is not None:
+            result['before_queue_item_id'] = self.before_queue_item_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdMoveItem':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), queue_item_id=data.get('queue_item_id'), before_queue_item_id=data.get('before_queue_item_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdMoveItem':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
 class CmdClear:
     op: str
     def to_dict(self) -> Dict[str, Any]:
@@ -1628,6 +1740,7 @@ class CmdClear:
 class CmdPlay:
     op: str
     index: Optional[int] = None
+    queue_item_id: Optional[int] = None
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -1635,12 +1748,14 @@ class CmdPlay:
             result['op'] = self.op
         if hasattr(self, 'index') and self.index is not None:
             result['index'] = self.index
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'CmdPlay':
         """Create instance from dictionary."""
-        return cls(op=data.get('op'), index=data.get('index'))
+        return cls(op=data.get('op'), index=data.get('index'), queue_item_id=data.get('queue_item_id'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1648,6 +1763,40 @@ class CmdPlay:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'CmdPlay':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CmdReplaceAndPlay:
+    op: str
+    track_ids: List[TrackId]
+    start_index: Optional[int] = 0
+    position_ms: Optional[int] = 0
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'track_ids') and self.track_ids is not None:
+            result['track_ids'] = self.track_ids
+        if hasattr(self, 'start_index') and self.start_index is not None:
+            result['start_index'] = self.start_index
+        if hasattr(self, 'position_ms') and self.position_ms is not None:
+            result['position_ms'] = self.position_ms
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdReplaceAndPlay':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), track_ids=data.get('track_ids'), start_index=data.get('start_index'), position_ms=data.get('position_ms'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdReplaceAndPlay':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -1793,7 +1942,202 @@ class CmdVolume:
         self.validate()
 
 
-PlayerCommand = Union[CmdEnqueue, CmdRemove, CmdReorder, CmdClear, CmdPlay, CmdPause, CmdNext, CmdPrevious, CmdSeek, CmdVolume]
+@dataclass
+class CmdSetRepeat:
+    op: str
+    repeat_mode: RepeatMode
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'repeat_mode') and self.repeat_mode is not None:
+            result['repeat_mode'] = self.repeat_mode
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdSetRepeat':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), repeat_mode=data.get('repeat_mode'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdSetRepeat':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CmdSetShuffle:
+    op: str
+    shuffle: bool
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'shuffle') and self.shuffle is not None:
+            result['shuffle'] = self.shuffle
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdSetShuffle':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), shuffle=data.get('shuffle'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdSetShuffle':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CmdUndo:
+    op: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdUndo':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdUndo':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CmdPlaybackCompleted:
+    op: str
+    playback_id: str
+    queue_item_id: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'playback_id') and self.playback_id is not None:
+            result['playback_id'] = self.playback_id
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdPlaybackCompleted':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), playback_id=data.get('playback_id'), queue_item_id=data.get('queue_item_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdPlaybackCompleted':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class CmdPlaybackFailed:
+    op: str
+    playback_id: str
+    queue_item_id: int
+    error: str
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'playback_id') and self.playback_id is not None:
+            result['playback_id'] = self.playback_id
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        if hasattr(self, 'error') and self.error is not None:
+            result['error'] = self.error
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdPlaybackFailed':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), playback_id=data.get('playback_id'), queue_item_id=data.get('queue_item_id'), error=data.get('error'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdPlaybackFailed':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+    def validate(self) -> bool:
+        """Validate field dependencies and constraints."""
+        if self.error is not None and len(self.error) < 1:
+            raise ValueError("Field 'error' must have length >= 1")
+        if self.error is not None and len(self.error) > 1024:
+            raise ValueError("Field 'error' must have length <= 1024")
+        return True
+
+    def __post_init__(self):
+        """Validate object after initialization."""
+        self.validate()
+
+
+@dataclass
+class CmdPlaybackState:
+    op: str
+    playback_id: str
+    queue_item_id: int
+    status: PlayerStatus
+    position_ms: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'op') and self.op is not None:
+            result['op'] = self.op
+        if hasattr(self, 'playback_id') and self.playback_id is not None:
+            result['playback_id'] = self.playback_id
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        if hasattr(self, 'status') and self.status is not None:
+            result['status'] = self.status
+        if hasattr(self, 'position_ms') and self.position_ms is not None:
+            result['position_ms'] = self.position_ms
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'CmdPlaybackState':
+        """Create instance from dictionary."""
+        return cls(op=data.get('op'), playback_id=data.get('playback_id'), queue_item_id=data.get('queue_item_id'), status=data.get('status'), position_ms=data.get('position_ms'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CmdPlaybackState':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+PlayerCommand = Union[CmdEnqueue, CmdEnqueueNext, CmdRemove, CmdRemoveItem, CmdReorder, CmdMoveItem, CmdClear, CmdPlay, CmdReplaceAndPlay, CmdPause, CmdNext, CmdPrevious, CmdSeek, CmdVolume, CmdSetRepeat, CmdSetShuffle, CmdUndo, CmdPlaybackCompleted, CmdPlaybackFailed, CmdPlaybackState]
 
 @dataclass
 class CommandRequest:
@@ -1913,6 +2257,7 @@ class ShareResult:
 @dataclass
 class MediaOpen:
     kind: str
+    stream_id: str
     track_id: TrackId
     pref: StreamPref
     def to_dict(self) -> Dict[str, Any]:
@@ -1920,6 +2265,8 @@ class MediaOpen:
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         if hasattr(self, 'track_id') and self.track_id is not None:
             result['track_id'] = self.track_id
         if hasattr(self, 'pref') and self.pref is not None:
@@ -1929,7 +2276,7 @@ class MediaOpen:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaOpen':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), track_id=data.get('track_id'), pref=data.get('pref'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), track_id=data.get('track_id'), pref=data.get('pref'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1944,12 +2291,15 @@ class MediaOpen:
 @dataclass
 class MediaSeek:
     kind: str
+    stream_id: str
     position_ms: int
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         if hasattr(self, 'position_ms') and self.position_ms is not None:
             result['position_ms'] = self.position_ms
         return result
@@ -1957,7 +2307,7 @@ class MediaSeek:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaSeek':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), position_ms=data.get('position_ms'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), position_ms=data.get('position_ms'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1972,17 +2322,20 @@ class MediaSeek:
 @dataclass
 class MediaPause:
     kind: str
+    stream_id: str
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaPause':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1997,17 +2350,20 @@ class MediaPause:
 @dataclass
 class MediaResume:
     kind: str
+    stream_id: str
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaResume':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2022,17 +2378,20 @@ class MediaResume:
 @dataclass
 class MediaStop:
     kind: str
+    stream_id: str
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaStop':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2049,6 +2408,7 @@ MediaControl = Union[MediaOpen, MediaSeek, MediaPause, MediaResume, MediaStop]
 @dataclass
 class MediaHeader:
     kind: str
+    stream_id: str
     codec: Codec
     transcoded: bool
     sample_rate: int
@@ -2062,6 +2422,8 @@ class MediaHeader:
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         if hasattr(self, 'codec') and self.codec is not None:
             result['codec'] = self.codec
         if hasattr(self, 'transcoded') and self.transcoded is not None:
@@ -2083,7 +2445,7 @@ class MediaHeader:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaHeader':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), codec=data.get('codec'), transcoded=data.get('transcoded'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), duration_ms=data.get('duration_ms'), trim_start_samples=data.get('trim_start_samples'), trim_end_samples=data.get('trim_end_samples'), codec_config=data.get('codec_config'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), codec=data.get('codec'), transcoded=data.get('transcoded'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), duration_ms=data.get('duration_ms'), trim_start_samples=data.get('trim_start_samples'), trim_end_samples=data.get('trim_end_samples'), codec_config=data.get('codec_config'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2100,6 +2462,7 @@ MediaEndReason = Union[str, str]
 @dataclass
 class MediaChunk:
     kind: str
+    stream_id: str
     seq: int
     data: bytes
     timestamp_ms: Optional[int] = None
@@ -2108,6 +2471,8 @@ class MediaChunk:
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         if hasattr(self, 'seq') and self.seq is not None:
             result['seq'] = self.seq
         if hasattr(self, 'timestamp_ms') and self.timestamp_ms is not None:
@@ -2119,7 +2484,7 @@ class MediaChunk:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaChunk':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), seq=data.get('seq'), timestamp_ms=data.get('timestamp_ms'), data=data.get('data'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), seq=data.get('seq'), timestamp_ms=data.get('timestamp_ms'), data=data.get('data'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2134,12 +2499,15 @@ class MediaChunk:
 @dataclass
 class MediaEnd:
     kind: str
+    stream_id: str
     reason: Optional[MediaEndReason] = None
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         if hasattr(self, 'reason') and self.reason is not None:
             result['reason'] = self.reason
         return result
@@ -2147,7 +2515,7 @@ class MediaEnd:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaEnd':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), reason=data.get('reason'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), reason=data.get('reason'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2162,12 +2530,15 @@ class MediaEnd:
 @dataclass
 class MediaFail:
     kind: str
+    stream_id: str
     error: ServiceError
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'kind') and self.kind is not None:
             result['kind'] = self.kind
+        if hasattr(self, 'stream_id') and self.stream_id is not None:
+            result['stream_id'] = self.stream_id
         if hasattr(self, 'error') and self.error is not None:
             result['error'] = self.error
         return result
@@ -2175,7 +2546,7 @@ class MediaFail:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaFail':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), error=data.get('error'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), error=data.get('error'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2292,6 +2663,8 @@ class RegisterNodeResponse:
 class DirLoad:
     op: str
     player_id: PlayerId
+    queue_item_id: int
+    playback_id: str
     track_id: TrackId
     pref: StreamPref
     position_ms: Optional[int] = None
@@ -2302,6 +2675,10 @@ class DirLoad:
             result['op'] = self.op
         if hasattr(self, 'player_id') and self.player_id is not None:
             result['player_id'] = self.player_id
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        if hasattr(self, 'playback_id') and self.playback_id is not None:
+            result['playback_id'] = self.playback_id
         if hasattr(self, 'track_id') and self.track_id is not None:
             result['track_id'] = self.track_id
         if hasattr(self, 'pref') and self.pref is not None:
@@ -2313,7 +2690,7 @@ class DirLoad:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'DirLoad':
         """Create instance from dictionary."""
-        return cls(op=data.get('op'), player_id=data.get('player_id'), track_id=data.get('track_id'), pref=data.get('pref'), position_ms=data.get('position_ms'))
+        return cls(op=data.get('op'), player_id=data.get('player_id'), queue_item_id=data.get('queue_item_id'), playback_id=data.get('playback_id'), track_id=data.get('track_id'), pref=data.get('pref'), position_ms=data.get('position_ms'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2456,17 +2833,29 @@ NodeDirective = Union[DirLoad, DirPause, DirResume, DirStop, DirVolume]
 class NodeReport:
     player_id: PlayerId
     status: PlayerStatus
+    event: Optional[NodeEvent] = "state"
+    queue_item_id: Optional[int] = None
+    playback_id: Optional[str] = None
     position_ms: Optional[int] = None
+    error: Optional[str] = None
     audio_blocked: Optional[bool] = False
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'player_id') and self.player_id is not None:
             result['player_id'] = self.player_id
+        if hasattr(self, 'event') and self.event is not None:
+            result['event'] = self.event
         if hasattr(self, 'status') and self.status is not None:
             result['status'] = self.status
+        if hasattr(self, 'queue_item_id') and self.queue_item_id is not None:
+            result['queue_item_id'] = self.queue_item_id
+        if hasattr(self, 'playback_id') and self.playback_id is not None:
+            result['playback_id'] = self.playback_id
         if hasattr(self, 'position_ms') and self.position_ms is not None:
             result['position_ms'] = self.position_ms
+        if hasattr(self, 'error') and self.error is not None:
+            result['error'] = self.error
         if hasattr(self, 'audio_blocked') and self.audio_blocked is not None:
             result['audio_blocked'] = self.audio_blocked
         return result
@@ -2474,7 +2863,7 @@ class NodeReport:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'NodeReport':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), status=data.get('status'), position_ms=data.get('position_ms'), audio_blocked=data.get('audio_blocked'))
+        return cls(player_id=data.get('player_id'), event=data.get('event'), status=data.get('status'), queue_item_id=data.get('queue_item_id'), playback_id=data.get('playback_id'), position_ms=data.get('position_ms'), error=data.get('error'), audio_blocked=data.get('audio_blocked'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2484,6 +2873,18 @@ class NodeReport:
     def from_json(cls, json_str: str) -> 'NodeReport':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
+
+    def validate(self) -> bool:
+        """Validate field dependencies and constraints."""
+        if self.error is not None and len(self.error) < 1:
+            raise ValueError("Field 'error' must have length >= 1")
+        if self.error is not None and len(self.error) > 1024:
+            raise ValueError("Field 'error' must have length <= 1024")
+        return True
+
+    def __post_init__(self):
+        """Validate object after initialization."""
+        self.validate()
 
 
 @dataclass

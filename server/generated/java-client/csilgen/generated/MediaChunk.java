@@ -7,6 +7,7 @@ import java.util.Objects;
 
 public record MediaChunk(
     String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */,
     long seq /* wire: "seq" */,
     Long timestampMs /* wire: "timestamp_ms" */,
     byte[] data /* wire: "data" */
@@ -17,6 +18,7 @@ public record MediaChunk(
         if (!(obj instanceof MediaChunk o)) return false;
         return true
             && Objects.equals(kind, o.kind)
+            && Objects.equals(streamId, o.streamId)
             && Objects.equals(seq, o.seq)
             && Objects.equals(timestampMs, o.timestampMs)
             && Arrays.equals(data, o.data)
@@ -24,10 +26,10 @@ public record MediaChunk(
     }
     @Override
     public int hashCode() {
-        return Objects.hash(kind, seq, timestampMs, Arrays.hashCode(data));
+        return Objects.hash(kind, streamId, seq, timestampMs, Arrays.hashCode(data));
     }
     @Override
     public String toString() {
-        return "MediaChunk[" + "kind=" + kind + ", " + "seq=" + seq + ", " + "timestampMs=" + timestampMs + ", " + "data=" + Arrays.toString(data) + "]";
+        return "MediaChunk[" + "kind=" + kind + ", " + "streamId=" + streamId + ", " + "seq=" + seq + ", " + "timestampMs=" + timestampMs + ", " + "data=" + Arrays.toString(data) + "]";
     }
 }

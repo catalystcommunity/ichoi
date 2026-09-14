@@ -26,6 +26,10 @@ export type Role = "admin" | "member" | "guest";
 
 export type PlayerStatus = "stopped" | "playing" | "paused";
 
+export type RepeatMode = "off" | "all" | "one";
+
+export type NodeEvent = "ready" | "state" | "completed" | "failed";
+
 export type Codec = "mp3" | "aac" | "vorbis" | "flac" | "alac" | "opus" | "wav" | "wma";
 
 export type TranscodeCodec = "aac" | "mp3";
@@ -292,6 +296,7 @@ export interface Player {
 }
 
 export interface QueueItem {
+  queueItemId: number;
   trackId: TrackId;
   library?: Library;
   title?: string;
@@ -301,10 +306,16 @@ export interface QueueItem {
 
 export interface PlayerState {
   playerId: PlayerId;
+  revision: number;
   status: PlayerStatus;
   currentIndex?: number;
+  playbackId?: string;
   positionMs?: number;
   volume: number;
+  repeatMode: RepeatMode;
+  shuffle: boolean;
+  error?: string;
+  canUndo: boolean;
   queue: QueueItem[];
 }
 
@@ -327,15 +338,31 @@ export interface CmdEnqueue {
   atIndex?: number;
 }
 
+export interface CmdEnqueueNext {
+  op: "enqueue-next";
+  trackIds: TrackId[];
+}
+
 export interface CmdRemove {
   op: "remove";
   index: number;
+}
+
+export interface CmdRemoveItem {
+  op: "remove-item";
+  queueItemId: number;
 }
 
 export interface CmdReorder {
   op: "reorder";
   fromIndex: number;
   toIndex: number;
+}
+
+export interface CmdMoveItem {
+  op: "move-item";
+  queueItemId: number;
+  beforeQueueItemId?: number;
 }
 
 export interface CmdClear {
@@ -345,6 +372,14 @@ export interface CmdClear {
 export interface CmdPlay {
   op: "play";
   index?: number;
+  queueItemId?: number;
+}
+
+export interface CmdReplaceAndPlay {
+  op: "replace-and-play";
+  trackIds: TrackId[];
+  startIndex?: number;
+  positionMs?: number;
 }
 
 export interface CmdPause {
@@ -369,7 +404,42 @@ export interface CmdVolume {
   volume: number;
 }
 
-export type PlayerCommand = CmdEnqueue | CmdRemove | CmdReorder | CmdClear | CmdPlay | CmdPause | CmdNext | CmdPrevious | CmdSeek | CmdVolume;
+export interface CmdSetRepeat {
+  op: "set-repeat";
+  repeatMode: RepeatMode;
+}
+
+export interface CmdSetShuffle {
+  op: "set-shuffle";
+  shuffle: boolean;
+}
+
+export interface CmdUndo {
+  op: "undo";
+}
+
+export interface CmdPlaybackCompleted {
+  op: "playback-completed";
+  playbackId: string;
+  queueItemId: number;
+}
+
+export interface CmdPlaybackFailed {
+  op: "playback-failed";
+  playbackId: string;
+  queueItemId: number;
+  error: string;
+}
+
+export interface CmdPlaybackState {
+  op: "playback-state";
+  playbackId: string;
+  queueItemId: number;
+  status: PlayerStatus;
+  positionMs: number;
+}
+
+export type PlayerCommand = CmdEnqueue | CmdEnqueueNext | CmdRemove | CmdRemoveItem | CmdReorder | CmdMoveItem | CmdClear | CmdPlay | CmdReplaceAndPlay | CmdPause | CmdNext | CmdPrevious | CmdSeek | CmdVolume | CmdSetRepeat | CmdSetShuffle | CmdUndo | CmdPlaybackCompleted | CmdPlaybackFailed | CmdPlaybackState;
 
 export interface CommandRequest {
   playerId: PlayerId;
@@ -390,31 +460,37 @@ export interface ShareResult {
 
 export interface MediaOpen {
   kind: "open";
+  streamId: string;
   trackId: TrackId;
   pref: StreamPref;
 }
 
 export interface MediaSeek {
   kind: "seek";
+  streamId: string;
   positionMs: number;
 }
 
 export interface MediaPause {
   kind: "pause";
+  streamId: string;
 }
 
 export interface MediaResume {
   kind: "resume";
+  streamId: string;
 }
 
 export interface MediaStop {
   kind: "stop";
+  streamId: string;
 }
 
 export type MediaControl = MediaOpen | MediaSeek | MediaPause | MediaResume | MediaStop;
 
 export interface MediaHeader {
   kind: "header";
+  streamId: string;
   codec: Codec;
   transcoded: boolean;
   sampleRate: number;
@@ -429,6 +505,7 @@ export type MediaEndReason = "eos" | "stopped";
 
 export interface MediaChunk {
   kind: "chunk";
+  streamId: string;
   seq: number;
   timestampMs?: number;
   data: Uint8Array;
@@ -436,11 +513,13 @@ export interface MediaChunk {
 
 export interface MediaEnd {
   kind: "end";
+  streamId: string;
   reason?: MediaEndReason;
 }
 
 export interface MediaFail {
   kind: "error";
+  streamId: string;
   error: ServiceError;
 }
 
@@ -469,6 +548,8 @@ export interface RegisterNodeResponse {
 export interface DirLoad {
   op: "load";
   playerId: PlayerId;
+  queueItemId: number;
+  playbackId: string;
   trackId: TrackId;
   pref: StreamPref;
   positionMs?: number;
@@ -499,8 +580,12 @@ export type NodeDirective = DirLoad | DirPause | DirResume | DirStop | DirVolume
 
 export interface NodeReport {
   playerId: PlayerId;
+  event?: NodeEvent;
   status: PlayerStatus;
+  queueItemId?: number;
+  playbackId?: string;
   positionMs?: number;
+  error?: string;
   audioBlocked?: boolean;
 }
 
@@ -754,6 +839,12 @@ export function validateCmdVolume(value: CmdVolume): string[] {
   return errors;
 }
 
+export function validateCmdPlaybackFailed(value: CmdPlaybackFailed): string[] {
+  const errors: string[] = [];
+  if (value.error.length < 1 || value.error.length > 1024) errors.push("error: length must be between 1 and 1024");
+  return errors;
+}
+
 export function validateEnableShareRequest(value: EnableShareRequest): string[] {
   const errors: string[] = [];
   if (value.suffix !== undefined) {
@@ -765,6 +856,14 @@ export function validateEnableShareRequest(value: EnableShareRequest): string[] 
 export function validateDirVolume(value: DirVolume): string[] {
   const errors: string[] = [];
   if (value.volume > 100) errors.push("volume: must be <= 100");
+  return errors;
+}
+
+export function validateNodeReport(value: NodeReport): string[] {
+  const errors: string[] = [];
+  if (value.error !== undefined) {
+    if (value.error.length < 1 || value.error.length > 1024) errors.push("error: length must be between 1 and 1024");
+  }
   return errors;
 }
 

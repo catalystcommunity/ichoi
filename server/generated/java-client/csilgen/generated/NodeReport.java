@@ -4,8 +4,20 @@ package csilgen.generated;
 
 public record NodeReport(
     PlayerId playerId /* wire: "player_id" */,
+    NodeEvent event /* wire: "event" */,
     PlayerStatus status /* wire: "status" */,
+    Long queueItemId /* wire: "queue_item_id" */,
+    String playbackId /* wire: "playback_id" */,
     Long positionMs /* wire: "position_ms" */,
+    String error /* wire: "error" */,
     Boolean audioBlocked /* wire: "audio_blocked" */
 ) {
+    public NodeReport {
+        if (error != null && (error.length() < 1)) {
+            throw new IllegalArgumentException("field 'error' must have length >= 1");
+        }
+        if (error != null && (error.length() > 1024)) {
+            throw new IllegalArgumentException("field 'error' must have length <= 1024");
+        }
+    }
 }

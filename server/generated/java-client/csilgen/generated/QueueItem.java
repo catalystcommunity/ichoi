@@ -3,6 +3,7 @@
 package csilgen.generated;
 
 public record QueueItem(
+    long queueItemId /* wire: "queue_item_id" */,
     TrackId trackId /* wire: "track_id" */,
     Library library /* wire: "library" */,
     String title /* wire: "title" */,

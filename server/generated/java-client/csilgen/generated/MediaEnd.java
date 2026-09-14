@@ -4,6 +4,7 @@ package csilgen.generated;
 
 public record MediaEnd(
     String kind /* wire: "kind" */,
+    String streamId /* wire: "stream_id" */,
     MediaEndReason reason /* wire: "reason" */
 ) {
 }

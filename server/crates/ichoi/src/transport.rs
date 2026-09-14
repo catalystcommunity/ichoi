@@ -449,6 +449,8 @@ pub struct FrameEffects {
     pub node_session: Option<String>,
     /// A `media.Stream` open request: start sending MediaEvent frames for the requested track.
     pub media_open: Option<MediaOpen>,
+    /// A `media.Stream` stop request: cancel this connection's matching media producer.
+    pub media_stop: Option<String>,
     /// A `change.Watch`: add or remove this connection's invalidation subscription.
     pub watch_changes: Option<bool>,
 }
@@ -522,6 +524,7 @@ pub fn handle_events_frame(
                 attach,
                 node_session: None,
                 media_open: None,
+                media_stop: None,
                 watch_changes: None,
             },
         );
@@ -554,6 +557,7 @@ pub fn handle_events_frame(
                     attach: None,
                     node_session: None,
                     media_open: None,
+                    media_stop: None,
                     watch_changes: None,
                 },
             );
@@ -577,6 +581,7 @@ pub fn handle_events_frame(
                     attach: None,
                     node_session: Some(player_id),
                     media_open: None,
+                    media_stop: None,
                     watch_changes: None,
                 },
             );
@@ -586,18 +591,26 @@ pub fn handle_events_frame(
         if !matches!(ident, Identity::Node { .. }) {
             return (ident, None, FrameEffects::default());
         }
-        if let Ok(MediaControl::Variant0(open)) = decode_media_control(&env.payload) {
-            return (
-                ident,
-                None,
-                FrameEffects {
-                    player_subscription: None,
-                    attach: None,
-                    node_session: None,
-                    media_open: Some(open),
-                    watch_changes: None,
-                },
-            );
+        if let Ok(control) = decode_media_control(&env.payload) {
+            let (media_open, media_stop) = match control {
+                MediaControl::Variant0(open) => (Some(open), None),
+                MediaControl::Variant4(stop) => (None, Some(stop.stream_id)),
+                _ => (None, None),
+            };
+            if media_open.is_some() || media_stop.is_some() {
+                return (
+                    ident,
+                    None,
+                    FrameEffects {
+                        player_subscription: None,
+                        attach: None,
+                        node_session: None,
+                        media_open,
+                        media_stop,
+                        watch_changes: None,
+                    },
+                );
+            }
         }
     }
     if service == "change" && env.event == "watch" {
@@ -755,4 +768,19 @@ fn subscribe_snapshot(app: &App, identity: &Identity, payload: &[u8]) -> Option<
     let mut conn = app.pool.get().ok()?;
     let state = app.load_player_state(&mut conn, &req.player_id).ok()?;
     Some((player_state_frame(&state), req.player_id))
+}
+
+/// Read a fresh snapshot after the transport attaches a subscriber. Events that commit before
+/// this read are in the snapshot. Events that commit after it are queued for the subscriber.
+pub fn player_subscription_snapshot(
+    app: &App,
+    identity: &Identity,
+    player_id: &str,
+) -> Option<Vec<u8>> {
+    if !app.can_access_player(identity, player_id) {
+        return None;
+    }
+    let mut conn = app.pool.get().ok()?;
+    let state = app.load_player_state(&mut conn, player_id).ok()?;
+    Some(player_state_frame(&state))
 }

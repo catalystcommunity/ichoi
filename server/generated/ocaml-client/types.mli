@@ -14,6 +14,8 @@ and device_id = string
 and player_id = string
 and role = Admin | Member | Guest
 and player_status = Stopped | Playing | Paused
+and repeat_mode = Off | All | One
+and node_event = Ready | State | Completed | Failed
 and codec = Mp_3 | Aac | Vorbis | Flac | Alac | Opus | Wav | Wma
 and transcode_codec = Aac | Mp_3
 
@@ -204,6 +206,7 @@ and player = {
 }
 
 and queue_item = {
+  queue_item_id : int64;
   track_id : track_id;
   library : library option;
   title : string option;
@@ -213,10 +216,16 @@ and queue_item = {
 
 and player_state = {
   player_id : player_id;
+  revision : int64;
   status : player_status;
   current_index : int64 option;
+  playback_id : string option;
   position_ms : int64 option;
   volume : int64;
+  repeat_mode : repeat_mode;
+  shuffle : bool;
+  error : string option;
+  can_undo : bool;
   queue : queue_item list;
 }
 
@@ -230,27 +239,83 @@ and cmd_enqueue = {
   at_index : int64 option;
 }
 
+and cmd_enqueue_next = { op : Csil_cbor.t; track_ids : track_id list }
 and cmd_remove = { op : Csil_cbor.t; index : int64 }
+and cmd_remove_item = { op : Csil_cbor.t; queue_item_id : int64 }
 and cmd_reorder = { op : Csil_cbor.t; from_index : int64; to_index : int64 }
+
+and cmd_move_item = {
+  op : Csil_cbor.t;
+  queue_item_id : int64;
+  before_queue_item_id : int64 option;
+}
+
 and cmd_clear = { op : Csil_cbor.t }
-and cmd_play = { op : Csil_cbor.t; index : int64 option }
+
+and cmd_play = {
+  op : Csil_cbor.t;
+  index : int64 option;
+  queue_item_id : int64 option;
+}
+
+and cmd_replace_and_play = {
+  op : Csil_cbor.t;
+  track_ids : track_id list;
+  start_index : int64 option;
+  position_ms : int64 option;
+}
+
 and cmd_pause = { op : Csil_cbor.t }
 and cmd_next = { op : Csil_cbor.t }
 and cmd_previous = { op : Csil_cbor.t }
 and cmd_seek = { op : Csil_cbor.t; position_ms : int64 }
 and cmd_volume = { op : Csil_cbor.t; volume : int64 }
+and cmd_set_repeat = { op : Csil_cbor.t; repeat_mode : repeat_mode }
+and cmd_set_shuffle = { op : Csil_cbor.t; shuffle : bool }
+and cmd_undo = { op : Csil_cbor.t }
+
+and cmd_playback_completed = {
+  op : Csil_cbor.t;
+  playback_id : string;
+  queue_item_id : int64;
+}
+
+and cmd_playback_failed = {
+  op : Csil_cbor.t;
+  playback_id : string;
+  queue_item_id : int64;
+  error : string;
+}
+
+and cmd_playback_state = {
+  op : Csil_cbor.t;
+  playback_id : string;
+  queue_item_id : int64;
+  status : player_status;
+  position_ms : int64;
+}
 
 and player_command =
   | Cmd_enqueue of cmd_enqueue
+  | Cmd_enqueue_next of cmd_enqueue_next
   | Cmd_remove of cmd_remove
+  | Cmd_remove_item of cmd_remove_item
   | Cmd_reorder of cmd_reorder
+  | Cmd_move_item of cmd_move_item
   | Cmd_clear of cmd_clear
   | Cmd_play of cmd_play
+  | Cmd_replace_and_play of cmd_replace_and_play
   | Cmd_pause of cmd_pause
   | Cmd_next of cmd_next
   | Cmd_previous of cmd_previous
   | Cmd_seek of cmd_seek
   | Cmd_volume of cmd_volume
+  | Cmd_set_repeat of cmd_set_repeat
+  | Cmd_set_shuffle of cmd_set_shuffle
+  | Cmd_undo of cmd_undo
+  | Cmd_playback_completed of cmd_playback_completed
+  | Cmd_playback_failed of cmd_playback_failed
+  | Cmd_playback_state of cmd_playback_state
 
 and command_request = { player_id : player_id; command : player_command }
 and enable_share_request = { suffix : string option }
@@ -259,14 +324,20 @@ and share_result = { player : player }
 
 and media_open = {
   kind : Csil_cbor.t;
+  stream_id : string;
   track_id : track_id;
   pref : stream_pref;
 }
 
-and media_seek = { kind : Csil_cbor.t; position_ms : int64 }
-and media_pause = { kind : Csil_cbor.t }
-and media_resume = { kind : Csil_cbor.t }
-and media_stop = { kind : Csil_cbor.t }
+and media_seek = {
+  kind : Csil_cbor.t;
+  stream_id : string;
+  position_ms : int64;
+}
+
+and media_pause = { kind : Csil_cbor.t; stream_id : string }
+and media_resume = { kind : Csil_cbor.t; stream_id : string }
+and media_stop = { kind : Csil_cbor.t; stream_id : string }
 
 and media_control =
   | Media_open of media_open
@@ -277,6 +348,7 @@ and media_control =
 
 and media_header = {
   kind : Csil_cbor.t;
+  stream_id : string;
   codec : codec;
   transcoded : bool;
   sample_rate : int64;
@@ -291,13 +363,23 @@ and media_end_reason = Eos | Stopped
 
 and media_chunk = {
   kind : Csil_cbor.t;
+  stream_id : string;
   seq : int64;
   timestamp_ms : int64 option;
   data : bytes;
 }
 
-and media_end = { kind : Csil_cbor.t; reason : media_end_reason option }
-and media_fail = { kind : Csil_cbor.t; error : service_error }
+and media_end = {
+  kind : Csil_cbor.t;
+  stream_id : string;
+  reason : media_end_reason option;
+}
+
+and media_fail = {
+  kind : Csil_cbor.t;
+  stream_id : string;
+  error : service_error;
+}
 
 and media_event =
   | Media_header of media_header
@@ -325,6 +407,8 @@ and register_node_response = { node_id : node_id; players : player list }
 and dir_load = {
   op : Csil_cbor.t;
   player_id : player_id;
+  queue_item_id : int64;
+  playback_id : string;
   track_id : track_id;
   pref : stream_pref;
   position_ms : int64 option;
@@ -344,8 +428,12 @@ and node_directive =
 
 and node_report = {
   player_id : player_id;
+  event : node_event option;
   status : player_status;
+  queue_item_id : int64 option;
+  playback_id : string option;
   position_ms : int64 option;
+  error : string option;
   audio_blocked : bool option;
 }
 

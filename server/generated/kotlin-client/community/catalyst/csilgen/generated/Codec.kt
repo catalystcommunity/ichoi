@@ -348,6 +348,38 @@ fun playerStatusFromCborValue(cbor: CborValue): PlayerStatus = when (CsilCbor.as
     else -> throw CborError("unknown PlayerStatus value")
 }
 
+/** Encode a RepeatMode enum as its bare literal value. */
+fun RepeatMode.toCborValue(): CborValue = when (this) {
+    RepeatMode.Off -> CborValue.CText("off")
+    RepeatMode.All -> CborValue.CText("all")
+    RepeatMode.One -> CborValue.CText("one")
+}
+
+/** Decode a bare literal value into a RepeatMode enum. */
+fun repeatModeFromCborValue(cbor: CborValue): RepeatMode = when (CsilCbor.asText(cbor)) {
+    "off" -> RepeatMode.Off
+    "all" -> RepeatMode.All
+    "one" -> RepeatMode.One
+    else -> throw CborError("unknown RepeatMode value")
+}
+
+/** Encode a NodeEvent enum as its bare literal value. */
+fun NodeEvent.toCborValue(): CborValue = when (this) {
+    NodeEvent.Ready -> CborValue.CText("ready")
+    NodeEvent.State -> CborValue.CText("state")
+    NodeEvent.Completed -> CborValue.CText("completed")
+    NodeEvent.Failed -> CborValue.CText("failed")
+}
+
+/** Decode a bare literal value into a NodeEvent enum. */
+fun nodeEventFromCborValue(cbor: CborValue): NodeEvent = when (CsilCbor.asText(cbor)) {
+    "ready" -> NodeEvent.Ready
+    "state" -> NodeEvent.State
+    "completed" -> NodeEvent.Completed
+    "failed" -> NodeEvent.Failed
+    else -> throw CborError("unknown NodeEvent value")
+}
+
 /** Encode a Codec enum as its bare literal value. */
 fun Codec.toCborValue(): CborValue = when (this) {
     Codec.Mp3 -> CborValue.CText("mp3")
@@ -1418,6 +1450,7 @@ fun QueueItem.toCborValue(): CborValue {
     this.library?.let { csilV -> csilEntries.add(CborValue.CText("library") to csilV.toCborValue()) }
     csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
     this.durationMs?.let { csilV -> csilEntries.add(CborValue.CText("duration_ms") to CborValue.CUint(csilV)) }
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -1426,12 +1459,13 @@ fun QueueItem.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 
 /** Reconstruct a QueueItem from a decoded CBOR value tree. */
 fun queueItemFromCborValue(cbor: CborValue): QueueItem {
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
     val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
     val library = CsilCbor.mapGet(cbor, "library")?.let { csilV -> libraryFromCborValue(csilV) }
     val title = CsilCbor.mapGet(cbor, "title")?.let { csilV -> CsilCbor.asText(csilV) }
     val artist = CsilCbor.mapGet(cbor, "artist")?.let { csilV -> CsilCbor.asText(csilV) }
     val durationMs = CsilCbor.mapGet(cbor, "duration_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
-    return QueueItem(trackId = trackId, library = library, title = title, artist = artist, durationMs = durationMs)
+    return QueueItem(queueItemId = queueItemId, trackId = trackId, library = library, title = title, artist = artist, durationMs = durationMs)
 }
 
 /** Decode CSIL CBOR bytes into a QueueItem. */
@@ -1440,11 +1474,17 @@ fun queueItemFromCbor(bytes: ByteArray): QueueItem = queueItemFromCborValue(Csil
 /** The CBOR value tree for a PlayerState (deep, canonical key order). */
 fun PlayerState.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    this.error?.let { csilV -> csilEntries.add(CborValue.CText("error") to CborValue.CText(csilV)) }
     csilEntries.add(CborValue.CText("queue") to CborValue.CArray((this.queue).map { csilE -> csilE.toCborValue() }))
     csilEntries.add(CborValue.CText("status") to this.status.toCborValue())
     csilEntries.add(CborValue.CText("volume") to CborValue.CUint(this.volume))
+    csilEntries.add(CborValue.CText("shuffle") to CborValue.CBool(this.shuffle))
+    csilEntries.add(CborValue.CText("can_undo") to CborValue.CBool(this.canUndo))
+    csilEntries.add(CborValue.CText("revision") to CborValue.CUint(this.revision))
     csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
+    this.playbackId?.let { csilV -> csilEntries.add(CborValue.CText("playback_id") to CborValue.CText(csilV)) }
     this.positionMs?.let { csilV -> csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(csilV)) }
+    csilEntries.add(CborValue.CText("repeat_mode") to this.repeatMode.toCborValue())
     this.currentIndex?.let { csilV -> csilEntries.add(CborValue.CText("current_index") to CborValue.CUint(csilV)) }
     return CborValue.CMap(csilEntries)
 }
@@ -1455,12 +1495,18 @@ fun PlayerState.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a PlayerState from a decoded CBOR value tree. */
 fun playerStateFromCborValue(cbor: CborValue): PlayerState {
     val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
+    val revision = CsilCbor.asULong(CsilCbor.require(cbor, "revision"))
     val status = playerStatusFromCborValue(CsilCbor.require(cbor, "status"))
     val currentIndex = CsilCbor.mapGet(cbor, "current_index")?.let { csilV -> CsilCbor.asULong(csilV) }
+    val playbackId = CsilCbor.mapGet(cbor, "playback_id")?.let { csilV -> CsilCbor.asText(csilV) }
     val positionMs = CsilCbor.mapGet(cbor, "position_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
     val volume = CsilCbor.asULong(CsilCbor.require(cbor, "volume"))
+    val repeatMode = repeatModeFromCborValue(CsilCbor.require(cbor, "repeat_mode"))
+    val shuffle = CsilCbor.asBoolean(CsilCbor.require(cbor, "shuffle"))
+    val error = CsilCbor.mapGet(cbor, "error")?.let { csilV -> CsilCbor.asText(csilV) }
+    val canUndo = CsilCbor.asBoolean(CsilCbor.require(cbor, "can_undo"))
     val queue = CsilCbor.asArray(CsilCbor.require(cbor, "queue")).map { csilE -> queueItemFromCborValue(csilE) }
-    return PlayerState(playerId = playerId, status = status, currentIndex = currentIndex, positionMs = positionMs, volume = volume, queue = queue)
+    return PlayerState(playerId = playerId, revision = revision, status = status, currentIndex = currentIndex, playbackId = playbackId, positionMs = positionMs, volume = volume, repeatMode = repeatMode, shuffle = shuffle, error = error, canUndo = canUndo, queue = queue)
 }
 
 /** Decode CSIL CBOR bytes into a PlayerState. */
@@ -1548,6 +1594,27 @@ fun cmdEnqueueFromCborValue(cbor: CborValue): CmdEnqueue {
 /** Decode CSIL CBOR bytes into a CmdEnqueue. */
 fun cmdEnqueueFromCbor(bytes: ByteArray): CmdEnqueue = cmdEnqueueFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a CmdEnqueueNext (deep, canonical key order). */
+fun CmdEnqueueNext.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("enqueue-next"))
+    csilEntries.add(CborValue.CText("track_ids") to CborValue.CArray((this.trackIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdEnqueueNext to canonical CSIL CBOR bytes. */
+fun CmdEnqueueNext.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdEnqueueNext from a decoded CBOR value tree. */
+fun cmdEnqueueNextFromCborValue(cbor: CborValue): CmdEnqueueNext {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("enqueue-next"), "enqueue-next")
+    val trackIds = CsilCbor.asArray(CsilCbor.require(cbor, "track_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return CmdEnqueueNext(op = op, trackIds = trackIds)
+}
+
+/** Decode CSIL CBOR bytes into a CmdEnqueueNext. */
+fun cmdEnqueueNextFromCbor(bytes: ByteArray): CmdEnqueueNext = cmdEnqueueNextFromCborValue(CsilCbor.decode(bytes))
+
 /** The CBOR value tree for a CmdRemove (deep, canonical key order). */
 fun CmdRemove.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
@@ -1568,6 +1635,27 @@ fun cmdRemoveFromCborValue(cbor: CborValue): CmdRemove {
 
 /** Decode CSIL CBOR bytes into a CmdRemove. */
 fun cmdRemoveFromCbor(bytes: ByteArray): CmdRemove = cmdRemoveFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdRemoveItem (deep, canonical key order). */
+fun CmdRemoveItem.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("remove-item"))
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdRemoveItem to canonical CSIL CBOR bytes. */
+fun CmdRemoveItem.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdRemoveItem from a decoded CBOR value tree. */
+fun cmdRemoveItemFromCborValue(cbor: CborValue): CmdRemoveItem {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("remove-item"), "remove-item")
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
+    return CmdRemoveItem(op = op, queueItemId = queueItemId)
+}
+
+/** Decode CSIL CBOR bytes into a CmdRemoveItem. */
+fun cmdRemoveItemFromCbor(bytes: ByteArray): CmdRemoveItem = cmdRemoveItemFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a CmdReorder (deep, canonical key order). */
 fun CmdReorder.toCborValue(): CborValue {
@@ -1591,6 +1679,29 @@ fun cmdReorderFromCborValue(cbor: CborValue): CmdReorder {
 
 /** Decode CSIL CBOR bytes into a CmdReorder. */
 fun cmdReorderFromCbor(bytes: ByteArray): CmdReorder = cmdReorderFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdMoveItem (deep, canonical key order). */
+fun CmdMoveItem.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("move-item"))
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
+    this.beforeQueueItemId?.let { csilV -> csilEntries.add(CborValue.CText("before_queue_item_id") to CborValue.CUint(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdMoveItem to canonical CSIL CBOR bytes. */
+fun CmdMoveItem.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdMoveItem from a decoded CBOR value tree. */
+fun cmdMoveItemFromCborValue(cbor: CborValue): CmdMoveItem {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("move-item"), "move-item")
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
+    val beforeQueueItemId = CsilCbor.mapGet(cbor, "before_queue_item_id")?.let { csilV -> CsilCbor.asULong(csilV) }
+    return CmdMoveItem(op = op, queueItemId = queueItemId, beforeQueueItemId = beforeQueueItemId)
+}
+
+/** Decode CSIL CBOR bytes into a CmdMoveItem. */
+fun cmdMoveItemFromCbor(bytes: ByteArray): CmdMoveItem = cmdMoveItemFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a CmdClear (deep, canonical key order). */
 fun CmdClear.toCborValue(): CborValue {
@@ -1616,6 +1727,7 @@ fun CmdPlay.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("op") to CborValue.CText("play"))
     this.index?.let { csilV -> csilEntries.add(CborValue.CText("index") to CborValue.CUint(csilV)) }
+    this.queueItemId?.let { csilV -> csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(csilV)) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -1626,11 +1738,37 @@ fun CmdPlay.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 fun cmdPlayFromCborValue(cbor: CborValue): CmdPlay {
     val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("play"), "play")
     val index = CsilCbor.mapGet(cbor, "index")?.let { csilV -> CsilCbor.asULong(csilV) }
-    return CmdPlay(op = op, index = index)
+    val queueItemId = CsilCbor.mapGet(cbor, "queue_item_id")?.let { csilV -> CsilCbor.asULong(csilV) }
+    return CmdPlay(op = op, index = index, queueItemId = queueItemId)
 }
 
 /** Decode CSIL CBOR bytes into a CmdPlay. */
 fun cmdPlayFromCbor(bytes: ByteArray): CmdPlay = cmdPlayFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdReplaceAndPlay (deep, canonical key order). */
+fun CmdReplaceAndPlay.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("replace-and-play"))
+    csilEntries.add(CborValue.CText("track_ids") to CborValue.CArray((this.trackIds).map { csilE -> CborValue.CText(csilE) }))
+    this.positionMs?.let { csilV -> csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(csilV)) }
+    this.startIndex?.let { csilV -> csilEntries.add(CborValue.CText("start_index") to CborValue.CUint(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdReplaceAndPlay to canonical CSIL CBOR bytes. */
+fun CmdReplaceAndPlay.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdReplaceAndPlay from a decoded CBOR value tree. */
+fun cmdReplaceAndPlayFromCborValue(cbor: CborValue): CmdReplaceAndPlay {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("replace-and-play"), "replace-and-play")
+    val trackIds = CsilCbor.asArray(CsilCbor.require(cbor, "track_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    val startIndex = CsilCbor.mapGet(cbor, "start_index")?.let { csilV -> CsilCbor.asULong(csilV) }
+    val positionMs = CsilCbor.mapGet(cbor, "position_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
+    return CmdReplaceAndPlay(op = op, trackIds = trackIds, startIndex = startIndex, positionMs = positionMs)
+}
+
+/** Decode CSIL CBOR bytes into a CmdReplaceAndPlay. */
+fun cmdReplaceAndPlayFromCbor(bytes: ByteArray): CmdReplaceAndPlay = cmdReplaceAndPlayFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a CmdPause (deep, canonical key order). */
 fun CmdPause.toCborValue(): CborValue {
@@ -1731,6 +1869,142 @@ fun cmdVolumeFromCborValue(cbor: CborValue): CmdVolume {
 /** Decode CSIL CBOR bytes into a CmdVolume. */
 fun cmdVolumeFromCbor(bytes: ByteArray): CmdVolume = cmdVolumeFromCborValue(CsilCbor.decode(bytes))
 
+/** The CBOR value tree for a CmdSetRepeat (deep, canonical key order). */
+fun CmdSetRepeat.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("set-repeat"))
+    csilEntries.add(CborValue.CText("repeat_mode") to this.repeatMode.toCborValue())
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdSetRepeat to canonical CSIL CBOR bytes. */
+fun CmdSetRepeat.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdSetRepeat from a decoded CBOR value tree. */
+fun cmdSetRepeatFromCborValue(cbor: CborValue): CmdSetRepeat {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("set-repeat"), "set-repeat")
+    val repeatMode = repeatModeFromCborValue(CsilCbor.require(cbor, "repeat_mode"))
+    return CmdSetRepeat(op = op, repeatMode = repeatMode)
+}
+
+/** Decode CSIL CBOR bytes into a CmdSetRepeat. */
+fun cmdSetRepeatFromCbor(bytes: ByteArray): CmdSetRepeat = cmdSetRepeatFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdSetShuffle (deep, canonical key order). */
+fun CmdSetShuffle.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("set-shuffle"))
+    csilEntries.add(CborValue.CText("shuffle") to CborValue.CBool(this.shuffle))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdSetShuffle to canonical CSIL CBOR bytes. */
+fun CmdSetShuffle.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdSetShuffle from a decoded CBOR value tree. */
+fun cmdSetShuffleFromCborValue(cbor: CborValue): CmdSetShuffle {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("set-shuffle"), "set-shuffle")
+    val shuffle = CsilCbor.asBoolean(CsilCbor.require(cbor, "shuffle"))
+    return CmdSetShuffle(op = op, shuffle = shuffle)
+}
+
+/** Decode CSIL CBOR bytes into a CmdSetShuffle. */
+fun cmdSetShuffleFromCbor(bytes: ByteArray): CmdSetShuffle = cmdSetShuffleFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdUndo (deep, canonical key order). */
+fun CmdUndo.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("undo"))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdUndo to canonical CSIL CBOR bytes. */
+fun CmdUndo.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdUndo from a decoded CBOR value tree. */
+fun cmdUndoFromCborValue(cbor: CborValue): CmdUndo {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("undo"), "undo")
+    return CmdUndo(op = op)
+}
+
+/** Decode CSIL CBOR bytes into a CmdUndo. */
+fun cmdUndoFromCbor(bytes: ByteArray): CmdUndo = cmdUndoFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdPlaybackCompleted (deep, canonical key order). */
+fun CmdPlaybackCompleted.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("playback-completed"))
+    csilEntries.add(CborValue.CText("playback_id") to CborValue.CText(this.playbackId))
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdPlaybackCompleted to canonical CSIL CBOR bytes. */
+fun CmdPlaybackCompleted.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdPlaybackCompleted from a decoded CBOR value tree. */
+fun cmdPlaybackCompletedFromCborValue(cbor: CborValue): CmdPlaybackCompleted {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("playback-completed"), "playback-completed")
+    val playbackId = CsilCbor.asText(CsilCbor.require(cbor, "playback_id"))
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
+    return CmdPlaybackCompleted(op = op, playbackId = playbackId, queueItemId = queueItemId)
+}
+
+/** Decode CSIL CBOR bytes into a CmdPlaybackCompleted. */
+fun cmdPlaybackCompletedFromCbor(bytes: ByteArray): CmdPlaybackCompleted = cmdPlaybackCompletedFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdPlaybackFailed (deep, canonical key order). */
+fun CmdPlaybackFailed.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("playback-failed"))
+    csilEntries.add(CborValue.CText("error") to CborValue.CText(this.error))
+    csilEntries.add(CborValue.CText("playback_id") to CborValue.CText(this.playbackId))
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdPlaybackFailed to canonical CSIL CBOR bytes. */
+fun CmdPlaybackFailed.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdPlaybackFailed from a decoded CBOR value tree. */
+fun cmdPlaybackFailedFromCborValue(cbor: CborValue): CmdPlaybackFailed {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("playback-failed"), "playback-failed")
+    val playbackId = CsilCbor.asText(CsilCbor.require(cbor, "playback_id"))
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
+    val error = CsilCbor.asText(CsilCbor.require(cbor, "error"))
+    return CmdPlaybackFailed(op = op, playbackId = playbackId, queueItemId = queueItemId, error = error)
+}
+
+/** Decode CSIL CBOR bytes into a CmdPlaybackFailed. */
+fun cmdPlaybackFailedFromCbor(bytes: ByteArray): CmdPlaybackFailed = cmdPlaybackFailedFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a CmdPlaybackState (deep, canonical key order). */
+fun CmdPlaybackState.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("op") to CborValue.CText("playback-state"))
+    csilEntries.add(CborValue.CText("status") to this.status.toCborValue())
+    csilEntries.add(CborValue.CText("playback_id") to CborValue.CText(this.playbackId))
+    csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(this.positionMs))
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a CmdPlaybackState to canonical CSIL CBOR bytes. */
+fun CmdPlaybackState.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a CmdPlaybackState from a decoded CBOR value tree. */
+fun cmdPlaybackStateFromCborValue(cbor: CborValue): CmdPlaybackState {
+    val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("playback-state"), "playback-state")
+    val playbackId = CsilCbor.asText(CsilCbor.require(cbor, "playback_id"))
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
+    val status = playerStatusFromCborValue(CsilCbor.require(cbor, "status"))
+    val positionMs = CsilCbor.asULong(CsilCbor.require(cbor, "position_ms"))
+    return CmdPlaybackState(op = op, playbackId = playbackId, queueItemId = queueItemId, status = status, positionMs = positionMs)
+}
+
+/** Decode CSIL CBOR bytes into a CmdPlaybackState. */
+fun cmdPlaybackStateFromCbor(bytes: ByteArray): CmdPlaybackState = cmdPlaybackStateFromCborValue(CsilCbor.decode(bytes))
+
 /** Encode a PlayerCommand union as a tagged sum [variant_index, value]. */
 fun PlayerCommand.toCborValue(): CborValue = when (this) {
     is PlayerCommandVariant0 -> CborValue.CArray(listOf(CborValue.CUint(0uL), this.value.toCborValue()))
@@ -1743,6 +2017,16 @@ fun PlayerCommand.toCborValue(): CborValue = when (this) {
     is PlayerCommandVariant7 -> CborValue.CArray(listOf(CborValue.CUint(7uL), this.value.toCborValue()))
     is PlayerCommandVariant8 -> CborValue.CArray(listOf(CborValue.CUint(8uL), this.value.toCborValue()))
     is PlayerCommandVariant9 -> CborValue.CArray(listOf(CborValue.CUint(9uL), this.value.toCborValue()))
+    is PlayerCommandVariant10 -> CborValue.CArray(listOf(CborValue.CUint(10uL), this.value.toCborValue()))
+    is PlayerCommandVariant11 -> CborValue.CArray(listOf(CborValue.CUint(11uL), this.value.toCborValue()))
+    is PlayerCommandVariant12 -> CborValue.CArray(listOf(CborValue.CUint(12uL), this.value.toCborValue()))
+    is PlayerCommandVariant13 -> CborValue.CArray(listOf(CborValue.CUint(13uL), this.value.toCborValue()))
+    is PlayerCommandVariant14 -> CborValue.CArray(listOf(CborValue.CUint(14uL), this.value.toCborValue()))
+    is PlayerCommandVariant15 -> CborValue.CArray(listOf(CborValue.CUint(15uL), this.value.toCborValue()))
+    is PlayerCommandVariant16 -> CborValue.CArray(listOf(CborValue.CUint(16uL), this.value.toCborValue()))
+    is PlayerCommandVariant17 -> CborValue.CArray(listOf(CborValue.CUint(17uL), this.value.toCborValue()))
+    is PlayerCommandVariant18 -> CborValue.CArray(listOf(CborValue.CUint(18uL), this.value.toCborValue()))
+    is PlayerCommandVariant19 -> CborValue.CArray(listOf(CborValue.CUint(19uL), this.value.toCborValue()))
 }
 
 /** Decode a tagged sum [variant_index, value] into a PlayerCommand union. */
@@ -1751,15 +2035,25 @@ fun playerCommandFromCborValue(cbor: CborValue): PlayerCommand {
     if (csilArr.size != 2) throw CborError("union expects [index, value]")
     return when (CsilCbor.asULong(csilArr[0])) {
         0uL -> PlayerCommandVariant0(cmdEnqueueFromCborValue(csilArr[1]))
-        1uL -> PlayerCommandVariant1(cmdRemoveFromCborValue(csilArr[1]))
-        2uL -> PlayerCommandVariant2(cmdReorderFromCborValue(csilArr[1]))
-        3uL -> PlayerCommandVariant3(cmdClearFromCborValue(csilArr[1]))
-        4uL -> PlayerCommandVariant4(cmdPlayFromCborValue(csilArr[1]))
-        5uL -> PlayerCommandVariant5(cmdPauseFromCborValue(csilArr[1]))
-        6uL -> PlayerCommandVariant6(cmdNextFromCborValue(csilArr[1]))
-        7uL -> PlayerCommandVariant7(cmdPreviousFromCborValue(csilArr[1]))
-        8uL -> PlayerCommandVariant8(cmdSeekFromCborValue(csilArr[1]))
-        9uL -> PlayerCommandVariant9(cmdVolumeFromCborValue(csilArr[1]))
+        1uL -> PlayerCommandVariant1(cmdEnqueueNextFromCborValue(csilArr[1]))
+        2uL -> PlayerCommandVariant2(cmdRemoveFromCborValue(csilArr[1]))
+        3uL -> PlayerCommandVariant3(cmdRemoveItemFromCborValue(csilArr[1]))
+        4uL -> PlayerCommandVariant4(cmdReorderFromCborValue(csilArr[1]))
+        5uL -> PlayerCommandVariant5(cmdMoveItemFromCborValue(csilArr[1]))
+        6uL -> PlayerCommandVariant6(cmdClearFromCborValue(csilArr[1]))
+        7uL -> PlayerCommandVariant7(cmdPlayFromCborValue(csilArr[1]))
+        8uL -> PlayerCommandVariant8(cmdReplaceAndPlayFromCborValue(csilArr[1]))
+        9uL -> PlayerCommandVariant9(cmdPauseFromCborValue(csilArr[1]))
+        10uL -> PlayerCommandVariant10(cmdNextFromCborValue(csilArr[1]))
+        11uL -> PlayerCommandVariant11(cmdPreviousFromCborValue(csilArr[1]))
+        12uL -> PlayerCommandVariant12(cmdSeekFromCborValue(csilArr[1]))
+        13uL -> PlayerCommandVariant13(cmdVolumeFromCborValue(csilArr[1]))
+        14uL -> PlayerCommandVariant14(cmdSetRepeatFromCborValue(csilArr[1]))
+        15uL -> PlayerCommandVariant15(cmdSetShuffleFromCborValue(csilArr[1]))
+        16uL -> PlayerCommandVariant16(cmdUndoFromCborValue(csilArr[1]))
+        17uL -> PlayerCommandVariant17(cmdPlaybackCompletedFromCborValue(csilArr[1]))
+        18uL -> PlayerCommandVariant18(cmdPlaybackFailedFromCborValue(csilArr[1]))
+        19uL -> PlayerCommandVariant19(cmdPlaybackStateFromCborValue(csilArr[1]))
         else -> throw CborError("unknown PlayerCommand variant")
     }
 }
@@ -1848,6 +2142,7 @@ fun MediaOpen.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("open"))
     csilEntries.add(CborValue.CText("pref") to this.pref.toCborValue())
     csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -1857,9 +2152,10 @@ fun MediaOpen.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaOpen from a decoded CBOR value tree. */
 fun mediaOpenFromCborValue(cbor: CborValue): MediaOpen {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("open"), "open")
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
     val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
     val pref = streamPrefFromCborValue(CsilCbor.require(cbor, "pref"))
-    return MediaOpen(kind = kind, trackId = trackId, pref = pref)
+    return MediaOpen(kind = kind, streamId = streamId, trackId = trackId, pref = pref)
 }
 
 /** Decode CSIL CBOR bytes into a MediaOpen. */
@@ -1869,6 +2165,7 @@ fun mediaOpenFromCbor(bytes: ByteArray): MediaOpen = mediaOpenFromCborValue(Csil
 fun MediaSeek.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("seek"))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(this.positionMs))
     return CborValue.CMap(csilEntries)
 }
@@ -1879,8 +2176,9 @@ fun MediaSeek.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaSeek from a decoded CBOR value tree. */
 fun mediaSeekFromCborValue(cbor: CborValue): MediaSeek {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("seek"), "seek")
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
     val positionMs = CsilCbor.asULong(CsilCbor.require(cbor, "position_ms"))
-    return MediaSeek(kind = kind, positionMs = positionMs)
+    return MediaSeek(kind = kind, streamId = streamId, positionMs = positionMs)
 }
 
 /** Decode CSIL CBOR bytes into a MediaSeek. */
@@ -1890,6 +2188,7 @@ fun mediaSeekFromCbor(bytes: ByteArray): MediaSeek = mediaSeekFromCborValue(Csil
 fun MediaPause.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("pause"))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -1899,7 +2198,8 @@ fun MediaPause.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaPause from a decoded CBOR value tree. */
 fun mediaPauseFromCborValue(cbor: CborValue): MediaPause {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("pause"), "pause")
-    return MediaPause(kind = kind)
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
+    return MediaPause(kind = kind, streamId = streamId)
 }
 
 /** Decode CSIL CBOR bytes into a MediaPause. */
@@ -1909,6 +2209,7 @@ fun mediaPauseFromCbor(bytes: ByteArray): MediaPause = mediaPauseFromCborValue(C
 fun MediaResume.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("resume"))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -1918,7 +2219,8 @@ fun MediaResume.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaResume from a decoded CBOR value tree. */
 fun mediaResumeFromCborValue(cbor: CborValue): MediaResume {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("resume"), "resume")
-    return MediaResume(kind = kind)
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
+    return MediaResume(kind = kind, streamId = streamId)
 }
 
 /** Decode CSIL CBOR bytes into a MediaResume. */
@@ -1928,6 +2230,7 @@ fun mediaResumeFromCbor(bytes: ByteArray): MediaResume = mediaResumeFromCborValu
 fun MediaStop.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("stop"))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -1937,7 +2240,8 @@ fun MediaStop.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaStop from a decoded CBOR value tree. */
 fun mediaStopFromCborValue(cbor: CborValue): MediaStop {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("stop"), "stop")
-    return MediaStop(kind = kind)
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
+    return MediaStop(kind = kind, streamId = streamId)
 }
 
 /** Decode CSIL CBOR bytes into a MediaStop. */
@@ -1972,6 +2276,7 @@ fun MediaHeader.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("header"))
     csilEntries.add(CborValue.CText("codec") to this.codec.toCborValue())
     csilEntries.add(CborValue.CText("channels") to CborValue.CUint(this.channels))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     csilEntries.add(CborValue.CText("transcoded") to CborValue.CBool(this.transcoded))
     this.durationMs?.let { csilV -> csilEntries.add(CborValue.CText("duration_ms") to CborValue.CUint(csilV)) }
     csilEntries.add(CborValue.CText("sample_rate") to CborValue.CUint(this.sampleRate))
@@ -1987,6 +2292,7 @@ fun MediaHeader.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaHeader from a decoded CBOR value tree. */
 fun mediaHeaderFromCborValue(cbor: CborValue): MediaHeader {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("header"), "header")
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
     val codec = codecFromCborValue(CsilCbor.require(cbor, "codec"))
     val transcoded = CsilCbor.asBoolean(CsilCbor.require(cbor, "transcoded"))
     val sampleRate = CsilCbor.asULong(CsilCbor.require(cbor, "sample_rate"))
@@ -1995,7 +2301,7 @@ fun mediaHeaderFromCborValue(cbor: CborValue): MediaHeader {
     val trimStartSamples = CsilCbor.asULong(CsilCbor.require(cbor, "trim_start_samples"))
     val trimEndSamples = CsilCbor.asULong(CsilCbor.require(cbor, "trim_end_samples"))
     val codecConfig = CsilCbor.mapGet(cbor, "codec_config")?.let { csilV -> CsilCbor.asBytes(csilV) }
-    return MediaHeader(kind = kind, codec = codec, transcoded = transcoded, sampleRate = sampleRate, channels = channels, durationMs = durationMs, trimStartSamples = trimStartSamples, trimEndSamples = trimEndSamples, codecConfig = codecConfig)
+    return MediaHeader(kind = kind, streamId = streamId, codec = codec, transcoded = transcoded, sampleRate = sampleRate, channels = channels, durationMs = durationMs, trimStartSamples = trimStartSamples, trimEndSamples = trimEndSamples, codecConfig = codecConfig)
 }
 
 /** Decode CSIL CBOR bytes into a MediaHeader. */
@@ -2020,6 +2326,7 @@ fun MediaChunk.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("seq") to CborValue.CUint(this.seq))
     csilEntries.add(CborValue.CText("data") to CborValue.CBytes(this.data))
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("chunk"))
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     this.timestampMs?.let { csilV -> csilEntries.add(CborValue.CText("timestamp_ms") to CborValue.CUint(csilV)) }
     return CborValue.CMap(csilEntries)
 }
@@ -2030,10 +2337,11 @@ fun MediaChunk.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaChunk from a decoded CBOR value tree. */
 fun mediaChunkFromCborValue(cbor: CborValue): MediaChunk {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("chunk"), "chunk")
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
     val seq = CsilCbor.asULong(CsilCbor.require(cbor, "seq"))
     val timestampMs = CsilCbor.mapGet(cbor, "timestamp_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
     val data = CsilCbor.asBytes(CsilCbor.require(cbor, "data"))
-    return MediaChunk(kind = kind, seq = seq, timestampMs = timestampMs, data = data)
+    return MediaChunk(kind = kind, streamId = streamId, seq = seq, timestampMs = timestampMs, data = data)
 }
 
 /** Decode CSIL CBOR bytes into a MediaChunk. */
@@ -2044,6 +2352,7 @@ fun MediaEnd.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("end"))
     this.reason?.let { csilV -> csilEntries.add(CborValue.CText("reason") to csilV.toCborValue()) }
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -2053,8 +2362,9 @@ fun MediaEnd.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaEnd from a decoded CBOR value tree. */
 fun mediaEndFromCborValue(cbor: CborValue): MediaEnd {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("end"), "end")
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
     val reason = CsilCbor.mapGet(cbor, "reason")?.let { csilV -> mediaEndReasonFromCborValue(csilV) }
-    return MediaEnd(kind = kind, reason = reason)
+    return MediaEnd(kind = kind, streamId = streamId, reason = reason)
 }
 
 /** Decode CSIL CBOR bytes into a MediaEnd. */
@@ -2065,6 +2375,7 @@ fun MediaFail.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
     csilEntries.add(CborValue.CText("kind") to CborValue.CText("error"))
     csilEntries.add(CborValue.CText("error") to this.error.toCborValue())
+    csilEntries.add(CborValue.CText("stream_id") to CborValue.CText(this.streamId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -2074,8 +2385,9 @@ fun MediaFail.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a MediaFail from a decoded CBOR value tree. */
 fun mediaFailFromCborValue(cbor: CborValue): MediaFail {
     val kind = CsilCbor.expectLiteral(CsilCbor.require(cbor, "kind"), CborValue.CText("error"), "error")
+    val streamId = CsilCbor.asText(CsilCbor.require(cbor, "stream_id"))
     val error = serviceErrorFromCborValue(CsilCbor.require(cbor, "error"))
-    return MediaFail(kind = kind, error = error)
+    return MediaFail(kind = kind, streamId = streamId, error = error)
 }
 
 /** Decode CSIL CBOR bytes into a MediaFail. */
@@ -2182,7 +2494,9 @@ fun DirLoad.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("pref") to this.pref.toCborValue())
     csilEntries.add(CborValue.CText("track_id") to CborValue.CText(this.trackId))
     csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
+    csilEntries.add(CborValue.CText("playback_id") to CborValue.CText(this.playbackId))
     this.positionMs?.let { csilV -> csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(csilV)) }
+    csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(this.queueItemId))
     return CborValue.CMap(csilEntries)
 }
 
@@ -2193,10 +2507,12 @@ fun DirLoad.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 fun dirLoadFromCborValue(cbor: CborValue): DirLoad {
     val op = CsilCbor.expectLiteral(CsilCbor.require(cbor, "op"), CborValue.CText("load"), "load")
     val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
+    val queueItemId = CsilCbor.asULong(CsilCbor.require(cbor, "queue_item_id"))
+    val playbackId = CsilCbor.asText(CsilCbor.require(cbor, "playback_id"))
     val trackId = CsilCbor.asText(CsilCbor.require(cbor, "track_id"))
     val pref = streamPrefFromCborValue(CsilCbor.require(cbor, "pref"))
     val positionMs = CsilCbor.mapGet(cbor, "position_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
-    return DirLoad(op = op, playerId = playerId, trackId = trackId, pref = pref, positionMs = positionMs)
+    return DirLoad(op = op, playerId = playerId, queueItemId = queueItemId, playbackId = playbackId, trackId = trackId, pref = pref, positionMs = positionMs)
 }
 
 /** Decode CSIL CBOR bytes into a DirLoad. */
@@ -2314,10 +2630,14 @@ fun nodeDirectiveFromCborValue(cbor: CborValue): NodeDirective {
 /** The CBOR value tree for a NodeReport (deep, canonical key order). */
 fun NodeReport.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    this.error?.let { csilV -> csilEntries.add(CborValue.CText("error") to CborValue.CText(csilV)) }
+    this.event?.let { csilV -> csilEntries.add(CborValue.CText("event") to csilV.toCborValue()) }
     csilEntries.add(CborValue.CText("status") to this.status.toCborValue())
     csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
+    this.playbackId?.let { csilV -> csilEntries.add(CborValue.CText("playback_id") to CborValue.CText(csilV)) }
     this.positionMs?.let { csilV -> csilEntries.add(CborValue.CText("position_ms") to CborValue.CUint(csilV)) }
     this.audioBlocked?.let { csilV -> csilEntries.add(CborValue.CText("audio_blocked") to CborValue.CBool(csilV)) }
+    this.queueItemId?.let { csilV -> csilEntries.add(CborValue.CText("queue_item_id") to CborValue.CUint(csilV)) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -2327,10 +2647,14 @@ fun NodeReport.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a NodeReport from a decoded CBOR value tree. */
 fun nodeReportFromCborValue(cbor: CborValue): NodeReport {
     val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
+    val event = CsilCbor.mapGet(cbor, "event")?.let { csilV -> nodeEventFromCborValue(csilV) }
     val status = playerStatusFromCborValue(CsilCbor.require(cbor, "status"))
+    val queueItemId = CsilCbor.mapGet(cbor, "queue_item_id")?.let { csilV -> CsilCbor.asULong(csilV) }
+    val playbackId = CsilCbor.mapGet(cbor, "playback_id")?.let { csilV -> CsilCbor.asText(csilV) }
     val positionMs = CsilCbor.mapGet(cbor, "position_ms")?.let { csilV -> CsilCbor.asULong(csilV) }
+    val error = CsilCbor.mapGet(cbor, "error")?.let { csilV -> CsilCbor.asText(csilV) }
     val audioBlocked = CsilCbor.mapGet(cbor, "audio_blocked")?.let { csilV -> CsilCbor.asBoolean(csilV) }
-    return NodeReport(playerId = playerId, status = status, positionMs = positionMs, audioBlocked = audioBlocked)
+    return NodeReport(playerId = playerId, event = event, status = status, queueItemId = queueItemId, playbackId = playbackId, positionMs = positionMs, error = error, audioBlocked = audioBlocked)
 }
 
 /** Decode CSIL CBOR bytes into a NodeReport. */
@@ -3338,15 +3662,25 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is ListPlayersResponse -> value.toCborValue()
     is SubscribeRequest -> value.toCborValue()
     is CmdEnqueue -> value.toCborValue()
+    is CmdEnqueueNext -> value.toCborValue()
     is CmdRemove -> value.toCborValue()
+    is CmdRemoveItem -> value.toCborValue()
     is CmdReorder -> value.toCborValue()
+    is CmdMoveItem -> value.toCborValue()
     is CmdClear -> value.toCborValue()
     is CmdPlay -> value.toCborValue()
+    is CmdReplaceAndPlay -> value.toCborValue()
     is CmdPause -> value.toCborValue()
     is CmdNext -> value.toCborValue()
     is CmdPrevious -> value.toCborValue()
     is CmdSeek -> value.toCborValue()
     is CmdVolume -> value.toCborValue()
+    is CmdSetRepeat -> value.toCborValue()
+    is CmdSetShuffle -> value.toCborValue()
+    is CmdUndo -> value.toCborValue()
+    is CmdPlaybackCompleted -> value.toCborValue()
+    is CmdPlaybackFailed -> value.toCborValue()
+    is CmdPlaybackState -> value.toCborValue()
     is CommandRequest -> value.toCborValue()
     is EnableShareRequest -> value.toCborValue()
     is DisableShareRequest -> value.toCborValue()
@@ -3465,15 +3799,25 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     ListPlayersResponse::class -> listPlayersResponseFromCborValue(cbor)
     SubscribeRequest::class -> subscribeRequestFromCborValue(cbor)
     CmdEnqueue::class -> cmdEnqueueFromCborValue(cbor)
+    CmdEnqueueNext::class -> cmdEnqueueNextFromCborValue(cbor)
     CmdRemove::class -> cmdRemoveFromCborValue(cbor)
+    CmdRemoveItem::class -> cmdRemoveItemFromCborValue(cbor)
     CmdReorder::class -> cmdReorderFromCborValue(cbor)
+    CmdMoveItem::class -> cmdMoveItemFromCborValue(cbor)
     CmdClear::class -> cmdClearFromCborValue(cbor)
     CmdPlay::class -> cmdPlayFromCborValue(cbor)
+    CmdReplaceAndPlay::class -> cmdReplaceAndPlayFromCborValue(cbor)
     CmdPause::class -> cmdPauseFromCborValue(cbor)
     CmdNext::class -> cmdNextFromCborValue(cbor)
     CmdPrevious::class -> cmdPreviousFromCborValue(cbor)
     CmdSeek::class -> cmdSeekFromCborValue(cbor)
     CmdVolume::class -> cmdVolumeFromCborValue(cbor)
+    CmdSetRepeat::class -> cmdSetRepeatFromCborValue(cbor)
+    CmdSetShuffle::class -> cmdSetShuffleFromCborValue(cbor)
+    CmdUndo::class -> cmdUndoFromCborValue(cbor)
+    CmdPlaybackCompleted::class -> cmdPlaybackCompletedFromCborValue(cbor)
+    CmdPlaybackFailed::class -> cmdPlaybackFailedFromCborValue(cbor)
+    CmdPlaybackState::class -> cmdPlaybackStateFromCborValue(cbor)
     CommandRequest::class -> commandRequestFromCborValue(cbor)
     EnableShareRequest::class -> enableShareRequestFromCborValue(cbor)
     DisableShareRequest::class -> disableShareRequestFromCborValue(cbor)

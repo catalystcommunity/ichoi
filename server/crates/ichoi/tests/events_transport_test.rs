@@ -19,9 +19,10 @@ use libichoi::csil::codec::{
 use libichoi::csil::services::AdminService;
 use libichoi::csil::types::CreateNodeTokenRequest;
 use libichoi::csil::types::{
-    BrowseRequest, ChangeTopic, Library, Page, PlayerState, PlayerStatus, QueueItem,
-    SubscribeRequest, WatchChangesRequest,
+    BrowseRequest, ChangeTopic, Library, MediaControl, MediaStop, Page, PlayerState, PlayerStatus,
+    QueueItem, RepeatMode, SubscribeRequest, WatchChangesRequest,
 };
+use libichoi::csil_channel::encode_media_control;
 
 use common::DataMap;
 
@@ -346,12 +347,19 @@ fn player_state_push_frame_matches_the_subscribe_channel() {
     // and a payload the same codec the client uses can decode back to a PlayerState.
     let state = PlayerState {
         player_id: "share:guest:TodPhone".to_string(),
+        revision: 7,
         status: PlayerStatus::Playing,
         current_index: Some(1),
+        playback_id: Some("playback-2".into()),
         position_ms: Some(4200),
         volume: 100,
+        repeat_mode: RepeatMode::Off,
+        shuffle: false,
+        error: None,
+        can_undo: false,
         queue: vec![
             QueueItem {
+                queue_item_id: 10,
                 track_id: "t1".into(),
                 library: None,
                 title: Some("One".into()),
@@ -359,6 +367,7 @@ fn player_state_push_frame_matches_the_subscribe_channel() {
                 duration_ms: Some(1000),
             },
             QueueItem {
+                queue_item_id: 11,
                 track_id: "t2".into(),
                 library: None,
                 title: Some("Two".into()),
@@ -381,6 +390,34 @@ fn player_state_push_frame_matches_the_subscribe_channel() {
     assert_eq!(decoded.current_index, Some(1));
     assert_eq!(decoded.queue.len(), 2);
     assert_eq!(decoded.queue[1].track_id, "t2");
+}
+
+#[test]
+fn node_media_stop_selects_only_its_stream_for_cancellation() {
+    let (app, _) = common::test_app();
+    let control = MediaControl::Variant4(MediaStop {
+        kind: "stop".into(),
+        stream_id: "playback-two".into(),
+    });
+    let frame = encode_event_envelope(&EventEnvelope {
+        service: Some("media".into()),
+        event: "stream".into(),
+        id: None,
+        payload: encode_media_control(&control),
+    });
+
+    let (_, reply, effects) = handle_events_frame(
+        &app,
+        Identity::Node {
+            node_id: "sat:test".into(),
+        },
+        false,
+        &frame,
+    );
+
+    assert!(reply.is_none());
+    assert_eq!(effects.media_stop.as_deref(), Some("playback-two"));
+    assert!(effects.media_open.is_none());
 }
 
 // Silence unused-import warnings for the tag24 helper on some cfgs.
