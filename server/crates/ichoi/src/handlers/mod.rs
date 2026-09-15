@@ -61,12 +61,19 @@ impl SubHub {
     }
 
     pub fn publish(&self, player_id: &str, frame: &[u8]) {
-        let map = self.inner.lock().unwrap();
-        if let Some(list) = map.get(player_id) {
-            for (_, tx) in list {
-                let _ = tx.send(frame.to_vec());
+        let delivered = {
+            let map = self.inner.lock().unwrap();
+            let mut delivered = 0;
+            if let Some(list) = map.get(player_id) {
+                for (_, tx) in list {
+                    if tx.send(frame.to_vec()).is_ok() {
+                        delivered += 1;
+                    }
+                }
             }
-        }
+            delivered
+        };
+        log::info!("player state event sent: player={player_id} clients={delivered}");
     }
 
     pub fn drop_player(&self, player_id: &str) {
@@ -108,12 +115,19 @@ impl NodeHub {
     }
 
     pub fn publish(&self, player_id: &str, payload: Vec<u8>) {
-        let map = self.inner.lock().unwrap();
-        if let Some(list) = map.get(player_id) {
-            for (_, tx) in list {
-                let _ = tx.send(payload.clone());
+        let delivered = {
+            let map = self.inner.lock().unwrap();
+            let mut delivered = 0;
+            if let Some(list) = map.get(player_id) {
+                for (_, tx) in list {
+                    if tx.send(payload.clone()).is_ok() {
+                        delivered += 1;
+                    }
+                }
             }
-        }
+            delivered
+        };
+        log::info!("node directive sent: player={player_id} outputs={delivered}");
     }
 
     pub fn is_present(&self, player_id: &str) -> bool {
@@ -245,9 +259,18 @@ impl ChangeHub {
 
     pub fn publish(&self, topic: ChangeTopic) {
         let revision = self.revision.fetch_add(1, Ordering::Relaxed) + 1;
+        let topic_name = format!("{topic:?}");
         let frame = crate::transport::data_change_frame(&DataChange { topic, revision });
-        if let Ok(mut subscribers) = self.subscribers.lock() {
+        let subscribers = if let Ok(mut subscribers) = self.subscribers.lock() {
             subscribers.retain(|_, tx| tx.send(frame.clone()).is_ok());
+            Some(subscribers.len())
+        } else {
+            None
+        };
+        if let Some(subscribers) = subscribers {
+            log::info!(
+                "data change event sent: topic={topic_name} revision={revision} clients={subscribers}"
+            );
         }
     }
 }
@@ -463,6 +486,47 @@ fn status_str(s: &PlayerStatus) -> &'static str {
         PlayerStatus::Playing => "playing",
         PlayerStatus::Paused => "paused",
         PlayerStatus::Stopped => "stopped",
+    }
+}
+fn node_event_str(event: &NodeEvent) -> &'static str {
+    match event {
+        NodeEvent::Ready => "ready",
+        NodeEvent::State => "state",
+        NodeEvent::Completed => "completed",
+        NodeEvent::Failed => "failed",
+    }
+}
+fn player_command_str(command: &PlayerCommand) -> &'static str {
+    match command {
+        PlayerCommand::Variant0(_) => "enqueue",
+        PlayerCommand::Variant1(_) => "enqueue-next",
+        PlayerCommand::Variant2(_) => "remove",
+        PlayerCommand::Variant3(_) => "remove-item",
+        PlayerCommand::Variant4(_) => "reorder",
+        PlayerCommand::Variant5(_) => "move-item",
+        PlayerCommand::Variant6(_) => "clear",
+        PlayerCommand::Variant7(_) => "play",
+        PlayerCommand::Variant8(_) => "replace-and-play",
+        PlayerCommand::Variant9(_) => "pause",
+        PlayerCommand::Variant10(_) => "next",
+        PlayerCommand::Variant11(_) => "previous",
+        PlayerCommand::Variant12(_) => "seek",
+        PlayerCommand::Variant13(_) => "volume",
+        PlayerCommand::Variant14(_) => "set-repeat",
+        PlayerCommand::Variant15(_) => "set-shuffle",
+        PlayerCommand::Variant16(_) => "undo",
+        PlayerCommand::Variant17(_) => "playback-completed",
+        PlayerCommand::Variant18(_) => "playback-failed",
+        PlayerCommand::Variant19(_) => "playback-state",
+    }
+}
+fn node_directive_str(directive: &NodeDirective) -> &'static str {
+    match directive {
+        NodeDirective::Variant0(_) => "load",
+        NodeDirective::Variant1(_) => "pause",
+        NodeDirective::Variant2(_) => "resume",
+        NodeDirective::Variant3(_) => "stop",
+        NodeDirective::Variant4(_) => "volume",
     }
 }
 fn to_repeat_mode(s: &str) -> RepeatMode {
@@ -1328,6 +1392,16 @@ impl App {
             .output_health
             .set_blocked(&report.player_id, report.audio_blocked.unwrap_or(false));
         let event = report.event.as_ref().unwrap_or(&NodeEvent::State);
+        log::info!(
+            "node report received: player={} event={} status={} queue_item={:?} playback={:?} position_ms={:?} audio_blocked={}",
+            report.player_id,
+            node_event_str(event),
+            status_str(&report.status),
+            report.queue_item_id,
+            report.playback_id,
+            report.position_ms,
+            report.audio_blocked.unwrap_or(false)
+        );
         let (state, directive, progress_changed) = match event {
             NodeEvent::Ready => (
                 self.load_player_state(&mut conn, &report.player_id)?,
@@ -1446,6 +1520,18 @@ impl App {
         state: &PlayerState,
         directive: Option<NodeDirective>,
     ) {
+        let directive_name = directive.as_ref().map(node_directive_str).unwrap_or("none");
+        log::info!(
+            "player state committed: player={player_id} revision={} status={} current_index={:?} queue_items={} position_ms={:?} volume={} repeat={} shuffle={} directive={directive_name}",
+            state.revision,
+            status_str(&state.status),
+            state.current_index,
+            state.queue.len(),
+            state.position_ms,
+            state.volume,
+            repeat_mode_str(&state.repeat_mode),
+            state.shuffle
+        );
         if let Some(directive) = directive {
             self.nodes.publish(
                 player_id,
@@ -1463,6 +1549,14 @@ impl App {
         let state = db(store::get_state(&mut conn, player_id))?
             .unwrap_or_else(|| default_player_state(player_id));
         let queue = db(store::queue_items(&mut conn, player_id))?;
+        log::info!(
+            "reconciling output from persisted state: player={player_id} status={} queue_items={} current_index={:?} position_ms={:?} volume={}",
+            state.status,
+            queue.len(),
+            state.current_index,
+            state.position_ms,
+            state.volume
+        );
         self.nodes.publish(
             player_id,
             libichoi::csil_channel::encode_node_directive(&NodeDirective::Variant4(DirVolume {
@@ -1570,6 +1664,11 @@ impl PlayerService for App {
     fn control(&self, ctx: &Ctx, input: CommandRequest) -> Result<PlayerState, ServiceError> {
         let mut conn = self.conn()?;
         let pid = &input.player_id;
+        let command_name = player_command_str(&input.command);
+        log::info!(
+            "player command received: player={pid} command={command_name} actor={}",
+            transfer_owner(ctx)
+        );
         if let Some(player) = db(store::get_player(&mut conn, pid))? {
             let output_report = matches!(
                 &input.command,
@@ -1635,7 +1734,7 @@ impl PlayerService for App {
         };
         let previous_revision =
             db(store::get_state(&mut conn, pid))?.map_or(0, |state| state.revision.max(0) as u64);
-        let (state, directive) = conn
+        let result = conn
             .transaction(|conn| {
                 apply_player_command(
                     self,
@@ -1646,7 +1745,18 @@ impl PlayerService for App {
                 )
                 .map_err(PlayerTxnError::Service)
             })
-            .map_err(player_txn_error)?;
+            .map_err(player_txn_error);
+        let (state, directive) = match result {
+            Ok(result) => result,
+            Err(error) => {
+                log::info!(
+                    "player command rejected: player={pid} command={command_name} code={} error={}",
+                    error.code,
+                    error.message
+                );
+                return Err(error);
+            }
+        };
         self.publish_player_transition(pid, &state, directive);
         if state.revision != previous_revision
             && matches!(

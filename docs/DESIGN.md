@@ -436,7 +436,7 @@ Precedence: **env (`ICHOI_`-prefixed) → TOML config → defaults.**
 | trusted HTTP proxy CIDRs | `ICHOI_TRUSTED_PROXY_CIDRS` | unset |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → PATH |
 | default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
-| log level | `ICHOI_LOG` | `warn` |
+| log level | `LOG_LEVEL` | `warn` |
 
 SQLite file (WAL) in the database directory.
 

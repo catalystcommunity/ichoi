@@ -18,9 +18,11 @@ pub fn hostname() -> String {
 
 /// Run migrations + boot transforms against a fresh pool. Shared by `serve` and `migrate`.
 pub fn prepare_db(config: &Config) -> anyhow::Result<db::SqlitePool> {
+    log::info!("opening persistent database");
     let pool = db::establish_pool(&config.database_url())?;
     let mut conn = pool.get()?;
     db::run_migrations(&mut conn)?;
+    log::info!("database migrations are current");
     if let Some(music_dir) = &config.music_dir {
         crate::deletion::reconcile_playlist_staging(&mut conn, music_dir)?;
     }
@@ -29,6 +31,7 @@ pub fn prepare_db(config: &Config) -> anyhow::Result<db::SqlitePool> {
     crate::auth::local_rp::initialize_database(&pool, config)?;
     let mut conn = pool.get()?;
     let outputs = audio::enumerate();
+    log::info!("core audio outputs detected: count={}", outputs.len());
     store::sync_core_outputs(&mut conn, &hostname(), &outputs)?;
     Ok(pool)
 }
@@ -159,8 +162,10 @@ impl App {
 pub async fn serve(config: Config) -> anyhow::Result<()> {
     validate_runtime_config(&config)?;
     if config.role == Role::Satellite {
+        log::info!("starting Ichoi satellite");
         return crate::satellite::run(config).await;
     }
+    log::info!("starting Ichoi core");
     let config = Arc::new(config);
     let pool = prepare_db(&config)?;
 

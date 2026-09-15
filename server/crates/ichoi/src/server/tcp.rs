@@ -52,7 +52,8 @@ pub async fn serve_tcp(app: App, addr: String) -> anyhow::Result<()> {
     let listener = TcpListener::bind(&addr).await?;
     log::info!("CSIL/TLS listening on {addr}");
     loop {
-        let (stream, _peer) = listener.accept().await?;
+        let (stream, peer) = listener.accept().await?;
+        log::info!("CSIL/TCP connection accepted: peer={peer}");
         let app = app.clone();
         let acceptor = acceptor.clone();
         tokio::spawn(async move {
@@ -61,8 +62,9 @@ pub async fn serve_tcp(app: App, addr: String) -> anyhow::Result<()> {
                 handle_conn(stream, app).await
             }
             .await;
-            if let Err(e) = result {
-                log::debug!("TLS connection closed: {e}");
+            match result {
+                Ok(()) => log::info!("CSIL/TCP connection closed: peer={peer}"),
+                Err(e) => log::warn!("CSIL/TCP connection failed: peer={peer} error={e}"),
             }
         });
     }
@@ -94,6 +96,7 @@ where
     let (media_tx, mut media_rx) = mpsc::unbounded_channel::<MediaOutput>();
     let (in_tx, mut in_rx) = mpsc::unbounded_channel::<anyhow::Result<Vec<u8>>>();
     let conn_id = TCP_CONN_ID.fetch_add(1, Ordering::Relaxed);
+    log::info!("binary CSIL session started: connection={conn_id}");
     let mut ident = Identity::Anonymous;
     let mut media_cancels = HashMap::<String, Arc<AtomicBool>>::new();
 
@@ -131,18 +134,30 @@ where
                 if let Some((ref player_id, active)) = effects.player_subscription {
                     if active {
                         app.subs.subscribe(player_id.clone(), conn_id, tx.clone());
+                        log::info!(
+                            "binary player subscription attached: connection={conn_id} player={player_id}"
+                        );
                         reply = transport::player_subscription_snapshot(&app, &ident, player_id)
                             .or(reply);
                     } else {
                         app.subs.unsubscribe(player_id, conn_id);
+                        log::info!(
+                            "binary player subscription detached: connection={conn_id} player={player_id}"
+                        );
                     }
                 }
                 if let Some(player_id) = effects.attach {
+                    log::info!(
+                        "binary browser output attached: connection={conn_id} player={player_id}"
+                    );
                     if app.presence.attach(player_id, conn_id) {
                         app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
                     }
                 }
                 if let Some(player_id) = effects.node_session {
+                    log::info!(
+                        "binary satellite output attached: connection={conn_id} player={player_id}"
+                    );
                     if app.nodes.subscribe(player_id.clone(), conn_id, node_tx.clone()) {
                         app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
                         let _ = app.reconcile_player_output(&player_id);
@@ -162,6 +177,10 @@ where
                 }
                 if let Some(open) = effects.media_open {
                     let stream_id = open.stream_id.clone();
+                    log::info!(
+                        "media producer starting: connection={conn_id} stream={stream_id} track={}",
+                        open.track_id
+                    );
                     let cancel = Arc::new(AtomicBool::new(false));
                     if let Some(previous) = media_cancels.insert(stream_id, cancel.clone()) {
                         previous.store(true, Ordering::Relaxed);
@@ -169,6 +188,9 @@ where
                     spawn_media_stream(app.clone(), open, cancel, media_tx.clone());
                 }
                 if let Some(stream_id) = effects.media_stop {
+                    log::info!(
+                        "media producer stopping: connection={conn_id} stream={stream_id}"
+                    );
                     if let Some(cancel) = media_cancels.get(&stream_id) {
                         cancel.store(true, Ordering::Relaxed);
                     }
@@ -207,6 +229,7 @@ where
         app.changes
             .publish(libichoi::csil::types::ChangeTopic::Players);
     }
+    log::info!("binary CSIL session ended: connection={conn_id}");
     Ok(())
 }
 
@@ -248,6 +271,7 @@ fn spawn_media_stream(
     tokio::task::spawn_blocking(move || {
         let stream_id = open.stream_id.clone();
         if let Err(e) = send_media_stream(app, open, &cancel, &tx) {
+            log::warn!("media stream failed: stream={stream_id} error={e}");
             let fail = MediaEvent::Variant3(MediaFail {
                 kind: "error".to_string(),
                 stream_id: stream_id.clone(),
@@ -281,6 +305,12 @@ fn send_media_stream(
         .ok_or_else(|| anyhow::anyhow!("no music directory configured"))?;
     let path = root.join(&track.root_relative_path);
     let plan = media::plan_stream(&app.config, &track, &open.pref);
+    log::info!(
+        "media stream opened: stream={stream_id} track={} codec={} transcode={}",
+        open.track_id,
+        track.codec,
+        plan.transcode.is_some()
+    );
 
     let codec = match plan
         .transcode
@@ -323,6 +353,7 @@ fn send_media_stream(
         if send_reader_chunks(&mut stdout, &stream_id, cancel, tx, &mut seq)? {
             let _ = child.kill();
             let _ = child.wait();
+            log::info!("media stream cancelled: stream={stream_id} chunks={seq}");
             return Ok(());
         }
         let status = child.wait()?;
@@ -332,6 +363,7 @@ fn send_media_stream(
     } else {
         let mut file = std::fs::File::open(path)?;
         if send_reader_chunks(&mut file, &stream_id, cancel, tx, &mut seq)? {
+            log::info!("media stream cancelled: stream={stream_id} chunks={seq}");
             return Ok(());
         }
     }
@@ -342,6 +374,10 @@ fn send_media_stream(
         reason: Some(MediaEndReason::Eos),
     });
     tx.send((stream_id, Some(media_frame(&end))))?;
+    log::info!(
+        "media stream completed: stream={} chunks={seq}",
+        open.stream_id
+    );
     Ok(())
 }
 

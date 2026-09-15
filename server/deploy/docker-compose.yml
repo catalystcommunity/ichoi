@@ -31,7 +31,7 @@ services:
       # Fail startup if /music is missing or empty. This catches the common
       # "forgot to mount my library" case before the server starts.
       ICHOI_REQUIRE_MUSIC: "1"
-      ICHOI_LOG: info
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
       # Guest policy: open (default), lan-guests, or login-required.
       # ICHOI_ACCESS_MODE: "login-required"
       # LAN mode trusts X-Forwarded-For only from these immediate peers. This

@@ -21,6 +21,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::handlers::{App, Ctx, Identity};
 
+fn identity_kind(identity: &Identity) -> &'static str {
+    match identity {
+        Identity::Anonymous => "anonymous",
+        Identity::User { .. } => "user",
+        Identity::Node { .. } => "node",
+    }
+}
+
 #[derive(Deserialize)]
 struct Envelope {
     service: String,
@@ -473,6 +481,12 @@ pub fn handle_events_frame(
 
     // Control plane ($-prefixed, no service).
     if let Some(stripped) = env.event.strip_prefix('$') {
+        if stripped != "ping" {
+            log::info!(
+                "CSIL control received: event={stripped} identity={}",
+                identity_kind(&ident)
+            );
+        }
         let (ident, reply) = handle_control(app, ident, stripped, &env.payload);
         return (ident, reply, FrameEffects::default());
     }
@@ -489,6 +503,11 @@ pub fn handle_events_frame(
 
     // Request/response: has a correlation id.
     if let Some(id) = env.id {
+        log::info!(
+            "CSIL request received: service={service} operation={} id={id} identity={}",
+            env.event,
+            identity_kind(&ident)
+        );
         let result = dispatch(app, &ctx, &service, &env.event, &env.payload);
         // A successful EnableShare makes this connection the device's output; capture the id
         // so the caller can register live presence for it.
@@ -505,6 +524,18 @@ pub fn handle_events_frame(
             for topic in change_topics_for_operation(&service, &env.event) {
                 app.changes.publish(topic);
             }
+        }
+        match &result {
+            Ok(_) => log::info!(
+                "CSIL request completed: service={service} operation={} id={id}",
+                env.event
+            ),
+            Err(error) => log::info!(
+                "CSIL request failed: service={service} operation={} id={id} code={} error={}",
+                env.event,
+                error.code,
+                error.message
+            ),
         }
         let payload = match result {
             Ok(p) => p,
@@ -538,6 +569,11 @@ pub fn handle_events_frame(
         if let Ok(request) = decode_subscribe_request(&env.payload) {
             let active = request.active.unwrap_or(true);
             if !active {
+                log::info!(
+                    "player subscription stopped: player={} identity={}",
+                    request.player_id,
+                    identity_kind(&ident)
+                );
                 return (
                     ident,
                     None,
@@ -549,6 +585,10 @@ pub fn handle_events_frame(
             }
         }
         if let Some((reply, player_id)) = subscribe_snapshot(app, &ident, &env.payload) {
+            log::info!(
+                "player subscription started: player={player_id} identity={}",
+                identity_kind(&ident)
+            );
             return (
                 ident,
                 Some(reply),
@@ -598,6 +638,16 @@ pub fn handle_events_frame(
                 _ => (None, None),
             };
             if media_open.is_some() || media_stop.is_some() {
+                if let Some(open) = media_open.as_ref() {
+                    log::info!(
+                        "media stream requested: stream={} track={}",
+                        open.stream_id,
+                        open.track_id
+                    );
+                }
+                if let Some(stream_id) = media_stop.as_ref() {
+                    log::info!("media stream stop requested: stream={stream_id}");
+                }
                 return (
                     ident,
                     None,
@@ -618,6 +668,11 @@ pub fn handle_events_frame(
             return (ident, None, FrameEffects::default());
         }
         if let Ok(request) = decode_watch_changes_request(&env.payload) {
+            log::info!(
+                "data change subscription changed: active={} identity={}",
+                request.active.unwrap_or(true),
+                identity_kind(&ident)
+            );
             return (
                 ident,
                 None,
@@ -744,6 +799,7 @@ fn handle_control(
                     ("profile", Value::Text("verbose".into())),
                 ]),
             });
+            log::info!("CSIL hello accepted: identity={}", identity_kind(&ident));
             (ident, Some(ack))
         }
         "ping" => {

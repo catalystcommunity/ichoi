@@ -288,7 +288,7 @@ fn satellite_config(options: &InstallOptions) -> String {
         "node_token = {}",
         toml_string(options.node_token.trim())
     );
-    out.push_str("log = \"info\"\n");
+    out.push_str("log = \"warn\"\n");
     out
 }
 
@@ -954,6 +954,7 @@ mod tests {
         };
         let text = String::from_utf8_lossy(bytes);
         assert!(text.contains("node_token = \"secret\""));
+        assert!(text.contains("log = \"warn\""));
         assert!(toml::from_str::<toml::Value>(&text).is_ok());
         assert!(!describe(&plan).contains("secret"));
     }
