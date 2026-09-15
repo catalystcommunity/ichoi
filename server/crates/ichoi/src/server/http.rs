@@ -821,6 +821,7 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
     // Connection identity, resolved from the `$hello` auth token (login-less → guest).
     let mut ident = Identity::Anonymous;
     let conn_id = CONN_ID.fetch_add(1, Ordering::Relaxed);
+    log::info!("WebSocket session started: connection={conn_id} guest_allowed={allow_guest}");
     // Outbound channel for server-pushed frames (live player-state fan-out).
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     // Periodic ping keeps the socket alive through NAT/idle timeouts (the browser answers
@@ -845,6 +846,9 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
                         if let Some((ref player_id, active)) = effects.player_subscription {
                             if active {
                                 app.subs.subscribe(player_id.clone(), conn_id, tx.clone());
+                                log::info!(
+                                    "WebSocket player subscription attached: connection={conn_id} player={player_id}"
+                                );
                                 reply = transport::player_subscription_snapshot(
                                     &app,
                                     &ident,
@@ -853,9 +857,15 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
                                 .or(reply);
                             } else {
                                 app.subs.unsubscribe(player_id, conn_id);
+                                log::info!(
+                                    "WebSocket player subscription detached: connection={conn_id} player={player_id}"
+                                );
                             }
                         }
                         if let Some(player_id) = effects.attach {
+                            log::info!(
+                                "WebSocket browser output attached: connection={conn_id} player={player_id}"
+                            );
                             // This connection is now the device's speaker; it shows up as a live
                             // device and, via subscribe, drives its audio.
                             if app.presence.attach(player_id, conn_id) {
@@ -863,6 +873,9 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
                             }
                         }
                         if let Some(player_id) = effects.node_session {
+                            log::info!(
+                                "WebSocket node output attached: connection={conn_id} player={player_id}"
+                            );
                             if app.nodes.subscribe(player_id.clone(), conn_id, tx.clone()) {
                                 app.changes.publish(libichoi::csil::types::ChangeTopic::Players);
                                 let _ = app.reconcile_player_output(&player_id);
@@ -920,4 +933,5 @@ async fn ws_conn(mut socket: WebSocket, app: App, allow_guest: bool) {
         app.changes
             .publish(libichoi::csil::types::ChangeTopic::Players);
     }
+    log::info!("WebSocket session ended: connection={conn_id}");
 }

@@ -19,7 +19,7 @@ services:
       ICHOI_LINKKEYS_RP_DOMAIN: demo.ichoi.invalid
       ICHOI_LINKKEYS_TRUSTED_IDENTITIES: REPLACE-ME-EXACT-HANDLE@REPLACE-ME-DOMAIN
       ICHOI_ADMIN_TOKEN: REPLACE-ME-ONE-TIME-BOOTSTRAP
-      ICHOI_LOG: info
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
     volumes:
       - ./music:/music:ro
       - ./data:/data

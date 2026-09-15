@@ -9,6 +9,7 @@
 import { decode as cborDecode, encode as cborEncode } from "./cbor.ts";
 import type { CborValue } from "./cbor.ts";
 import type { CsilConnection } from "./csil.ts";
+import { playerCommandWireValue } from "./player-command-codec.ts";
 import type {
   Account,
   AudiobookProgress,
@@ -100,29 +101,8 @@ function encodeRecord(obj: object): Uint8Array {
   return cborEncode(obj as CborValue);
 }
 
-// CSIL encodes a type-choice union as a 2-element array `[variant_index, value]` (the Rust
-// codec's `csil_dec_*` expect exactly this). The variant order matches the schema's
-// `PlayerCommand = CmdEnqueue / CmdRemove / …`.
-const PLAYER_CMD_INDEX: Record<string, number> = {
-  enqueue: 0,
-  remove: 1,
-  reorder: 2,
-  clear: 3,
-  play: 4,
-  pause: 5,
-  next: 6,
-  previous: 7,
-  seek: 8,
-  volume: 9,
-};
-
 function encodeCommandRequest(req: CommandRequest): Uint8Array {
-  const idx = PLAYER_CMD_INDEX[req.command.op];
-  if (idx === undefined) throw new Error(`unknown player command: ${req.command.op}`);
-  return cborEncode({
-    player_id: req.player_id,
-    command: [idx, req.command as unknown as CborValue],
-  } as CborValue);
+  return cborEncode(playerCommandWireValue(req));
 }
 
 function decodeRecord<T>(bytes: Uint8Array): T {

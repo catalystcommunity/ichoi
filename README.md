@@ -89,7 +89,7 @@ settings:
 | Trusted LinkKeys identities | `ICHOI_LINKKEYS_TRUSTED_IDENTITIES` | unset |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → `PATH` |
 | Default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
-| Log level | `ICHOI_LOG` | `warn` |
+| Log level | `LOG_LEVEL` | `warn` |
 
 Setting `ICHOI_AUDIOBOOK_DIR` enables the Audiobooks view. The directory may be separate
 from the music collection or nested below it; a nested audiobook tree is excluded from the

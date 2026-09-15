@@ -588,6 +588,8 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
       })
       .catch((e) => {
         console.warn("[playback] control failed", e);
+        const message = e instanceof Error ? e.message : String(e);
+        toast.show(`Playback command failed: ${message}`);
         return undefined;
       });
     return controlChain;

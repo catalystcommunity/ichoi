@@ -141,7 +141,7 @@ dev_run_local() {
   ICHOI_AUDIOBOOK_DIR="$data/audiobooks" \
   ICHOI_DB_DIR="$data/database" \
   ICHOI_WEB_DIR="$SERVER/web/themes/default/dist" \
-  ICHOI_LOG="${ICHOI_LOG:-info}" \
+  LOG_LEVEL="${LOG_LEVEL:-warn}" \
     exec "$SERVER/target/debug/ichoi" serve
 }
 

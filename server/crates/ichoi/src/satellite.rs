@@ -40,6 +40,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
 
     let mut reconnect_delay = INITIAL_RECONNECT_DELAY;
     loop {
+        log::info!("satellite connecting to core: address={core}");
         let mut registered = false;
         let result = run_once(&core, &config.core_keys, &node_token, &mut registered).await;
         if registered {
@@ -75,10 +76,12 @@ async fn run_once(
     registered: &mut bool,
 ) -> anyhow::Result<()> {
     let tcp = TcpStream::connect(core_addr).await?;
+    log::info!("satellite TCP connection established: address={core_addr}");
     let connector = tokio_rustls::TlsConnector::from(crate::tls::client_config(core_keys)?);
     let stream = connector
         .connect(crate::tls::logical_server_name(), tcp)
         .await?;
+    log::info!("satellite TLS connection established: address={core_addr}");
     let (mut read_half, mut write_half) = tokio::io::split(stream);
 
     write_frame(&mut write_half, &hello_frame(node_token)).await?;
@@ -89,8 +92,9 @@ async fn run_once(
     if ack.event != "$hello-ack" {
         anyhow::bail!("core did not acknowledge node hello");
     }
+    log::info!("satellite hello acknowledged by core");
 
-    let outputs = crate::audio::enumerate()
+    let outputs: Vec<_> = crate::audio::enumerate()
         .into_iter()
         .map(|o| WireAudioOutput {
             os_device_id: o.os_device_id,
@@ -100,6 +104,7 @@ async fn run_once(
             is_default: o.is_default,
         })
         .collect();
+    log::info!("satellite registering outputs: count={}", outputs.len());
     let req = RegisterNodeRequest {
         hostname: crate::app::hostname(),
         platform: std::env::consts::OS.to_string(),
@@ -166,6 +171,7 @@ async fn run_once(
             None,
             None,
         ))?;
+        log::info!("satellite output ready: player={}", player.id);
     }
 
     loop {
@@ -183,7 +189,10 @@ async fn run_once(
                     ("media", "stream") => {
                         handle_media_event(&out_tx, &mut volumes, &mut playback, &mut media, decode_media_event(&env.payload)?).await?;
                     }
-                    _ => {}
+                    _ => log::info!(
+                        "satellite ignored event: service={service} event={}",
+                        env.event
+                    ),
                 }
             }
             Some(frame) = out_rx.recv() => {
@@ -224,6 +233,11 @@ fn report_frame(
     identity: Option<&PlaybackIdentity>,
     error: Option<String>,
 ) -> Vec<u8> {
+    log::info!(
+        "satellite report queued: player={player_id} event={event:?} status={status:?} queue_item={:?} playback={:?} position_ms={position_ms:?}",
+        identity.map(|value| value.queue_item_id),
+        identity.map(|value| value.playback_id.as_str())
+    );
     let report = NodeReport {
         player_id: player_id.to_string(),
         event: Some(event),
@@ -364,6 +378,7 @@ async fn apply_directive(
             ))?;
         }
         NodeDirective::Variant1(pause) => {
+            log::info!("satellite pause: player={}", pause.player_id);
             stop_player(playback, &pause.player_id);
             let identity =
                 stop_player_media(out_tx, media, &pause.player_id)?.map(|active| active.identity);
@@ -378,6 +393,7 @@ async fn apply_directive(
             ))?;
         }
         NodeDirective::Variant2(resume) => {
+            log::info!("satellite resume: player={}", resume.player_id);
             states.insert(resume.player_id.clone(), PlayerStatus::Playing);
             out_tx.send(report_frame(
                 &resume.player_id,
@@ -389,6 +405,7 @@ async fn apply_directive(
             ))?;
         }
         NodeDirective::Variant3(stop) => {
+            log::info!("satellite stop: player={}", stop.player_id);
             stop_player(playback, &stop.player_id);
             let identity =
                 stop_player_media(out_tx, media, &stop.player_id)?.map(|active| active.identity);
@@ -425,6 +442,13 @@ async fn handle_media_event(
 ) -> anyhow::Result<()> {
     match event {
         MediaEvent::Variant0(header) => {
+            log::info!(
+                "satellite media header received: stream={} codec={:?} transcoded={} duration_ms={:?}",
+                header.stream_id,
+                header.codec,
+                header.transcoded,
+                header.duration_ms
+            );
             if let Some(active) = media.get(&header.stream_id) {
                 let player_id = active.player_id.clone();
                 let identity = active.identity.clone();
@@ -455,6 +479,11 @@ async fn handle_media_event(
             }
         }
         MediaEvent::Variant2(end) => {
+            log::info!(
+                "satellite media end received: stream={} reason={:?}",
+                end.stream_id,
+                end.reason
+            );
             if !matches!(end.reason, Some(MediaEndReason::Stopped)) {
                 if let Some(active) = media.get(&end.stream_id) {
                     if let Some(task) = playback.get(&active.player_id) {
@@ -499,6 +528,11 @@ impl PlaybackTask {
         identity: PlaybackIdentity,
         out_tx: mpsc::UnboundedSender<Vec<u8>>,
     ) -> PlaybackTask {
+        log::info!(
+            "satellite playback starting: player={player_id} playback={} queue_item={} codec={codec:?} position_ms={seek_ms}",
+            identity.playback_id,
+            identity.queue_item_id
+        );
         let cancel = Arc::new(AtomicBool::new(false));
         let cancel2 = cancel.clone();
         let (chunks, rx) = playback_stream_channel();
@@ -519,6 +553,12 @@ impl PlaybackTask {
             if !cancel2.load(Ordering::Relaxed) {
                 let report = match result {
                     Ok(()) => {
+                        log::info!(
+                            "satellite playback completed: player={} playback={} queue_item={}",
+                            reporter.player_id,
+                            reporter.identity.playback_id,
+                            reporter.identity.queue_item_id
+                        );
                         reporter.frame(NodeEvent::Completed, PlayerStatus::Stopped, None, None)
                     }
                     Err(error) => {
@@ -561,6 +601,7 @@ impl Drop for PlaybackTask {
 
 fn stop_player(playback: &mut HashMap<String, PlaybackTask>, player_id: &str) {
     if let Some(task) = playback.remove(player_id) {
+        log::info!("satellite playback cancelled: player={player_id}");
         task.cancel.store(true, Ordering::Relaxed);
     }
 }
@@ -582,6 +623,10 @@ fn stop_player_media(
 ) -> anyhow::Result<Option<ActiveMedia>> {
     let active = take_player_media(media, player_id);
     if let Some(active) = &active {
+        log::info!(
+            "satellite media stop queued: player={player_id} stream={}",
+            active.identity.playback_id
+        );
         let stop = MediaControl::Variant4(MediaStop {
             kind: "stop".to_string(),
             stream_id: active.identity.playback_id.clone(),

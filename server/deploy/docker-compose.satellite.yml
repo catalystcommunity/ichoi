@@ -17,7 +17,7 @@ services:
       ICHOI_CORE_ADDR: ${ICHOI_CORE_ADDR}
       ICHOI_CORE_KEYS: ${ICHOI_CORE_KEYS}
       ICHOI_NODE_TOKEN: ${ICHOI_NODE_TOKEN}
-      ICHOI_LOG: info
+      LOG_LEVEL: ${LOG_LEVEL:-warn}
     devices:
       # ALSA output on Linux hosts. Remove or adjust for non-ALSA hosts.
       - /dev/snd:/dev/snd

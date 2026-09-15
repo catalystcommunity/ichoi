@@ -1,5 +1,5 @@
-//! Configuration: environment variables (`ICHOI_`-prefixed) override an optional TOML
-//! file, which overrides defaults (§9).
+//! Configuration: environment variables override an optional TOML file, which overrides
+//! defaults (§9). Most variables use the `ICHOI_` prefix. Logging uses `LOG_LEVEL`.
 
 use std::path::PathBuf;
 
@@ -271,7 +271,7 @@ impl Config {
                 file.web_dir.map(pb_to_string),
                 "web/themes/default",
             )),
-            log: pick("ICHOI_LOG", file.log, "warn"),
+            log: pick("LOG_LEVEL", file.log, "warn"),
             fetch_art: !matches!(
                 env("ICHOI_FETCH_ART").as_deref(),
                 Some("0") | Some("false") | Some("no")
