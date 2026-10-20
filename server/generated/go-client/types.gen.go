@@ -310,6 +310,7 @@ type UpdateAudiobookProgressRequest struct {
 // PlaylistsResponse represents a structured data type
 type PlaylistsResponse struct {
 	Playlists []Playlist `json:"playlists" yaml:"playlists"`
+	Total     uint64     `json:"total" yaml:"total"`
 }
 
 // PlaylistRequest represents a structured data type
@@ -326,6 +327,25 @@ type DeletePlaylistRequest struct {
 type PlaylistDetail struct {
 	Playlist Playlist `json:"playlist" yaml:"playlist"`
 	Tracks   []Track  `json:"tracks" yaml:"tracks"`
+}
+
+// BlockAccountRequest represents a structured data type
+type BlockAccountRequest struct {
+	AccountId AccountId `json:"account_id" yaml:"account_id"`
+}
+
+// BlockedAccount represents a structured data type
+type BlockedAccount struct {
+	AccountId   AccountId `json:"account_id" yaml:"account_id"`
+	Handle      Handle    `json:"handle" yaml:"handle"`
+	DisplayName *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	BlockedAt   time.Time `json:"blocked_at" yaml:"blocked_at"`
+}
+
+// BlockedAccountsResponse represents a structured data type
+type BlockedAccountsResponse struct {
+	Accounts []BlockedAccount `json:"accounts" yaml:"accounts"`
+	Total    uint64           `json:"total" yaml:"total"`
 }
 
 // CoverArtRequest represents a structured data type
@@ -553,6 +573,36 @@ type DisableShareRequest struct {
 // ShareResult represents a structured data type
 type ShareResult struct {
 	Player Player `json:"player" yaml:"player"`
+}
+
+// ShareAccess is a type alias
+type ShareAccess string
+
+// ShareAccessRequest represents a structured data type
+type ShareAccessRequest struct {
+	PlayerId PlayerId `json:"player_id" yaml:"player_id"`
+}
+
+// ShareCandidate represents a structured data type
+type ShareCandidate struct {
+	AccountId   AccountId `json:"account_id" yaml:"account_id"`
+	Handle      string    `json:"handle" yaml:"handle"`
+	DisplayName *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Selected    bool      `json:"selected" yaml:"selected"`
+}
+
+// ShareAccessInfo represents a structured data type
+type ShareAccessInfo struct {
+	PlayerId PlayerId         `json:"player_id" yaml:"player_id"`
+	Access   ShareAccess      `json:"access" yaml:"access"`
+	Accounts []ShareCandidate `json:"accounts" yaml:"accounts"`
+}
+
+// SetShareAccessRequest represents a structured data type
+type SetShareAccessRequest struct {
+	PlayerId   PlayerId    `json:"player_id" yaml:"player_id"`
+	Access     ShareAccess `json:"access" yaml:"access"`
+	AccountIds []AccountId `json:"account_ids" yaml:"account_ids"`
 }
 
 // MediaOpen represents a structured data type

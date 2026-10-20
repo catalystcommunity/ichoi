@@ -21,6 +21,6 @@ fi
 if rg -n 'FileOutputStream|FileInputStream|openFileOutput|MediaStore|DownloadManager|Room\.databaseBuilder|\.download|copyTo\(' "$source"; then
   echo "Persistent media or download operation found" >&2; exit 1
 fi
-grep -q 'applicationId = "community.catalyst.ichoi.dev"' "$root/app/build.gradle.kts"
-grep -q 'STORE_RELEASE_ENABLED.*false' "$root/app/build.gradle.kts"
+grep -q 'applicationId = "com.catalystsquad.ichoi"' "$root/app/build.gradle.kts"
+grep -q 'applicationIdSuffix = ".dev"' "$root/app/build.gradle.kts"
 echo "Android compliance checks passed"

@@ -323,6 +323,19 @@ mini-PC that anyone (permitted) can queue music to.
 A client may be a **satellite of only one server at a time**, even though it may be
 *connected* to many (§7). The shared target is owned by that user's identity.
 
+**Access.** The owner selects who can see and control an account-owned share:
+
+- **Everyone** — every signed-in account. Guests cannot use it. This is the default.
+- **Selected** — only the accounts that the owner selects from a checklist. When the
+  owner selects no accounts, the share is private.
+
+The owner always has access. An account that the owner blocks cannot use the share, and
+the block removes that account from the owner's checklists. The owner can change access
+at any time (`get-share-access` / `set-share-access`). The admin setting
+`share_default_access` (`everyone` or `private`) sets the access of each new share.
+Ownerless guest shares (`ICHOI_ANONYMOUS_JUKEBOX`) have no owner to manage access, so they stay
+open.
+
 ### 6.5 Playback authority and control flow
 
 The host with the physical device is the **audio clock and authority**. For a shared

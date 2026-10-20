@@ -65,6 +65,12 @@ public sealed class LibraryClient(ICsilTransport transport)
         Codec.Decode<PlaylistDetail>(transport.Call("LibraryService", "get-playlist", Codec.Encode(playlistRequest)));
     public Ok DeletePlaylist(DeletePlaylistRequest deletePlaylistRequest) =>
         Codec.Decode<Ok>(transport.Call("LibraryService", "delete-playlist", Codec.Encode(deletePlaylistRequest)));
+    public Ok BlockAccount(BlockAccountRequest blockAccountRequest) =>
+        Codec.Decode<Ok>(transport.Call("LibraryService", "block-account", Codec.Encode(blockAccountRequest)));
+    public Ok UnblockAccount(BlockAccountRequest blockAccountRequest) =>
+        Codec.Decode<Ok>(transport.Call("LibraryService", "unblock-account", Codec.Encode(blockAccountRequest)));
+    public BlockedAccountsResponse ListBlockedAccounts(Page page) =>
+        Codec.Decode<BlockedAccountsResponse>(transport.Call("LibraryService", "list-blocked-accounts", Codec.Encode(page)));
     public CoverArt GetCoverArt(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
     public AudiobookProgressResponse GetAudiobookProgress(AudiobookProgressRequest audiobookProgressRequest) =>
@@ -90,6 +96,10 @@ public sealed class PlayerClient(ICsilTransport transport)
         Codec.Decode<ShareResult>(transport.Call("PlayerService", "enable-share", Codec.Encode(enableShareRequest)));
     public Ok DisableShare(DisableShareRequest disableShareRequest) =>
         Codec.Decode<Ok>(transport.Call("PlayerService", "disable-share", Codec.Encode(disableShareRequest)));
+    public ShareAccessInfo GetShareAccess(ShareAccessRequest shareAccessRequest) =>
+        Codec.Decode<ShareAccessInfo>(transport.Call("PlayerService", "get-share-access", Codec.Encode(shareAccessRequest)));
+    public ShareAccessInfo SetShareAccess(SetShareAccessRequest setShareAccessRequest) =>
+        Codec.Decode<ShareAccessInfo>(transport.Call("PlayerService", "set-share-access", Codec.Encode(setShareAccessRequest)));
 }
 
 // MediaService has no unary operation csilgen can put on an RPC client (channel-only,

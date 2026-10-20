@@ -1,5 +1,6 @@
 import type {
   Account,
+  BlockedAccount,
   ContentReport,
   ContentReportReason,
   ContentReportStatus,
@@ -9,8 +10,8 @@ import type {
 } from "./schema.ts";
 
 export const TERMS_STORAGE_KEY = "ichoi.terms.accepted.v1";
-export const TERMS_URL = "https://ichoi.invalid/terms/";
-export const PRIVACY_URL = "https://ichoi.invalid/privacy/";
+export const TERMS_URL = "https://catalystichoi.com/terms.html";
+export const PRIVACY_URL = "https://catalystichoi.com/privacy.html";
 export const REPORT_REASONS: readonly ContentReportReason[] = [
   "objectionable-content",
   "harassment",
@@ -141,6 +142,28 @@ export async function loadAllAccounts(
     accounts.push(...page.accounts);
     if (page.accounts.length < limit) return accounts;
   }
+}
+
+export async function loadAllBlockedAccounts(
+  load: (page: { offset: number; limit: number }) => Promise<{ accounts: BlockedAccount[]; total: number }>,
+): Promise<BlockedAccount[]> {
+  const accounts: BlockedAccount[] = [];
+  const limit = 1_000;
+  for (;;) {
+    const page = await load({ offset: accounts.length, limit });
+    accounts.push(...page.accounts);
+    if (accounts.length >= page.total || page.accounts.length === 0) return accounts;
+  }
+}
+
+export async function changeAccountBlock(
+  request: (value: { account_id: string }) => Promise<unknown>,
+  refresh: () => unknown | Promise<unknown>,
+  accountId: string,
+): Promise<void> {
+  if (!accountId.trim()) throw new Error("Select an account.");
+  await request({ account_id: accountId });
+  await refresh();
 }
 
 export function reportStatusRequest(

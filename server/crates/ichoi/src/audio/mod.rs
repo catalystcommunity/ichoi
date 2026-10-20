@@ -2,6 +2,9 @@
 //! never linked, so the binary starts in a scratch container with no audio stack and simply
 //! reports zero outputs.
 
+#[cfg(any(target_os = "macos", target_os = "windows", test))]
+mod convert;
+
 #[derive(Debug, Clone)]
 pub struct AudioOutput {
     pub os_device_id: String,
@@ -106,17 +109,45 @@ impl PcmSink {
             anyhow::bail!("PCM output is not implemented on this platform")
         }
     }
+
+    /// Let queued audio finish playing at the end of a track instead of cutting it off.
+    /// Returns early once `cancel` is set.
+    pub fn drain(&mut self, cancel: &std::sync::atomic::AtomicBool) -> anyhow::Result<()> {
+        #[cfg(any(target_os = "macos", target_os = "windows"))]
+        {
+            self.inner.drain(cancel)
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            let _ = cancel;
+            Ok(())
+        }
+    }
 }
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 mod native {
     use std::collections::{BTreeSet, VecDeque};
+    use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
     use std::sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
 
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-    use cpal::{SampleFormat, SampleRate, Stream, StreamConfig, SupportedStreamConfig};
+    use cpal::{
+        BufferSize, SampleFormat, SampleRate, Stream, StreamConfig, SupportedBufferSize,
+        SupportedStreamConfig,
+    };
 
+    use super::convert::FormatConverter;
     use super::AudioOutput;
+
+    /// Upper bound on waiting for queued audio at the end of a track.
+    const DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
+
+    /// Device buffer length. The WASAPI default is one engine period (about 10 ms), which a
+    /// busy low-power CPU misses often enough to be heard. A satellite does not need low latency.
+    const DEVICE_BUFFER_MS: u32 = 200;
 
     pub fn enumerate() -> Vec<AudioOutput> {
         let host = cpal::default_host();
@@ -150,8 +181,23 @@ mod native {
 
     pub struct NativeSink {
         sender: SyncSender<Vec<i16>>,
+        /// Chunks sent to the stream callback that it has not finished playing.
+        queued: Arc<AtomicUsize>,
+        /// Present when the device cannot take the track format directly.
+        converter: Option<FormatConverter>,
+        stats: Arc<Underruns>,
+        reported: bool,
         // The stream must stay alive for callbacks to continue.
         _stream: Stream,
+    }
+
+    /// Playback gaps, counted by the stream callback.
+    #[derive(Default)]
+    struct Underruns {
+        /// The device buffer emptied before the callback refilled it.
+        device: AtomicU64,
+        /// The callback found no decoded audio to play.
+        queue: AtomicU64,
     }
 
     impl NativeSink {
@@ -160,36 +206,252 @@ mod native {
             let device = host
                 .default_output_device()
                 .ok_or_else(|| anyhow::anyhow!("no default audio output"))?;
-            let supported = select_config(&device, sample_rate, channels)?;
+            let (supported, converter) = match select_config(&device, sample_rate, channels) {
+                Ok(supported) => (supported, None),
+                Err(unsupported) => {
+                    // Shared-mode WASAPI accepts only the device mix format, so convert to it.
+                    let mix = device.default_output_config().map_err(|e| {
+                        anyhow::anyhow!("{unsupported}, and its mix format is unavailable: {e}")
+                    })?;
+                    log::info!(
+                        "native output converts {sample_rate} Hz/{channels} ch to {} Hz/{} ch ({:?})",
+                        mix.sample_rate().0,
+                        mix.channels(),
+                        mix.sample_format()
+                    );
+                    let converter = FormatConverter::new(
+                        sample_rate,
+                        channels,
+                        mix.sample_rate().0,
+                        mix.channels(),
+                    )?;
+                    (mix, Some(converter))
+                }
+            };
             let format = supported.sample_format();
-            let config = supported.config();
+            let mut config = supported.config();
+            config.buffer_size = device_buffer_size(&supported);
+            log::debug!("native output buffer: {:?}", config.buffer_size);
             let (sender, receiver) = sync_channel::<Vec<i16>>(8);
+            let queued = Arc::new(AtomicUsize::new(0));
+            let stats = Arc::new(Underruns::default());
+            let buffer_samples = match config.buffer_size {
+                BufferSize::Fixed(frames) => frames as usize * usize::from(config.channels),
+                BufferSize::Default => usize::MAX,
+            };
+            let feed = Feed {
+                queue: VecDeque::new(),
+                receiver,
+                queued: queued.clone(),
+                holding: false,
+                stats: stats.clone(),
+                buffer_samples,
+                started: false,
+                boosted: false,
+                ran_dry: false,
+            };
             let err = |e| log::error!("native audio output stream failed: {e}");
             let stream = match format {
-                SampleFormat::I16 => build_i16(&device, &config, receiver, err)?,
-                SampleFormat::F32 => build_f32(&device, &config, receiver, err)?,
-                SampleFormat::U16 => build_u16(&device, &config, receiver, err)?,
+                SampleFormat::I16 => build_i16(&device, &config, feed, err)?,
+                SampleFormat::F32 => build_f32(&device, &config, feed, err)?,
+                SampleFormat::U16 => build_u16(&device, &config, feed, err)?,
                 other => anyhow::bail!("unsupported native output sample format {other:?}"),
             };
             stream.play()?;
             Ok(Self {
                 sender,
+                queued,
+                converter,
+                stats,
+                reported: false,
                 _stream: stream,
             })
         }
 
+        /// Queue interleaved PCM in the track format. Returns the track frames accepted.
         pub fn write_s16le(&mut self, bytes: &[u8], channels: u16) -> anyhow::Result<u64> {
             let samples: Vec<i16> = bytes
-                .chunks_exact(2)
-                .map(|b| i16::from_le_bytes([b[0], b[1]]))
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|b| i16::from_le_bytes(*b))
                 .collect();
             let frames = samples.len() as u64 / u64::from(channels.max(1));
-            self.sender
-                .send(samples)
-                .map_err(|_| anyhow::anyhow!("native audio output stream closed"))?;
+            let samples = match &mut self.converter {
+                Some(converter) => converter.process(&samples)?,
+                None => samples,
+            };
+            self.send(samples)?;
             Ok(frames)
         }
+
+        pub fn drain(&mut self, cancel: &AtomicBool) -> anyhow::Result<()> {
+            // Report before the queue empties on purpose at the end of the track.
+            self.report();
+            if let Some(converter) = &mut self.converter {
+                let tail = converter.finish()?;
+                self.send(tail)?;
+            }
+            let started = Instant::now();
+            while self.queued.load(Ordering::Acquire) > 0
+                && started.elapsed() < DRAIN_TIMEOUT
+                && !cancel.load(Ordering::Relaxed)
+            {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            // The device buffer still holds up to DEVICE_BUFFER_MS of audio.
+            let played_out = Instant::now() + Duration::from_millis(u64::from(DEVICE_BUFFER_MS));
+            while Instant::now() < played_out && !cancel.load(Ordering::Relaxed) {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Ok(())
+        }
+
+        fn report(&mut self) {
+            if self.reported {
+                return;
+            }
+            self.reported = true;
+            let device = self.stats.device.load(Ordering::Relaxed);
+            let queue = self.stats.queue.load(Ordering::Relaxed);
+            if device > 0 || queue > 0 {
+                log::warn!(
+                    "native output gaps this track: device buffer ran dry {device} times, decoded audio ran out {queue} times"
+                );
+            }
+        }
+
+        fn send(&self, samples: Vec<i16>) -> anyhow::Result<()> {
+            if samples.is_empty() {
+                return Ok(());
+            }
+            self.queued.fetch_add(1, Ordering::AcqRel);
+            self.sender.send(samples).map_err(|_| {
+                self.queued.fetch_sub(1, Ordering::AcqRel);
+                anyhow::anyhow!("native audio output stream closed")
+            })
+        }
     }
+
+    impl Drop for NativeSink {
+        fn drop(&mut self) {
+            self.report();
+        }
+    }
+
+    /// Ask for a device buffer of `DEVICE_BUFFER_MS`, within what the device supports.
+    fn device_buffer_size(supported: &SupportedStreamConfig) -> BufferSize {
+        let target = supported.sample_rate().0 * DEVICE_BUFFER_MS / 1000;
+        match supported.buffer_size() {
+            SupportedBufferSize::Range { min, max } => {
+                BufferSize::Fixed(target.clamp(*min, (*max).max(*min)))
+            }
+            SupportedBufferSize::Unknown => BufferSize::Default,
+        }
+    }
+
+    /// The stream callback's side of the sample queue.
+    struct Feed {
+        queue: VecDeque<i16>,
+        receiver: Receiver<Vec<i16>>,
+        queued: Arc<AtomicUsize>,
+        /// True while `queue` holds samples from a chunk counted in `queued`.
+        holding: bool,
+        stats: Arc<Underruns>,
+        /// Samples in the whole device buffer.
+        buffer_samples: usize,
+        /// True once the first decoded sample has played.
+        started: bool,
+        boosted: bool,
+        ran_dry: bool,
+    }
+
+    impl Feed {
+        /// Called at the start of each callback with the number of samples requested.
+        fn begin(&mut self, requested: usize) {
+            if !self.boosted {
+                self.boosted = true;
+                boost_audio_thread();
+            }
+            // A WASAPI callback normally refills one engine period. A request for the whole
+            // buffer means the device played it all out first. CoreAudio always asks for the
+            // whole buffer, so this check applies only to Windows.
+            if cfg!(target_os = "windows") && self.started && requested >= self.buffer_samples {
+                self.stats.device.fetch_add(1, Ordering::Relaxed);
+            }
+            self.ran_dry = false;
+        }
+
+        /// Called at the end of each callback.
+        fn end(&mut self) {
+            if self.ran_dry {
+                self.stats.queue.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+
+        fn next(&mut self) -> Option<i16> {
+            if self.queue.is_empty() {
+                if self.holding {
+                    self.queued.fetch_sub(1, Ordering::AcqRel);
+                    self.holding = false;
+                }
+                match self.receiver.try_recv() {
+                    Ok(samples) => {
+                        self.queue.extend(samples);
+                        self.holding = true;
+                    }
+                    Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
+                }
+            }
+            let sample = self.queue.pop_front();
+            match sample {
+                Some(_) => self.started = true,
+                None if self.started => self.ran_dry = true,
+                None => {}
+            }
+            sample
+        }
+    }
+
+    /// Give the stream callback thread real-time audio scheduling. cpal 0.15 tries to raise
+    /// its priority but passes a thread id where a handle is required, so the call fails and
+    /// the thread stays at normal priority.
+    #[cfg(target_os = "windows")]
+    fn boost_audio_thread() {
+        use std::ffi::c_void;
+
+        #[link(name = "avrt")]
+        extern "system" {
+            fn AvSetMmThreadCharacteristicsW(task: *const u16, index: *mut u32) -> *mut c_void;
+        }
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn GetCurrentThread() -> *mut c_void;
+            fn SetThreadPriority(thread: *mut c_void, priority: i32) -> i32;
+        }
+        const THREAD_PRIORITY_TIME_CRITICAL: i32 = 15;
+
+        let task: Vec<u16> = "Pro Audio\0".encode_utf16().collect();
+        let mut index = 0u32;
+        // SAFETY: `task` is a NUL-terminated UTF-16 string and `index` is a valid out pointer.
+        let mmcss = unsafe { AvSetMmThreadCharacteristicsW(task.as_ptr(), &mut index) };
+        if !mmcss.is_null() {
+            log::debug!("native output thread registered with MMCSS Pro Audio");
+            return;
+        }
+        // SAFETY: the pseudo-handle from GetCurrentThread is always valid for this thread.
+        let raised =
+            unsafe { SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL) } != 0;
+        log::warn!(
+            "native output thread could not use MMCSS: {}; time-critical priority {}",
+            std::io::Error::last_os_error(),
+            if raised { "set" } else { "also failed" }
+        );
+    }
+
+    /// CoreAudio already runs its callbacks on a real-time thread.
+    #[cfg(not(target_os = "windows"))]
+    fn boost_audio_thread() {}
 
     fn select_config(
         device: &cpal::Device,
@@ -215,32 +477,23 @@ mod native {
             })
     }
 
-    fn refill(queue: &mut VecDeque<i16>, receiver: &Receiver<Vec<i16>>) {
-        if queue.is_empty() {
-            match receiver.try_recv() {
-                Ok(samples) => queue.extend(samples),
-                Err(TryRecvError::Empty | TryRecvError::Disconnected) => {}
-            }
-        }
-    }
-
     fn build_i16<E>(
         device: &cpal::Device,
         config: &StreamConfig,
-        receiver: Receiver<Vec<i16>>,
+        mut feed: Feed,
         err: E,
     ) -> Result<Stream, cpal::BuildStreamError>
     where
         E: FnMut(cpal::StreamError) + Send + 'static,
     {
-        let mut queue = VecDeque::new();
         device.build_output_stream(
             config,
             move |out: &mut [i16], _| {
+                feed.begin(out.len());
                 for sample in out {
-                    refill(&mut queue, &receiver);
-                    *sample = queue.pop_front().unwrap_or(0);
+                    *sample = feed.next().unwrap_or(0);
                 }
+                feed.end();
             },
             err,
             None,
@@ -250,23 +503,20 @@ mod native {
     fn build_f32<E>(
         device: &cpal::Device,
         config: &StreamConfig,
-        receiver: Receiver<Vec<i16>>,
+        mut feed: Feed,
         err: E,
     ) -> Result<Stream, cpal::BuildStreamError>
     where
         E: FnMut(cpal::StreamError) + Send + 'static,
     {
-        let mut queue = VecDeque::new();
         device.build_output_stream(
             config,
             move |out: &mut [f32], _| {
+                feed.begin(out.len());
                 for sample in out {
-                    refill(&mut queue, &receiver);
-                    *sample = queue
-                        .pop_front()
-                        .map(|s| f32::from(s) / 32768.0)
-                        .unwrap_or(0.0);
+                    *sample = feed.next().map(|s| f32::from(s) / 32768.0).unwrap_or(0.0);
                 }
+                feed.end();
             },
             err,
             None,
@@ -276,23 +526,23 @@ mod native {
     fn build_u16<E>(
         device: &cpal::Device,
         config: &StreamConfig,
-        receiver: Receiver<Vec<i16>>,
+        mut feed: Feed,
         err: E,
     ) -> Result<Stream, cpal::BuildStreamError>
     where
         E: FnMut(cpal::StreamError) + Send + 'static,
     {
-        let mut queue = VecDeque::new();
         device.build_output_stream(
             config,
             move |out: &mut [u16], _| {
+                feed.begin(out.len());
                 for sample in out {
-                    refill(&mut queue, &receiver);
-                    *sample = queue
-                        .pop_front()
+                    *sample = feed
+                        .next()
                         .map(|s| (i32::from(s) + 32768) as u16)
                         .unwrap_or(32768);
                 }
+                feed.end();
             },
             err,
             None,

@@ -1113,17 +1113,20 @@ class UpdateAudiobookProgressRequest:
 @dataclass
 class PlaylistsResponse:
     playlists: List[Playlist]
+    total: int
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
         if hasattr(self, 'playlists') and self.playlists is not None:
             result['playlists'] = self.playlists
+        if hasattr(self, 'total') and self.total is not None:
+            result['total'] = self.total
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PlaylistsResponse':
         """Create instance from dictionary."""
-        return cls(playlists=data.get('playlists'))
+        return cls(playlists=data.get('playlists'), total=data.get('total'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1209,6 +1212,93 @@ class PlaylistDetail:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'PlaylistDetail':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class BlockAccountRequest:
+    account_id: AccountId
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'account_id') and self.account_id is not None:
+            result['account_id'] = self.account_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BlockAccountRequest':
+        """Create instance from dictionary."""
+        return cls(account_id=data.get('account_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BlockAccountRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class BlockedAccount:
+    account_id: AccountId
+    handle: Handle
+    blocked_at: datetime
+    display_name: Optional[str] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'account_id') and self.account_id is not None:
+            result['account_id'] = self.account_id
+        if hasattr(self, 'handle') and self.handle is not None:
+            result['handle'] = self.handle
+        if hasattr(self, 'display_name') and self.display_name is not None:
+            result['display_name'] = self.display_name
+        if hasattr(self, 'blocked_at') and self.blocked_at is not None:
+            result['blocked_at'] = self.blocked_at
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BlockedAccount':
+        """Create instance from dictionary."""
+        return cls(account_id=data.get('account_id'), handle=data.get('handle'), display_name=data.get('display_name'), blocked_at=data.get('blocked_at'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BlockedAccount':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class BlockedAccountsResponse:
+    accounts: List[BlockedAccount]
+    total: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'accounts') and self.accounts is not None:
+            result['accounts'] = self.accounts
+        if hasattr(self, 'total') and self.total is not None:
+            result['total'] = self.total
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'BlockedAccountsResponse':
+        """Create instance from dictionary."""
+        return cls(accounts=data.get('accounts'), total=data.get('total'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'BlockedAccountsResponse':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -2250,6 +2340,129 @@ class ShareResult:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'ShareResult':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+ShareAccess = Union[str, str]
+
+@dataclass
+class ShareAccessRequest:
+    player_id: PlayerId
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'player_id') and self.player_id is not None:
+            result['player_id'] = self.player_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ShareAccessRequest':
+        """Create instance from dictionary."""
+        return cls(player_id=data.get('player_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ShareAccessRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ShareCandidate:
+    account_id: AccountId
+    handle: str
+    selected: bool
+    display_name: Optional[str] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'account_id') and self.account_id is not None:
+            result['account_id'] = self.account_id
+        if hasattr(self, 'handle') and self.handle is not None:
+            result['handle'] = self.handle
+        if hasattr(self, 'display_name') and self.display_name is not None:
+            result['display_name'] = self.display_name
+        if hasattr(self, 'selected') and self.selected is not None:
+            result['selected'] = self.selected
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ShareCandidate':
+        """Create instance from dictionary."""
+        return cls(account_id=data.get('account_id'), handle=data.get('handle'), display_name=data.get('display_name'), selected=data.get('selected'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ShareCandidate':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ShareAccessInfo:
+    player_id: PlayerId
+    access: ShareAccess
+    accounts: List[ShareCandidate]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'player_id') and self.player_id is not None:
+            result['player_id'] = self.player_id
+        if hasattr(self, 'access') and self.access is not None:
+            result['access'] = self.access
+        if hasattr(self, 'accounts') and self.accounts is not None:
+            result['accounts'] = self.accounts
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ShareAccessInfo':
+        """Create instance from dictionary."""
+        return cls(player_id=data.get('player_id'), access=data.get('access'), accounts=data.get('accounts'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ShareAccessInfo':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class SetShareAccessRequest:
+    player_id: PlayerId
+    access: ShareAccess
+    account_ids: List[AccountId]
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'player_id') and self.player_id is not None:
+            result['player_id'] = self.player_id
+        if hasattr(self, 'access') and self.access is not None:
+            result['access'] = self.access
+        if hasattr(self, 'account_ids') and self.account_ids is not None:
+            result['account_ids'] = self.account_ids
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SetShareAccessRequest':
+        """Create instance from dictionary."""
+        return cls(player_id=data.get('player_id'), access=data.get('access'), account_ids=data.get('account_ids'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'SetShareAccessRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 

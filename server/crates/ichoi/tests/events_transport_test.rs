@@ -8,8 +8,8 @@ use std::sync::Arc;
 use ciborium::value::Value;
 use ichoi::handlers::Identity;
 use ichoi::transport::{
-    decode_event_envelope, encode_event_envelope, handle_events_frame, player_state_frame,
-    EventEnvelope,
+    decode_event_envelope, dispatch, encode_event_envelope, handle_events_frame,
+    player_state_frame, EventEnvelope,
 };
 use libichoi::csil::codec::{
     decode_albums_response, decode_data_change, decode_libraries_response,
@@ -87,6 +87,26 @@ fn hello_gets_ack() {
         handle_events_frame(&app, Identity::Anonymous, true, &hello_frame(None));
     let env = decode_event_envelope(&reply.expect("ack frame")).unwrap();
     assert_eq!(env.event, "$hello-ack");
+}
+
+#[test]
+fn compliance_library_operations_are_in_the_request_dispatch_table() {
+    let (app, _pool) = common::test_app();
+    let ctx = common::ctx_user("viewer@example.com");
+
+    for operation in [
+        "delete-playlist",
+        "block-account",
+        "unblock-account",
+        "list-blocked-accounts",
+        "report-content",
+    ] {
+        let error = dispatch(&app, &ctx, "library", operation, &[]).unwrap_err();
+        assert!(
+            !error.message.starts_with("unknown operation"),
+            "{operation} is absent from the request dispatch table"
+        );
+    }
 }
 
 #[test]

@@ -84,10 +84,19 @@ UpdateAudiobookProgressRequest = {
     completed: bool .default false
 }
 
-PlaylistsResponse = { playlists: [* Playlist] }
+PlaylistsResponse = { playlists: [* Playlist], total: uint }
 PlaylistRequest   = { playlist_id: PlaylistId }
 DeletePlaylistRequest = { playlist_id: PlaylistId }
 PlaylistDetail    = { playlist: Playlist, tracks: [* Track] }   ;; resolved; unresolved m3u entries omitted (§7)
+
+BlockAccountRequest = { account_id: AccountId }
+BlockedAccount = {
+    account_id: AccountId,
+    handle: Handle,
+    ? display_name: text,
+    blocked_at: timestamp
+}
+BlockedAccountsResponse = { accounts: [* BlockedAccount], total: uint }
 
 CoverArtRequest = { album_id: AlbumId, ? max_size: uint }
 CoverArt        = { content_type: text, data: bytes }
@@ -110,6 +119,9 @@ service LibraryService {
     list-playlists: BrowseRequest -> PlaylistsResponse / ServiceError,
     get-playlist: PlaylistRequest -> PlaylistDetail / ServiceError,
     delete-playlist: DeletePlaylistRequest -> Ok / ServiceError,
+    block-account: BlockAccountRequest -> Ok / ServiceError,
+    unblock-account: BlockAccountRequest -> Ok / ServiceError,
+    list-blocked-accounts: Page -> BlockedAccountsResponse / ServiceError,
     get-cover-art: CoverArtRequest -> CoverArt / ServiceError,
     get-audiobook-progress: AudiobookProgressRequest -> AudiobookProgressResponse / ServiceError,
     update-audiobook-progress: UpdateAudiobookProgressRequest -> AudiobookProgress / ServiceError,

@@ -32,4 +32,28 @@ final class ServerProfileTests: XCTestCase {
         XCTAssertNoThrow(try ComplianceValidation.accountDeletionConfirmation("sam@example", handle: "sam@example"))
         XCTAssertThrowsError(try ComplianceValidation.accountDeletionConfirmation("Sam@example", handle: "sam@example"))
     }
+
+    func testAccountBlockUsesOneProfileAndRefreshesOnlyAfterSuccess() async throws {
+        var calls: [String] = []
+        try await ComplianceValidation.changeAccountBlock(
+            profileID: "server-one",
+            accountID: "blocked@example.com",
+            request: { profile, account in calls.append("\(profile):\(account)") },
+            refresh: { profile in calls.append("refresh:\(profile)") }
+        )
+        XCTAssertEqual(calls, ["server-one:blocked@example.com", "refresh:server-one"])
+
+        do {
+            try await ComplianceValidation.changeAccountBlock(
+                profileID: "server-two",
+                accountID: "blocked@example.com",
+                request: { _, _ in throw ComplianceValidationError.missingAccount },
+                refresh: { profile in calls.append("refresh:\(profile)") }
+            )
+            XCTFail("Expected the service failure")
+        } catch {
+            XCTAssertEqual(error as? ComplianceValidationError, .missingAccount)
+        }
+        XCTAssertFalse(calls.contains("refresh:server-two"))
+    }
 }

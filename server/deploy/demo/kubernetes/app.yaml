@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ichoi-demo
+  namespace: ichoi-demo
+  labels:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/instance: ichoi-demo
+    app.kubernetes.io/part-of: ichoi-demo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ichoi
+      app.kubernetes.io/instance: ichoi-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ichoi
+        app.kubernetes.io/instance: ichoi-demo
+        app.kubernetes.io/part-of: ichoi-demo
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+        - name: ichoi
+          image: containers.catalystsquad.com/public/catalystcommunity/ichoi:demo-20260920-dispatch@sha256:328fd5400e3baf4192e11b317bc1dd2d0f4994207bc6686890b294f793a73ad5
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: ICHOI_ROLE
+              value: core
+            - name: ICHOI_MUSIC_DIR
+              value: /media/music
+            - name: ICHOI_AUDIOBOOK_DIR
+              value: /media/audiobooks
+            - name: ICHOI_DB_DIR
+              value: /state
+            - name: ICHOI_REQUIRE_MUSIC
+              value: "true"
+            - name: ICHOI_ACCESS_MODE
+              value: open
+            - name: ICHOI_ANONYMOUS_JUKEBOX
+              value: "true"
+            - name: ICHOI_ZERO_ACCOUNT_GUEST_ACCESS
+              value: "false"
+            - name: ICHOI_PUBLIC_URL
+              value: https://ichoi.catalystsquad.com
+            - name: ICHOI_SESSION_LIFETIME_HOURS
+              value: "24"
+            - name: ICHOI_LINKKEYS_RP
+              value: "true"
+            - name: ICHOI_LINKKEYS_RP_ADDR
+              value: linkkeys.catalystsquad.com:4987
+            - name: ICHOI_LINKKEYS_RP_FINGERPRINTS
+              value: c20dadc7bea8ecf47c2d2f43ff78004c5bad28d5f56874c142ddd76c888aaf06,50d7df1ea0298a90d38ed5d7c366172944d7bbed56d9fbd3e9a6e23e39ed7360,63a01719e9df06d7f33b206d301382c610703fc72dd0b54ed11e15faea3c3b80
+            - name: ICHOI_LINKKEYS_RP_API_KEY_FILE
+              value: /run/secrets/linkkeys/api-key
+            - name: ICHOI_LINKKEYS_RP_DOMAIN
+              value: catalystsquad.com
+            - name: ICHOI_LINKKEYS_TRUSTED_USER_IDS
+              # Two administrators, then the store-review member (nsc-demos@catalystlinkkeys.com).
+              value: 019d6ac9-58bf-7303-8a5a-e60fba633239@todandlorna.com,019d74d1-6696-7ea0-8dcf-02e8f965482d@todandlorna.com,01a1570e-03d1-7041-af79-df74234916da@catalystlinkkeys.com
+            - name: LOG_LEVEL
+              value: warn
+          ports:
+            - name: http
+              containerPort: 4042
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: state
+              mountPath: /state
+            - name: media
+              mountPath: /media
+              readOnly: true
+            - name: linkkeys
+              mountPath: /run/secrets/linkkeys
+              readOnly: true
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: ichoi-demo-state
+        - name: media
+          persistentVolumeClaim:
+            claimName: ichoi-demo-media
+        - name: linkkeys
+          secret:
+            secretName: ichoi-demo-linkkeys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ichoi-demo
+  namespace: ichoi-demo
+  labels:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/instance: ichoi-demo
+    app.kubernetes.io/part-of: ichoi-demo
+spec:
+  selector:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/instance: ichoi-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ichoi-demo
+  namespace: ichoi-demo
+  labels:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/instance: ichoi-demo
+    app.kubernetes.io/part-of: ichoi-demo
+spec:
+  hostnames:
+    - ichoi.catalystsquad.com
+    # The previous demo hostname. Keep it until no link uses it.
+    - ichoi-demo.catalystsquad.com
+  parentRefs:
+    - name: contour
+      namespace: projectcontour
+      sectionName: https
+    - name: contour
+      namespace: projectcontour
+      sectionName: http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ichoi-demo
+          port: 80

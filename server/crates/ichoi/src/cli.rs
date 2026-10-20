@@ -92,6 +92,14 @@ struct InstallArgs {
     /// Replace an existing binary, configuration, and service definition.
     #[arg(long)]
     replace: bool,
+    /// Windows only, with --scope system: sign in a dedicated local account at boot and lock
+    /// it, because Windows 11 plays service audio only while a user is signed in.
+    #[arg(long)]
+    auto_signin: bool,
+    /// With --auto-signin: take over another account's automatic sign-in, or an existing
+    /// local account named IchoiAudio that Ichoi did not create.
+    #[arg(long, requires = "auto_signin")]
+    replace_auto_signin: bool,
     /// Print the complete installation plan without changing the machine.
     #[arg(long)]
     dry_run: bool,
@@ -146,13 +154,34 @@ pub fn run() -> anyhow::Result<()> {
                 start: !args.no_start,
                 enable: !args.no_enable,
                 replace: args.replace,
+                auto_signin: args.auto_signin,
                 dry_run: args.dry_run,
             };
             let plan = crate::install::plan(&options)?;
             print!("{}", crate::install::describe(&plan));
+            // Check auto sign-in before changing anything, so a blocker never leaves a
+            // half-finished installation.
+            let signin = if options.auto_signin {
+                let host = crate::autosignin::read_host_state(&plan.config_path)?;
+                let checks = crate::autosignin::preflight(&host, args.replace_auto_signin);
+                print!("{}", crate::autosignin::describe(&checks));
+                if !checks.blockers.is_empty() {
+                    anyhow::bail!("auto sign-in cannot be enabled; nothing was changed");
+                }
+                Some(host)
+            } else {
+                None
+            };
             if !options.dry_run {
                 crate::install::apply(&plan, options.replace)?;
                 println!("Ichoi satellite installed");
+                if let Some(host) = signin {
+                    crate::autosignin::enable(&plan.config_path, &host)?;
+                    println!(
+                        "Auto sign-in enabled for {}. Restart Windows to start the session.",
+                        crate::autosignin::ACCOUNT
+                    );
+                }
             }
             Ok(())
         }
@@ -175,12 +204,29 @@ pub fn run() -> anyhow::Result<()> {
     }
 }
 
-fn run_configured(command: Commands) -> anyhow::Result<()> {
-    let config = Config::load()?;
+/// Initialize logging at the configured level. Background services have no console, so they
+/// pass a file that log lines are appended to.
+pub(crate) fn init_logging(config: &Config, file: Option<&std::path::Path>) -> anyhow::Result<()> {
     // Quiet lofty's per-file VBR/tag warnings (noise on messy libraries) unless explicitly
     // asked for; keep the user's level for everything else.
     let filter = format!("{},lofty=error", config.log);
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(filter)).init();
+    let mut builder =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or(filter));
+    if let Some(path) = file {
+        let log = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .map_err(|e| anyhow::anyhow!("opening log file {}: {e}", path.display()))?;
+        builder.target(env_logger::Target::Pipe(Box::new(log)));
+    }
+    builder.init();
+    Ok(())
+}
+
+fn run_configured(command: Commands) -> anyhow::Result<()> {
+    let config = Config::load()?;
+    init_logging(&config, None)?;
 
     match command {
         Commands::Serve => {

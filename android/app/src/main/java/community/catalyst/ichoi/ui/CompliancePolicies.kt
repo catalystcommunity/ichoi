@@ -14,6 +14,21 @@ object AccountValidation {
     }
 }
 
+object AccountBlockAction {
+    /** Runs [request], then [refresh] only after it succeeds, and returns the refreshed value. */
+    suspend fun <T> change(
+        profileId: String,
+        accountId: String,
+        request: suspend (String, String) -> Unit,
+        refresh: suspend (String) -> T,
+    ): T {
+        require(profileId.isNotBlank()) { "A server profile is required" }
+        require(accountId.isNotBlank()) { "An account is required" }
+        request(profileId, accountId)
+        return refresh(profileId)
+    }
+}
+
 object ReportValidation {
     fun validate(targetId: String, details: String?): String? {
         require(targetId.isNotBlank()) { "A report target is required" }

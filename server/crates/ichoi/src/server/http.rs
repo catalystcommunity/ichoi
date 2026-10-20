@@ -333,16 +333,16 @@ async fn local_rp_start(
         Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    match crate::db::store::linkkeys_identity_is_trusted(
+    let selector_is_trusted = match crate::db::store::linkkeys_identity_is_trusted(
         &mut conn,
         &selector.domain,
         selector.handle.as_deref(),
     ) {
-        Ok(true) => {}
-        Ok(false) => {
-            return (StatusCode::FORBIDDEN, "LinkKeys identity is not trusted").into_response()
-        }
+        Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    if !selector_is_trusted && !s.app.config.trusts_linkkeys_user_domain(&selector.domain) {
+        return (StatusCode::FORBIDDEN, "LinkKeys identity is not trusted").into_response();
     }
     drop(conn);
 
@@ -452,16 +452,16 @@ async fn regular_rp_start(
         Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    match crate::db::store::linkkeys_identity_is_trusted(
+    let selector_is_trusted = match crate::db::store::linkkeys_identity_is_trusted(
         &mut conn,
         &selector.domain,
         selector.handle.as_deref(),
     ) {
-        Ok(true) => {}
-        Ok(false) => {
-            return (StatusCode::FORBIDDEN, "LinkKeys identity is not trusted").into_response()
-        }
+        Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    if !selector_is_trusted && !s.app.config.trusts_linkkeys_user_domain(&selector.domain) {
+        return (StatusCode::FORBIDDEN, "LinkKeys identity is not trusted").into_response();
     }
     drop(conn);
 
@@ -556,20 +556,24 @@ fn finish_linkkeys_login(
     // fact. A LinkKeys username may legitimately differ from its public
     // `handle` claim (for example `tod` versus `todpunk`). Admission below is
     // therefore based only on the cryptographically verified domain/handle.
-    match crate::db::store::linkkeys_identity_is_trusted(
+    let selector_is_trusted = match crate::db::store::linkkeys_identity_is_trusted(
         &mut conn,
         &verified.domain,
         Some(&verified.handle),
     ) {
-        Ok(true) => {}
-        Ok(false) => {
-            return (
-                StatusCode::FORBIDDEN,
-                "verified LinkKeys identity is not trusted",
-            )
-                .into_response()
-        }
+        Ok(value) => value,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    if !selector_is_trusted
+        && !app
+            .config
+            .trusts_linkkeys_user_id(&verified.user_id, &verified.domain)
+    {
+        return (
+            StatusCode::FORBIDDEN,
+            "verified LinkKeys identity is not trusted",
+        )
+            .into_response();
     }
     let account_id = format!("{}@{}", verified.user_id, verified.domain);
     let first_account = match crate::db::store::count_accounts(&mut conn) {
@@ -692,15 +696,31 @@ fn save_queue_playlist_sync(
         .pool
         .get()
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
-    let owner = match account {
-        Some(account) => Some(account.id),
+    if req
+        .visibility
+        .as_deref()
+        .is_some_and(|value| value != "private" && value != "public")
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "visibility must be private or public".to_string(),
+        ));
+    }
+    let (owner, is_admin) = match account {
+        Some(account) => {
+            let is_admin = account.role == "admin";
+            (Some(account.id), is_admin)
+        }
         None if guest_allowed => {
+            if !app.config.zero_account_guest_access {
+                return Err((StatusCode::UNAUTHORIZED, "sign in required".to_string()));
+            }
             let count = crate::db::store::count_accounts(&mut conn)
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("internal: {e}")))?;
             if count != 0 {
                 return Err((StatusCode::UNAUTHORIZED, "sign in required".to_string()));
             }
-            None
+            (None, false)
         }
         None => return Err((StatusCode::UNAUTHORIZED, "sign in required".to_string())),
     };
@@ -710,10 +730,17 @@ fn save_queue_playlist_sync(
             "no music directory configured".to_string(),
         )
     })?;
-    let visibility = if req.visibility.as_deref() == Some("private") && owner.is_some() {
-        "private"
-    } else {
-        "public"
+    let visibility = match (owner.is_some(), is_admin, req.visibility.as_deref()) {
+        (false, _, _) => "public",
+        (true, true, Some("private")) => "private",
+        (true, true, _) => "public",
+        (true, false, Some("public")) => {
+            return Err((
+                StatusCode::FORBIDDEN,
+                "administrator role required to publish a public playlist".to_string(),
+            ));
+        }
+        (true, false, _) => "private",
     }
     .to_string();
 

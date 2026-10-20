@@ -396,10 +396,15 @@ fn player_txn_error(error: PlayerTxnError) -> ServiceError {
 fn require_admin_or_guest_instance(
     ctx: &Ctx,
     conn: &mut diesel::sqlite::SqliteConnection,
+    zero_account_guest_access: bool,
 ) -> Result<(), ServiceError> {
     match &ctx.identity {
         Identity::User { role, .. } if role == "admin" => Ok(()),
-        Identity::Anonymous if db(store::count_accounts(conn))? == 0 => Ok(()),
+        Identity::Anonymous
+            if zero_account_guest_access && db(store::count_accounts(conn))? == 0 =>
+        {
+            Ok(())
+        }
         Identity::Anonymous => Err(err(401, "admin authentication required")),
         _ => Err(err(403, "admin role required")),
     }
@@ -408,10 +413,15 @@ fn require_admin_or_guest_instance(
 fn require_export_or_guest_instance(
     ctx: &Ctx,
     conn: &mut diesel::sqlite::SqliteConnection,
+    zero_account_guest_access: bool,
 ) -> Result<(), ServiceError> {
     match &ctx.identity {
         Identity::User { role, .. } if role == "admin" || role == "member" => Ok(()),
-        Identity::Anonymous if db(store::count_accounts(conn))? == 0 => Ok(()),
+        Identity::Anonymous
+            if zero_account_guest_access && db(store::count_accounts(conn))? == 0 =>
+        {
+            Ok(())
+        }
         Identity::Anonymous => Err(err(401, "authentication required to copy media")),
         _ => Err(err(403, "this account cannot copy media")),
     }
@@ -444,6 +454,33 @@ fn setting_enabled(
         db(store::get_setting(conn, key))?.as_deref(),
         Some("1") | Some("true") | Some("yes") | Some("on")
     ))
+}
+
+/// Admin setting for the access a new account-owned browser share starts with.
+const SHARE_DEFAULT_ACCESS_SETTING: &str = "share_default_access";
+
+/// Whether `identity` may see and control a browser share that `owner` owns. `everyone`
+/// admits every signed-in account; `selected` admits only the listed accounts. The owner
+/// always has access, and an account the owner blocked never has access.
+fn owned_share_allows(
+    conn: &mut diesel::sqlite::SqliteConnection,
+    player_id: &str,
+    owner: &str,
+    identity: &Identity,
+) -> Result<bool, ServiceError> {
+    let Identity::User { account_id, .. } = identity else {
+        return Ok(false);
+    };
+    if account_id == owner {
+        return Ok(true);
+    }
+    if db(store::account_is_blocked(conn, owner, account_id))? {
+        return Ok(false);
+    }
+    Ok(match db(store::share_access(conn, player_id))?.as_str() {
+        "selected" => db(store::share_includes_account(conn, player_id, account_id))?,
+        _ => true,
+    })
 }
 
 // ------------------------------------------------------------------ enum mapping
@@ -750,11 +787,14 @@ const GUEST_PROGRESS_ACCOUNT_ID: &str = "__guest__";
 fn progress_account_id(
     conn: &mut diesel::SqliteConnection,
     identity: &Identity,
+    zero_account_guest_access: bool,
 ) -> Result<String, ServiceError> {
     match identity {
         Identity::User { account_id, .. } => Ok(account_id.clone()),
         Identity::Node { node_id } => Ok(format!("__satellite__:{node_id}")),
-        Identity::Anonymous if db(store::count_accounts(conn))? == 0 => {
+        Identity::Anonymous
+            if zero_account_guest_access && db(store::count_accounts(conn))? == 0 =>
+        {
             Ok(GUEST_PROGRESS_ACCOUNT_ID.to_string())
         }
         Identity::Anonymous => Err(err(401, "sign in to save audiobook progress")),
@@ -771,6 +811,8 @@ impl SessionService for App {
 
         // First-admin bootstrap: valid only while zero accounts exist (§7.4).
         if let Some(bt) = input.bootstrap_token.as_ref() {
+            // The admin token authenticates the operator, so the guest-access policy does not
+            // apply to it.
             if db(store::count_accounts(&mut conn))? == 0 {
                 if self.config.admin_token.as_deref() != Some(bt.as_str()) {
                     return Err(err(403, "invalid bootstrap token"));
@@ -829,7 +871,9 @@ impl SessionService for App {
             }
             Identity::Anonymous => {
                 let mut conn = self.conn()?;
-                if db(store::count_accounts(&mut conn))? == 0 {
+                if self.config.zero_account_guest_access
+                    && db(store::count_accounts(&mut conn))? == 0
+                {
                     Ok(SessionInfo {
                         account_id: GUEST_PROGRESS_ACCOUNT_ID.to_string(),
                         handle: "guest".to_string(),
@@ -1059,7 +1103,7 @@ impl LibraryService for App {
         input: ExportManifestRequest,
     ) -> Result<ExportManifest, ServiceError> {
         let mut conn = self.conn()?;
-        require_export_or_guest_instance(ctx, &mut conn)?;
+        require_export_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         crate::federation::export_manifest(&mut conn, &input.track_id)
     }
 
@@ -1069,18 +1113,46 @@ impl LibraryService for App {
         input: ExportChunkRequest,
     ) -> Result<ExportChunk, ServiceError> {
         let mut conn = self.conn()?;
-        require_export_or_guest_instance(ctx, &mut conn)?;
+        require_export_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         crate::federation::export_chunk(&mut conn, &input)
     }
 
     fn list_playlists(
         &self,
-        _ctx: &Ctx,
-        _input: BrowseRequest,
+        ctx: &Ctx,
+        input: BrowseRequest,
     ) -> Result<PlaylistsResponse, ServiceError> {
         let mut conn = self.conn()?;
-        let playlists = db(store::list_playlists(&mut conn))?
+        let viewer = match &ctx.identity {
+            Identity::User { account_id, .. } => Some(account_id.as_str()),
+            _ => None,
+        };
+        let blocked_owners = match viewer {
+            Some(account_id) => db(store::blocked_account_ids(&mut conn, account_id))?
+                .into_iter()
+                .collect::<HashSet<_>>(),
+            None => HashSet::new(),
+        };
+        let (offset, limit) = page(input.offset, input.limit);
+        let visible: Vec<_> = db(store::list_playlists(&mut conn))?
             .into_iter()
+            .filter(|playlist| {
+                if playlist.visibility == "private" {
+                    // A private playlist is visible only to its owner.
+                    playlist.owner.is_some() && playlist.owner.as_deref() == viewer
+                } else {
+                    playlist
+                        .owner
+                        .as_ref()
+                        .is_none_or(|owner| !blocked_owners.contains(owner))
+                }
+            })
+            .collect();
+        let total = visible.len() as u64;
+        let playlists = visible
+            .into_iter()
+            .skip(offset.max(0) as usize)
+            .take(limit.max(0) as usize)
             .map(|p| Playlist {
                 id: p.id,
                 name: p.name,
@@ -1089,17 +1161,35 @@ impl LibraryService for App {
                 root_relative_path: p.root_relative_path,
             })
             .collect();
-        std::result::Result::Ok(PlaylistsResponse { playlists })
+        std::result::Result::Ok(PlaylistsResponse { playlists, total })
     }
 
     fn get_playlist(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         input: PlaylistRequest,
     ) -> Result<PlaylistDetail, ServiceError> {
         let mut conn = self.conn()?;
         let p = db(store::get_playlist(&mut conn, &input.playlist_id))?
             .ok_or_else(|| err(404, "playlist not found"))?;
+        let viewer = match &ctx.identity {
+            Identity::User { account_id, .. } => Some(account_id.as_str()),
+            _ => None,
+        };
+        let hidden = if p.visibility == "private" {
+            // A private playlist is visible only to its owner.
+            p.owner.is_none() || p.owner.as_deref() != viewer
+        } else {
+            match (viewer, p.owner.as_deref()) {
+                (Some(account_id), Some(owner)) => {
+                    db(store::account_is_blocked(&mut conn, account_id, owner))?
+                }
+                _ => false,
+            }
+        };
+        if hidden {
+            return Err(err(404, "playlist not found"));
+        }
         let tracks: Vec<Track> = self
             .config
             .music_dir
@@ -1155,6 +1245,81 @@ impl LibraryService for App {
         Ok(Ok { ok: true })
     }
 
+    fn block_account(&self, ctx: &Ctx, input: BlockAccountRequest) -> Result<Ok, ServiceError> {
+        let blocker_account_id = match &ctx.identity {
+            Identity::User { account_id, .. } => account_id,
+            _ => return Err(err(401, "sign in to block an account")),
+        };
+        if blocker_account_id == &input.account_id {
+            return Err(err(400, "an account cannot block itself"));
+        }
+        let mut conn = self.conn()?;
+        if db(store::get_account(&mut conn, &input.account_id))?.is_none() {
+            return Err(err(404, "account not found"));
+        }
+        db(store::block_account(
+            &mut conn,
+            &models::AccountBlock {
+                blocker_account_id: blocker_account_id.clone(),
+                blocked_account_id: input.account_id.clone(),
+                created_at: Utc::now().to_rfc3339(),
+            },
+        ))?;
+        db(store::remove_account_from_owned_shares(
+            &mut conn,
+            blocker_account_id,
+            &input.account_id,
+        ))?;
+        Ok(Ok { ok: true })
+    }
+
+    fn unblock_account(&self, ctx: &Ctx, input: BlockAccountRequest) -> Result<Ok, ServiceError> {
+        let blocker_account_id = match &ctx.identity {
+            Identity::User { account_id, .. } => account_id,
+            _ => return Err(err(401, "sign in to unblock an account")),
+        };
+        let mut conn = self.conn()?;
+        db(store::unblock_account(
+            &mut conn,
+            blocker_account_id,
+            &input.account_id,
+        ))?;
+        Ok(Ok { ok: true })
+    }
+
+    fn list_blocked_accounts(
+        &self,
+        ctx: &Ctx,
+        input: Page,
+    ) -> Result<BlockedAccountsResponse, ServiceError> {
+        let blocker_account_id = match &ctx.identity {
+            Identity::User { account_id, .. } => account_id,
+            _ => return Err(err(401, "sign in to list blocked accounts")),
+        };
+        let mut conn = self.conn()?;
+        let (offset, limit) = page(input.offset, input.limit);
+        let blocks = db(store::list_account_blocks(
+            &mut conn,
+            blocker_account_id,
+            offset,
+            limit,
+        ))?;
+        let accounts = blocks
+            .into_iter()
+            .map(|(block, account)| BlockedAccount {
+                account_id: account.id,
+                handle: account.handle,
+                display_name: account.display_name,
+                blocked_at: parse_dt(&block.created_at),
+            })
+            .collect();
+        let total = db(store::count_account_blocks(&mut conn, blocker_account_id))?;
+        Ok(BlockedAccountsResponse {
+            accounts,
+            total: total.max(0) as u64,
+        })
+    }
+
     fn get_cover_art(&self, _ctx: &Ctx, input: CoverArtRequest) -> Result<CoverArt, ServiceError> {
         let mut conn = self.conn()?;
         let a = db(store::get_album(&mut conn, &input.album_id))?
@@ -1196,7 +1361,11 @@ impl LibraryService for App {
         input: AudiobookProgressRequest,
     ) -> Result<AudiobookProgressResponse, ServiceError> {
         let mut conn = self.conn()?;
-        let account_id = progress_account_id(&mut conn, &ctx.identity)?;
+        let account_id = progress_account_id(
+            &mut conn,
+            &ctx.identity,
+            self.config.zero_account_guest_access,
+        )?;
         let rows = db(store::audiobook_progress_for_tracks(
             &mut conn,
             &account_id,
@@ -1221,7 +1390,11 @@ impl LibraryService for App {
         input: UpdateAudiobookProgressRequest,
     ) -> Result<AudiobookProgress, ServiceError> {
         let mut conn = self.conn()?;
-        let account_id = progress_account_id(&mut conn, &ctx.identity)?;
+        let account_id = progress_account_id(
+            &mut conn,
+            &ctx.identity,
+            self.config.zero_account_guest_access,
+        )?;
         let track = db(store::get_track(&mut conn, &input.track_id))?
             .ok_or_else(|| err(404, "track not found"))?;
         if track.library_id != "lib:audiobook" {
@@ -1367,7 +1540,12 @@ impl App {
             return false;
         };
         let Some(device_id) = player.output_device_id.as_deref() else {
-            return !matches!(identity, Identity::Node { .. });
+            return match player.owner_account_id.as_deref() {
+                Some(owner) => {
+                    owned_share_allows(&mut conn, player_id, owner, identity).unwrap_or(false)
+                }
+                None => !matches!(identity, Identity::Node { .. }),
+            };
         };
         if let Identity::Node { node_id } = identity {
             return store::device_by_id(&mut conn, device_id)
@@ -1624,6 +1802,9 @@ impl PlayerService for App {
                             .unwrap_or(false);
                 }
                 self.presence.is_present(&p.id)
+                    && p.owner_account_id.as_deref().is_none_or(|owner| {
+                        owned_share_allows(&mut conn, &p.id, owner, &ctx.identity).unwrap_or(false)
+                    })
             })
             .map(|p| Player {
                 audio_blocked: self.output_health.is_blocked(&p.id).then_some(true),
@@ -1670,6 +1851,11 @@ impl PlayerService for App {
             transfer_owner(ctx)
         );
         if let Some(player) = db(store::get_player(&mut conn, pid))? {
+            let anonymous_guest_share = self.config.anonymous_jukebox
+                && matches!(ctx.identity, Identity::Anonymous)
+                && player.kind == "shared"
+                && player.output_device_id.is_none()
+                && player.owner_account_id.is_none();
             let output_report = matches!(
                 &input.command,
                 PlayerCommand::Variant17(_)
@@ -1681,7 +1867,11 @@ impl PlayerService for App {
                     && player.output_device_id.is_none()
                     && match (&ctx.identity, player.owner_account_id.as_deref()) {
                         (Identity::User { account_id, .. }, Some(owner)) => account_id == owner,
-                        (Identity::Anonymous, None) => db(store::count_accounts(&mut conn))? == 0,
+                        (Identity::Anonymous, None) => {
+                            anonymous_guest_share
+                                || (self.config.zero_account_guest_access
+                                    && db(store::count_accounts(&mut conn))? == 0)
+                        }
                         _ => false,
                     };
                 if !browser_output_owns_player {
@@ -1715,22 +1905,41 @@ impl PlayerService for App {
             } else if matches!(ctx.identity, Identity::Node { .. }) {
                 return Err(err(403, "satellites may only control their own outputs"));
             }
-            if player.kind == "shared" && db(store::count_accounts(&mut conn))? > 0 {
+            // Before the first account, guests control shared devices only when the operator
+            // allows elevated zero-account guest access.
+            if player.kind == "shared"
+                && !anonymous_guest_share
+                && (!self.config.zero_account_guest_access
+                    || db(store::count_accounts(&mut conn))? > 0)
+            {
                 match &ctx.identity {
                     Identity::User { .. } => {}
                     Identity::Node { .. } if node_owns_device => {}
                     _ => return Err(err(401, "must be signed in to control shared devices")),
                 }
             }
+            if let (None, Some(owner)) = (
+                player.output_device_id.as_deref(),
+                player.owner_account_id.as_deref(),
+            ) {
+                if !owned_share_allows(&mut conn, pid, owner, &ctx.identity)? {
+                    return Err(err(403, "this device is not shared with your account"));
+                }
+            }
         } else {
             return Err(err(404, "player not found"));
         }
-        let listener_account_id = match &ctx.identity {
-            Identity::User { account_id, .. } => Some(account_id.clone()),
-            Identity::Anonymous if db(store::count_accounts(&mut conn))? == 0 => {
-                Some(GUEST_PROGRESS_ACCOUNT_ID.to_string())
-            }
-            _ => None,
+        // Outer `None` keeps the stored listener (satellite commands). An anonymous command
+        // replaces it, so guest playback is never attributed to an earlier signed-in listener.
+        // Guest progress is recorded only on a zero-account instance that permits it.
+        let listener_account_id: Option<Option<String>> = match &ctx.identity {
+            Identity::User { account_id, .. } => Some(Some(account_id.clone())),
+            Identity::Anonymous => Some(
+                (self.config.zero_account_guest_access
+                    && db(store::count_accounts(&mut conn))? == 0)
+                    .then(|| GUEST_PROGRESS_ACCOUNT_ID.to_string()),
+            ),
+            Identity::Node { .. } => None,
         };
         let previous_revision =
             db(store::get_state(&mut conn, pid))?.map_or(0, |state| state.revision.max(0) as u64);
@@ -1741,7 +1950,7 @@ impl PlayerService for App {
                     conn,
                     pid,
                     &input.command,
-                    listener_account_id.as_deref(),
+                    listener_account_id.as_ref().map(Option::as_deref),
                 )
                 .map_err(PlayerTxnError::Service)
             })
@@ -1775,8 +1984,8 @@ impl PlayerService for App {
         input: EnableShareRequest,
     ) -> Result<ShareResult, ServiceError> {
         let mut conn = self.conn()?;
-        // Signed-in users share under their handle. On a login-less instance (no accounts)
-        // anyone may share a device — it becomes "Guest's <suffix>" (§6.3, §7.3).
+        // Signed-in users share under their handle. Anonymous users can share when no account
+        // exists or when the operator enables the anonymous jukebox policy.
         let (handle, owner, id_seed) = match &ctx.identity {
             Identity::User { account_id, .. } => {
                 let acct = db(store::get_account(&mut conn, account_id))?
@@ -1787,7 +1996,10 @@ impl PlayerService for App {
                 return Err(err(403, "satellites cannot create additional outputs"));
             }
             _ => {
-                if db(store::count_accounts(&mut conn))? == 0 {
+                if self.config.anonymous_jukebox
+                    || (self.config.zero_account_guest_access
+                        && db(store::count_accounts(&mut conn))? == 0)
+                {
                     ("Guest".to_string(), None, "guest".to_string())
                 } else {
                     return Err(err(401, "must be signed in to share a device"));
@@ -1832,6 +2044,19 @@ impl PlayerService for App {
             name_suffix: Some(suffix),
         };
         db(store::create_player(&mut conn, &player))?;
+        // An account-owned share starts with the server default. Ownerless guest shares have
+        // no owner to manage access, so they stay open.
+        if owner.is_some()
+            && db(store::get_setting(&mut conn, SHARE_DEFAULT_ACCESS_SETTING))?.as_deref()
+                == Some("private")
+        {
+            db(store::set_share_access(
+                &mut conn,
+                &player.id,
+                "selected",
+                &[],
+            ))?;
+        }
         std::result::Result::Ok(ShareResult {
             player: Player {
                 id: player.id,
@@ -1864,7 +2089,10 @@ impl PlayerService for App {
                 player.owner_account_id.as_deref() == Some(account_id)
             }
             Identity::Anonymous => {
-                db(store::count_accounts(&mut conn))? == 0 && player.owner_account_id.is_none()
+                player.owner_account_id.is_none()
+                    && (self.config.anonymous_jukebox
+                        || (self.config.zero_account_guest_access
+                            && db(store::count_accounts(&mut conn))? == 0))
             }
             Identity::Node { .. } => false,
         };
@@ -1881,6 +2109,108 @@ impl PlayerService for App {
         self.output_health.clear(&input.player_id);
         std::result::Result::Ok(Ok { ok: true })
     }
+
+    fn get_share_access(
+        &self,
+        ctx: &Ctx,
+        input: ShareAccessRequest,
+    ) -> Result<ShareAccessInfo, ServiceError> {
+        let mut conn = self.conn()?;
+        let owner = require_share_owner(&mut conn, ctx, &input.player_id)?;
+        share_access_info(&mut conn, &input.player_id, &owner)
+    }
+
+    fn set_share_access(
+        &self,
+        ctx: &Ctx,
+        input: SetShareAccessRequest,
+    ) -> Result<ShareAccessInfo, ServiceError> {
+        let mut conn = self.conn()?;
+        let owner = require_share_owner(&mut conn, ctx, &input.player_id)?;
+        let mut account_ids = input.account_ids;
+        account_ids.sort();
+        account_ids.dedup();
+        for account_id in &account_ids {
+            if account_id == &owner {
+                return Err(err(400, "the owner always has access to their own device"));
+            }
+            if db(store::get_account(&mut conn, account_id))?.is_none() {
+                return Err(err(404, format!("account not found: {account_id}")));
+            }
+            if db(store::account_is_blocked(&mut conn, &owner, account_id))? {
+                return Err(err(
+                    400,
+                    "unblock an account before you share a device with it",
+                ));
+            }
+        }
+        let access = match input.access {
+            ShareAccess::Everyone => "everyone",
+            ShareAccess::Selected => "selected",
+        };
+        db(store::set_share_access(
+            &mut conn,
+            &input.player_id,
+            access,
+            &account_ids,
+        ))?;
+        share_access_info(&mut conn, &input.player_id, &owner)
+    }
+}
+
+/// The caller's account id when the caller owns this browser share.
+fn require_share_owner(
+    conn: &mut diesel::SqliteConnection,
+    ctx: &Ctx,
+    player_id: &str,
+) -> Result<String, ServiceError> {
+    let Identity::User { account_id, .. } = &ctx.identity else {
+        return Err(err(401, "sign in to manage device sharing"));
+    };
+    let player = db(store::get_player(conn, player_id))?
+        .ok_or_else(|| err(404, "shared device not found"))?;
+    if player.kind != "shared"
+        || player.output_device_id.is_some()
+        || player.owner_account_id.as_deref() != Some(account_id.as_str())
+    {
+        return Err(err(
+            403,
+            "only the owner of a browser share can manage its access",
+        ));
+    }
+    Ok(account_id.clone())
+}
+
+fn share_access_info(
+    conn: &mut diesel::SqliteConnection,
+    player_id: &str,
+    owner: &str,
+) -> Result<ShareAccessInfo, ServiceError> {
+    let access = match db(store::share_access(conn, player_id))?.as_str() {
+        "selected" => ShareAccess::Selected,
+        _ => ShareAccess::Everyone,
+    };
+    let selected: HashSet<String> = db(store::share_account_ids(conn, player_id))?
+        .into_iter()
+        .collect();
+    let blocked: HashSet<String> = db(store::blocked_account_ids(conn, owner))?
+        .into_iter()
+        .collect();
+    let accounts = db(store::list_accounts(conn, 0, i64::MAX))?
+        .into_iter()
+        .filter(|account| account.id != owner && !blocked.contains(&account.id))
+        .map(|account| ShareCandidate {
+            selected: selected.contains(&account.id),
+            account_id: account.id,
+            handle: account.handle,
+            display_name: account.display_name,
+        })
+        .collect();
+    Ok(ShareAccessInfo {
+        player_id: player_id.to_string(),
+        access,
+        accounts,
+    })
 }
 
 fn validate_track_ids(
@@ -2045,7 +2375,7 @@ fn apply_player_command(
     conn: &mut diesel::SqliteConnection,
     player_id: &str,
     command: &PlayerCommand,
-    listener_account_id: Option<&str>,
+    listener_account_id: Option<Option<&str>>,
 ) -> Result<(PlayerState, Option<NodeDirective>), ServiceError> {
     let mut state =
         db(store::get_state(conn, player_id))?.unwrap_or_else(|| default_player_state(player_id));
@@ -2227,7 +2557,7 @@ fn apply_player_command(
             };
             begin_playback(&mut state, position_ms);
             if let Some(listener) = listener_account_id {
-                state.listener_account_id = Some(listener.to_string());
+                state.listener_account_id = listener.map(str::to_string);
             }
             directive = load_directive(player_id, &state, &queue);
         }
@@ -2247,7 +2577,7 @@ fn apply_player_command(
             set_current_item(&mut state, &queue, Some(index));
             begin_playback(&mut state, replace.position_ms.unwrap_or(0));
             if let Some(listener) = listener_account_id {
-                state.listener_account_id = Some(listener.to_string());
+                state.listener_account_id = listener.map(str::to_string);
             }
             directive = load_directive(player_id, &state, &queue);
         }
@@ -2264,7 +2594,7 @@ fn apply_player_command(
                 set_current_item(&mut state, &queue, Some(index));
                 begin_playback(&mut state, 0);
                 if let Some(listener) = listener_account_id {
-                    state.listener_account_id = Some(listener.to_string());
+                    state.listener_account_id = listener.map(str::to_string);
                 }
                 directive = load_directive(player_id, &state, &queue);
             } else {
@@ -2285,7 +2615,7 @@ fn apply_player_command(
             set_current_item(&mut state, &queue, Some(current.saturating_sub(1)));
             begin_playback(&mut state, 0);
             if let Some(listener) = listener_account_id {
-                state.listener_account_id = Some(listener.to_string());
+                state.listener_account_id = listener.map(str::to_string);
             }
             directive = load_directive(player_id, &state, &queue);
         }
@@ -2654,7 +2984,7 @@ impl AdminService for App {
 
     fn list_accounts(&self, ctx: &Ctx, input: Page) -> Result<ListAccountsResponse, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let (off, lim) = page(input.offset, input.limit);
         let accounts = db(store::list_accounts(&mut conn, off, lim))?
             .into_iter()
@@ -2665,7 +2995,7 @@ impl AdminService for App {
 
     fn set_role(&self, ctx: &Ctx, input: SetRoleRequest) -> Result<Account, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         db(store::set_role(
             &mut conn,
             &input.account_id,
@@ -2710,7 +3040,7 @@ impl AdminService for App {
         input: TrustDomainRequest,
     ) -> Result<TrustedDomains, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let selector = crate::auth::local_rp::parse_selector(&input.domain)
             .map_err(|e| err(400, e.to_string()))?;
         if selector.handle.is_some() {
@@ -2734,7 +3064,7 @@ impl AdminService for App {
         _input: Page,
     ) -> Result<TrustedDomains, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         std::result::Result::Ok(TrustedDomains {
             domains: db(store::list_trusted_domains(&mut conn))?,
         })
@@ -2746,7 +3076,7 @@ impl AdminService for App {
         _input: Page,
     ) -> Result<TrustedIdentities, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         Ok(TrustedIdentities {
             identities: db(store::list_linkkeys_trust(&mut conn))?
                 .into_iter()
@@ -2761,7 +3091,7 @@ impl AdminService for App {
         input: TrustIdentityRequest,
     ) -> Result<TrustedIdentities, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let selector = crate::auth::local_rp::parse_selector(&input.identity)
             .map_err(|error| err(400, error.to_string()))?;
         db(store::add_linkkeys_trust(
@@ -2786,7 +3116,7 @@ impl AdminService for App {
         input: RevokeTrustedIdentityRequest,
     ) -> Result<TrustedIdentities, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let selector = crate::auth::local_rp::parse_selector(&input.identity)
             .map_err(|error| err(400, error.to_string()))?;
         let removed = db(store::remove_linkkeys_trust(
@@ -2812,7 +3142,7 @@ impl AdminService for App {
 
     fn list_nodes(&self, ctx: &Ctx, _input: Page) -> Result<ListNodesResponse, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let mut nodes = Vec::new();
         for n in db(store::list_nodes(&mut conn))? {
             let mut devices = Vec::new();
@@ -2852,7 +3182,7 @@ impl AdminService for App {
 
     fn rename_node(&self, ctx: &Ctx, input: RenameNodeRequest) -> Result<NodeInfo, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         if db(store::rename_node(
             &mut conn,
             &input.node_id,
@@ -2882,7 +3212,7 @@ impl AdminService for App {
         input: RenameDeviceRequest,
     ) -> Result<DeviceInfo, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         if db(store::rename_device(
             &mut conn,
             &input.device_id,
@@ -2909,7 +3239,7 @@ impl AdminService for App {
         input: SetDeviceAccessRequest,
     ) -> Result<DeviceInfo, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         if db(store::set_device_access(
             &mut conn,
             &input.device_id,
@@ -2940,7 +3270,7 @@ impl AdminService for App {
 
     fn list_groups(&self, ctx: &Ctx, _input: Page) -> Result<ListGroupsResponse, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let mut groups = Vec::new();
         for group in db(store::list_access_groups(&mut conn))? {
             groups.push(GroupInfo {
@@ -2958,7 +3288,7 @@ impl AdminService for App {
         input: CreateGroupRequest,
     ) -> Result<GroupInfo, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let name = input.name.trim();
         if name.is_empty() {
             return Err(err(400, "group name cannot be empty"));
@@ -2984,7 +3314,7 @@ impl AdminService for App {
         input: SetGroupMembersRequest,
     ) -> Result<GroupInfo, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         if input.group_id == "everyone" {
             return Err(err(400, "the Everyone group has implicit membership"));
         }
@@ -3006,7 +3336,7 @@ impl AdminService for App {
 
     fn delete_group(&self, ctx: &Ctx, input: DeleteGroupRequest) -> Result<Ok, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         if input.group_id == "everyone" {
             return Err(err(400, "the Everyone group cannot be deleted"));
         }
@@ -3022,7 +3352,7 @@ impl AdminService for App {
         _input: Page,
     ) -> Result<ListSatelliteTokensResponse, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let mut satellites = Vec::new();
         for satellite in db(store::list_satellites(&mut conn))? {
             let group_ids = db(store::satellite_group_ids(&mut conn, &satellite.id))?;
@@ -3044,7 +3374,7 @@ impl AdminService for App {
     ) -> Result<NodeTokenResult, ServiceError> {
         let minted = auth::mint_token();
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let name = input.label.as_deref().unwrap_or("Satellite").trim();
         if name.is_empty() {
             return Err(err(400, "satellite name cannot be empty"));
@@ -3082,7 +3412,7 @@ impl AdminService for App {
         input: RevokeSatelliteTokenRequest,
     ) -> Result<Ok, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         if db(store::delete_satellite(&mut conn, &input.satellite_id))? == 0 {
             return Err(err(404, "satellite destination not found"));
         }
@@ -3095,7 +3425,7 @@ impl AdminService for App {
         input: ImportTrackRequest,
     ) -> Result<ImportResult, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         let relative = safe_import_path(&input.root_relative_path)?;
         let library_kind = input.library.clone().unwrap_or(Library::Music);
         let library_id = library_id(Some(library_kind.clone()));
@@ -3200,14 +3530,14 @@ impl AdminService for App {
         input: BeginImportRequest,
     ) -> Result<BeginImportResult, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         self.imports
             .begin(&self.config, &mut conn, transfer_owner(ctx), input)
     }
 
     fn import_chunk(&self, ctx: &Ctx, input: ImportChunkRequest) -> Result<Ok, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         drop(conn);
         self.imports.chunk(&transfer_owner(ctx), input)
     }
@@ -3218,14 +3548,14 @@ impl AdminService for App {
         input: FinishImportRequest,
     ) -> Result<ImportResult, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         self.imports
             .finish(&self.config, &mut conn, &transfer_owner(ctx), input)
     }
 
     fn cancel_import(&self, ctx: &Ctx, input: CancelImportRequest) -> Result<Ok, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         drop(conn);
         self.imports.cancel(&transfer_owner(ctx), input)
     }
@@ -3241,7 +3571,7 @@ impl AdminService for App {
 
     fn set_setting(&self, ctx: &Ctx, input: SetSettingRequest) -> Result<Settings, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         db(store::set_setting(&mut conn, &input.key, &input.value))?;
         drop(conn);
         self.get_settings(
@@ -3255,7 +3585,7 @@ impl AdminService for App {
 
     fn resync_library(&self, ctx: &Ctx, _input: Page) -> Result<LibraryResyncStatus, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         drop(conn);
         match self.start_library_scan(false).map_err(internal)? {
             crate::app::ScanStart::Started => Ok(LibraryResyncStatus {
@@ -3278,7 +3608,7 @@ impl AdminService for App {
         _input: Page,
     ) -> Result<LibraryResyncStatus, ServiceError> {
         let mut conn = self.conn()?;
-        require_admin_or_guest_instance(ctx, &mut conn)?;
+        require_admin_or_guest_instance(ctx, &mut conn, self.config.zero_account_guest_access)?;
         Ok(LibraryResyncStatus {
             running: self.library_scan_running(),
             started: false,

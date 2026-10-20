@@ -50,6 +50,7 @@ pub struct InstallOptions {
     pub start: bool,
     pub enable: bool,
     pub replace: bool,
+    pub auto_signin: bool,
     pub dry_run: bool,
 }
 
@@ -149,6 +150,9 @@ fn plan_for(
     let scope = options.scope.unwrap_or_else(|| platform.default_scope());
     if platform == Platform::Macos && scope == Scope::System {
         anyhow::bail!("macOS satellites use a per-user LaunchAgent; --scope system is unsupported");
+    }
+    if options.auto_signin && (platform != Platform::Windows || scope != Scope::System) {
+        anyhow::bail!("--auto-signin is available only on Windows with --scope system");
     }
 
     let (default_bin_dir, default_config, service_path) = layout(platform, scope, host)?;
@@ -471,6 +475,18 @@ pub fn apply(plan: &InstallPlan, replace: bool) -> anyhow::Result<()> {
         crate::audio::validate_satellite_output()?;
     }
     ensure_privileges(plan.platform, plan.scope)?;
+    if replace
+        && plan.platform == Platform::Windows
+        && plan.scope == Scope::System
+        && command_output("sc.exe", &["query", "IchoiSatellite"]).is_some()
+    {
+        // `sc.exe create` fails for an existing service, and Windows cannot overwrite the
+        // executable while the service runs it.
+        for command in stop_commands(plan.platform, plan.scope, None)? {
+            run_command_best_effort(&command);
+        }
+        wait_until_removable(&plan.binary_path);
+    }
     for file in &plan.files {
         write_planned_file(file, replace)?;
     }
@@ -518,6 +534,13 @@ pub fn uninstall(
     if !keep_binary {
         println!("  remove executable: {}", binary.display());
     }
+    let windows_system = platform == Platform::Windows && scope == Scope::System;
+    if windows_system {
+        println!(
+            "  remove auto sign-in if Ichoi configured it (account {}, restore previous sign-in settings)",
+            crate::autosignin::ACCOUNT
+        );
+    }
     if dry_run {
         return Ok(());
     }
@@ -532,7 +555,13 @@ pub fn uninstall(
         remove_if_present(&config)?;
     }
     if !keep_binary {
+        if platform == Platform::Windows {
+            wait_until_removable(&binary);
+        }
         remove_if_present(&binary)?;
+    }
+    if windows_system && crate::autosignin::disable(&config)? {
+        println!("Auto sign-in removed");
     }
     if platform == Platform::Linux {
         let mut command = vec!["systemctl".to_string()];
@@ -553,8 +582,11 @@ pub fn status(requested_scope: Option<Scope>) -> anyhow::Result<()> {
         anyhow::bail!("macOS satellites do not support system scope");
     }
     let host = HostPaths::current()?;
-    let (_, _, service_path) = layout(platform, scope, &host)?;
+    let (_, default_config, service_path) = layout(platform, scope, &host)?;
     let command = status_command(platform, scope, service_path.as_deref())?;
+    if platform == Platform::Windows && scope == Scope::System {
+        println!("{}", crate::autosignin::status(&default_config));
+    }
     run_command(&command)
 }
 
@@ -637,6 +669,21 @@ fn status_command(
         }
         (Platform::Macos, Scope::System) => unreachable!(),
     })
+}
+
+/// Windows keeps a service executable locked until the stopped process has exited, which can
+/// take a few seconds after `sc.exe stop` returns.
+fn wait_until_removable(path: &Path) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    while std::time::Instant::now() < deadline {
+        match std::fs::OpenOptions::new().write(true).open(path) {
+            // Access denied or a sharing violation while the process still maps the file.
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+            _ => return,
+        }
+    }
 }
 
 fn remove_if_present(path: &Path) -> anyhow::Result<()> {
@@ -749,9 +796,15 @@ fn run_command(command: &[String]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The log file for a service started from `config`, beside the configuration file.
+fn service_log_path(config: &Path) -> PathBuf {
+    config.with_file_name("ichoi.log")
+}
+
 pub fn serve_with_config(path: &Path) -> anyhow::Result<()> {
     std::env::set_var("ICHOI_CONFIG", path);
     let config = crate::config::Config::load()?;
+    crate::cli::init_logging(&config, Some(&service_log_path(path)))?;
     let runtime = tokio::runtime::Runtime::new()?;
     runtime.block_on(crate::app::serve(config))
 }
@@ -816,8 +869,9 @@ mod windows_daemon {
             process_id: None,
         };
         status.set_service_status(report(ServiceState::Running, ServiceControlAccept::STOP))?;
-        std::env::set_var("ICHOI_CONFIG", config_path);
+        std::env::set_var("ICHOI_CONFIG", &config_path);
         let config = crate::config::Config::load()?;
+        crate::cli::init_logging(&config, Some(&service_log_path(&config_path)))?;
         let runtime = tokio::runtime::Runtime::new()?;
         runtime.block_on(async move {
             tokio::select! {
@@ -860,6 +914,7 @@ mod tests {
             start: true,
             enable: true,
             replace: false,
+            auto_signin: false,
             dry_run: true,
         }
     }

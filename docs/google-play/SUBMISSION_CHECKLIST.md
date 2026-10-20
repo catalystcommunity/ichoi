@@ -8,10 +8,13 @@ Do not submit until every external item has an owner and evidence.
 - [ ] Android lint passes.
 - [ ] The debug build passes.
 - [ ] The release build passes with the permanent application ID.
+- [ ] The build targets API level 36 or the newer level that Google requires.
 - [ ] The release guard rejects the development application ID.
 - [ ] The manifest permission check passes.
 - [ ] The dependency and prohibited-operation checks pass.
 - [ ] Playback creates no persistent media file.
+- [ ] Report, block, unblock, and account-deletion tests pass.
+- [x] The approved adaptive and legacy launcher icons are in the application.
 - [ ] Tests pass on Android 10 through the current Android release.
 - [ ] Server generation is reproducible and the complete server check passes.
 - [ ] Browser tests, type checks, and the production build pass.
@@ -19,12 +22,14 @@ Do not submit until every external item has an owner and evidence.
 
 ## External decisions
 
-- [ ] Select and approve the permanent Android application ID.
-- [ ] Create the Play Console application with that ID.
+- [x] Select and approve the permanent Android application ID (`com.catalystsquad.ichoi`).
+- [x] Create the Play Console application with that ID.
+- [ ] Verify the developer identity and register the package name.
 - [ ] Select the website and demo domains.
 - [ ] Approve privacy and support contacts.
 - [ ] Approve the privacy, terms, data, and licence claims.
 - [ ] Approve every demo recording and its attribution.
+- [x] Approve the app icon and feature graphic (`assets/brand/`).
 - [ ] Deploy the website and demo without repository placeholder values.
 - [ ] Remove the demo bootstrap token after the first administrator signs in.
 - [ ] Run and record the public demo smoke test.
@@ -41,6 +46,7 @@ Do not submit until every external item has an owner and evidence.
 - [ ] Complete the content-rating questionnaire and record its result.
 - [ ] Declare user-created content and the report process.
 - [ ] Upload screenshots taken against the approved production demo.
+- [ ] Upload the required 512 by 512 pixel app icon and 1024 by 500 pixel feature graphic.
 - [ ] Upload the signed application bundle.
 - [ ] Complete a pre-launch report and resolve all blocking findings.
 - [ ] Submit for review only after all prior checks pass.

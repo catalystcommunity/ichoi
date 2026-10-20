@@ -5,12 +5,14 @@ import {
   acceptTerms,
   buildReportRequest,
   canManageReports,
+  changeAccountBlock,
   changeReportStatus,
   deleteCurrentAccount,
   deleteReportedTarget,
   hasAcceptedTerms,
   isSignedIn,
   loadAllAccounts,
+  loadAllBlockedAccounts,
   loadAllContentReports,
   reportPage,
   requireTermsForPlaylist,
@@ -48,6 +50,34 @@ test("terms acceptance applies to signed-in users and guests and gates playlists
   acceptTerms(storage);
   assert.equal(hasAcceptedTerms(storage), true);
   assert.doesNotThrow(() => requireTermsForPlaylist(storage));
+});
+
+test("account blocks use the selected service, refresh filtering, and propagate failures", async () => {
+  const calls = [];
+  await changeAccountBlock(
+    async (request) => calls.push(["server-a", request.account_id]),
+    async () => calls.push(["refresh-a"]),
+    "blocked@example.com",
+  );
+  assert.deepEqual(calls, [
+    ["server-a", "blocked@example.com"],
+    ["refresh-a"],
+  ]);
+  await assert.rejects(
+    changeAccountBlock(async () => { throw new Error("service failed"); }, async () => calls.push(["refresh-b"]), "blocked@example.com"),
+    /service failed/,
+  );
+  assert.equal(calls.some((entry) => entry[0] === "refresh-b"), false);
+
+  const pages = [];
+  const blocked = await loadAllBlockedAccounts(async ({ offset, limit }) => {
+    pages.push({ offset, limit });
+    return offset === 0
+      ? { accounts: [{ account_id: "one", handle: "one", blocked_at: new Date(0) }], total: 2 }
+      : { accounts: [{ account_id: "two", handle: "two", blocked_at: new Date(0) }], total: 2 };
+  });
+  assert.deepEqual(pages, [{ offset: 0, limit: 1_000 }, { offset: 1, limit: 1_000 }]);
+  assert.deepEqual(blocked.map((account) => account.account_id), ["one", "two"]);
 });
 
 test("account deletion validates the exact handle and clears only after success", async () => {

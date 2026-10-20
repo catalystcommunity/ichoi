@@ -1,0 +1,19 @@
+name: Ichoi PR Website
+id: ichoi-pr-website
+description: "Rebuild the project website and check the committed output for pull requests."
+
+# A separate workflow so its paths filter applies only to website changes.
+on:
+  events:
+    - pull_request_opened
+    - pull_request_updated
+  branches:
+    - main
+
+paths:
+  include:
+    - "website/**"
+
+jobs:
+  ichoi-website-check:
+    job_file: website-check.yaml

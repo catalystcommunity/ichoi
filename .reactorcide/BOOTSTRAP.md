@@ -12,6 +12,7 @@ Reactorcide reads the workflow and job files from this directory.
 | `plugins/plugin_ichoi_ci.py` | Run pull-request checks. |
 | `plugins/plugin_ichoi_images.py` | Build server container images. |
 | `plugins/plugin_ichoi_release.py` | Tag, build, seal, and publish releases. |
+| `plugins/plugin_ichoi_website.py` | Check and deploy the project website. |
 | `scripts/asset_cache.py` | Access the Ichoi prefix in the S3 asset cache. |
 | `plugins/tests/` | Test the release state machine and workflow graph. |
 
@@ -23,6 +24,7 @@ grant. A job uses one Ichoi variable to select its plugin action:
 | `ICHOI_CI_JOB` | `conventional-commits`, `build`, `test-sqlite`, `csil` |
 | `ICHOI_IMAGE_JOB` | `build-test`, `build-and-deploy` |
 | `ICHOI_RELEASE_JOB` | `tag`, `asset-prepare`, `asset-build`, `asset-seal`, `publish`, `asset-cleanup` |
+| `ICHOI_WEBSITE_JOB` | `check`, `deploy` |
 
 The job files use `runnerbase:latest`. The project evaluator must use the same current
 image.
@@ -46,6 +48,23 @@ The `ichoi-release` workflow runs for a `server/v*` tag. It does these steps:
 
 The core archives are static musl binaries. The satellite archives are GNU binaries with
 a glibc 2.17 baseline. The public archive names contain the release version.
+
+## Website deployment
+
+The `ichoi-pr-website` workflow checks a pull request that changes `website/`. The build
+must not change the committed `website/site/`. The site must have no placeholder domain or
+contact.
+
+The `ichoi-website-deploy` workflow runs when `website/VERSION.txt` changes on `main`. A
+text change can merge without a deploy. Raise the version to release the site. The deploy
+node builds a multi-architecture image and pushes it to
+`containers.catalystsquad.com/public/catalystcommunity/ichoi-website`. It installs the
+`catalyst-helm/pysocha-site` chart in the `ichoi-website` namespace with the chart Ingress
+off. Then it applies `website/httproute.yaml`. The chart Ingress conflicts with the cluster
+Gateway listeners.
+
+The deploy node `ichoi-website-deploy` needs grants for `catalystcommunity/registry` and
+`catalystcommunity/k8s`.
 
 ## Asset-cache security
 

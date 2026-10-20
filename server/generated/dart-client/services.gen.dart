@@ -162,6 +162,33 @@ final class LibraryClient {
     return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Ok blockAccount(BlockAccountRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'block-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok unblockAccount(BlockAccountRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'unblock-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  BlockedAccountsResponse listBlockedAccounts(Page request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'list-blocked-accounts',
+      request.toCbor(),
+    );
+    return BlockedAccountsResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   CoverArt getCoverArt(CoverArtRequest request) {
     final csilResp = transport.call(
       'LibraryService',
@@ -253,6 +280,24 @@ final class PlayerClient {
       request.toCbor(),
     );
     return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ShareAccessInfo getShareAccess(ShareAccessRequest request) {
+    final csilResp = transport.call(
+      'PlayerService',
+      'get-share-access',
+      request.toCbor(),
+    );
+    return ShareAccessInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ShareAccessInfo setShareAccess(SetShareAccessRequest request) {
+    final csilResp = transport.call(
+      'PlayerService',
+      'set-share-access',
+      request.toCbor(),
+    );
+    return ShareAccessInfo.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 

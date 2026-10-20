@@ -188,6 +188,33 @@ func (c *LibraryClient) DeletePlaylist(ctx context.Context, req DeletePlaylistRe
 	return DecodeOk(csilResp)
 }
 
+func (c *LibraryClient) BlockAccount(ctx context.Context, req BlockAccountRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "block-account", EncodeBlockAccountRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
+func (c *LibraryClient) UnblockAccount(ctx context.Context, req BlockAccountRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "unblock-account", EncodeBlockAccountRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
+func (c *LibraryClient) ListBlockedAccounts(ctx context.Context, req Page) (BlockedAccountsResponse, error) {
+	var csilZero BlockedAccountsResponse
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "list-blocked-accounts", EncodePage(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeBlockedAccountsResponse(csilResp)
+}
+
 func (c *LibraryClient) GetCoverArt(ctx context.Context, req CoverArtRequest) (CoverArt, error) {
 	var csilZero CoverArt
 	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "get-cover-art", EncodeCoverArtRequest(req))
@@ -279,6 +306,24 @@ func (c *PlayerClient) DisableShare(ctx context.Context, req DisableShareRequest
 		return csilZero, csilErr
 	}
 	return DecodeOk(csilResp)
+}
+
+func (c *PlayerClient) GetShareAccess(ctx context.Context, req ShareAccessRequest) (ShareAccessInfo, error) {
+	var csilZero ShareAccessInfo
+	csilResp, csilErr := c.transport.Call(ctx, "PlayerService", "get-share-access", EncodeShareAccessRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeShareAccessInfo(csilResp)
+}
+
+func (c *PlayerClient) SetShareAccess(ctx context.Context, req SetShareAccessRequest) (ShareAccessInfo, error) {
+	var csilZero ShareAccessInfo
+	csilResp, csilErr := c.transport.Call(ctx, "PlayerService", "set-share-access", EncodeSetShareAccessRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeShareAccessInfo(csilResp)
 }
 
 // MediaClient is a typed client for the MediaService service. The client owns

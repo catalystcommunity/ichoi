@@ -60,7 +60,7 @@ fn enabled_app() -> App {
     config.linkkeys_rp_api_key = Some("test-api-key".to_string());
     config.linkkeys_rp_domain = Some("ichoi.example".to_string());
     config.public_url = Some("https://ichoi.example".to_string());
-    config.linkkeys_trusted_identities = vec!["family.example".to_string()];
+    config.linkkeys_trusted_user_ids = vec!["regular-user-uuid@family.example".to_string()];
     let pool = ichoi::db::test_pool();
     ichoi::auth::local_rp::initialize_database(&pool, &config).unwrap();
     App::new(pool, Arc::new(config)).with_regular_rp_backend(Arc::new(FakeBackend))

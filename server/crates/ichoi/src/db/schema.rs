@@ -133,6 +133,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    account_blocks (blocker_account_id, blocked_account_id) {
+        blocker_account_id -> Text,
+        blocked_account_id -> Text,
+        created_at -> Text,
+    }
+}
+
+diesel::table! {
     nodes (id) {
         id -> Text,
         kind -> Text,
@@ -203,6 +211,20 @@ diesel::table! {
         owner_account_id -> Nullable<Text>,
         name -> Text,
         name_suffix -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    player_share_access (player_id) {
+        player_id -> Text,
+        access -> Text,
+    }
+}
+
+diesel::table! {
+    player_share_accounts (player_id, account_id) {
+        player_id -> Text,
+        account_id -> Text,
     }
 }
 
@@ -308,6 +330,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     albums,
     tracks,
     playlists,
+    account_blocks,
     nodes,
     output_devices,
     access_groups,
@@ -316,6 +339,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     satellite_token_groups,
     output_device_groups,
     players,
+    player_share_access,
+    player_share_accounts,
     player_queue_items,
     player_state,
     player_undo_state,

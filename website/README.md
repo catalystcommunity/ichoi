@@ -16,6 +16,14 @@ with `python3 -m http.server 4173 --directory site`.
 
 ## Deployment
 
-Run `./tools.sh check-deploy` before deployment. It fails while the reserved
-`.invalid` domain or contact placeholders exist. A person must approve the
-privacy and support contacts before these values change.
+The site is served at `https://catalystichoi.com`. Reactorcide deploys it when
+`VERSION.txt` changes on `main`. Raise the version in the same pull request as
+the change, or in a later one. A change without a version change merges but
+does not deploy.
+
+`./tools.sh check-deploy` fails while a reserved `.invalid` domain or a
+`REPLACE-ME` value exists. The image build runs the same check.
+
+The pysocha-site chart makes an Ingress. The deploy job turns it off and
+applies `httproute.yaml`, because the Ingress conflicts with the cluster
+Gateway listeners. See `.reactorcide/BOOTSTRAP.md`.

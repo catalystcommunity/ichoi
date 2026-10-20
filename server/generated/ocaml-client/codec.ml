@@ -381,6 +381,7 @@ and encode_playlists_response (v : playlists_response) : Cbor.t =
     (List.filter_map
        (fun x -> x)
        [
+         Some (Cbor.Text "total", (Cbor.int64 v.total));
          Some (Cbor.Text "playlists", (Cbor.Array (List.map (fun csil_e -> (encode_playlist csil_e)) v.playlists)));
        ])
 
@@ -407,6 +408,34 @@ and encode_playlist_detail (v : playlist_detail) : Cbor.t =
        [
          Some (Cbor.Text "tracks", (Cbor.Array (List.map (fun csil_e -> (encode_track csil_e)) v.tracks)));
          Some (Cbor.Text "playlist", (encode_playlist v.playlist));
+       ])
+
+and encode_block_account_request (v : block_account_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
+       ])
+
+and encode_blocked_account (v : blocked_account) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "handle", (Cbor.Text v.handle));
+         Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
+         Some (Cbor.Text "blocked_at", (Cbor.Tag (0, Cbor.Text v.blocked_at)));
+         (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
+       ])
+
+and encode_blocked_accounts_response (v : blocked_accounts_response) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "total", (Cbor.int64 v.total));
+         Some (Cbor.Text "accounts", (Cbor.Array (List.map (fun csil_e -> (encode_blocked_account csil_e)) v.accounts)));
        ])
 
 and encode_cover_art_request (v : cover_art_request) : Cbor.t =
@@ -733,6 +762,48 @@ and encode_share_result (v : share_result) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "player", (encode_player v.player));
+       ])
+
+and encode_share_access (v : share_access) : Cbor.t =
+  match v with Everyone -> Cbor.Text "everyone" | Selected -> Cbor.Text "selected"
+
+and encode_share_access_request (v : share_access_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
+       ])
+
+and encode_share_candidate (v : share_candidate) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "handle", (Cbor.Text v.handle));
+         Some (Cbor.Text "selected", (Cbor.Bool v.selected));
+         Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
+         (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
+       ])
+
+and encode_share_access_info (v : share_access_info) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "access", (encode_share_access v.access));
+         Some (Cbor.Text "accounts", (Cbor.Array (List.map (fun csil_e -> (encode_share_candidate csil_e)) v.accounts)));
+         Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
+       ])
+
+and encode_set_share_access_request (v : set_share_access_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "access", (encode_share_access v.access));
+         Some (Cbor.Text "player_id", (Cbor.Text v.player_id));
+         Some (Cbor.Text "account_ids", (Cbor.Array (List.map (fun csil_e -> (Cbor.Text csil_e)) v.account_ids)));
        ])
 
 and encode_media_open (v : media_open) : Cbor.t =
@@ -1878,6 +1949,7 @@ and decode_playlists_response (csil_c : Cbor.t) : playlists_response =
       in
       ignore csil_req;
       {
+        total = (Cbor.to_i64 (csil_req "total"));
         playlists = (match (csil_req "playlists") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_playlist csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
       }
   | _ -> failwith "csilgen: expected map for playlists_response"
@@ -1921,6 +1993,49 @@ and decode_playlist_detail (csil_c : Cbor.t) : playlist_detail =
         playlist = (decode_playlist (csil_req "playlist"));
       }
   | _ -> failwith "csilgen: expected map for playlist_detail"
+
+and decode_block_account_request (csil_c : Cbor.t) : block_account_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        account_id = (Cbor.to_text (csil_req "account_id"));
+      }
+  | _ -> failwith "csilgen: expected map for block_account_request"
+
+and decode_blocked_account (csil_c : Cbor.t) : blocked_account =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        handle = (Cbor.to_text (csil_req "handle"));
+        account_id = (Cbor.to_text (csil_req "account_id"));
+        blocked_at = (match (csil_req "blocked_at") with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp");
+        display_name = (match csil_field "display_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for blocked_account"
+
+and decode_blocked_accounts_response (csil_c : Cbor.t) : blocked_accounts_response =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        total = (Cbor.to_i64 (csil_req "total"));
+        accounts = (match (csil_req "accounts") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_blocked_account csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for blocked_accounts_response"
 
 and decode_cover_art_request (csil_c : Cbor.t) : cover_art_request =
   match csil_c with
@@ -2414,6 +2529,68 @@ and decode_share_result (csil_c : Cbor.t) : share_result =
         player = (decode_player (csil_req "player"));
       }
   | _ -> failwith "csilgen: expected map for share_result"
+
+and decode_share_access (csil_c : Cbor.t) : share_access =
+  match Cbor.to_text csil_c with "everyone" -> Everyone | "selected" -> Selected | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_share_access_request (csil_c : Cbor.t) : share_access_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        player_id = (Cbor.to_text (csil_req "player_id"));
+      }
+  | _ -> failwith "csilgen: expected map for share_access_request"
+
+and decode_share_candidate (csil_c : Cbor.t) : share_candidate =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        handle = (Cbor.to_text (csil_req "handle"));
+        selected = (Cbor.to_bool (csil_req "selected"));
+        account_id = (Cbor.to_text (csil_req "account_id"));
+        display_name = (match csil_field "display_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for share_candidate"
+
+and decode_share_access_info (csil_c : Cbor.t) : share_access_info =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        access = (decode_share_access (csil_req "access"));
+        accounts = (match (csil_req "accounts") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_share_candidate csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+        player_id = (Cbor.to_text (csil_req "player_id"));
+      }
+  | _ -> failwith "csilgen: expected map for share_access_info"
+
+and decode_set_share_access_request (csil_c : Cbor.t) : set_share_access_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        access = (decode_share_access (csil_req "access"));
+        player_id = (Cbor.to_text (csil_req "player_id"));
+        account_ids = (match (csil_req "account_ids") with Cbor.Array csil_xs -> List.map (fun csil_e -> (Cbor.to_text csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for set_share_access_request"
 
 and decode_media_open (csil_c : Cbor.t) : media_open =
   match csil_c with
@@ -3504,6 +3681,18 @@ let encode_playlist_detail_bytes (v : playlist_detail) : bytes = Cbor.encode (en
 let decode_playlist_detail_bytes (b : bytes) : playlist_detail =
   match Cbor.decode b with Ok c -> decode_playlist_detail c | Error e -> failwith e
 
+let encode_block_account_request_bytes (v : block_account_request) : bytes = Cbor.encode (encode_block_account_request v)
+let decode_block_account_request_bytes (b : bytes) : block_account_request =
+  match Cbor.decode b with Ok c -> decode_block_account_request c | Error e -> failwith e
+
+let encode_blocked_account_bytes (v : blocked_account) : bytes = Cbor.encode (encode_blocked_account v)
+let decode_blocked_account_bytes (b : bytes) : blocked_account =
+  match Cbor.decode b with Ok c -> decode_blocked_account c | Error e -> failwith e
+
+let encode_blocked_accounts_response_bytes (v : blocked_accounts_response) : bytes = Cbor.encode (encode_blocked_accounts_response v)
+let decode_blocked_accounts_response_bytes (b : bytes) : blocked_accounts_response =
+  match Cbor.decode b with Ok c -> decode_blocked_accounts_response c | Error e -> failwith e
+
 let encode_cover_art_request_bytes (v : cover_art_request) : bytes = Cbor.encode (encode_cover_art_request v)
 let decode_cover_art_request_bytes (b : bytes) : cover_art_request =
   match Cbor.decode b with Ok c -> decode_cover_art_request c | Error e -> failwith e
@@ -3643,6 +3832,26 @@ let decode_disable_share_request_bytes (b : bytes) : disable_share_request =
 let encode_share_result_bytes (v : share_result) : bytes = Cbor.encode (encode_share_result v)
 let decode_share_result_bytes (b : bytes) : share_result =
   match Cbor.decode b with Ok c -> decode_share_result c | Error e -> failwith e
+
+let encode_share_access_bytes (v : share_access) : bytes = Cbor.encode (encode_share_access v)
+let decode_share_access_bytes (b : bytes) : share_access =
+  match Cbor.decode b with Ok c -> decode_share_access c | Error e -> failwith e
+
+let encode_share_access_request_bytes (v : share_access_request) : bytes = Cbor.encode (encode_share_access_request v)
+let decode_share_access_request_bytes (b : bytes) : share_access_request =
+  match Cbor.decode b with Ok c -> decode_share_access_request c | Error e -> failwith e
+
+let encode_share_candidate_bytes (v : share_candidate) : bytes = Cbor.encode (encode_share_candidate v)
+let decode_share_candidate_bytes (b : bytes) : share_candidate =
+  match Cbor.decode b with Ok c -> decode_share_candidate c | Error e -> failwith e
+
+let encode_share_access_info_bytes (v : share_access_info) : bytes = Cbor.encode (encode_share_access_info v)
+let decode_share_access_info_bytes (b : bytes) : share_access_info =
+  match Cbor.decode b with Ok c -> decode_share_access_info c | Error e -> failwith e
+
+let encode_set_share_access_request_bytes (v : set_share_access_request) : bytes = Cbor.encode (encode_set_share_access_request v)
+let decode_set_share_access_request_bytes (b : bytes) : set_share_access_request =
+  match Cbor.decode b with Ok c -> decode_set_share_access_request c | Error e -> failwith e
 
 let encode_media_open_bytes (v : media_open) : bytes = Cbor.encode (encode_media_open v)
 let decode_media_open_bytes (b : bytes) : media_open =

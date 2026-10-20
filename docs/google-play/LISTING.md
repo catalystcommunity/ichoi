@@ -40,9 +40,9 @@ available under the Apache License, Version 2.0.
 
 ## Required links
 
-- Website: `https://ichoi.invalid/`
-- Privacy policy: `https://ichoi.invalid/privacy.html`
-- Account deletion: `https://ichoi.invalid/account-deletion.html`
-- Support: `https://ichoi.invalid/support.html`
+- Website: `https://catalystichoi.com/`
+- Privacy policy: `https://catalystichoi.com/privacy.html`
+- Account deletion: `https://catalystichoi.com/account-deletion.html`
+- Support: `https://catalystichoi.com/support.html`
 
 These URLs are reserved placeholders. The submission guard must reject them.

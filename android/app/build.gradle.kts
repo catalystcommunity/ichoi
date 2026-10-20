@@ -3,28 +3,44 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Release inputs. scripts/release-bundle.sh sets them from the version and the secret store.
+val ichoiVersionName = providers.gradleProperty("ichoiVersionName").orNull ?: "0.1.0-dev"
+val ichoiVersionCode = providers.gradleProperty("ichoiVersionCode").orNull?.toInt() ?: 1
+val uploadKeystore = providers.environmentVariable("ICHOI_UPLOAD_KEYSTORE").orNull
+
 android {
     namespace = "community.catalyst.ichoi"
     compileSdk = 36
 
     defaultConfig {
-        // AND-00 is intentionally unresolved. This ID is development-only.
-        applicationId = "community.catalyst.ichoi.dev"
+        // AND-00: the permanent Play application ID. It cannot change after publication.
+        applicationId = "com.catalystsquad.ichoi"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0-dev"
+        versionCode = ichoiVersionCode
+        versionName = ichoiVersionName
+    }
+
+    signingConfigs {
+        if (uploadKeystore != null) {
+            create("upload") {
+                storeFile = file(uploadKeystore)
+                storePassword = providers.environmentVariable("ICHOI_UPLOAD_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("ICHOI_UPLOAD_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("ICHOI_UPLOAD_KEY_PASSWORD").get()
+            }
+        }
     }
 
     buildTypes {
         getByName("debug") {
-            applicationIdSuffix = ".debug"
+            // Development-only. A debug build must never use the store ID.
+            applicationIdSuffix = ".dev"
         }
         getByName("release") {
             isMinifyEnabled = false
-            // Store publishing must fail until AND-00 selects a permanent ID.
-            buildConfigField("Boolean", "STORE_RELEASE_ENABLED", "false")
-            manifestPlaceholders["storeReleaseEnabled"] = false
+            // Unsigned without the upload key. A Play bundle must be signed.
+            signingConfig = signingConfigs.findByName("upload")
         }
     }
 
@@ -39,14 +55,24 @@ android {
     sourceSets["test"].java.srcDir("src/test/java")
 }
 
+val permanentApplicationId = "com.catalystsquad.ichoi"
 tasks.register("verifyStoreRelease") {
+    val releaseId = android.defaultConfig.applicationId
     doLast {
-        check(false) {
-            "Store release is blocked: AND-00 permanent application ID is not selected"
+        check(releaseId == permanentApplicationId) {
+            "Release application ID $releaseId is not the permanent ID $permanentApplicationId"
         }
     }
 }
-tasks.matching { it.name == "assembleRelease" }.configureEach { dependsOn("verifyStoreRelease") }
+tasks.register("verifyUploadSigning") {
+    val signed = uploadKeystore != null
+    doLast {
+        check(signed) { "bundleRelease needs the upload key. Use scripts/release-bundle.sh." }
+    }
+}
+tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }
+    .configureEach { dependsOn("verifyStoreRelease") }
+tasks.matching { it.name == "bundleRelease" }.configureEach { dependsOn("verifyUploadSigning") }
 tasks.register("auditDependencies") {
     doLast {
         val forbidden = Regex("analytics|advertis|billing|crashlytics|sentry|firebase|updater|remote.?code", RegexOption.IGNORE_CASE)

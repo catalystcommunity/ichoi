@@ -93,6 +93,12 @@ typedef enum PlayerKind {
     PLAYER_KIND_PRIVATE,
 } PlayerKind;
 
+/* ShareAccess is an enumeration. */
+typedef enum ShareAccess {
+    SHARE_ACCESS_EVERYONE,
+    SHARE_ACCESS_SELECTED,
+} ShareAccess;
+
 /* MediaEndReason is an enumeration. */
 typedef enum MediaEndReason {
     MEDIA_END_REASON_EOS,
@@ -165,6 +171,9 @@ typedef struct PlaylistsResponse PlaylistsResponse;
 typedef struct PlaylistRequest PlaylistRequest;
 typedef struct DeletePlaylistRequest DeletePlaylistRequest;
 typedef struct PlaylistDetail PlaylistDetail;
+typedef struct BlockAccountRequest BlockAccountRequest;
+typedef struct BlockedAccount BlockedAccount;
+typedef struct BlockedAccountsResponse BlockedAccountsResponse;
 typedef struct CoverArtRequest CoverArtRequest;
 typedef struct CoverArt CoverArt;
 typedef struct ReportContentRequest ReportContentRequest;
@@ -199,6 +208,10 @@ typedef struct CommandRequest CommandRequest;
 typedef struct EnableShareRequest EnableShareRequest;
 typedef struct DisableShareRequest DisableShareRequest;
 typedef struct ShareResult ShareResult;
+typedef struct ShareAccessRequest ShareAccessRequest;
+typedef struct ShareCandidate ShareCandidate;
+typedef struct ShareAccessInfo ShareAccessInfo;
+typedef struct SetShareAccessRequest SetShareAccessRequest;
 typedef struct MediaOpen MediaOpen;
 typedef struct MediaSeek MediaSeek;
 typedef struct MediaPause MediaPause;
@@ -548,6 +561,7 @@ typedef struct UpdateAudiobookProgressRequest {
 typedef struct PlaylistsResponse {
     Playlist *playlists;
     size_t playlists_count;
+    uint64_t total;
 } PlaylistsResponse;
 
 /* PlaylistRequest is a structured data type. */
@@ -566,6 +580,26 @@ typedef struct PlaylistDetail {
     Track *tracks;
     size_t tracks_count;
 } PlaylistDetail;
+
+/* BlockAccountRequest is a structured data type. */
+typedef struct BlockAccountRequest {
+    AccountId account_id;
+} BlockAccountRequest;
+
+/* BlockedAccount is a structured data type. */
+typedef struct BlockedAccount {
+    AccountId account_id;
+    Handle handle;
+    char *display_name;
+    CsilTimestamp blocked_at;
+} BlockedAccount;
+
+/* BlockedAccountsResponse is a structured data type. */
+typedef struct BlockedAccountsResponse {
+    BlockedAccount *accounts;
+    size_t accounts_count;
+    uint64_t total;
+} BlockedAccountsResponse;
 
 /* CoverArtRequest is a structured data type. */
 typedef struct CoverArtRequest {
@@ -842,6 +876,35 @@ typedef struct DisableShareRequest {
 typedef struct ShareResult {
     Player player;
 } ShareResult;
+
+/* ShareAccessRequest is a structured data type. */
+typedef struct ShareAccessRequest {
+    PlayerId player_id;
+} ShareAccessRequest;
+
+/* ShareCandidate is a structured data type. */
+typedef struct ShareCandidate {
+    AccountId account_id;
+    char *handle;
+    char *display_name;
+    bool selected;
+} ShareCandidate;
+
+/* ShareAccessInfo is a structured data type. */
+typedef struct ShareAccessInfo {
+    PlayerId player_id;
+    ShareAccess access;
+    ShareCandidate *accounts;
+    size_t accounts_count;
+} ShareAccessInfo;
+
+/* SetShareAccessRequest is a structured data type. */
+typedef struct SetShareAccessRequest {
+    PlayerId player_id;
+    ShareAccess access;
+    AccountId *account_ids;
+    size_t account_ids_count;
+} SetShareAccessRequest;
 
 /* MediaOpen is a structured data type. */
 typedef struct MediaOpen {

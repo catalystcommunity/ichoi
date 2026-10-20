@@ -7,7 +7,9 @@ import { EmptyState, Spinner } from "../components/common.tsx";
 import { IconPlay, IconPlaylist } from "../components/Icons.tsx";
 import { ReportDialog } from "../components/ReportDialog.tsx";
 import { isSignedIn } from "../lib/compliance.ts";
+import { changeAccountBlock } from "../lib/compliance.ts";
 import type { ContentReportTargetType } from "../lib/schema.ts";
+import { useToast } from "../stores/toasts.tsx";
 
 interface ReportTarget {
   type: ContentReportTargetType;
@@ -19,13 +21,30 @@ export function PlaylistsPage(): JSX.Element {
   const servers = useServers();
   const pb = usePlayback();
   const { t } = useI18n();
+  const toast = useToast();
   const [selected, setSelected] = createSignal<string>();
   const [reportTarget, setReportTarget] = createSignal<ReportTarget>();
 
-  const [list] = createResource(
+  const [list, { refetch: refetchList }] = createResource(
     () => servers.api(),
-    (api) => api.library.listPlaylists({ limit: 200 }),
+    (api) => api.library.listAllPlaylists(),
   );
+
+  async function blockOwner(accountId: string): Promise<void> {
+    const api = servers.api();
+    if (!api) return;
+    try {
+      await changeAccountBlock(
+        (request) => api.library.blockAccount(request),
+        () => refetchList(),
+        accountId,
+      );
+      setSelected(undefined);
+      toast.show("Account blocked on this server.");
+    } catch (caught) {
+      toast.show(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
 
   const [detail] = createResource(
     () => {
@@ -97,13 +116,24 @@ export function PlaylistsPage(): JSX.Element {
                           </button>
                           <Show when={d().playlist.owner}>
                             {(owner) => (
-                              <button
-                                type="button"
-                                class="btn btn-ghost"
-                                onClick={() => setReportTarget({ type: "account", id: owner(), label: `user ${owner()}` })}
-                              >
-                                Report user
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  class="btn btn-ghost"
+                                  onClick={() => setReportTarget({ type: "account", id: owner(), label: `user ${owner()}` })}
+                                >
+                                  Report user
+                                </button>
+                                <Show when={owner() !== servers.active()?.session?.account_id}>
+                                  <button
+                                    type="button"
+                                    class="btn btn-ghost"
+                                    onClick={() => void blockOwner(owner())}
+                                  >
+                                    Block user
+                                  </button>
+                                </Show>
+                              </>
                             )}
                           </Show>
                         </Show>

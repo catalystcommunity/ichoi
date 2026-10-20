@@ -275,7 +275,7 @@ class ReleaseWorkflowTest(unittest.TestCase):
 
     def test_installed_evaluator_loads_and_selects_the_release_workflow(self):
         workflows = load_workflow_definitions(ROOT)
-        self.assertEqual(len(workflows), 5)
+        self.assertEqual(len(workflows), 7)
         selected = evaluate_workflows(workflows, "tag_created", branch="server/v1.2.3")
         self.assertEqual([workflow.name for workflow in selected], ["Ichoi Release"])
 
@@ -317,6 +317,8 @@ class ReleaseWorkflowTest(unittest.TestCase):
                 ("ichoi-release-publish", "catalystcommunity/asset-cache"),
                 ("ichoi-asset-cleanup", "catalystcommunity/asset-cache"),
                 ("ichoi-server-build-and-deploy", "catalystcommunity/registry"),
+                ("ichoi-website-deploy", "catalystcommunity/registry"),
+                ("ichoi-website-deploy", "catalystcommunity/k8s"),
             },
         )
         for item in document["items"]:

@@ -166,6 +166,12 @@ object CsilCbor {
         throw CborError("invalid UTF-8 text string")
     }
 
+    // PREALLOC_LIMIT bounds the elements a decoded array or map reserves before it reads
+    // them. The declared length is checked against the remaining input, but one input
+    // byte can become a much larger value, so reserving the full declared length lets a
+    // small frame reserve a large multiple of its size at every nesting level.
+    private const val PREALLOC_LIMIT = 1024
+
     private fun dec(cur: Cursor, depth: Int): CborValue {
         if (depth > 64) throw CborError("CBOR nesting limit exceeded")
         if (cur.pos >= cur.b.size) throw CborError("unexpected end of CBOR input")
@@ -221,14 +227,14 @@ object CsilCbor {
             4 -> {
                 if (arg > (cur.b.size - cur.pos).toULong()) throw CborError("array length exceeds remaining input")
                 val n = arg.toInt()
-                val items = ArrayList<CborValue>(n)
+                val items = ArrayList<CborValue>(minOf(n, PREALLOC_LIMIT))
                 repeat(n) { items.add(dec(cur, depth + 1)) }
                 CborValue.CArray(items)
             }
             5 -> {
                 if (arg > (cur.b.size - cur.pos).toULong()) throw CborError("map length exceeds remaining input")
                 val n = arg.toInt()
-                val entries = ArrayList<Pair<CborValue, CborValue>>(n)
+                val entries = ArrayList<Pair<CborValue, CborValue>>(minOf(n, PREALLOC_LIMIT))
                 repeat(n) {
                     val k = dec(cur, depth + 1)
                     val value = dec(cur, depth + 1)
@@ -1256,6 +1262,7 @@ fun updateAudiobookProgressRequestFromCbor(bytes: ByteArray): UpdateAudiobookPro
 /** The CBOR value tree for a PlaylistsResponse (deep, canonical key order). */
 fun PlaylistsResponse.toCborValue(): CborValue {
     val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("total") to CborValue.CUint(this.total))
     csilEntries.add(CborValue.CText("playlists") to CborValue.CArray((this.playlists).map { csilE -> csilE.toCborValue() }))
     return CborValue.CMap(csilEntries)
 }
@@ -1266,7 +1273,8 @@ fun PlaylistsResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
 /** Reconstruct a PlaylistsResponse from a decoded CBOR value tree. */
 fun playlistsResponseFromCborValue(cbor: CborValue): PlaylistsResponse {
     val playlists = CsilCbor.asArray(CsilCbor.require(cbor, "playlists")).map { csilE -> playlistFromCborValue(csilE) }
-    return PlaylistsResponse(playlists = playlists)
+    val total = CsilCbor.asULong(CsilCbor.require(cbor, "total"))
+    return PlaylistsResponse(playlists = playlists, total = total)
 }
 
 /** Decode CSIL CBOR bytes into a PlaylistsResponse. */
@@ -1330,6 +1338,71 @@ fun playlistDetailFromCborValue(cbor: CborValue): PlaylistDetail {
 
 /** Decode CSIL CBOR bytes into a PlaylistDetail. */
 fun playlistDetailFromCbor(bytes: ByteArray): PlaylistDetail = playlistDetailFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a BlockAccountRequest (deep, canonical key order). */
+fun BlockAccountRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a BlockAccountRequest to canonical CSIL CBOR bytes. */
+fun BlockAccountRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a BlockAccountRequest from a decoded CBOR value tree. */
+fun blockAccountRequestFromCborValue(cbor: CborValue): BlockAccountRequest {
+    val accountId = CsilCbor.asText(CsilCbor.require(cbor, "account_id"))
+    return BlockAccountRequest(accountId = accountId)
+}
+
+/** Decode CSIL CBOR bytes into a BlockAccountRequest. */
+fun blockAccountRequestFromCbor(bytes: ByteArray): BlockAccountRequest = blockAccountRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a BlockedAccount (deep, canonical key order). */
+fun BlockedAccount.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("handle") to CborValue.CText(this.handle))
+    csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
+    csilEntries.add(CborValue.CText("blocked_at") to CborValue.CTag(0uL, CborValue.CText((this.blockedAt).toString())))
+    this.displayName?.let { csilV -> csilEntries.add(CborValue.CText("display_name") to CborValue.CText(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a BlockedAccount to canonical CSIL CBOR bytes. */
+fun BlockedAccount.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a BlockedAccount from a decoded CBOR value tree. */
+fun blockedAccountFromCborValue(cbor: CborValue): BlockedAccount {
+    val accountId = CsilCbor.asText(CsilCbor.require(cbor, "account_id"))
+    val handle = CsilCbor.asText(CsilCbor.require(cbor, "handle"))
+    val displayName = CsilCbor.mapGet(cbor, "display_name")?.let { csilV -> CsilCbor.asText(csilV) }
+    val blockedAt = java.time.Instant.parse(CsilCbor.asTaggedText(CsilCbor.require(cbor, "blocked_at"), 0uL))
+    return BlockedAccount(accountId = accountId, handle = handle, displayName = displayName, blockedAt = blockedAt)
+}
+
+/** Decode CSIL CBOR bytes into a BlockedAccount. */
+fun blockedAccountFromCbor(bytes: ByteArray): BlockedAccount = blockedAccountFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a BlockedAccountsResponse (deep, canonical key order). */
+fun BlockedAccountsResponse.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("total") to CborValue.CUint(this.total))
+    csilEntries.add(CborValue.CText("accounts") to CborValue.CArray((this.accounts).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a BlockedAccountsResponse to canonical CSIL CBOR bytes. */
+fun BlockedAccountsResponse.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a BlockedAccountsResponse from a decoded CBOR value tree. */
+fun blockedAccountsResponseFromCborValue(cbor: CborValue): BlockedAccountsResponse {
+    val accounts = CsilCbor.asArray(CsilCbor.require(cbor, "accounts")).map { csilE -> blockedAccountFromCborValue(csilE) }
+    val total = CsilCbor.asULong(CsilCbor.require(cbor, "total"))
+    return BlockedAccountsResponse(accounts = accounts, total = total)
+}
+
+/** Decode CSIL CBOR bytes into a BlockedAccountsResponse. */
+fun blockedAccountsResponseFromCbor(bytes: ByteArray): BlockedAccountsResponse = blockedAccountsResponseFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a CoverArtRequest (deep, canonical key order). */
 fun CoverArtRequest.toCborValue(): CborValue {
@@ -2135,6 +2208,109 @@ fun shareResultFromCborValue(cbor: CborValue): ShareResult {
 
 /** Decode CSIL CBOR bytes into a ShareResult. */
 fun shareResultFromCbor(bytes: ByteArray): ShareResult = shareResultFromCborValue(CsilCbor.decode(bytes))
+
+/** Encode a ShareAccess enum as its bare literal value. */
+fun ShareAccess.toCborValue(): CborValue = when (this) {
+    ShareAccess.Everyone -> CborValue.CText("everyone")
+    ShareAccess.Selected -> CborValue.CText("selected")
+}
+
+/** Decode a bare literal value into a ShareAccess enum. */
+fun shareAccessFromCborValue(cbor: CborValue): ShareAccess = when (CsilCbor.asText(cbor)) {
+    "everyone" -> ShareAccess.Everyone
+    "selected" -> ShareAccess.Selected
+    else -> throw CborError("unknown ShareAccess value")
+}
+
+/** The CBOR value tree for a ShareAccessRequest (deep, canonical key order). */
+fun ShareAccessRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ShareAccessRequest to canonical CSIL CBOR bytes. */
+fun ShareAccessRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ShareAccessRequest from a decoded CBOR value tree. */
+fun shareAccessRequestFromCborValue(cbor: CborValue): ShareAccessRequest {
+    val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
+    return ShareAccessRequest(playerId = playerId)
+}
+
+/** Decode CSIL CBOR bytes into a ShareAccessRequest. */
+fun shareAccessRequestFromCbor(bytes: ByteArray): ShareAccessRequest = shareAccessRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ShareCandidate (deep, canonical key order). */
+fun ShareCandidate.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("handle") to CborValue.CText(this.handle))
+    csilEntries.add(CborValue.CText("selected") to CborValue.CBool(this.selected))
+    csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
+    this.displayName?.let { csilV -> csilEntries.add(CborValue.CText("display_name") to CborValue.CText(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ShareCandidate to canonical CSIL CBOR bytes. */
+fun ShareCandidate.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ShareCandidate from a decoded CBOR value tree. */
+fun shareCandidateFromCborValue(cbor: CborValue): ShareCandidate {
+    val accountId = CsilCbor.asText(CsilCbor.require(cbor, "account_id"))
+    val handle = CsilCbor.asText(CsilCbor.require(cbor, "handle"))
+    val displayName = CsilCbor.mapGet(cbor, "display_name")?.let { csilV -> CsilCbor.asText(csilV) }
+    val selected = CsilCbor.asBoolean(CsilCbor.require(cbor, "selected"))
+    return ShareCandidate(accountId = accountId, handle = handle, displayName = displayName, selected = selected)
+}
+
+/** Decode CSIL CBOR bytes into a ShareCandidate. */
+fun shareCandidateFromCbor(bytes: ByteArray): ShareCandidate = shareCandidateFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ShareAccessInfo (deep, canonical key order). */
+fun ShareAccessInfo.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("access") to this.access.toCborValue())
+    csilEntries.add(CborValue.CText("accounts") to CborValue.CArray((this.accounts).map { csilE -> csilE.toCborValue() }))
+    csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ShareAccessInfo to canonical CSIL CBOR bytes. */
+fun ShareAccessInfo.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ShareAccessInfo from a decoded CBOR value tree. */
+fun shareAccessInfoFromCborValue(cbor: CborValue): ShareAccessInfo {
+    val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
+    val access = shareAccessFromCborValue(CsilCbor.require(cbor, "access"))
+    val accounts = CsilCbor.asArray(CsilCbor.require(cbor, "accounts")).map { csilE -> shareCandidateFromCborValue(csilE) }
+    return ShareAccessInfo(playerId = playerId, access = access, accounts = accounts)
+}
+
+/** Decode CSIL CBOR bytes into a ShareAccessInfo. */
+fun shareAccessInfoFromCbor(bytes: ByteArray): ShareAccessInfo = shareAccessInfoFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a SetShareAccessRequest (deep, canonical key order). */
+fun SetShareAccessRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("access") to this.access.toCborValue())
+    csilEntries.add(CborValue.CText("player_id") to CborValue.CText(this.playerId))
+    csilEntries.add(CborValue.CText("account_ids") to CborValue.CArray((this.accountIds).map { csilE -> CborValue.CText(csilE) }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a SetShareAccessRequest to canonical CSIL CBOR bytes. */
+fun SetShareAccessRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a SetShareAccessRequest from a decoded CBOR value tree. */
+fun setShareAccessRequestFromCborValue(cbor: CborValue): SetShareAccessRequest {
+    val playerId = CsilCbor.asText(CsilCbor.require(cbor, "player_id"))
+    val access = shareAccessFromCborValue(CsilCbor.require(cbor, "access"))
+    val accountIds = CsilCbor.asArray(CsilCbor.require(cbor, "account_ids")).map { csilE -> CsilCbor.asText(csilE) }
+    return SetShareAccessRequest(playerId = playerId, access = access, accountIds = accountIds)
+}
+
+/** Decode CSIL CBOR bytes into a SetShareAccessRequest. */
+fun setShareAccessRequestFromCbor(bytes: ByteArray): SetShareAccessRequest = setShareAccessRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a MediaOpen (deep, canonical key order). */
 fun MediaOpen.toCborValue(): CborValue {
@@ -3652,6 +3828,9 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is PlaylistRequest -> value.toCborValue()
     is DeletePlaylistRequest -> value.toCborValue()
     is PlaylistDetail -> value.toCborValue()
+    is BlockAccountRequest -> value.toCborValue()
+    is BlockedAccount -> value.toCborValue()
+    is BlockedAccountsResponse -> value.toCborValue()
     is CoverArtRequest -> value.toCborValue()
     is CoverArt -> value.toCborValue()
     is ReportContentRequest -> value.toCborValue()
@@ -3685,6 +3864,10 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is EnableShareRequest -> value.toCborValue()
     is DisableShareRequest -> value.toCborValue()
     is ShareResult -> value.toCborValue()
+    is ShareAccessRequest -> value.toCborValue()
+    is ShareCandidate -> value.toCborValue()
+    is ShareAccessInfo -> value.toCborValue()
+    is SetShareAccessRequest -> value.toCborValue()
     is MediaOpen -> value.toCborValue()
     is MediaSeek -> value.toCborValue()
     is MediaPause -> value.toCborValue()
@@ -3789,6 +3972,9 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     PlaylistRequest::class -> playlistRequestFromCborValue(cbor)
     DeletePlaylistRequest::class -> deletePlaylistRequestFromCborValue(cbor)
     PlaylistDetail::class -> playlistDetailFromCborValue(cbor)
+    BlockAccountRequest::class -> blockAccountRequestFromCborValue(cbor)
+    BlockedAccount::class -> blockedAccountFromCborValue(cbor)
+    BlockedAccountsResponse::class -> blockedAccountsResponseFromCborValue(cbor)
     CoverArtRequest::class -> coverArtRequestFromCborValue(cbor)
     CoverArt::class -> coverArtFromCborValue(cbor)
     ReportContentRequest::class -> reportContentRequestFromCborValue(cbor)
@@ -3822,6 +4008,10 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     EnableShareRequest::class -> enableShareRequestFromCborValue(cbor)
     DisableShareRequest::class -> disableShareRequestFromCborValue(cbor)
     ShareResult::class -> shareResultFromCborValue(cbor)
+    ShareAccessRequest::class -> shareAccessRequestFromCborValue(cbor)
+    ShareCandidate::class -> shareCandidateFromCborValue(cbor)
+    ShareAccessInfo::class -> shareAccessInfoFromCborValue(cbor)
+    SetShareAccessRequest::class -> setShareAccessRequestFromCborValue(cbor)
     MediaOpen::class -> mediaOpenFromCborValue(cbor)
     MediaSeek::class -> mediaSeekFromCborValue(cbor)
     MediaPause::class -> mediaPauseFromCborValue(cbor)

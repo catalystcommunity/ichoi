@@ -100,6 +100,60 @@ async fn signed_in_member_owns_private_playlist_and_false_owner_is_ignored() {
 }
 
 #[tokio::test]
+async fn administrator_can_save_public_and_private_playlists() {
+    for (visibility, expected) in [("public", "public"), ("private", "private")] {
+        let (app, pool, _music) = app_with_music();
+        seed_account(&pool, "admin@example.com", "admin", Some("admin-token"));
+        let (status, body) = save(
+            app,
+            Some("__Host-ichoi_session=admin-token"),
+            serde_json::json!({
+                "name": format!("Administrator {visibility}"),
+                "visibility": visibility,
+                "track_ids": ["track-1"]
+            }),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::OK);
+        let playlist = store::get_playlist(&mut pool.get().unwrap(), body["id"].as_str().unwrap())
+            .unwrap()
+            .unwrap();
+        assert_eq!(playlist.owner.as_deref(), Some("admin@example.com"));
+        assert_eq!(playlist.visibility, expected);
+    }
+}
+
+#[tokio::test]
+async fn member_public_request_is_forbidden_and_default_is_private() {
+    let (app, pool, _music) = app_with_music();
+    seed_account(&pool, "member@example.com", "member", Some("member-token"));
+    let (status, _) = save(
+        app.clone(),
+        Some("__Host-ichoi_session=member-token"),
+        serde_json::json!({
+            "name": "Public request",
+            "visibility": "public",
+            "track_ids": ["track-1"]
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    let (status, body) = save(
+        app,
+        Some("__Host-ichoi_session=member-token"),
+        serde_json::json!({"name": "Default request", "track_ids": ["track-1"]}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let playlist = store::get_playlist(&mut pool.get().unwrap(), body["id"].as_str().unwrap())
+        .unwrap()
+        .unwrap();
+    assert_eq!(playlist.visibility, "private");
+}
+
+#[tokio::test]
 async fn zero_account_guest_can_save_only_a_public_playlist() {
     let (app, pool, _music) = app_with_music();
     let (status, body) = save(

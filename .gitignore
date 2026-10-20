@@ -21,6 +21,11 @@ web/**/dist
 # Environment / secrets
 .env
 .env.*
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
 
 # Local tooling / editor / scratch state
 /scratch/
@@ -37,3 +42,17 @@ __pycache__/
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# `reactorcide run-local` writes a run summary at the repository root.
+/reactorcide-workflow-summary.json
+.workflow-summary-*.tmp
+
+# iOS: archives and exports, SwiftPM state, and per-user Xcode state.
+/ios/build/
+/ios/.build/
+/ios/.swiftpm/
+xcuserdata/
+DerivedData/
+
+# assets/brand/build.py writes a share archive. Do not commit it.
+/assets/brand/ichoi-brand-kit.zip

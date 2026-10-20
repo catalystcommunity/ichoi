@@ -19,11 +19,15 @@ and one current 64-bit device.
 6. Start account deletion with an incorrect handle. Confirm that the session remains. Make
    the server return a timeout or an error. Confirm that the session remains and that the
    message names the selected server URL and its administrator. Delete with the exact handle
-   and confirm that the local token is removed only after success.
+   and confirm that the local token is removed only after success. Confirm that the server
+   removes each public and private playlist that the account owns.
 7. As a signed-in user, report a playlist and an account. Test all four reasons, empty
    details, 2,000 Unicode scalar values, and 2,001 Unicode scalar values. Confirm that the
    last case is rejected before the request is sent.
+8. Block a playlist owner. Confirm that the playlist list no longer shows that account's
+   public playlists. Open Settings and unblock the account. Confirm that its public
+   playlists appear again. Repeat the check with two server profiles. Confirm that the
+   block affects only the selected server.
 
 Record the device model, Android version, app version, test date, and each result before a
-store submission. AND-00 and AND-05 remain blocked until the permanent application ID and a
-reviewed production demo URL exist.
+store submission. AND-05 remains blocked until a reviewed production demo URL exists.

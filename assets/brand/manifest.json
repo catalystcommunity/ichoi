@@ -1,0 +1,650 @@
+{
+  "assets": {
+    "ichoi-mark.png": {
+      "use": "Transparent color mark",
+      "width": 2048,
+      "height": 2048,
+      "mode": "rgba",
+      "sha256": "7cd67fe92814936561a289498fc885280614545826d66504ac9c0aa8d164cb01"
+    },
+    "ichoi-logo.svg": {
+      "use": "Rounded logo for general use",
+      "width": 512,
+      "height": 512,
+      "sha256": "e37c7308fb943e42cba238f7ff5d64a72b6095127a5f5cfcf4b3fd95357b6567"
+    },
+    "ichoi-logo.png": {
+      "use": "Rounded logo for general use",
+      "width": 2048,
+      "height": 2048,
+      "mode": "rgba",
+      "sha256": "317a3bca9e29e891f00fbf376d5856c6448d2b12e21c34b94c914b60d95ac3c8"
+    },
+    "logos/mark-dark.svg": {
+      "use": "Transparent mark for dark backgrounds",
+      "width": 512,
+      "height": 512,
+      "sha256": "34d33b5914313a438f1b1c4508a392deb1bbfeee0205fc0216248467a0d2ba50"
+    },
+    "logos/mark-dark.png": {
+      "use": "Transparent mark for dark backgrounds",
+      "width": 2048,
+      "height": 2048,
+      "mode": "rgba",
+      "sha256": "7cd67fe92814936561a289498fc885280614545826d66504ac9c0aa8d164cb01"
+    },
+    "logos/horizontal-dark.svg": {
+      "use": "Horizontal logo for dark backgrounds",
+      "width": 840,
+      "height": 320,
+      "sha256": "49fc9bc29a997a5ba2066a5ca0e6a1b530fff693a7a641bab775ce1ce30b03d4"
+    },
+    "logos/horizontal-dark.png": {
+      "use": "Horizontal logo for dark backgrounds",
+      "width": 2520,
+      "height": 960,
+      "mode": "rgba",
+      "sha256": "045ab51f27268542e17b5feab3e62648b012588017d7cb7ff3eac4ab48e0875d"
+    },
+    "logos/stacked-dark.svg": {
+      "use": "Stacked logo for dark backgrounds",
+      "width": 768,
+      "height": 680,
+      "sha256": "db1ba1ed459ec11313f8ef13104f909e7d63b292d0190960603b1849990ffea3"
+    },
+    "logos/stacked-dark.png": {
+      "use": "Stacked logo for dark backgrounds",
+      "width": 1536,
+      "height": 1360,
+      "mode": "rgba",
+      "sha256": "6c571d134bcfff352efe1cfeb7616aab64ce3adfdc3694f370f1489b49ea567b"
+    },
+    "social/avatar-dark-1024.svg": {
+      "use": "Social avatar, dark background",
+      "width": 1024,
+      "height": 1024,
+      "sha256": "5e17ab8ce2c0106103d9be17b77ce6ca6549a68b62ee2c6153c64ef3edc9a0d1"
+    },
+    "social/avatar-dark-1024.png": {
+      "use": "Social avatar, dark background",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgb",
+      "sha256": "08a8b198f78bbbb2e3ddb5f7cb874bdcc051f0bc52261a396530c5a85c2fbad9"
+    },
+    "social/avatar-dark-512.png": {
+      "use": "Social avatar",
+      "width": 512,
+      "height": 512,
+      "mode": "rgb",
+      "sha256": "18265b2b095c9220f40dea4bd5abf0a5f5b5fcb052af0a02ed93623951806ee8"
+    },
+    "social/share-dark-1200x630.svg": {
+      "use": "Link preview card",
+      "width": 1200,
+      "height": 630,
+      "sha256": "a790666db552ed02d333a9b9c407af95735bf849b1b71526d8b17db795b40c4b"
+    },
+    "social/share-dark-1200x630.png": {
+      "use": "Link preview card",
+      "width": 1200,
+      "height": 630,
+      "mode": "rgb",
+      "sha256": "6caed875828f7215ee957e6fe9b4c1ae2d0babc864256aada2f556c6ad43a252"
+    },
+    "logos/mark-light.svg": {
+      "use": "Transparent mark for light backgrounds",
+      "width": 512,
+      "height": 512,
+      "sha256": "c04d7e3e757778d37c74811cce2db5068c75c1a5b12bc3c7adb82ec6ca50195b"
+    },
+    "logos/mark-light.png": {
+      "use": "Transparent mark for light backgrounds",
+      "width": 2048,
+      "height": 2048,
+      "mode": "rgba",
+      "sha256": "27b14b953b6239947b6751f1193439aa84ab5c1c2cbd1c75f346129f4e44e0df"
+    },
+    "logos/horizontal-light.svg": {
+      "use": "Horizontal logo for light backgrounds",
+      "width": 840,
+      "height": 320,
+      "sha256": "eeb5052a2218ba2d02e758012dd4eef97a69a34bfe14dad95e8b5d117bf066a8"
+    },
+    "logos/horizontal-light.png": {
+      "use": "Horizontal logo for light backgrounds",
+      "width": 2520,
+      "height": 960,
+      "mode": "rgba",
+      "sha256": "9d385ab70ac778d55eef35faa520f4fcabf18bc3165177537fb55f245785ce5a"
+    },
+    "logos/stacked-light.svg": {
+      "use": "Stacked logo for light backgrounds",
+      "width": 768,
+      "height": 680,
+      "sha256": "7822e4b4b0bb454671fd6b4b6d5ad6a0daa01d58fb9fff7260df708055262e91"
+    },
+    "logos/stacked-light.png": {
+      "use": "Stacked logo for light backgrounds",
+      "width": 1536,
+      "height": 1360,
+      "mode": "rgba",
+      "sha256": "c11933bbdb1aab8e335893b5be15b576bbed9da1826cdab80d6c47f43034b047"
+    },
+    "social/avatar-light-1024.svg": {
+      "use": "Social avatar, light background",
+      "width": 1024,
+      "height": 1024,
+      "sha256": "0a92938bedc6d71bc7281ff3d745e53b10445a3f159a78eb60dd4c6b6fb36130"
+    },
+    "social/avatar-light-1024.png": {
+      "use": "Social avatar, light background",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgb",
+      "sha256": "27ed37ab04014570bea15108d252c7b53becfb439860e75a786ff570dceef15b"
+    },
+    "social/avatar-light-512.png": {
+      "use": "Social avatar",
+      "width": 512,
+      "height": 512,
+      "mode": "rgb",
+      "sha256": "d16a74255570b9ed93a12ec5d9ac8a74f04a6ab691920a01e79f0691c1aea19f"
+    },
+    "social/share-light-1200x630.svg": {
+      "use": "Link preview card",
+      "width": 1200,
+      "height": 630,
+      "sha256": "da5e417615250089e9627bf5b87b00dc372b34010c60d094e65aaf3641c5b7d8"
+    },
+    "social/share-light-1200x630.png": {
+      "use": "Link preview card",
+      "width": 1200,
+      "height": 630,
+      "mode": "rgb",
+      "sha256": "c34fb5a333ef70c55454c181411e7a82c0d96c928700e5fb9b891f0fbc81513c"
+    },
+    "logos/mark-black.svg": {
+      "use": "Single-color mark",
+      "width": 512,
+      "height": 512,
+      "sha256": "ca14f9b408250276d8656e9187d15f06433bf02e0d97000e9e67eac37ee20fc4"
+    },
+    "logos/mark-black.png": {
+      "use": "Single-color mark",
+      "width": 2048,
+      "height": 2048,
+      "mode": "rgba",
+      "sha256": "9835ab1b24036c4c1a529966c0ef9bc7b01662b00dd915f18c93fffaef36ec55"
+    },
+    "logos/horizontal-black.svg": {
+      "use": "Single-color horizontal logo",
+      "width": 840,
+      "height": 320,
+      "sha256": "bdd3b72636dd8590d4d3689dffabc59a8c25da4cd55f1923c1ca0488c3379cc6"
+    },
+    "logos/horizontal-black.png": {
+      "use": "Single-color horizontal logo",
+      "width": 2520,
+      "height": 960,
+      "mode": "rgba",
+      "sha256": "01c9783d8dd67801eaae14734a208aa779e3ab83a16d25cb34b993ad87ac2f86"
+    },
+    "logos/mark-white.svg": {
+      "use": "Single-color mark",
+      "width": 512,
+      "height": 512,
+      "sha256": "de21f7be70022b037a6a4397f012d9af4e83c87bb27bd0b88247896bb29e597c"
+    },
+    "logos/mark-white.png": {
+      "use": "Single-color mark",
+      "width": 2048,
+      "height": 2048,
+      "mode": "rgba",
+      "sha256": "90eca5effe75b7eb09babfde89c74086fdd1840fea0e55553dd13d370bf720a9"
+    },
+    "logos/horizontal-white.svg": {
+      "use": "Single-color horizontal logo",
+      "width": 840,
+      "height": 320,
+      "sha256": "789aaafe1071a89eb819bf8083faebfe78b7fe7505bf83ae687a1075ab2368dc"
+    },
+    "logos/horizontal-white.png": {
+      "use": "Single-color horizontal logo",
+      "width": 2520,
+      "height": 960,
+      "mode": "rgba",
+      "sha256": "3b95875471c7fae2b32d5c4b808d66c14c6c7601ef12fa7904774ea52a7ebd69"
+    },
+    "social/wide-1200x600.svg": {
+      "use": "Wide social artwork",
+      "width": 1200,
+      "height": 600,
+      "sha256": "85881ce1cbd1233f5b645d3ca26b4075f08c34ac697a73f895d4c270338c916d"
+    },
+    "social/wide-1200x600.png": {
+      "use": "Wide social artwork",
+      "width": 1200,
+      "height": 600,
+      "mode": "rgb",
+      "sha256": "5db67fa53839582cf31f720e15fe06f714ee6a72203eb2ecfa4a5f4803207bc6"
+    },
+    "social/repository-1280x640.svg": {
+      "use": "Repository social artwork",
+      "width": 1280,
+      "height": 640,
+      "sha256": "ba67fb52008dcf2408cf711f35d1143f2a7d66dc48e7623d4fbf9a4ccb9addfb"
+    },
+    "social/repository-1280x640.png": {
+      "use": "Repository social artwork",
+      "width": 1280,
+      "height": 640,
+      "mode": "rgb",
+      "sha256": "b7db50e2c5516fa8adb0009e87017b7bd23c6879cd1bbfbfb2ad93fc98bed906"
+    },
+    "social/square-1080x1080.svg": {
+      "use": "Square social artwork",
+      "width": 1080,
+      "height": 1080,
+      "sha256": "20c1fe40e97edc17ee72a3b10cc1252695841d6b8825a2058237b08ee6d534d1"
+    },
+    "social/square-1080x1080.png": {
+      "use": "Square social artwork",
+      "width": 1080,
+      "height": 1080,
+      "mode": "rgb",
+      "sha256": "1b54ce14eb09807b3d65cdceef54e50987954b312afcb8cdeffe5eb9e11d265d"
+    },
+    "social/portrait-1080x1350.svg": {
+      "use": "Portrait social artwork",
+      "width": 1080,
+      "height": 1350,
+      "sha256": "e5b7181e6b54bf182d94575031514aa9b7388e77be575bc1b648c3bf73ef3cc6"
+    },
+    "social/portrait-1080x1350.png": {
+      "use": "Portrait social artwork",
+      "width": 1080,
+      "height": 1350,
+      "mode": "rgb",
+      "sha256": "f90aed89b16358a61bc032a24f1589620daddb07903ed67bced4cf6eebd73905"
+    },
+    "social/story-1080x1920.svg": {
+      "use": "Story social artwork",
+      "width": 1080,
+      "height": 1920,
+      "sha256": "e78e3c858e00c1567c53453a672d7a191e1851f8e4790893213fc2ac29edf2d3"
+    },
+    "social/story-1080x1920.png": {
+      "use": "Story social artwork",
+      "width": 1080,
+      "height": 1920,
+      "mode": "rgb",
+      "sha256": "3a58d98d63d0d3527f1bfc5493f95e2d200e99d05e8c108f66a934c1af074f45"
+    },
+    "social/header-1500x500.svg": {
+      "use": "Header social artwork",
+      "width": 1500,
+      "height": 500,
+      "sha256": "37bf2a5df9d471efa8c1838c19ce16a5fdfb5f3dc2f4019f79d1ca2507569ddf"
+    },
+    "social/header-1500x500.png": {
+      "use": "Header social artwork",
+      "width": 1500,
+      "height": 500,
+      "mode": "rgb",
+      "sha256": "85d9c0cf53c2feee6d403a9670add4145d902bfb892cbb295b08db662284c3cb"
+    },
+    "social/professional-header-1584x396.svg": {
+      "use": "Professional-Header social artwork",
+      "width": 1584,
+      "height": 396,
+      "sha256": "6e10345ae61b886a2ac7a2aa78e68a7bccdbda911501f5c169518e6240640881"
+    },
+    "social/professional-header-1584x396.png": {
+      "use": "Professional-Header social artwork",
+      "width": 1584,
+      "height": 396,
+      "mode": "rgb",
+      "sha256": "ce3f5ba27bcee1ad0cc6cb5cdb2d9457b6aa646ea5afb7bec3a9c0297353ce4f"
+    },
+    "social/channel-2560x1440.svg": {
+      "use": "Channel social artwork",
+      "width": 2560,
+      "height": 1440,
+      "sha256": "bc218647f1efef28af918071adae0e7c74b654c47f52d6fda49e502ae7a01dc6"
+    },
+    "social/channel-2560x1440.png": {
+      "use": "Channel social artwork",
+      "width": 2560,
+      "height": 1440,
+      "mode": "rgb",
+      "sha256": "6973db1ee8a02bba133e0e4f5afb23dc0c86bf83bf799bc4d9767271ac9d8f17"
+    },
+    "apps/app-icon.svg": {
+      "use": "Square app icon; platform applies the corner mask",
+      "width": 1024,
+      "height": 1024,
+      "sha256": "fa3c5605c276f16c81922d4ded11a4cab840b2b9aa69f5b7f38be697bdeb25cf"
+    },
+    "apps/app-icon.png": {
+      "use": "Square app icon; platform applies the corner mask",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgb",
+      "sha256": "e8174f67092241988a3cdc1e170c62cfef4b10531f21a72cd13af87fdeb5851f"
+    },
+    "stores/google-play-icon-512.png": {
+      "use": "Google Play listing icon",
+      "width": 512,
+      "height": 512,
+      "mode": "rgba",
+      "sha256": "e109980da067fd9eeb9368bb5941642f527080c8279fe7741bda7482e52e3430"
+    },
+    "stores/google-play-feature-1024x500.svg": {
+      "use": "Ichoi. Your music. Every room. Audio level bars on a teal background.",
+      "width": 1024,
+      "height": 500,
+      "sha256": "a69d2b24065b6a4241e73b6f108803e598ec189919e2826539e326600e586b49"
+    },
+    "stores/google-play-feature-1024x500.png": {
+      "use": "Ichoi. Your music. Every room. Audio level bars on a teal background.",
+      "width": 1024,
+      "height": 500,
+      "mode": "rgb",
+      "sha256": "2cb7df5a8657dfa121280a2f16c7af67b649dddebdbd990079959397818a5f1d"
+    },
+    "apps/apple/AppIcon.appiconset/AppIcon.png": {
+      "use": "Apple default and dark app icon",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgb",
+      "sha256": "e8174f67092241988a3cdc1e170c62cfef4b10531f21a72cd13af87fdeb5851f"
+    },
+    "apps/apple/tinted.svg": {
+      "use": "Apple tinted source",
+      "width": 1024,
+      "height": 1024,
+      "sha256": "b9a3f0b32c10e476cd7b818ff305f9b77162f919f0d654ad74f799f879529735"
+    },
+    "apps/apple/tinted.png": {
+      "use": "Apple tinted source",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgb",
+      "sha256": "8ea34709ca0145bfbbfe8a3c363fd2abd16daedbd66ca29212c10b61ec833c99"
+    },
+    "apps/apple/AppIcon.appiconset/AppIcon-tinted.png": {
+      "use": "Apple tinted app icon",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgb",
+      "sha256": "8ea34709ca0145bfbbfe8a3c363fd2abd16daedbd66ca29212c10b61ec833c99"
+    },
+    "apps/apple/AppIcon.appiconset/Contents.json": {
+      "use": "Import this set into an Xcode asset catalog",
+      "sha256": "711bc8c946fe7d2ca33ef24d3ce37796ca8b0eedabd00bb2628e24d6df1672ed"
+    },
+    "apps/apple/layers/01-background.svg": {
+      "use": "Icon Composer background reference",
+      "sha256": "cfaa25a5f250cffba1fab43652dc6b8ba8c4aca672b350370e57fff59dca54f3"
+    },
+    "apps/apple/layers/02-ring.svg": {
+      "use": "Transparent Icon Composer foreground layer",
+      "sha256": "da9369ec17c8155b01a0b509789d5ddb8c8d1b4adb87ea083e6a40f7b01fc523"
+    },
+    "apps/apple/layers/03-notes.svg": {
+      "use": "Transparent Icon Composer foreground layer",
+      "sha256": "7baa6b1f5e306c17a5bd2be998c47ddb320668f0b247d13b9166da1bb799756d"
+    },
+    "apps/desktop/png/ichoi-16.png": {
+      "use": "Desktop icon",
+      "width": 16,
+      "height": 16,
+      "mode": "rgba",
+      "sha256": "ef3bb3a0e600cb6e491e715c0b6d0d8b27bb60a59b4025c7e588250705707e2f"
+    },
+    "apps/desktop/png/ichoi-24.png": {
+      "use": "Desktop icon",
+      "width": 24,
+      "height": 24,
+      "mode": "rgba",
+      "sha256": "3120ffb3b38922733e1bb04ed331163447721434ca4f5fb2bb0d98eb0fe34c7f"
+    },
+    "apps/desktop/png/ichoi-32.png": {
+      "use": "Desktop icon",
+      "width": 32,
+      "height": 32,
+      "mode": "rgba",
+      "sha256": "cd502de27dd4c184a50b28ad196b71b15585b13acfb4c15432fe7a993bca7126"
+    },
+    "apps/desktop/png/ichoi-48.png": {
+      "use": "Desktop icon",
+      "width": 48,
+      "height": 48,
+      "mode": "rgba",
+      "sha256": "14537bdb6121aa28512e13f5809f1b4870b67b59becab05fd4dd47c568aa23b5"
+    },
+    "apps/desktop/png/ichoi-64.png": {
+      "use": "Desktop icon",
+      "width": 64,
+      "height": 64,
+      "mode": "rgba",
+      "sha256": "8472a6c22ba82be197f860b2c5259f8dbb58d7920dfb494239876b9508681531"
+    },
+    "apps/desktop/png/ichoi-128.png": {
+      "use": "Desktop icon",
+      "width": 128,
+      "height": 128,
+      "mode": "rgba",
+      "sha256": "a0b31548dd7f3217520fae4d8635738a5ad937c46735074bad1f80e866996cbe"
+    },
+    "apps/desktop/png/ichoi-256.png": {
+      "use": "Desktop icon",
+      "width": 256,
+      "height": 256,
+      "mode": "rgba",
+      "sha256": "33aee9b2ec0ff9ca5a06052dd6b96a352d510ac9530854e4fbb3ed79d42eec8e"
+    },
+    "apps/desktop/png/ichoi-512.png": {
+      "use": "Desktop icon",
+      "width": 512,
+      "height": 512,
+      "mode": "rgba",
+      "sha256": "9e3361ee5a8df93d1e5ba849cb016dcc9fa821482b95413641bcba5c460fa3e0"
+    },
+    "apps/desktop/png/ichoi-1024.png": {
+      "use": "Desktop icon",
+      "width": 1024,
+      "height": 1024,
+      "mode": "rgba",
+      "sha256": "603e29c9ef153bdaeb648974b6cdef79e55ff050d66b2d9fb8a4342befa15d7f"
+    },
+    "apps/desktop/ichoi.ico": {
+      "use": "Windows icon with seven sizes",
+      "sha256": "c530b4f90109c2b1ad5a7c773e11c1c3c272384002f593fdcaa6cf1752a9ca44"
+    },
+    "apps/desktop/ichoi.icns": {
+      "use": "macOS desktop icon",
+      "sha256": "4d8814e6c6bc3e75531aa3ee439a13188afadd6c470c23805eb55feb44daa96d"
+    },
+    "apps/android/res/drawable/ic_launcher_foreground.xml": {
+      "use": "Android adaptive icon layer",
+      "sha256": "e3a0aaf4f92ee01b9a2faf2078a5357c42ad7fed326416762b8ba3b9631e4ea3"
+    },
+    "apps/android/foreground.svg": {
+      "use": "Android 108 dp layer; artwork fits the central 64 dp circle",
+      "width": 108,
+      "height": 108,
+      "sha256": "8d49d87d66c9bb297ed1463fd71772dc327860428d103275dc1613656dd2d2b9"
+    },
+    "apps/android/foreground.png": {
+      "use": "Android 108 dp layer; artwork fits the central 64 dp circle",
+      "width": 432,
+      "height": 432,
+      "mode": "rgba",
+      "sha256": "ca3aee8fa025fe345e677c8553ade2f1f31fc2cbbd7d7b358e6e84f0ad03792f"
+    },
+    "apps/android/res/drawable/ic_launcher_monochrome.xml": {
+      "use": "Android adaptive icon layer",
+      "sha256": "f7093919b7ac2298f18fe97363a62bace7d01bae9c281b9698beb6f75be00a3f"
+    },
+    "apps/android/monochrome.svg": {
+      "use": "Android 108 dp layer; artwork fits the central 64 dp circle",
+      "width": 108,
+      "height": 108,
+      "sha256": "dc084a6ac21e39bac5c39f794b2e34af895f21a23fc2ccdb9bd98f13a1026a14"
+    },
+    "apps/android/monochrome.png": {
+      "use": "Android 108 dp layer; artwork fits the central 64 dp circle",
+      "width": 432,
+      "height": 432,
+      "mode": "rgba",
+      "sha256": "7a3e2ffff875f2f6dc515a13bfb03889064ddd753e2c4f0897397fb056dd62d1"
+    },
+    "apps/android/res/values/ic_launcher_background.xml": {
+      "use": "Android background color",
+      "sha256": "6e2ce52b4d1dfd3479d0480680d281240b8efa777c384baa9f179bfbdfaaab24"
+    },
+    "apps/android/res/mipmap-anydpi-v26/ic_launcher.xml": {
+      "use": "Android adaptive launcher icon",
+      "sha256": "ad05cb0ea9a2a6d88ae5c6f4aeb6bc1c7526e9feb285343d33f837d9221d517e"
+    },
+    "apps/android/res/mipmap-anydpi-v33/ic_launcher.xml": {
+      "use": "Android adaptive launcher icon",
+      "sha256": "bbc050cfafcced8be3e54ed295b632dec31984ead88c4f30deca147cf1837319"
+    },
+    "apps/android/res/mipmap-mdpi/ic_launcher.png": {
+      "use": "Android legacy launcher icon",
+      "width": 48,
+      "height": 48,
+      "mode": "rgba",
+      "sha256": "14537bdb6121aa28512e13f5809f1b4870b67b59becab05fd4dd47c568aa23b5"
+    },
+    "apps/android/res/mipmap-hdpi/ic_launcher.png": {
+      "use": "Android legacy launcher icon",
+      "width": 72,
+      "height": 72,
+      "mode": "rgba",
+      "sha256": "5b8d0092406097b82f0a27ab8342ec35117b5bea1fafe4222a92f53806fd6867"
+    },
+    "apps/android/res/mipmap-xhdpi/ic_launcher.png": {
+      "use": "Android legacy launcher icon",
+      "width": 96,
+      "height": 96,
+      "mode": "rgba",
+      "sha256": "6e420742221dd9f0eea6ddeadd80d3eac3d0c00325d7a9b008918ee704756a8f"
+    },
+    "apps/android/res/mipmap-xxhdpi/ic_launcher.png": {
+      "use": "Android legacy launcher icon",
+      "width": 144,
+      "height": 144,
+      "mode": "rgba",
+      "sha256": "665b23a033481d89b42f3ec5d5e4ac0326792a77206a0504eaa75e2d0391000a"
+    },
+    "apps/android/res/mipmap-xxxhdpi/ic_launcher.png": {
+      "use": "Android legacy launcher icon",
+      "width": 192,
+      "height": 192,
+      "mode": "rgba",
+      "sha256": "5fb99a57058ec9cdcc9ed2a7f3a4f2bf7c939b298bbc664325f998d448a66fd1"
+    },
+    "web/favicon.svg": {
+      "use": "SVG favicon",
+      "width": 512,
+      "height": 512,
+      "sha256": "e37c7308fb943e42cba238f7ff5d64a72b6095127a5f5cfcf4b3fd95357b6567"
+    },
+    "web/favicon-16.png": {
+      "use": "PNG favicon",
+      "width": 16,
+      "height": 16,
+      "mode": "rgba",
+      "sha256": "ef3bb3a0e600cb6e491e715c0b6d0d8b27bb60a59b4025c7e588250705707e2f"
+    },
+    "web/favicon-32.png": {
+      "use": "PNG favicon",
+      "width": 32,
+      "height": 32,
+      "mode": "rgba",
+      "sha256": "cd502de27dd4c184a50b28ad196b71b15585b13acfb4c15432fe7a993bca7126"
+    },
+    "web/favicon-48.png": {
+      "use": "PNG favicon",
+      "width": 48,
+      "height": 48,
+      "mode": "rgba",
+      "sha256": "14537bdb6121aa28512e13f5809f1b4870b67b59becab05fd4dd47c568aa23b5"
+    },
+    "web/favicon.ico": {
+      "use": "Browser favicon with 16, 32, and 48 pixel sizes",
+      "sha256": "f4e03a91775d1fc71982e9c7851cd132ef4d7b68026ceb402cdcf16d52221b5f"
+    },
+    "web/apple-touch-icon.png": {
+      "use": "Apple touch icon",
+      "width": 180,
+      "height": 180,
+      "mode": "rgb",
+      "sha256": "582b2ef81f412954cef7d98c47da7ef7f6aa5e819e1288dc904adcba26b01283"
+    },
+    "web/icon-192.png": {
+      "use": "PWA icon",
+      "width": 192,
+      "height": 192,
+      "mode": "rgba",
+      "sha256": "5fb99a57058ec9cdcc9ed2a7f3a4f2bf7c939b298bbc664325f998d448a66fd1"
+    },
+    "web/maskable-192.png": {
+      "use": "PWA maskable icon; artwork fits the central 80% diameter",
+      "width": 192,
+      "height": 192,
+      "mode": "rgb",
+      "sha256": "1c408963d4c962210a228c7bc9e0cbfef4a9d095a9c37312fd513182a96be6bd"
+    },
+    "web/icon-512.png": {
+      "use": "PWA icon",
+      "width": 512,
+      "height": 512,
+      "mode": "rgba",
+      "sha256": "9e3361ee5a8df93d1e5ba849cb016dcc9fa821482b95413641bcba5c460fa3e0"
+    },
+    "web/maskable-512.png": {
+      "use": "PWA maskable icon; artwork fits the central 80% diameter",
+      "width": 512,
+      "height": 512,
+      "mode": "rgb",
+      "sha256": "67b4eabf6afd22be9b2f969bd4ce16a070fd774eb0f1afd67e824e8f10ab7a57"
+    },
+    "web/pinned-tab.svg": {
+      "use": "Single-color pinned tab icon",
+      "sha256": "9073646f4a040b29b1255feb3f31084bc0456487879b8bab7d9b204b357fc081"
+    },
+    "web/manifest-icons.json": {
+      "use": "Merge these entries into the app manifest",
+      "sha256": "1b6c78dc3aa3f1e2e209fb4a87eb79e167560fca89d68057f32dc59367c37654"
+    },
+    "previews/app-masks.svg": {
+      "use": "Mask previews: Apple, Android circle, Android rounded square, Android themed circle",
+      "width": 1120,
+      "height": 320,
+      "sha256": "c24bc995f9b79d9e00aa49f739c172b33a4e65a4e347dc6e768540e3b5d458a2"
+    },
+    "previews/app-masks.png": {
+      "use": "Mask previews: Apple, Android circle, Android rounded square, Android themed circle",
+      "width": 1120,
+      "height": 320,
+      "mode": "rgb",
+      "sha256": "bcc252a7ef45eaeff34bbacdec0077da99578a2647d378429b05d1bb85a45d6e"
+    },
+    "index.html": {
+      "use": "Visual asset catalog",
+      "sha256": "2c696cf0ae242bd2921b9fd30367bce806c1f773fb3ff178b6e45b57e8f36233"
+    },
+    "preview.png": {
+      "use": "Visual overview of the brand kit",
+      "width": 1024,
+      "height": 1328,
+      "mode": "rgb",
+      "sha256": "8ec7ca205421e15f6fde47e14927bd845ec3703c7070e60f169255993f9bad7a"
+    }
+  }
+}

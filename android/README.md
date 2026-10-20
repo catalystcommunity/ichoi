@@ -16,10 +16,25 @@ profiles require explicit consent and do not use a TLS pin.
 
 Run `./gradlew test`, `./gradlew lint`, `./gradlew assembleDebug`, and
 `./gradlew androidCompliance`. The compliance task also checks the resolved dependency
-graph. A release build is intentionally blocked while the
-development application ID is active. AND-00 must select a permanent ID before store work.
+graph. The release application ID is `com.catalystsquad.ichoi`. Debug builds use
+`com.catalystsquad.ichoi.dev`. The `verifyStoreRelease` task rejects a release build with a
+different ID.
 
 Physical-device checks remain external: test on Android 10 and the current Android release,
 including first run, HTTPS pinning, private HTTP consent, redirects, playback, sign-out,
-account deletion failure retention, and report submission. No permanent application ID or
-production demo URL is selected in this project.
+account deletion failure retention, and report submission. No production demo URL is
+selected in this project.
+
+## Release signing
+
+Google Play App Signing holds the app signing key. The project holds only the upload key.
+The Reactorcide secret path `nsc/ichoi-android` holds the upload key. It has these keys:
+`upload_keystore_b64`, `upload_keystore_password`, `upload_key_alias`, and
+`upload_key_password`. The keystore is PKCS12, so the two passwords are the same. Do not
+put the keystore in this repository.
+
+Build the signed Play bundle with `scripts/release-bundle.sh X.Y.Z`. The script reads the
+upload key from the local Reactorcide store and deletes its temporary copy on exit. A CI
+job can set `ICHOI_UPLOAD_KEYSTORE_B64` and the `ICHOI_UPLOAD_*` password variables instead.
+The version code is major × 10000 + minor × 100 + patch. `bundleRelease` fails without the
+upload key.

@@ -1,6 +1,6 @@
-# IOS-00 is blocked until the owner selects this permanent ID.
+// IOS-00: the permanent App Store bundle ID. It cannot change after publication.
 #include "Base.xcconfig"
-# Keep the value unset. verify-release.sh rejects an unresolved or development ID.
-ICHOI_PERMANENT_BUNDLE_ID =
+// verify-release.sh rejects an unresolved or development ID.
+ICHOI_PERMANENT_BUNDLE_ID = com.catalystsquad.ichoi
 PRODUCT_BUNDLE_IDENTIFIER = $(ICHOI_PERMANENT_BUNDLE_ID)
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = RELEASE

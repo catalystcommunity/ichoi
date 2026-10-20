@@ -177,6 +177,22 @@ static inline void *csilc_arena_alloc(CsilCodecArena *a, size_t size) {
     return p;
 }
 
+/* The most elements a decoded array or map reserves before it reads them. The
+ * declared length is checked against the remaining input, but one input byte can
+ * become a much larger value, so reserving the full declared length lets a small
+ * frame reserve a large multiple of its size at every nesting level. Past this
+ * bound, the storage doubles only as elements are actually read. */
+#define CSILC_PREALLOC_LIMIT 1024u
+
+/* A bump arena cannot resize in place, so growth copies into a fresh allocation.
+ * The abandoned block is freed with the arena; doubling keeps that waste below
+ * the final size. */
+static inline void *csilc_arena_grow(CsilCodecArena *a, const void *old, size_t used, size_t size) {
+    void *p = csilc_arena_alloc(a, size);
+    if (p && used) memcpy(p, old, used);
+    return p;
+}
+
 /* Free the whole decoded value tree (and the C arrays mapped out of it) at once. */
 static inline void csil_codec_arena_free(CsilCodecArena *a) {
     if (!a) return;
@@ -366,12 +382,19 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
     case 4: {
         if (arg > len - head || arg > SIZE_MAX / sizeof(csilc_value)) return -1;
         csilc_value *items = NULL;
-        if (arg) {
-            items = (csilc_value *)csilc_arena_alloc(a, (size_t)arg * sizeof(*items));
+        size_t cap = arg < CSILC_PREALLOC_LIMIT ? (size_t)arg : CSILC_PREALLOC_LIMIT;
+        if (cap) {
+            items = (csilc_value *)csilc_arena_alloc(a, cap * sizeof(*items));
             if (!items) return -1;
         }
         size_t off = head;
         for (uint64_t i = 0; i < arg; i++) {
+            if (i == cap) {
+                size_t grown = cap * 2 < (size_t)arg ? cap * 2 : (size_t)arg;
+                items = (csilc_value *)csilc_arena_grow(a, items, cap * sizeof(*items), grown * sizeof(*items));
+                if (!items) return -1;
+                cap = grown;
+            }
             size_t m = 0;
             if (csilc_decode_value(a, b + off, len - off, &items[i], &m, depth + 1)) return -1;
             off += m;
@@ -385,12 +408,19 @@ static inline int csilc_decode_value(CsilCodecArena *a, const uint8_t *b, size_t
     case 5: {
         if (arg > len - head || arg > SIZE_MAX / sizeof(csilc_pair)) return -1;
         csilc_pair *pairs = NULL;
-        if (arg) {
-            pairs = (csilc_pair *)csilc_arena_alloc(a, (size_t)arg * sizeof(*pairs));
+        size_t cap = arg < CSILC_PREALLOC_LIMIT ? (size_t)arg : CSILC_PREALLOC_LIMIT;
+        if (cap) {
+            pairs = (csilc_pair *)csilc_arena_alloc(a, cap * sizeof(*pairs));
             if (!pairs) return -1;
         }
         size_t off = head;
         for (uint64_t i = 0; i < arg; i++) {
+            if (i == cap) {
+                size_t grown = cap * 2 < (size_t)arg ? cap * 2 : (size_t)arg;
+                pairs = (csilc_pair *)csilc_arena_grow(a, pairs, cap * sizeof(*pairs), grown * sizeof(*pairs));
+                if (!pairs) return -1;
+                cap = grown;
+            }
             csilc_value *k = (csilc_value *)csilc_arena_alloc(a, sizeof(*k));
             csilc_value *v = (csilc_value *)csilc_arena_alloc(a, sizeof(*v));
             if (!k || !v) return -1;
@@ -696,6 +726,12 @@ static inline int csilc_enc_DeletePlaylistRequest(csilc_buf *b, const DeletePlay
 static inline int csilc_dec_DeletePlaylistRequest(const csilc_value *m, CsilCodecArena *a, DeletePlaylistRequest *out);
 static inline int csilc_enc_PlaylistDetail(csilc_buf *b, const PlaylistDetail *v);
 static inline int csilc_dec_PlaylistDetail(const csilc_value *m, CsilCodecArena *a, PlaylistDetail *out);
+static inline int csilc_enc_BlockAccountRequest(csilc_buf *b, const BlockAccountRequest *v);
+static inline int csilc_dec_BlockAccountRequest(const csilc_value *m, CsilCodecArena *a, BlockAccountRequest *out);
+static inline int csilc_enc_BlockedAccount(csilc_buf *b, const BlockedAccount *v);
+static inline int csilc_dec_BlockedAccount(const csilc_value *m, CsilCodecArena *a, BlockedAccount *out);
+static inline int csilc_enc_BlockedAccountsResponse(csilc_buf *b, const BlockedAccountsResponse *v);
+static inline int csilc_dec_BlockedAccountsResponse(const csilc_value *m, CsilCodecArena *a, BlockedAccountsResponse *out);
 static inline int csilc_enc_CoverArtRequest(csilc_buf *b, const CoverArtRequest *v);
 static inline int csilc_dec_CoverArtRequest(const csilc_value *m, CsilCodecArena *a, CoverArtRequest *out);
 static inline int csilc_enc_CoverArt(csilc_buf *b, const CoverArt *v);
@@ -766,6 +802,16 @@ static inline int csilc_enc_DisableShareRequest(csilc_buf *b, const DisableShare
 static inline int csilc_dec_DisableShareRequest(const csilc_value *m, CsilCodecArena *a, DisableShareRequest *out);
 static inline int csilc_enc_ShareResult(csilc_buf *b, const ShareResult *v);
 static inline int csilc_dec_ShareResult(const csilc_value *m, CsilCodecArena *a, ShareResult *out);
+static inline int csilc_enc_ShareAccess(csilc_buf *b, const ShareAccess *v);
+static inline int csilc_dec_ShareAccess(const csilc_value *src, CsilCodecArena *a, ShareAccess *out);
+static inline int csilc_enc_ShareAccessRequest(csilc_buf *b, const ShareAccessRequest *v);
+static inline int csilc_dec_ShareAccessRequest(const csilc_value *m, CsilCodecArena *a, ShareAccessRequest *out);
+static inline int csilc_enc_ShareCandidate(csilc_buf *b, const ShareCandidate *v);
+static inline int csilc_dec_ShareCandidate(const csilc_value *m, CsilCodecArena *a, ShareCandidate *out);
+static inline int csilc_enc_ShareAccessInfo(csilc_buf *b, const ShareAccessInfo *v);
+static inline int csilc_dec_ShareAccessInfo(const csilc_value *m, CsilCodecArena *a, ShareAccessInfo *out);
+static inline int csilc_enc_SetShareAccessRequest(csilc_buf *b, const SetShareAccessRequest *v);
+static inline int csilc_dec_SetShareAccessRequest(const csilc_value *m, CsilCodecArena *a, SetShareAccessRequest *out);
 static inline int csilc_enc_MediaOpen(csilc_buf *b, const MediaOpen *v);
 static inline int csilc_dec_MediaOpen(const csilc_value *m, CsilCodecArena *a, MediaOpen *out);
 static inline int csilc_enc_MediaSeek(csilc_buf *b, const MediaSeek *v);
@@ -2457,8 +2503,10 @@ static inline int csilc_dec_UpdateAudiobookProgressRequest(const csilc_value *m,
 
 /* csilc_enc_PlaylistsResponse writes PlaylistsResponse as a canonical CBOR map. */
 static inline int csilc_enc_PlaylistsResponse(csilc_buf *b, const PlaylistsResponse *v) {
-    size_t csilc_n = 1;
+    size_t csilc_n = 2;
     if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "total", 5)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->total))) return -1;
     if (csilc_w_text(b, "playlists", 9)) return -1;
     if (csilc_w_array_head(b, v->playlists_count)) return -1;
     for (size_t csilc_i = 0; csilc_i < v->playlists_count; csilc_i++) {
@@ -2472,6 +2520,8 @@ static inline int csilc_dec_PlaylistsResponse(const csilc_value *m, CsilCodecAre
     (void)a;
     const csilc_value *csilc_f;
     if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "total");
+    if (!csilc_as_u64(csilc_f, &(out->total))) return -1;
     csilc_f = csilc_map_get(m, "playlists");
     if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
     out->playlists_count = csilc_f->as.array.count;
@@ -2556,6 +2606,96 @@ static inline int csilc_dec_PlaylistDetail(const csilc_value *m, CsilCodecArena 
     }
     csilc_f = csilc_map_get(m, "playlist");
     if (csilc_dec_Playlist(csilc_f, a, &(out->playlist))) return -1;
+    return 0;
+}
+
+/* csilc_enc_BlockAccountRequest writes BlockAccountRequest as a canonical CBOR map. */
+static inline int csilc_enc_BlockAccountRequest(csilc_buf *b, const BlockAccountRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "account_id", 10)) return -1;
+    if (csilc_w_text(b, (v->account_id), (v->account_id) ? strlen(v->account_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_BlockAccountRequest reads BlockAccountRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_BlockAccountRequest(const csilc_value *m, CsilCodecArena *a, BlockAccountRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "account_id");
+    if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_BlockedAccount writes BlockedAccount as a canonical CBOR map. */
+static inline int csilc_enc_BlockedAccount(csilc_buf *b, const BlockedAccount *v) {
+    size_t csilc_n = 3;
+    if (v->display_name) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "handle", 6)) return -1;
+    if (csilc_w_text(b, (v->handle), (v->handle) ? strlen(v->handle) : 0)) return -1;
+    if (csilc_w_text(b, "account_id", 10)) return -1;
+    if (csilc_w_text(b, (v->account_id), (v->account_id) ? strlen(v->account_id) : 0)) return -1;
+    if (csilc_w_text(b, "blocked_at", 10)) return -1;
+    if (csilc_w_tag(b, 0)) return -1;
+    if (csilc_w_text(b, (v->blocked_at).rfc3339, (v->blocked_at).rfc3339 ? strlen((v->blocked_at).rfc3339) : 0)) return -1;
+    if (v->display_name) {
+        if (csilc_w_text(b, "display_name", 12)) return -1;
+        if (csilc_w_text(b, (v->display_name), (v->display_name) ? strlen(v->display_name) : 0)) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_BlockedAccount reads BlockedAccount from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_BlockedAccount(const csilc_value *m, CsilCodecArena *a, BlockedAccount *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "handle");
+    if (!csilc_get_text(csilc_f, &(out->handle))) return -1;
+    csilc_f = csilc_map_get(m, "account_id");
+    if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
+    csilc_f = csilc_map_get(m, "blocked_at");
+    if (!csilc_get_tagged_text(csilc_f, 0, &(out->blocked_at).rfc3339)) return -1;
+    (out->blocked_at).epoch_seconds = 0;
+    csilc_f = csilc_map_get(m, "display_name");
+    out->display_name = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    return 0;
+}
+
+/* csilc_enc_BlockedAccountsResponse writes BlockedAccountsResponse as a canonical CBOR map. */
+static inline int csilc_enc_BlockedAccountsResponse(csilc_buf *b, const BlockedAccountsResponse *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "total", 5)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->total))) return -1;
+    if (csilc_w_text(b, "accounts", 8)) return -1;
+    if (csilc_w_array_head(b, v->accounts_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->accounts_count; csilc_i++) {
+        if (csilc_enc_BlockedAccount(b, &(v->accounts[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_BlockedAccountsResponse reads BlockedAccountsResponse from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_BlockedAccountsResponse(const csilc_value *m, CsilCodecArena *a, BlockedAccountsResponse *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "total");
+    if (!csilc_as_u64(csilc_f, &(out->total))) return -1;
+    csilc_f = csilc_map_get(m, "accounts");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->accounts_count = csilc_f->as.array.count;
+    out->accounts = NULL;
+    if (out->accounts_count) {
+        out->accounts = (BlockedAccount *)csilc_arena_alloc(a, out->accounts_count * sizeof(BlockedAccount));
+        if (!out->accounts) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->accounts_count; csilc_i++) {
+            if (csilc_dec_BlockedAccount(&csilc_f->as.array.items[csilc_i], a, &(out->accounts[csilc_i]))) return -1;
+        }
+    }
     return 0;
 }
 
@@ -3842,6 +3982,161 @@ static inline int csilc_dec_ShareResult(const csilc_value *m, CsilCodecArena *a,
     if (!m || m->kind != CSILC_MAP) return -1;
     csilc_f = csilc_map_get(m, "player");
     if (csilc_dec_Player(csilc_f, a, &(out->player))) return -1;
+    return 0;
+}
+
+static CSILC_UNUSED const char *const csilc_ShareAccess_names[] = {
+    "everyone",
+    "selected",
+};
+/* csilc_enc_ShareAccess writes the ShareAccess variant's wire text. */
+static inline int csilc_enc_ShareAccess(csilc_buf *b, const ShareAccess *v) {
+    const char *csilc_s = csilc_ShareAccess_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_ShareAccess matches the wire text back to a ShareAccess variant. */
+static inline int csilc_dec_ShareAccess(const csilc_value *src, CsilCodecArena *a, ShareAccess *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_ShareAccess_names) / sizeof(csilc_ShareAccess_names[0]); csilc_i++) {
+        if (strlen(csilc_ShareAccess_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_ShareAccess_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (ShareAccess)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+/* csilc_enc_ShareAccessRequest writes ShareAccessRequest as a canonical CBOR map. */
+static inline int csilc_enc_ShareAccessRequest(csilc_buf *b, const ShareAccessRequest *v) {
+    size_t csilc_n = 1;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "player_id", 9)) return -1;
+    if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ShareAccessRequest reads ShareAccessRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ShareAccessRequest(const csilc_value *m, CsilCodecArena *a, ShareAccessRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "player_id");
+    if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ShareCandidate writes ShareCandidate as a canonical CBOR map. */
+static inline int csilc_enc_ShareCandidate(csilc_buf *b, const ShareCandidate *v) {
+    size_t csilc_n = 3;
+    if (v->display_name) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "handle", 6)) return -1;
+    if (csilc_w_text(b, (v->handle), (v->handle) ? strlen(v->handle) : 0)) return -1;
+    if (csilc_w_text(b, "selected", 8)) return -1;
+    if (csilc_w_bool(b, (v->selected))) return -1;
+    if (csilc_w_text(b, "account_id", 10)) return -1;
+    if (csilc_w_text(b, (v->account_id), (v->account_id) ? strlen(v->account_id) : 0)) return -1;
+    if (v->display_name) {
+        if (csilc_w_text(b, "display_name", 12)) return -1;
+        if (csilc_w_text(b, (v->display_name), (v->display_name) ? strlen(v->display_name) : 0)) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_ShareCandidate reads ShareCandidate from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ShareCandidate(const csilc_value *m, CsilCodecArena *a, ShareCandidate *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "handle");
+    if (!csilc_get_text(csilc_f, &(out->handle))) return -1;
+    csilc_f = csilc_map_get(m, "selected");
+    if (!csilc_as_bool(csilc_f, &(out->selected))) return -1;
+    csilc_f = csilc_map_get(m, "account_id");
+    if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
+    csilc_f = csilc_map_get(m, "display_name");
+    out->display_name = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    return 0;
+}
+
+/* csilc_enc_ShareAccessInfo writes ShareAccessInfo as a canonical CBOR map. */
+static inline int csilc_enc_ShareAccessInfo(csilc_buf *b, const ShareAccessInfo *v) {
+    size_t csilc_n = 3;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "access", 6)) return -1;
+    if (csilc_enc_ShareAccess(b, &(v->access))) return -1;
+    if (csilc_w_text(b, "accounts", 8)) return -1;
+    if (csilc_w_array_head(b, v->accounts_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->accounts_count; csilc_i++) {
+        if (csilc_enc_ShareCandidate(b, &(v->accounts[csilc_i]))) return -1;
+    }
+    if (csilc_w_text(b, "player_id", 9)) return -1;
+    if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ShareAccessInfo reads ShareAccessInfo from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ShareAccessInfo(const csilc_value *m, CsilCodecArena *a, ShareAccessInfo *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "access");
+    if (csilc_dec_ShareAccess(csilc_f, a, &(out->access))) return -1;
+    csilc_f = csilc_map_get(m, "accounts");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->accounts_count = csilc_f->as.array.count;
+    out->accounts = NULL;
+    if (out->accounts_count) {
+        out->accounts = (ShareCandidate *)csilc_arena_alloc(a, out->accounts_count * sizeof(ShareCandidate));
+        if (!out->accounts) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->accounts_count; csilc_i++) {
+            if (csilc_dec_ShareCandidate(&csilc_f->as.array.items[csilc_i], a, &(out->accounts[csilc_i]))) return -1;
+        }
+    }
+    csilc_f = csilc_map_get(m, "player_id");
+    if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_SetShareAccessRequest writes SetShareAccessRequest as a canonical CBOR map. */
+static inline int csilc_enc_SetShareAccessRequest(csilc_buf *b, const SetShareAccessRequest *v) {
+    size_t csilc_n = 3;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "access", 6)) return -1;
+    if (csilc_enc_ShareAccess(b, &(v->access))) return -1;
+    if (csilc_w_text(b, "player_id", 9)) return -1;
+    if (csilc_w_text(b, (v->player_id), (v->player_id) ? strlen(v->player_id) : 0)) return -1;
+    if (csilc_w_text(b, "account_ids", 11)) return -1;
+    if (csilc_w_array_head(b, v->account_ids_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->account_ids_count; csilc_i++) {
+        if (csilc_w_text(b, (v->account_ids[csilc_i]), (v->account_ids[csilc_i]) ? strlen(v->account_ids[csilc_i]) : 0)) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_SetShareAccessRequest reads SetShareAccessRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_SetShareAccessRequest(const csilc_value *m, CsilCodecArena *a, SetShareAccessRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "access");
+    if (csilc_dec_ShareAccess(csilc_f, a, &(out->access))) return -1;
+    csilc_f = csilc_map_get(m, "player_id");
+    if (!csilc_get_text(csilc_f, &(out->player_id))) return -1;
+    csilc_f = csilc_map_get(m, "account_ids");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->account_ids_count = csilc_f->as.array.count;
+    out->account_ids = NULL;
+    if (out->account_ids_count) {
+        out->account_ids = (AccountId *)csilc_arena_alloc(a, out->account_ids_count * sizeof(AccountId));
+        if (!out->account_ids) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->account_ids_count; csilc_i++) {
+            if (!csilc_get_text(&csilc_f->as.array.items[csilc_i], &(out->account_ids[csilc_i]))) return -1;
+        }
+    }
     return 0;
 }
 
@@ -7173,6 +7468,75 @@ static inline int csil_decode_PlaylistDetail(const uint8_t *in, size_t len, Play
     return 0;
 }
 
+/* Encode a BlockAccountRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_BlockAccountRequest(const BlockAccountRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_BlockAccountRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a BlockAccountRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_BlockAccountRequest(const uint8_t *in, size_t len, BlockAccountRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_BlockAccountRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a BlockedAccount to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_BlockedAccount(const BlockedAccount *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_BlockedAccount(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a BlockedAccount. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_BlockedAccount(const uint8_t *in, size_t len, BlockedAccount *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_BlockedAccount(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a BlockedAccountsResponse to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_BlockedAccountsResponse(const BlockedAccountsResponse *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_BlockedAccountsResponse(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a BlockedAccountsResponse. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_BlockedAccountsResponse(const uint8_t *in, size_t len, BlockedAccountsResponse *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_BlockedAccountsResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a CoverArtRequest to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_CoverArtRequest(const CoverArtRequest *v, uint8_t **out, size_t *out_len) {
@@ -7974,6 +8338,121 @@ static inline int csil_decode_ShareResult(const uint8_t *in, size_t len, ShareRe
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_ShareResult(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ShareAccess to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ShareAccess(const ShareAccess *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ShareAccess(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ShareAccess. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ShareAccess(const uint8_t *in, size_t len, ShareAccess *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ShareAccess(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ShareAccessRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ShareAccessRequest(const ShareAccessRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ShareAccessRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ShareAccessRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ShareAccessRequest(const uint8_t *in, size_t len, ShareAccessRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ShareAccessRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ShareCandidate to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ShareCandidate(const ShareCandidate *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ShareCandidate(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ShareCandidate. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ShareCandidate(const uint8_t *in, size_t len, ShareCandidate *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ShareCandidate(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ShareAccessInfo to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ShareAccessInfo(const ShareAccessInfo *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ShareAccessInfo(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ShareAccessInfo. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ShareAccessInfo(const uint8_t *in, size_t len, ShareAccessInfo *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ShareAccessInfo(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a SetShareAccessRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_SetShareAccessRequest(const SetShareAccessRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_SetShareAccessRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a SetShareAccessRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_SetShareAccessRequest(const uint8_t *in, size_t len, SetShareAccessRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_SetShareAccessRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

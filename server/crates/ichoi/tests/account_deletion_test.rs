@@ -28,7 +28,7 @@ fn playlist(id: &str, owner: &str, path: &str, visibility: &str) -> models::Play
 }
 
 #[test]
-fn deletion_removes_private_data_and_retains_public_playlist() {
+fn deletion_removes_private_and_public_playlists() {
     let (_app, pool) = common::test_app();
     let music = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(music.path().join("playlists")).unwrap();
@@ -113,6 +113,12 @@ fn deletion_removes_private_data_and_retains_public_playlist() {
             "playlist",
             "playlist:private",
         ),
+        (
+            "target-public-playlist",
+            "other@example.com",
+            "playlist",
+            "playlist:public",
+        ),
     ] {
         store::insert_content_report(
             &mut conn,
@@ -154,12 +160,11 @@ fn deletion_removes_private_data_and_retains_public_playlist() {
     assert!(store::get_playlist(&mut conn, "playlist:private")
         .unwrap()
         .is_none());
-    let public = store::get_playlist(&mut conn, "playlist:public")
+    assert!(store::get_playlist(&mut conn, "playlist:public")
         .unwrap()
-        .unwrap();
-    assert!(public.owner.is_none());
+        .is_none());
     assert!(!music.path().join("playlists/private.m3u").exists());
-    assert!(music.path().join("playlists/public.m3u").exists());
+    assert!(!music.path().join("playlists/public.m3u").exists());
     assert!(store::list_content_reports(&mut conn, 0, 10)
         .unwrap()
         .is_empty());

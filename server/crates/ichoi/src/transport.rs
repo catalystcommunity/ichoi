@@ -174,6 +174,20 @@ pub fn dispatch(
                 encode_playlist_detail
             )
         }
+        ("library", "delete-playlist") => {
+            rr!(decode_delete_playlist_request, delete_playlist, encode_ok)
+        }
+        ("library", "block-account") => {
+            rr!(decode_block_account_request, block_account, encode_ok)
+        }
+        ("library", "unblock-account") => {
+            rr!(decode_block_account_request, unblock_account, encode_ok)
+        }
+        ("library", "list-blocked-accounts") => rr!(
+            decode_page,
+            list_blocked_accounts,
+            encode_blocked_accounts_response
+        ),
         ("library", "get-cover-art") => {
             rr!(decode_cover_art_request, get_cover_art, encode_cover_art)
         }
@@ -186,6 +200,11 @@ pub fn dispatch(
             decode_update_audiobook_progress_request,
             update_audiobook_progress,
             encode_audiobook_progress
+        ),
+        ("library", "report-content") => rr!(
+            decode_report_content_request,
+            report_content,
+            encode_content_report
         ),
 
         // PlayerService (request/response subset; subscribe is a channel op)
@@ -209,6 +228,20 @@ pub fn dispatch(
         }
         ("player", "disable-share") => {
             rr!(decode_disable_share_request, disable_share, encode_ok)
+        }
+        ("player", "get-share-access") => {
+            rr!(
+                decode_share_access_request,
+                get_share_access,
+                encode_share_access_info
+            )
+        }
+        ("player", "set-share-access") => {
+            rr!(
+                decode_set_share_access_request,
+                set_share_access,
+                encode_share_access_info
+            )
         }
 
         // NodeService (register is request/response; session is a channel op)
@@ -710,8 +743,16 @@ pub fn data_change_frame(change: &DataChange) -> Vec<u8> {
 fn change_topics_for_operation(service: &str, event: &str) -> Vec<ChangeTopic> {
     match (service, event) {
         ("session", "authenticate" | "logout") => vec![ChangeTopic::Session],
+        ("library", "delete-playlist") => vec![ChangeTopic::Playlists],
+        ("library", "block-account" | "unblock-account") => {
+            vec![
+                ChangeTopic::Accounts,
+                ChangeTopic::Playlists,
+                ChangeTopic::Players,
+            ]
+        }
         ("library", "update-audiobook-progress") => vec![ChangeTopic::Progress],
-        ("player", "disable-share") => vec![ChangeTopic::Players],
+        ("player", "disable-share" | "set-share-access") => vec![ChangeTopic::Players],
         ("admin", "set-role") => vec![ChangeTopic::Accounts],
         ("admin", "trust-domain" | "trust-identity" | "revoke-trusted-identity") => {
             vec![ChangeTopic::Trust]

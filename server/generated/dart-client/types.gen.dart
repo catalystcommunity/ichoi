@@ -2374,32 +2374,38 @@ final class UpdateAudiobookProgressRequest {
 
 final class PlaylistsResponse {
   final List<Playlist> playlists;
+  final int total;
 
-  const PlaylistsResponse({required this.playlists});
+  const PlaylistsResponse({required this.playlists, required this.total});
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['playlists'] = playlists;
+    map['total'] = total;
     return map;
   }
 
   factory PlaylistsResponse.fromMap(Map<String, Object?> map) {
-    return PlaylistsResponse(playlists: map['playlists'] as List<Playlist>);
+    return PlaylistsResponse(
+      playlists: map['playlists'] as List<Playlist>,
+      total: map['total'] as int,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     if (other is! PlaylistsResponse) return false;
-    return playlists == other.playlists;
+    return playlists == other.playlists && total == other.total;
   }
 
   @override
-  int get hashCode => Object.hashAll([playlists]);
+  int get hashCode => Object.hashAll([playlists, total]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['playlists'] = playlists.map((csilE) => csilE.toCborValue()).toList();
+    map['total'] = total;
     return map;
   }
 
@@ -2411,6 +2417,7 @@ final class PlaylistsResponse {
           .map((csilE) => Playlist.fromCborValue(csilE))
           .cast<Playlist>()
           .toList(),
+      total: map['total'] as int,
     );
   }
 
@@ -2567,6 +2574,183 @@ final class PlaylistDetail {
   /// Decode a CSIL CBOR byte payload into this record.
   factory PlaylistDetail.fromCbor(List<int> bytes) =>
       PlaylistDetail.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class BlockAccountRequest {
+  final AccountId accountId;
+
+  const BlockAccountRequest({required this.accountId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    return map;
+  }
+
+  factory BlockAccountRequest.fromMap(Map<String, Object?> map) {
+    return BlockAccountRequest(accountId: map['account_id'] as AccountId);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! BlockAccountRequest) return false;
+    return accountId == other.accountId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([accountId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory BlockAccountRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return BlockAccountRequest(accountId: map['account_id'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory BlockAccountRequest.fromCbor(List<int> bytes) =>
+      BlockAccountRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class BlockedAccount {
+  final AccountId accountId;
+  final Handle handle;
+  final String? displayName;
+  final DateTime blockedAt;
+
+  const BlockedAccount({
+    required this.accountId,
+    required this.handle,
+    this.displayName,
+    required this.blockedAt,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['handle'] = handle;
+    if (displayName != null) map['display_name'] = displayName;
+    map['blocked_at'] = blockedAt;
+    return map;
+  }
+
+  factory BlockedAccount.fromMap(Map<String, Object?> map) {
+    return BlockedAccount(
+      accountId: map['account_id'] as AccountId,
+      handle: map['handle'] as Handle,
+      displayName: map['display_name'] as String?,
+      blockedAt: map['blocked_at'] as DateTime,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! BlockedAccount) return false;
+    return accountId == other.accountId &&
+        handle == other.handle &&
+        displayName == other.displayName &&
+        blockedAt == other.blockedAt;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([accountId, handle, displayName, blockedAt]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['handle'] = handle;
+    if (displayName != null) map['display_name'] = displayName!;
+    map['blocked_at'] = blockedAt;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory BlockedAccount.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return BlockedAccount(
+      accountId: map['account_id'] as String,
+      handle: map['handle'] as String,
+      displayName: map['display_name'] == null
+          ? null
+          : map['display_name'] as String,
+      blockedAt: map['blocked_at'] as DateTime,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory BlockedAccount.fromCbor(List<int> bytes) =>
+      BlockedAccount.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class BlockedAccountsResponse {
+  final List<BlockedAccount> accounts;
+  final int total;
+
+  const BlockedAccountsResponse({required this.accounts, required this.total});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['accounts'] = accounts;
+    map['total'] = total;
+    return map;
+  }
+
+  factory BlockedAccountsResponse.fromMap(Map<String, Object?> map) {
+    return BlockedAccountsResponse(
+      accounts: map['accounts'] as List<BlockedAccount>,
+      total: map['total'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! BlockedAccountsResponse) return false;
+    return accounts == other.accounts && total == other.total;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([accounts, total]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['accounts'] = accounts.map((csilE) => csilE.toCborValue()).toList();
+    map['total'] = total;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory BlockedAccountsResponse.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return BlockedAccountsResponse(
+      accounts: (map['accounts'] as List)
+          .map((csilE) => BlockedAccount.fromCborValue(csilE))
+          .cast<BlockedAccount>()
+          .toList(),
+      total: map['total'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory BlockedAccountsResponse.fromCbor(List<int> bytes) =>
+      BlockedAccountsResponse.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class CoverArtRequest {
@@ -4866,6 +5050,270 @@ final class ShareResult {
   /// Decode a CSIL CBOR byte payload into this record.
   factory ShareResult.fromCbor(List<int> bytes) =>
       ShareResult.fromCborValue(CsilCbor.decode(bytes));
+}
+
+typedef ShareAccess = String;
+
+final class ShareAccessRequest {
+  final PlayerId playerId;
+
+  const ShareAccessRequest({required this.playerId});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['player_id'] = playerId;
+    return map;
+  }
+
+  factory ShareAccessRequest.fromMap(Map<String, Object?> map) {
+    return ShareAccessRequest(playerId: map['player_id'] as PlayerId);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ShareAccessRequest) return false;
+    return playerId == other.playerId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([playerId]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['player_id'] = playerId;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ShareAccessRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ShareAccessRequest(playerId: map['player_id'] as String);
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ShareAccessRequest.fromCbor(List<int> bytes) =>
+      ShareAccessRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ShareCandidate {
+  final AccountId accountId;
+  final String handle;
+  final String? displayName;
+  final bool selected;
+
+  const ShareCandidate({
+    required this.accountId,
+    required this.handle,
+    this.displayName,
+    required this.selected,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['handle'] = handle;
+    if (displayName != null) map['display_name'] = displayName;
+    map['selected'] = selected;
+    return map;
+  }
+
+  factory ShareCandidate.fromMap(Map<String, Object?> map) {
+    return ShareCandidate(
+      accountId: map['account_id'] as AccountId,
+      handle: map['handle'] as String,
+      displayName: map['display_name'] as String?,
+      selected: map['selected'] as bool,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ShareCandidate) return false;
+    return accountId == other.accountId &&
+        handle == other.handle &&
+        displayName == other.displayName &&
+        selected == other.selected;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([accountId, handle, displayName, selected]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['handle'] = handle;
+    if (displayName != null) map['display_name'] = displayName!;
+    map['selected'] = selected;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ShareCandidate.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ShareCandidate(
+      accountId: map['account_id'] as String,
+      handle: map['handle'] as String,
+      displayName: map['display_name'] == null
+          ? null
+          : map['display_name'] as String,
+      selected: map['selected'] as bool,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ShareCandidate.fromCbor(List<int> bytes) =>
+      ShareCandidate.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ShareAccessInfo {
+  final PlayerId playerId;
+  final ShareAccess access;
+  final List<ShareCandidate> accounts;
+
+  const ShareAccessInfo({
+    required this.playerId,
+    required this.access,
+    required this.accounts,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['player_id'] = playerId;
+    map['access'] = access;
+    map['accounts'] = accounts;
+    return map;
+  }
+
+  factory ShareAccessInfo.fromMap(Map<String, Object?> map) {
+    return ShareAccessInfo(
+      playerId: map['player_id'] as PlayerId,
+      access: map['access'] as ShareAccess,
+      accounts: map['accounts'] as List<ShareCandidate>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ShareAccessInfo) return false;
+    return playerId == other.playerId &&
+        access == other.access &&
+        accounts == other.accounts;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([playerId, access, accounts]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['player_id'] = playerId;
+    map['access'] = access;
+    map['accounts'] = accounts.map((csilE) => csilE.toCborValue()).toList();
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ShareAccessInfo.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ShareAccessInfo(
+      playerId: map['player_id'] as String,
+      access: CsilCbor.expectOneOf<String>(map['access'], const [
+        'everyone',
+        'selected',
+      ]),
+      accounts: (map['accounts'] as List)
+          .map((csilE) => ShareCandidate.fromCborValue(csilE))
+          .cast<ShareCandidate>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ShareAccessInfo.fromCbor(List<int> bytes) =>
+      ShareAccessInfo.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class SetShareAccessRequest {
+  final PlayerId playerId;
+  final ShareAccess access;
+  final List<AccountId> accountIds;
+
+  const SetShareAccessRequest({
+    required this.playerId,
+    required this.access,
+    required this.accountIds,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['player_id'] = playerId;
+    map['access'] = access;
+    map['account_ids'] = accountIds;
+    return map;
+  }
+
+  factory SetShareAccessRequest.fromMap(Map<String, Object?> map) {
+    return SetShareAccessRequest(
+      playerId: map['player_id'] as PlayerId,
+      access: map['access'] as ShareAccess,
+      accountIds: map['account_ids'] as List<AccountId>,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! SetShareAccessRequest) return false;
+    return playerId == other.playerId &&
+        access == other.access &&
+        accountIds == other.accountIds;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([playerId, access, accountIds]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['player_id'] = playerId;
+    map['access'] = access;
+    map['account_ids'] = accountIds;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory SetShareAccessRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return SetShareAccessRequest(
+      playerId: map['player_id'] as String,
+      access: CsilCbor.expectOneOf<String>(map['access'], const [
+        'everyone',
+        'selected',
+      ]),
+      accountIds: (map['account_ids'] as List)
+          .map((csilE) => csilE as String)
+          .cast<AccountId>()
+          .toList(),
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory SetShareAccessRequest.fromCbor(List<int> bytes) =>
+      SetShareAccessRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class MediaOpen {

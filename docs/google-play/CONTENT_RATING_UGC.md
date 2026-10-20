@@ -20,8 +20,8 @@ record the rating that Google assigns.
 - A moderator reviews reports: Yes. The selected server operator reviews them.
 - A moderator can remove content or accounts: Yes. A server administrator can
   delete a playlist or an account, except for the last administrator.
-- Users can block another user: No. Ichoi has no direct messaging or one-to-one
-  social function.
+- Users can block another user: Yes. A block hides public playlists from that account on
+  the selected server. The user can remove the block in Settings.
 - Terms are required before content creation: Yes. A user must accept the terms
   before the client creates a playlist.
 

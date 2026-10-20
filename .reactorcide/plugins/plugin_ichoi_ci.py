@@ -310,7 +310,7 @@ def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
     install_home = install_root / "home"
     cargo_home = install_root / "cargo"
     bin_dir = install_root / "bin"
-    # csilgen v0.2.7 does not read CSILGEN_GENERATOR_DIR when it loads a target.
+    # csilgen (through v0.2.9) does not read CSILGEN_GENERATOR_DIR when it loads a target.
     # Install under the isolated HOME path that the loader searches by default.
     generator_dir = install_home / ".csilgen/generators"
     install_environment = environment.copy()

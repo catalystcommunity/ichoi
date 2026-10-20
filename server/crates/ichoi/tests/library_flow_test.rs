@@ -8,6 +8,7 @@ use libichoi::csil::codec::decode_player_state;
 use libichoi::csil::services::{LibraryService, NodeService, PlayerService};
 use libichoi::csil::types::*;
 use libichoi::csil_channel::decode_node_directive;
+use std::sync::Arc;
 
 #[test]
 fn lists_albums_with_track_counts() {
@@ -160,6 +161,63 @@ fn anonymous_cannot_share_once_users_exist() {
 }
 
 #[test]
+fn zero_account_guest_access_flag_gates_guest_control_of_native_outputs() {
+    let pause = |player_id: &str| CommandRequest {
+        player_id: player_id.into(),
+        command: PlayerCommand::Variant9(CmdPause { op: "pause".into() }),
+    };
+    let seed = |pool: &ichoi::db::SqlitePool| {
+        let mut conn = pool.get().unwrap();
+        ichoi::db::store::ensure_core_node(&mut conn, "testhost").unwrap();
+        ichoi::db::store::sync_core_outputs(
+            &mut conn,
+            "testhost",
+            &[ichoi::audio::AudioOutput {
+                os_device_id: "speakers".into(),
+                friendly_name: "Living room".into(),
+                channels: 2,
+                sample_rates: vec![48_000],
+                is_default: true,
+            }],
+        )
+        .unwrap();
+        // An ownerless browser share left from an earlier guest session.
+        ichoi::db::store::create_player(
+            &mut conn,
+            &ichoi::db::models::Player {
+                id: "share:guest:Old".into(),
+                kind: "shared".into(),
+                output_device_id: None,
+                owner_account_id: None,
+                name: "Guest Old".into(),
+                name_suffix: Some("Old".into()),
+            },
+        )
+        .unwrap();
+    };
+    let native = "player:core:testhost:speakers";
+
+    // Default: a fresh zero-account server lets guests control shared devices.
+    let (app, pool) = common::test_app();
+    seed(&pool);
+    app.control(&common::ctx_anon(), pause(native))
+        .expect("guest controls native output while elevated guest access is on");
+
+    // With the flag off, guests must wait for the first sign-in.
+    let (mut app, pool) = common::test_app();
+    let mut config = common::test_config();
+    config.zero_account_guest_access = false;
+    app.config = Arc::new(config);
+    seed(&pool);
+    for player_id in [native, "share:guest:Old"] {
+        let error = app
+            .control(&common::ctx_anon(), pause(player_id))
+            .expect_err("guest control needs the zero-account flag");
+        assert_eq!(error.code, 401, "{player_id}");
+    }
+}
+
+#[test]
 fn anonymous_cannot_control_shared_device_once_users_exist() {
     let (app, pool) = common::test_app();
     {
@@ -198,6 +256,203 @@ fn anonymous_cannot_control_shared_device_once_users_exist() {
         )
         .expect_err("anonymous control is not allowed once accounts exist");
     assert_eq!(err.code, 401);
+}
+
+#[test]
+fn anonymous_jukebox_commands_do_not_credit_the_previous_signed_in_listener() {
+    use diesel::prelude::*;
+    use ichoi::db::schema::listens;
+
+    let (mut app, pool) = common::test_app();
+    let mut config = common::test_config();
+    config.anonymous_jukebox = true;
+    app.config = Arc::new(config);
+    {
+        let mut conn = pool.get().unwrap();
+        ichoi::db::store::upsert_account(
+            &mut conn,
+            &ichoi::db::models::Account {
+                id: "alice@example.invalid".into(),
+                handle: "alice".into(),
+                display_name: None,
+                role: "member".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+            },
+        )
+        .unwrap();
+        common::create_artist(&mut conn, &DataMap::new());
+        common::create_album(&mut conn, &DataMap::new());
+        common::create_track(&mut conn, &DataMap::new());
+        let mut second = DataMap::new();
+        second.insert("id".into(), "track-2".into());
+        second.insert(
+            "root_relative_path".into(),
+            "Test Artist/Test Album/02.flac".into(),
+        );
+        common::create_track(&mut conn, &second);
+    }
+    let alice_listens = || -> i64 {
+        listens::table
+            .filter(listens::account_id.eq("alice@example.invalid"))
+            .count()
+            .get_result(&mut pool.get().unwrap())
+            .unwrap()
+    };
+    // The anonymous browser tab is the share's output and reports each completion.
+    let complete = |state: &PlayerState, player_id: &str| {
+        let item = state.queue[state.current_index.expect("current index") as usize].queue_item_id;
+        app.control(
+            &common::ctx_anon(),
+            CommandRequest {
+                player_id: player_id.into(),
+                command: PlayerCommand::Variant17(CmdPlaybackCompleted {
+                    op: "playback-completed".into(),
+                    playback_id: state.playback_id.clone().expect("playback id"),
+                    queue_item_id: item,
+                }),
+            },
+        )
+        .expect("output reports completion")
+    };
+
+    let share = app
+        .enable_share(
+            &common::ctx_anon(),
+            EnableShareRequest {
+                suffix: Some("Party".into()),
+            },
+        )
+        .expect("anonymous jukebox share");
+    let pid = share.player.id;
+    let playing = app
+        .control(
+            &common::ctx_user("alice@example.invalid"),
+            CommandRequest {
+                player_id: pid.clone(),
+                command: PlayerCommand::Variant8(CmdReplaceAndPlay {
+                    op: "replace-and-play".into(),
+                    track_ids: vec!["track-1".into(), "track-2".into(), "track-1".into()],
+                    start_index: Some(0),
+                    position_ms: Some(0),
+                }),
+            },
+        )
+        .expect("alice starts the jukebox");
+    // Alice's own playback is credited to Alice.
+    complete(&playing, &pid);
+    assert_eq!(alice_listens(), 1);
+
+    let guest_next = app
+        .control(
+            &common::ctx_anon(),
+            CommandRequest {
+                player_id: pid.clone(),
+                command: PlayerCommand::Variant10(CmdNext { op: "next".into() }),
+            },
+        )
+        .expect("guest skips");
+    complete(&guest_next, &pid);
+    assert_eq!(
+        alice_listens(),
+        1,
+        "a guest command must not record listens for the earlier signed-in listener"
+    );
+    let guest_rows: i64 = listens::table
+        .filter(listens::account_id.eq("__guest__"))
+        .count()
+        .get_result(&mut pool.get().unwrap())
+        .unwrap();
+    assert_eq!(
+        guest_rows, 0,
+        "guest listens are not recorded once an account exists"
+    );
+}
+
+#[test]
+fn anonymous_jukebox_allows_ownerless_browser_share_after_an_account_exists() {
+    let (mut app, pool) = common::test_app();
+    let mut config = common::test_config();
+    config.anonymous_jukebox = true;
+    app.config = Arc::new(config);
+    {
+        let mut conn = pool.get().unwrap();
+        ichoi::db::store::upsert_account(
+            &mut conn,
+            &ichoi::db::models::Account {
+                id: "admin@example.invalid".into(),
+                handle: "admin".into(),
+                display_name: None,
+                role: "admin".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+            },
+        )
+        .unwrap();
+    }
+
+    let share = app
+        .enable_share(
+            &common::ctx_anon(),
+            EnableShareRequest {
+                suffix: Some("Demo".into()),
+            },
+        )
+        .expect("anonymous jukebox share");
+    app.control(
+        &common::ctx_anon(),
+        CommandRequest {
+            player_id: share.player.id.clone(),
+            command: PlayerCommand::Variant9(CmdPause { op: "pause".into() }),
+        },
+    )
+    .expect("anonymous jukebox control");
+    app.disable_share(
+        &common::ctx_anon(),
+        DisableShareRequest {
+            player_id: share.player.id,
+        },
+    )
+    .expect("anonymous jukebox removal");
+}
+
+#[test]
+fn anonymous_jukebox_does_not_expose_account_owned_browser_shares() {
+    let (mut app, pool) = common::test_app();
+    let mut config = common::test_config();
+    config.anonymous_jukebox = true;
+    app.config = Arc::new(config);
+    {
+        let mut conn = pool.get().unwrap();
+        ichoi::db::store::upsert_account(
+            &mut conn,
+            &ichoi::db::models::Account {
+                id: "member@example.invalid".into(),
+                handle: "member".into(),
+                display_name: None,
+                role: "member".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+            },
+        )
+        .unwrap();
+    }
+    let share = app
+        .enable_share(
+            &common::ctx_user("member@example.invalid"),
+            EnableShareRequest {
+                suffix: Some("Private".into()),
+            },
+        )
+        .expect("account-owned share");
+
+    let error = app
+        .control(
+            &common::ctx_anon(),
+            CommandRequest {
+                player_id: share.player.id,
+                command: PlayerCommand::Variant9(CmdPause { op: "pause".into() }),
+            },
+        )
+        .expect_err("account-owned share must still require login");
+    assert_eq!(error.code, 401);
 }
 
 #[test]

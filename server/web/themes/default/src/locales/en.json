@@ -142,7 +142,14 @@
     "noQueue": "Queue is empty.",
     "blocked": "Needs attention",
     "targetBlockedTitle": "{{name}} cannot play yet",
-    "targetBlockedBody": "That output is a browser satellite that nobody has used since it started, so the browser keeps it silent. Go to the device and touch its screen, or refresh its page, to let it play. You can queue music now; it starts when somebody does."
+    "targetBlockedBody": "That output is a browser satellite that nobody has used since it started, so the browser keeps it silent. Go to the device and touch its screen, or refresh its page, to let it play. You can queue music now; it starts when somebody does.",
+    "shareAccess": "Who can use it",
+    "shareAccessTitle": "Who can use {{name}}",
+    "shareAccessEveryone": "Everyone who is signed in",
+    "shareAccessSelected": "Only the people I select",
+    "shareAccessHint": "You can always use your own device. Accounts you block cannot use it.",
+    "shareAccessNobody": "No other accounts exist on this server yet.",
+    "shareAccessNoneSelected": "Nobody else is selected. The device is private."
   },
   "nowPlaying": {
     "title": "Now Playing",
@@ -186,7 +193,11 @@
     "resyncRunning": "Library resync is running.",
     "resyncAlreadyRunning": "A library resync is already running.",
     "resyncComplete": "Library resync completed.",
-    "save": "Save"
+    "save": "Save",
+    "shareDefault": "New shared devices",
+    "shareDefaultHint": "The access a device starts with when a signed-in person shares it. The owner can change it at any time.",
+    "shareDefaultEveryone": "Everyone who is signed in",
+    "shareDefaultPrivate": "Private to the owner"
   },
   "player": {
     "play": "Play",
