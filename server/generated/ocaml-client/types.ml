@@ -179,10 +179,25 @@ and update_audiobook_progress_request = {
   completed : bool;
 }
 
-and playlists_response = { playlists : playlist list }
+and playlists_response = { playlists : playlist list; total : int64 }
 and playlist_request = { playlist_id : playlist_id }
 and delete_playlist_request = { playlist_id : playlist_id }
 and playlist_detail = { playlist : playlist; tracks : track list }
+and block_account_request = { account_id : account_id }
+
+and blocked_account = {
+  account_id : account_id;
+  handle : handle;
+  display_name : string option;
+  (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
+  blocked_at : string;
+}
+
+and blocked_accounts_response = {
+  accounts : blocked_account list;
+  total : int64;
+}
+
 and cover_art_request = { album_id : album_id; max_size : int64 option }
 and cover_art = { content_type : string; data : bytes }
 
@@ -321,6 +336,27 @@ and command_request = { player_id : player_id; command : player_command }
 and enable_share_request = { suffix : string option }
 and disable_share_request = { player_id : player_id }
 and share_result = { player : player }
+and share_access = Everyone | Selected
+and share_access_request = { player_id : player_id }
+
+and share_candidate = {
+  account_id : account_id;
+  handle : string;
+  display_name : string option;
+  selected : bool;
+}
+
+and share_access_info = {
+  player_id : player_id;
+  access : share_access;
+  accounts : share_candidate list;
+}
+
+and set_share_access_request = {
+  player_id : player_id;
+  access : share_access;
+  account_ids : account_id list;
+}
 
 and media_open = {
   kind : Csil_cbor.t;

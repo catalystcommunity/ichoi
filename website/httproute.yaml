@@ -1,0 +1,30 @@
+# The public route for the project website. The pysocha-site chart only makes an Ingress,
+# which conflicts with the cluster's Gateway listeners, so the deploy job turns the Ingress
+# off and applies this route. The chart's Caddy redirects www to the bare domain.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: ichoi-website
+  namespace: ichoi-website
+  labels:
+    app.kubernetes.io/name: pysocha-site
+    app.kubernetes.io/instance: ichoi-website
+spec:
+  hostnames:
+    - catalystichoi.com
+    - www.catalystichoi.com
+  parentRefs:
+    - name: contour
+      namespace: projectcontour
+      sectionName: https
+    - name: contour
+      namespace: projectcontour
+      sectionName: http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: ichoi-website-pysocha-site
+          port: 8080

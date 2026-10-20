@@ -244,6 +244,47 @@ defmodule Csilgen.Generated.LibraryClient do
     Csilgen.Generated.Ok.from_cbor(resp)
   end
 
+  @spec block_account(t(), Csilgen.Generated.BlockAccountRequest.t()) :: Csilgen.Generated.Ok.t()
+  def block_account(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "block-account",
+        Csilgen.Generated.BlockAccountRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
+  @spec unblock_account(t(), Csilgen.Generated.BlockAccountRequest.t()) ::
+          Csilgen.Generated.Ok.t()
+  def unblock_account(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "unblock-account",
+        Csilgen.Generated.BlockAccountRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
+  @spec list_blocked_accounts(t(), Csilgen.Generated.Page.t()) ::
+          Csilgen.Generated.BlockedAccountsResponse.t()
+  def list_blocked_accounts(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "list-blocked-accounts",
+        Csilgen.Generated.Page.to_cbor(req)
+      )
+
+    Csilgen.Generated.BlockedAccountsResponse.from_cbor(resp)
+  end
+
   @spec get_cover_art(t(), Csilgen.Generated.CoverArtRequest.t()) ::
           Csilgen.Generated.CoverArt.t()
   def get_cover_art(%__MODULE__{transport: transport}, req) do
@@ -379,6 +420,34 @@ defmodule Csilgen.Generated.PlayerClient do
       )
 
     Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
+  @spec get_share_access(t(), Csilgen.Generated.ShareAccessRequest.t()) ::
+          Csilgen.Generated.ShareAccessInfo.t()
+  def get_share_access(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "PlayerService",
+        "get-share-access",
+        Csilgen.Generated.ShareAccessRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ShareAccessInfo.from_cbor(resp)
+  end
+
+  @spec set_share_access(t(), Csilgen.Generated.SetShareAccessRequest.t()) ::
+          Csilgen.Generated.ShareAccessInfo.t()
+  def set_share_access(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "PlayerService",
+        "set-share-access",
+        Csilgen.Generated.SetShareAccessRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ShareAccessInfo.from_cbor(resp)
   end
 end
 

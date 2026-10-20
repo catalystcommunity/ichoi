@@ -159,6 +159,23 @@ class MainActivity : Activity() {
                 playlist.owner?.let { owner -> content.addView(button("Report playlist owner") {
                     report(api, ContentReportTargetType.Account, owner)
                 }) }
+                playlist.owner?.takeIf { it != sessionInfo?.accountId }?.let { owner ->
+                    content.addView(button("Block user") {
+                        val selected = profile ?: return@button
+                        execute({
+                            AccountBlockAction.change(
+                                selected.id,
+                                owner,
+                                { _, accountId -> api.blockAccount(accountId); Unit },
+                                { _ -> api.playlists() },
+                            )
+                        }, { result, error ->
+                            if (profile?.id != selected.id) return@execute
+                            if (error != null) showError(error.message ?: "The account was not blocked")
+                            else showPlaylists(api, result!!)
+                        })
+                    })
+                }
             }
         }
         content.addView(button("Back") { connect(profile!!) })
@@ -182,7 +199,7 @@ class MainActivity : Activity() {
         content.addView(button("Back") { connect(profile!!) })
     }
 
-    private fun showSettings(api: IchoiApi) {
+    private fun showSettings(api: IchoiApi, blocked: BlockedAccountsResponse? = null) {
         content.removeAllViews()
         text("Settings", 24f)
         text("Server: ${profile?.url}")
@@ -190,6 +207,7 @@ class MainActivity : Activity() {
         link("Terms of Use", TERMS_URL)
         val current = sessionInfo
         if (current != null) {
+            val settingsProfileId = profile?.id
             text("Signed in as ${current.handle}")
             content.addView(button("Sign out") {
                 execute({ runCatching { api.signOut() }; Unit }, { _, _ ->
@@ -199,6 +217,34 @@ class MainActivity : Activity() {
                 })
             })
             content.addView(button("Delete account") { deleteAccount(api, current.handle) })
+            execute({ blocked ?: api.blockedAccounts() }, { result, error ->
+                if (profile?.id != settingsProfileId || sessionInfo == null) return@execute
+                if (error != null) {
+                    text("Could not load blocked accounts: ${error.message ?: "service failure"}")
+                } else {
+                    text("Blocked accounts", 20f)
+                    text("A block hides public playlists from that account on this selected server.")
+                    if (result!!.accounts.isEmpty()) text("You have not blocked an account on this server.")
+                    result.accounts.forEach { account ->
+                        content.addView(button("Unblock ${account.displayName ?: account.handle}") {
+                            val selected = profile ?: return@button
+                            execute({
+                                AccountBlockAction.change(
+                                    selected.id,
+                                    account.accountId,
+                                    { _, accountId -> api.unblockAccount(accountId); Unit },
+                                    { _ -> api.blockedAccounts() },
+                                )
+                            }, { refreshed, unblockError ->
+                                if (profile?.id != selected.id) return@execute
+                                if (unblockError != null) {
+                                    showError(unblockError.message ?: "The account was not unblocked")
+                                } else showSettings(api, refreshed)
+                            })
+                        })
+                    }
+                }
+            })
         } else {
             val identity = EditText(this).apply { hint = "handle@domain" }
             content.addView(identity)
@@ -258,7 +304,7 @@ class MainActivity : Activity() {
     private fun deleteAccount(api: IchoiApi, currentHandle: String) {
         val handle = EditText(this).apply { hint = "Enter your current handle exactly" }
         AlertDialog.Builder(this).setTitle("Delete account")
-            .setMessage("This removes your account data from ${profile?.url}.")
+            .setMessage("This removes your account and every public and private playlist that you own from ${profile?.url}.")
             .setView(handle).setNegativeButton("Cancel", null).setPositiveButton("Delete permanently") { _, _ ->
                 if (runCatching { AccountValidation.requireExactHandle(handle.text.toString(), currentHandle) }.isFailure) {
                     showError("Enter the current handle exactly. Your session is kept.")
@@ -317,7 +363,7 @@ class MainActivity : Activity() {
     companion object {
         private const val TERMS = "termsAccepted"
         private const val PENDING_LOGIN_PROFILE = "pendingLoginProfile"
-        private const val TERMS_URL = "https://ichoi.invalid/terms"
-        private const val PRIVACY_URL = "https://ichoi.invalid/privacy"
+        private const val TERMS_URL = "https://catalystichoi.com/terms.html"
+        private const val PRIVACY_URL = "https://catalystichoi.com/privacy.html"
     }
 }

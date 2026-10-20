@@ -5,6 +5,7 @@ pub mod app;
 pub mod art;
 pub mod audio;
 pub mod auth;
+pub mod autosignin;
 pub mod cli;
 pub mod config;
 pub mod db;

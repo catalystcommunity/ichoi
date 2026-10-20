@@ -1326,6 +1326,7 @@ UpdateAudiobookProgressRequest.from_cbor = staticmethod(_update_audiobook_progre
 
 def _encode_playlists_response_value(v: "PlaylistsResponse") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
+    csil_m["total"] = v.total
     csil_m["playlists"] = [_encode_playlist_value(csil_e) for csil_e in v.playlists]
     return csil_m
 
@@ -1333,6 +1334,7 @@ def _decode_playlists_response_value(tree: Any) -> "PlaylistsResponse":
     tree = _csil_expect_map(tree)
     return PlaylistsResponse(
         playlists=[_decode_playlist_value(csil_e) for csil_e in _csil_expect_array(tree["playlists"])],
+        total=_csil_expect_uint(tree["total"]),
     )
 
 
@@ -1417,6 +1419,85 @@ def _playlist_detail_from_cbor(data: bytes) -> "PlaylistDetail":
 
 PlaylistDetail.to_cbor = _playlist_detail_to_cbor
 PlaylistDetail.from_cbor = staticmethod(_playlist_detail_from_cbor)
+
+def _encode_block_account_request_value(v: "BlockAccountRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["account_id"] = v.account_id
+    return csil_m
+
+def _decode_block_account_request_value(tree: Any) -> "BlockAccountRequest":
+    tree = _csil_expect_map(tree)
+    return BlockAccountRequest(
+        account_id=_csil_expect_text(tree["account_id"]),
+    )
+
+
+def _block_account_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_block_account_request_value(self))
+
+
+def _block_account_request_from_cbor(data: bytes) -> "BlockAccountRequest":
+    return _decode_block_account_request_value(cbor_decode(data))
+
+
+BlockAccountRequest.to_cbor = _block_account_request_to_cbor
+BlockAccountRequest.from_cbor = staticmethod(_block_account_request_from_cbor)
+
+def _encode_blocked_account_value(v: "BlockedAccount") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["handle"] = v.handle
+    csil_m["account_id"] = v.account_id
+    csil_m["blocked_at"] = CborTag(0, _csil_ts_to_text(v.blocked_at))
+    csil_x = v.display_name
+    if csil_x is not None:
+        csil_m["display_name"] = csil_x
+    return csil_m
+
+def _decode_blocked_account_value(tree: Any) -> "BlockedAccount":
+    tree = _csil_expect_map(tree)
+    return BlockedAccount(
+        account_id=_csil_expect_text(tree["account_id"]),
+        handle=_csil_expect_text(tree["handle"]),
+        display_name=(None if tree.get("display_name") is None else _csil_expect_text(tree["display_name"])),
+        blocked_at=_csil_ts_from_tree(tree["blocked_at"]),
+    )
+
+
+def _blocked_account_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_blocked_account_value(self))
+
+
+def _blocked_account_from_cbor(data: bytes) -> "BlockedAccount":
+    return _decode_blocked_account_value(cbor_decode(data))
+
+
+BlockedAccount.to_cbor = _blocked_account_to_cbor
+BlockedAccount.from_cbor = staticmethod(_blocked_account_from_cbor)
+
+def _encode_blocked_accounts_response_value(v: "BlockedAccountsResponse") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["total"] = v.total
+    csil_m["accounts"] = [_encode_blocked_account_value(csil_e) for csil_e in v.accounts]
+    return csil_m
+
+def _decode_blocked_accounts_response_value(tree: Any) -> "BlockedAccountsResponse":
+    tree = _csil_expect_map(tree)
+    return BlockedAccountsResponse(
+        accounts=[_decode_blocked_account_value(csil_e) for csil_e in _csil_expect_array(tree["accounts"])],
+        total=_csil_expect_uint(tree["total"]),
+    )
+
+
+def _blocked_accounts_response_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_blocked_accounts_response_value(self))
+
+
+def _blocked_accounts_response_from_cbor(data: bytes) -> "BlockedAccountsResponse":
+    return _decode_blocked_accounts_response_value(cbor_decode(data))
+
+
+BlockedAccountsResponse.to_cbor = _blocked_accounts_response_to_cbor
+BlockedAccountsResponse.from_cbor = staticmethod(_blocked_accounts_response_from_cbor)
 
 def _encode_cover_art_request_value(v: "CoverArtRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -2334,6 +2415,114 @@ def _share_result_from_cbor(data: bytes) -> "ShareResult":
 
 ShareResult.to_cbor = _share_result_to_cbor
 ShareResult.from_cbor = staticmethod(_share_result_from_cbor)
+
+def _encode_share_access_request_value(v: "ShareAccessRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["player_id"] = v.player_id
+    return csil_m
+
+def _decode_share_access_request_value(tree: Any) -> "ShareAccessRequest":
+    tree = _csil_expect_map(tree)
+    return ShareAccessRequest(
+        player_id=_csil_expect_text(tree["player_id"]),
+    )
+
+
+def _share_access_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_share_access_request_value(self))
+
+
+def _share_access_request_from_cbor(data: bytes) -> "ShareAccessRequest":
+    return _decode_share_access_request_value(cbor_decode(data))
+
+
+ShareAccessRequest.to_cbor = _share_access_request_to_cbor
+ShareAccessRequest.from_cbor = staticmethod(_share_access_request_from_cbor)
+
+def _encode_share_candidate_value(v: "ShareCandidate") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["handle"] = v.handle
+    csil_m["selected"] = v.selected
+    csil_m["account_id"] = v.account_id
+    csil_x = v.display_name
+    if csil_x is not None:
+        csil_m["display_name"] = csil_x
+    return csil_m
+
+def _decode_share_candidate_value(tree: Any) -> "ShareCandidate":
+    tree = _csil_expect_map(tree)
+    return ShareCandidate(
+        account_id=_csil_expect_text(tree["account_id"]),
+        handle=_csil_expect_text(tree["handle"]),
+        display_name=(None if tree.get("display_name") is None else _csil_expect_text(tree["display_name"])),
+        selected=_csil_expect_bool(tree["selected"]),
+    )
+
+
+def _share_candidate_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_share_candidate_value(self))
+
+
+def _share_candidate_from_cbor(data: bytes) -> "ShareCandidate":
+    return _decode_share_candidate_value(cbor_decode(data))
+
+
+ShareCandidate.to_cbor = _share_candidate_to_cbor
+ShareCandidate.from_cbor = staticmethod(_share_candidate_from_cbor)
+
+def _encode_share_access_info_value(v: "ShareAccessInfo") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["access"] = v.access
+    csil_m["accounts"] = [_encode_share_candidate_value(csil_e) for csil_e in v.accounts]
+    csil_m["player_id"] = v.player_id
+    return csil_m
+
+def _decode_share_access_info_value(tree: Any) -> "ShareAccessInfo":
+    tree = _csil_expect_map(tree)
+    return ShareAccessInfo(
+        player_id=_csil_expect_text(tree["player_id"]),
+        access=_decode_share_access_value(tree["access"]),
+        accounts=[_decode_share_candidate_value(csil_e) for csil_e in _csil_expect_array(tree["accounts"])],
+    )
+
+
+def _share_access_info_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_share_access_info_value(self))
+
+
+def _share_access_info_from_cbor(data: bytes) -> "ShareAccessInfo":
+    return _decode_share_access_info_value(cbor_decode(data))
+
+
+ShareAccessInfo.to_cbor = _share_access_info_to_cbor
+ShareAccessInfo.from_cbor = staticmethod(_share_access_info_from_cbor)
+
+def _encode_set_share_access_request_value(v: "SetShareAccessRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["access"] = v.access
+    csil_m["player_id"] = v.player_id
+    csil_m["account_ids"] = v.account_ids
+    return csil_m
+
+def _decode_set_share_access_request_value(tree: Any) -> "SetShareAccessRequest":
+    tree = _csil_expect_map(tree)
+    return SetShareAccessRequest(
+        player_id=_csil_expect_text(tree["player_id"]),
+        access=_decode_share_access_value(tree["access"]),
+        account_ids=[_csil_expect_text(csil_e) for csil_e in _csil_expect_array(tree["account_ids"])],
+    )
+
+
+def _set_share_access_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_set_share_access_request_value(self))
+
+
+def _set_share_access_request_from_cbor(data: bytes) -> "SetShareAccessRequest":
+    return _decode_set_share_access_request_value(cbor_decode(data))
+
+
+SetShareAccessRequest.to_cbor = _set_share_access_request_to_cbor
+SetShareAccessRequest.from_cbor = staticmethod(_set_share_access_request_from_cbor)
 
 def _encode_media_open_value(v: "MediaOpen") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -4208,6 +4397,13 @@ def _decode_player_kind_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("shared", "private"):
         raise CsilDecodeError(f"csil cbor: unknown player_kind value {csil_v!r}")
+    return csil_v
+
+
+def _decode_share_access_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("everyone", "selected"):
+        raise CsilDecodeError(f"csil cbor: unknown share_access value {csil_v!r}")
     return csil_v
 
 

@@ -224,6 +224,12 @@ func cborReadArg(b []byte, pos *int, low byte) (uint64, error) {
 	}
 }
 
+// csilCborPreallocLimit bounds the elements a decoded array or map reserves before
+// it reads them. The declared length is checked against the remaining input, but one
+// input byte can become a much larger value, so reserving the full declared length
+// lets a small frame reserve a large multiple of its size at every nesting level.
+const csilCborPreallocLimit = 1024
+
 func cborDec(b []byte, pos *int, depth int) (cborValue, error) {
 	if depth > 64 {
 		return nil, fmt.Errorf("csil cbor: nesting limit exceeded")
@@ -298,7 +304,11 @@ func cborDec(b []byte, pos *int, depth int) (cborValue, error) {
 			return nil, fmt.Errorf("csil cbor: array length exceeds remaining input")
 		}
 		n := int(arg)
-		items := make(cborArray, 0, n)
+		reserve := n
+		if reserve > csilCborPreallocLimit {
+			reserve = csilCborPreallocLimit
+		}
+		items := make(cborArray, 0, reserve)
 		for i := 0; i < n; i++ {
 			item, err := cborDec(b, pos, depth+1)
 			if err != nil {
@@ -312,7 +322,11 @@ func cborDec(b []byte, pos *int, depth int) (cborValue, error) {
 			return nil, fmt.Errorf("csil cbor: map length exceeds remaining input")
 		}
 		n := int(arg)
-		entries := make(cborMap, 0, n)
+		reserve := n
+		if reserve > csilCborPreallocLimit {
+			reserve = csilCborPreallocLimit
+		}
+		entries := make(cborMap, 0, reserve)
 		for i := 0; i < n; i++ {
 			k, err := cborDec(b, pos, depth+1)
 			if err != nil {
@@ -2854,7 +2868,8 @@ func DecodeUpdateAudiobookProgressRequest(csilData []byte) (UpdateAudiobookProgr
 
 // csilEncPlaylistsResponse builds the canonical CBOR value tree for a PlaylistsResponse.
 func csilEncPlaylistsResponse(csilV PlaylistsResponse) cborValue {
-	csilEntries := make(cborMap, 0, 1)
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("total"), cborUint(csilV.Total)})
 	csilEntries = append(csilEntries, cborEntry{cborText("playlists"), cborEncArray(csilV.Playlists, func(csilElem Playlist) cborValue { return csilEncPlaylist(csilElem) })})
 	return csilEntries
 }
@@ -2872,6 +2887,17 @@ func csilDecPlaylistsResponse(csilRoot cborValue) (PlaylistsResponse, error) {
 			return csilOut, csilErr
 		}
 		csilOut.Playlists = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "total")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Total = csilVal
 	}
 	return csilOut, nil
 }
@@ -3024,6 +3050,178 @@ func DecodePlaylistDetail(csilData []byte) (PlaylistDetail, error) {
 		return csilZero, csilErr
 	}
 	return csilDecPlaylistDetail(csilRoot)
+}
+
+// csilEncBlockAccountRequest builds the canonical CBOR value tree for a BlockAccountRequest.
+func csilEncBlockAccountRequest(csilV BlockAccountRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("account_id"), cborText(csilV.AccountId)})
+	return csilEntries
+}
+
+// csilDecBlockAccountRequest reconstructs a BlockAccountRequest from a decoded CBOR value tree.
+func csilDecBlockAccountRequest(csilRoot cborValue) (BlockAccountRequest, error) {
+	var csilOut BlockAccountRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "account_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (AccountId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return AccountId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AccountId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeBlockAccountRequest encodes a BlockAccountRequest to canonical CSIL CBOR bytes.
+func EncodeBlockAccountRequest(csilV BlockAccountRequest) []byte {
+	return cborEncode(csilEncBlockAccountRequest(csilV))
+}
+
+// DecodeBlockAccountRequest decodes canonical CSIL CBOR bytes into a BlockAccountRequest.
+func DecodeBlockAccountRequest(csilData []byte) (BlockAccountRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero BlockAccountRequest
+		return csilZero, csilErr
+	}
+	return csilDecBlockAccountRequest(csilRoot)
+}
+
+// csilEncBlockedAccount builds the canonical CBOR value tree for a BlockedAccount.
+func csilEncBlockedAccount(csilV BlockedAccount) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("handle"), cborText(csilV.Handle)})
+	csilEntries = append(csilEntries, cborEntry{cborText("account_id"), cborText(csilV.AccountId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("blocked_at"), csilEncTimestamp(csilV.BlockedAt)})
+	if csilV.DisplayName != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("display_name"), cborText((*csilV.DisplayName))})
+	}
+	return csilEntries
+}
+
+// csilDecBlockedAccount reconstructs a BlockedAccount from a decoded CBOR value tree.
+func csilDecBlockedAccount(csilRoot cborValue) (BlockedAccount, error) {
+	var csilOut BlockedAccount
+	{
+		csilField, csilErr := cborRequire(csilRoot, "account_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (AccountId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return AccountId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AccountId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "handle")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (Handle, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return Handle(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Handle = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "display_name"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.DisplayName = &csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "blocked_at")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (csilAsTimestamp)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.BlockedAt = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeBlockedAccount encodes a BlockedAccount to canonical CSIL CBOR bytes.
+func EncodeBlockedAccount(csilV BlockedAccount) []byte {
+	return cborEncode(csilEncBlockedAccount(csilV))
+}
+
+// DecodeBlockedAccount decodes canonical CSIL CBOR bytes into a BlockedAccount.
+func DecodeBlockedAccount(csilData []byte) (BlockedAccount, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero BlockedAccount
+		return csilZero, csilErr
+	}
+	return csilDecBlockedAccount(csilRoot)
+}
+
+// csilEncBlockedAccountsResponse builds the canonical CBOR value tree for a BlockedAccountsResponse.
+func csilEncBlockedAccountsResponse(csilV BlockedAccountsResponse) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("total"), cborUint(csilV.Total)})
+	csilEntries = append(csilEntries, cborEntry{cborText("accounts"), cborEncArray(csilV.Accounts, func(csilElem BlockedAccount) cborValue { return csilEncBlockedAccount(csilElem) })})
+	return csilEntries
+}
+
+// csilDecBlockedAccountsResponse reconstructs a BlockedAccountsResponse from a decoded CBOR value tree.
+func csilDecBlockedAccountsResponse(csilRoot cborValue) (BlockedAccountsResponse, error) {
+	var csilOut BlockedAccountsResponse
+	{
+		csilField, csilErr := cborRequire(csilRoot, "accounts")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]BlockedAccount, error) { return cborDecArray(csilV, csilDecBlockedAccount) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Accounts = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "total")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Total = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeBlockedAccountsResponse encodes a BlockedAccountsResponse to canonical CSIL CBOR bytes.
+func EncodeBlockedAccountsResponse(csilV BlockedAccountsResponse) []byte {
+	return cborEncode(csilEncBlockedAccountsResponse(csilV))
+}
+
+// DecodeBlockedAccountsResponse decodes canonical CSIL CBOR bytes into a BlockedAccountsResponse.
+func DecodeBlockedAccountsResponse(csilData []byte) (BlockedAccountsResponse, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero BlockedAccountsResponse
+		return csilZero, csilErr
+	}
+	return csilDecBlockedAccountsResponse(csilRoot)
 }
 
 // csilEncCoverArtRequest builds the canonical CBOR value tree for a CoverArtRequest.
@@ -5228,6 +5426,289 @@ func DecodeShareResult(csilData []byte) (ShareResult, error) {
 		return csilZero, csilErr
 	}
 	return csilDecShareResult(csilRoot)
+}
+
+// csilEncShareAccessRequest builds the canonical CBOR value tree for a ShareAccessRequest.
+func csilEncShareAccessRequest(csilV ShareAccessRequest) cborValue {
+	csilEntries := make(cborMap, 0, 1)
+	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
+	return csilEntries
+}
+
+// csilDecShareAccessRequest reconstructs a ShareAccessRequest from a decoded CBOR value tree.
+func csilDecShareAccessRequest(csilRoot cborValue) (ShareAccessRequest, error) {
+	var csilOut ShareAccessRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "player_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (PlayerId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return PlayerId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlayerId = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeShareAccessRequest encodes a ShareAccessRequest to canonical CSIL CBOR bytes.
+func EncodeShareAccessRequest(csilV ShareAccessRequest) []byte {
+	return cborEncode(csilEncShareAccessRequest(csilV))
+}
+
+// DecodeShareAccessRequest decodes canonical CSIL CBOR bytes into a ShareAccessRequest.
+func DecodeShareAccessRequest(csilData []byte) (ShareAccessRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ShareAccessRequest
+		return csilZero, csilErr
+	}
+	return csilDecShareAccessRequest(csilRoot)
+}
+
+// csilEncShareCandidate builds the canonical CBOR value tree for a ShareCandidate.
+func csilEncShareCandidate(csilV ShareCandidate) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("handle"), cborText(csilV.Handle)})
+	csilEntries = append(csilEntries, cborEntry{cborText("selected"), cborBool(csilV.Selected)})
+	csilEntries = append(csilEntries, cborEntry{cborText("account_id"), cborText(csilV.AccountId)})
+	if csilV.DisplayName != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("display_name"), cborText((*csilV.DisplayName))})
+	}
+	return csilEntries
+}
+
+// csilDecShareCandidate reconstructs a ShareCandidate from a decoded CBOR value tree.
+func csilDecShareCandidate(csilRoot cborValue) (ShareCandidate, error) {
+	var csilOut ShareCandidate
+	{
+		csilField, csilErr := cborRequire(csilRoot, "account_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (AccountId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return AccountId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AccountId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "handle")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Handle = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "display_name"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.DisplayName = &csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "selected")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Selected = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeShareCandidate encodes a ShareCandidate to canonical CSIL CBOR bytes.
+func EncodeShareCandidate(csilV ShareCandidate) []byte {
+	return cborEncode(csilEncShareCandidate(csilV))
+}
+
+// DecodeShareCandidate decodes canonical CSIL CBOR bytes into a ShareCandidate.
+func DecodeShareCandidate(csilData []byte) (ShareCandidate, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ShareCandidate
+		return csilZero, csilErr
+	}
+	return csilDecShareCandidate(csilRoot)
+}
+
+// csilEncShareAccessInfo builds the canonical CBOR value tree for a ShareAccessInfo.
+func csilEncShareAccessInfo(csilV ShareAccessInfo) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("access"), cborText(csilV.Access)})
+	csilEntries = append(csilEntries, cborEntry{cborText("accounts"), cborEncArray(csilV.Accounts, func(csilElem ShareCandidate) cborValue { return csilEncShareCandidate(csilElem) })})
+	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
+	return csilEntries
+}
+
+// csilDecShareAccessInfo reconstructs a ShareAccessInfo from a decoded CBOR value tree.
+func csilDecShareAccessInfo(csilRoot cborValue) (ShareAccessInfo, error) {
+	var csilOut ShareAccessInfo
+	{
+		csilField, csilErr := cborRequire(csilRoot, "player_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (PlayerId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return PlayerId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlayerId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "access")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ShareAccess, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "everyone" || csilInner == "selected") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ShareAccess(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Access = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "accounts")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]ShareCandidate, error) { return cborDecArray(csilV, csilDecShareCandidate) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Accounts = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeShareAccessInfo encodes a ShareAccessInfo to canonical CSIL CBOR bytes.
+func EncodeShareAccessInfo(csilV ShareAccessInfo) []byte {
+	return cborEncode(csilEncShareAccessInfo(csilV))
+}
+
+// DecodeShareAccessInfo decodes canonical CSIL CBOR bytes into a ShareAccessInfo.
+func DecodeShareAccessInfo(csilData []byte) (ShareAccessInfo, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ShareAccessInfo
+		return csilZero, csilErr
+	}
+	return csilDecShareAccessInfo(csilRoot)
+}
+
+// csilEncSetShareAccessRequest builds the canonical CBOR value tree for a SetShareAccessRequest.
+func csilEncSetShareAccessRequest(csilV SetShareAccessRequest) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("access"), cborText(csilV.Access)})
+	csilEntries = append(csilEntries, cborEntry{cborText("player_id"), cborText(csilV.PlayerId)})
+	csilEntries = append(csilEntries, cborEntry{cborText("account_ids"), cborEncArray(csilV.AccountIds, func(csilElem AccountId) cborValue { return cborText(csilElem) })})
+	return csilEntries
+}
+
+// csilDecSetShareAccessRequest reconstructs a SetShareAccessRequest from a decoded CBOR value tree.
+func csilDecSetShareAccessRequest(csilRoot cborValue) (SetShareAccessRequest, error) {
+	var csilOut SetShareAccessRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "player_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (PlayerId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return PlayerId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.PlayerId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "access")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ShareAccess, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "everyone" || csilInner == "selected") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ShareAccess(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Access = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "account_ids")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]AccountId, error) {
+			return cborDecArray(csilV, func(csilV cborValue) (AccountId, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				return AccountId(csilInner), csilErr
+			})
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AccountIds = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeSetShareAccessRequest encodes a SetShareAccessRequest to canonical CSIL CBOR bytes.
+func EncodeSetShareAccessRequest(csilV SetShareAccessRequest) []byte {
+	return cborEncode(csilEncSetShareAccessRequest(csilV))
+}
+
+// DecodeSetShareAccessRequest decodes canonical CSIL CBOR bytes into a SetShareAccessRequest.
+func DecodeSetShareAccessRequest(csilData []byte) (SetShareAccessRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero SetShareAccessRequest
+		return csilZero, csilErr
+	}
+	return csilDecSetShareAccessRequest(csilRoot)
 }
 
 // csilEncMediaOpen builds the canonical CBOR value tree for a MediaOpen.

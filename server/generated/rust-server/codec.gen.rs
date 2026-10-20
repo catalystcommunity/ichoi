@@ -170,6 +170,13 @@ fn cbor_read_arg(b: &[u8], pos: &mut usize, low: u8) -> Result<u64, CsilCborErro
     Ok(v)
 }
 
+/// The most elements a decoded array or map reserves before it reads them. The
+/// declared length is checked against the remaining input, but one input byte can
+/// become a much larger value, so reserving the full declared length lets a small
+/// frame reserve a large multiple of its size at every nesting level. Past this
+/// bound, the vector grows only as elements are actually read.
+const CSIL_CBOR_PREALLOC_LIMIT: usize = 1024;
+
 fn cbor_dec(b: &[u8], pos: &mut usize, depth: usize) -> Result<CsilCborValue, CsilCborError> {
     if depth > 64 {
         return Err(CsilCborError(
@@ -253,7 +260,7 @@ fn cbor_dec(b: &[u8], pos: &mut usize, depth: usize) -> Result<CsilCborValue, Cs
                 ));
             }
             let n = arg as usize;
-            let mut items = Vec::with_capacity(n);
+            let mut items = Vec::with_capacity(n.min(CSIL_CBOR_PREALLOC_LIMIT));
             for _ in 0..n {
                 items.push(cbor_dec(b, pos, depth + 1)?);
             }
@@ -266,7 +273,7 @@ fn cbor_dec(b: &[u8], pos: &mut usize, depth: usize) -> Result<CsilCborValue, Cs
                 ));
             }
             let n = arg as usize;
-            let mut entries = Vec::with_capacity(n);
+            let mut entries = Vec::with_capacity(n.min(CSIL_CBOR_PREALLOC_LIMIT));
             for _ in 0..n {
                 let k = cbor_dec(b, pos, depth + 1)?;
                 let val = cbor_dec(b, pos, depth + 1)?;
@@ -2143,7 +2150,8 @@ pub fn decode_update_audiobook_progress_request(
 
 /// Build the canonical CBOR value tree for a PlaylistsResponse.
 fn csil_enc_playlists_response(csil_v: &PlaylistsResponse) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("total"), cbor_uint(csil_v.total)));
     csil_entries.push((
         cbor_text("playlists"),
         cbor_enc_array(&csil_v.playlists, csil_enc_playlist),
@@ -2160,7 +2168,12 @@ fn csil_dec_playlists_response(
         let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_playlist);
         csil_decode(csil_field)?
     };
-    Ok(PlaylistsResponse { playlists })
+    let total = {
+        let csil_field = cbor_require(csil_root, "total")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(PlaylistsResponse { playlists, total })
 }
 
 /// Encode a PlaylistsResponse to canonical CSIL CBOR bytes.
@@ -2269,6 +2282,137 @@ pub fn encode_playlist_detail(csil_v: &PlaylistDetail) -> Vec<u8> {
 pub fn decode_playlist_detail(csil_data: &[u8]) -> Result<PlaylistDetail, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_playlist_detail(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a BlockAccountRequest.
+fn csil_enc_block_account_request(csil_v: &BlockAccountRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("account_id"), cbor_text(&csil_v.account_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a BlockAccountRequest from a decoded CBOR value tree.
+fn csil_dec_block_account_request(
+    csil_root: &CsilCborValue,
+) -> Result<BlockAccountRequest, CsilCborError> {
+    let account_id = {
+        let csil_field = cbor_require(csil_root, "account_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(BlockAccountRequest { account_id })
+}
+
+/// Encode a BlockAccountRequest to canonical CSIL CBOR bytes.
+pub fn encode_block_account_request(csil_v: &BlockAccountRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_block_account_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a BlockAccountRequest.
+pub fn decode_block_account_request(
+    csil_data: &[u8],
+) -> Result<BlockAccountRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_block_account_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a BlockedAccount.
+fn csil_enc_blocked_account(csil_v: &BlockedAccount) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("handle"), cbor_text(&csil_v.handle)));
+    csil_entries.push((cbor_text("account_id"), cbor_text(&csil_v.account_id)));
+    csil_entries.push((
+        cbor_text("blocked_at"),
+        csil_enc_timestamp(&csil_v.blocked_at),
+    ));
+    if let Some(csil_inner) = &csil_v.display_name {
+        csil_entries.push((cbor_text("display_name"), cbor_text(csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a BlockedAccount from a decoded CBOR value tree.
+fn csil_dec_blocked_account(csil_root: &CsilCborValue) -> Result<BlockedAccount, CsilCborError> {
+    let account_id = {
+        let csil_field = cbor_require(csil_root, "account_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let handle = {
+        let csil_field = cbor_require(csil_root, "handle")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let display_name = match cbor_map_get(csil_root, "display_name") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let blocked_at = {
+        let csil_field = cbor_require(csil_root, "blocked_at")?;
+        let csil_decode = csil_as_timestamp;
+        csil_decode(csil_field)?
+    };
+    Ok(BlockedAccount {
+        account_id,
+        handle,
+        display_name,
+        blocked_at,
+    })
+}
+
+/// Encode a BlockedAccount to canonical CSIL CBOR bytes.
+pub fn encode_blocked_account(csil_v: &BlockedAccount) -> Vec<u8> {
+    cbor_encode(&csil_enc_blocked_account(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a BlockedAccount.
+pub fn decode_blocked_account(csil_data: &[u8]) -> Result<BlockedAccount, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_blocked_account(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a BlockedAccountsResponse.
+fn csil_enc_blocked_accounts_response(csil_v: &BlockedAccountsResponse) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("total"), cbor_uint(csil_v.total)));
+    csil_entries.push((
+        cbor_text("accounts"),
+        cbor_enc_array(&csil_v.accounts, csil_enc_blocked_account),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a BlockedAccountsResponse from a decoded CBOR value tree.
+fn csil_dec_blocked_accounts_response(
+    csil_root: &CsilCborValue,
+) -> Result<BlockedAccountsResponse, CsilCborError> {
+    let accounts = {
+        let csil_field = cbor_require(csil_root, "accounts")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_blocked_account);
+        csil_decode(csil_field)?
+    };
+    let total = {
+        let csil_field = cbor_require(csil_root, "total")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(BlockedAccountsResponse { accounts, total })
+}
+
+/// Encode a BlockedAccountsResponse to canonical CSIL CBOR bytes.
+pub fn encode_blocked_accounts_response(csil_v: &BlockedAccountsResponse) -> Vec<u8> {
+    cbor_encode(&csil_enc_blocked_accounts_response(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a BlockedAccountsResponse.
+pub fn decode_blocked_accounts_response(
+    csil_data: &[u8],
+) -> Result<BlockedAccountsResponse, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_blocked_accounts_response(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a CoverArtRequest.
@@ -3808,6 +3952,189 @@ pub fn encode_share_result(csil_v: &ShareResult) -> Vec<u8> {
 pub fn decode_share_result(csil_data: &[u8]) -> Result<ShareResult, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_share_result(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ShareAccessRequest.
+fn csil_enc_share_access_request(csil_v: &ShareAccessRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(1);
+    csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ShareAccessRequest from a decoded CBOR value tree.
+fn csil_dec_share_access_request(
+    csil_root: &CsilCborValue,
+) -> Result<ShareAccessRequest, CsilCborError> {
+    let player_id = {
+        let csil_field = cbor_require(csil_root, "player_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    Ok(ShareAccessRequest { player_id })
+}
+
+/// Encode a ShareAccessRequest to canonical CSIL CBOR bytes.
+pub fn encode_share_access_request(csil_v: &ShareAccessRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_share_access_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ShareAccessRequest.
+pub fn decode_share_access_request(csil_data: &[u8]) -> Result<ShareAccessRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_share_access_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ShareCandidate.
+fn csil_enc_share_candidate(csil_v: &ShareCandidate) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("handle"), cbor_text(&csil_v.handle)));
+    csil_entries.push((cbor_text("selected"), cbor_bool(csil_v.selected)));
+    csil_entries.push((cbor_text("account_id"), cbor_text(&csil_v.account_id)));
+    if let Some(csil_inner) = &csil_v.display_name {
+        csil_entries.push((cbor_text("display_name"), cbor_text(csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ShareCandidate from a decoded CBOR value tree.
+fn csil_dec_share_candidate(csil_root: &CsilCborValue) -> Result<ShareCandidate, CsilCborError> {
+    let account_id = {
+        let csil_field = cbor_require(csil_root, "account_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let handle = {
+        let csil_field = cbor_require(csil_root, "handle")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let display_name = match cbor_map_get(csil_root, "display_name") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let selected = {
+        let csil_field = cbor_require(csil_root, "selected")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    Ok(ShareCandidate {
+        account_id,
+        handle,
+        display_name,
+        selected,
+    })
+}
+
+/// Encode a ShareCandidate to canonical CSIL CBOR bytes.
+pub fn encode_share_candidate(csil_v: &ShareCandidate) -> Vec<u8> {
+    cbor_encode(&csil_enc_share_candidate(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ShareCandidate.
+pub fn decode_share_candidate(csil_data: &[u8]) -> Result<ShareCandidate, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_share_candidate(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ShareAccessInfo.
+fn csil_enc_share_access_info(csil_v: &ShareAccessInfo) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("access"), csil_enc_share_access(&csil_v.access)));
+    csil_entries.push((
+        cbor_text("accounts"),
+        cbor_enc_array(&csil_v.accounts, csil_enc_share_candidate),
+    ));
+    csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ShareAccessInfo from a decoded CBOR value tree.
+fn csil_dec_share_access_info(csil_root: &CsilCborValue) -> Result<ShareAccessInfo, CsilCborError> {
+    let player_id = {
+        let csil_field = cbor_require(csil_root, "player_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let access = {
+        let csil_field = cbor_require(csil_root, "access")?;
+        let csil_decode = csil_dec_share_access;
+        csil_decode(csil_field)?
+    };
+    let accounts = {
+        let csil_field = cbor_require(csil_root, "accounts")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_share_candidate);
+        csil_decode(csil_field)?
+    };
+    Ok(ShareAccessInfo {
+        player_id,
+        access,
+        accounts,
+    })
+}
+
+/// Encode a ShareAccessInfo to canonical CSIL CBOR bytes.
+pub fn encode_share_access_info(csil_v: &ShareAccessInfo) -> Vec<u8> {
+    cbor_encode(&csil_enc_share_access_info(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ShareAccessInfo.
+pub fn decode_share_access_info(csil_data: &[u8]) -> Result<ShareAccessInfo, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_share_access_info(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a SetShareAccessRequest.
+fn csil_enc_set_share_access_request(csil_v: &SetShareAccessRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("access"), csil_enc_share_access(&csil_v.access)));
+    csil_entries.push((cbor_text("player_id"), cbor_text(&csil_v.player_id)));
+    csil_entries.push((
+        cbor_text("account_ids"),
+        cbor_enc_array(&csil_v.account_ids, |csil_elem| cbor_text(csil_elem)),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a SetShareAccessRequest from a decoded CBOR value tree.
+fn csil_dec_set_share_access_request(
+    csil_root: &CsilCborValue,
+) -> Result<SetShareAccessRequest, CsilCborError> {
+    let player_id = {
+        let csil_field = cbor_require(csil_root, "player_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let access = {
+        let csil_field = cbor_require(csil_root, "access")?;
+        let csil_decode = csil_dec_share_access;
+        csil_decode(csil_field)?
+    };
+    let account_ids = {
+        let csil_field = cbor_require(csil_root, "account_ids")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, cbor_as_text);
+        csil_decode(csil_field)?
+    };
+    Ok(SetShareAccessRequest {
+        player_id,
+        access,
+        account_ids,
+    })
+}
+
+/// Encode a SetShareAccessRequest to canonical CSIL CBOR bytes.
+pub fn encode_set_share_access_request(csil_v: &SetShareAccessRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_set_share_access_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a SetShareAccessRequest.
+pub fn decode_set_share_access_request(
+    csil_data: &[u8],
+) -> Result<SetShareAccessRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_set_share_access_request(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a MediaOpen.
@@ -7029,6 +7356,26 @@ fn csil_dec_player_command(csil_v: &CsilCborValue) -> Result<PlayerCommand, Csil
         }
         csil_other => Err(CsilCborError(format!(
             "csil cbor: unknown PlayerCommand variant {csil_other}"
+        ))),
+    }
+}
+
+/// Encode a ShareAccess enum as its bare literal value.
+fn csil_enc_share_access(csil_v: &ShareAccess) -> CsilCborValue {
+    match csil_v {
+        ShareAccess::Everyone => cbor_text("everyone"),
+        ShareAccess::Selected => cbor_text("selected"),
+    }
+}
+
+/// Decode a bare literal value into a ShareAccess enum.
+fn csil_dec_share_access(csil_v: &CsilCborValue) -> Result<ShareAccess, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "everyone" => Ok(ShareAccess::Everyone),
+        "selected" => Ok(ShareAccess::Selected),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown ShareAccess value {csil_other:?}"
         ))),
     }
 }

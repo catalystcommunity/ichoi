@@ -190,6 +190,12 @@ fn half_to_f64(h: u16) f64 {
     return @as(f64, @as(f32, @bitCast(bits)));
 }
 
+// The most elements a decoded array or map reserves before it reads them. The
+// declared length is checked against the remaining input, but one input byte can
+// become a much larger value, so reserving the full declared length lets a small
+// frame reserve a large multiple of its size at every nesting level.
+const prealloc_limit: usize = 1024;
+
 fn decode_value(alloc: std.mem.Allocator, b: []const u8, depth: usize) CodecError!Decoded {
     if (depth > 64) return error.Malformed;
     if (b.len == 0) return error.UnexpectedEof;
@@ -216,20 +222,20 @@ fn decode_value(alloc: std.mem.Allocator, b: []const u8, depth: usize) CodecErro
         4 => {
             if (arg > b.len - n) return error.UnexpectedEof;
             const count: usize = @intCast(arg);
-            const items = try alloc.alloc(Value, count);
+            var items = try std.ArrayListUnmanaged(Value).initCapacity(alloc, @min(count, prealloc_limit));
             var off = n;
             var i: usize = 0;
             while (i < count) : (i += 1) {
                 const d = try decode_value(alloc, b[off..], depth + 1);
-                items[i] = d.value;
+                try items.append(alloc, d.value);
                 off += d.consumed;
             }
-            return .{ .value = .{ .array = items }, .consumed = off };
+            return .{ .value = .{ .array = try items.toOwnedSlice(alloc) }, .consumed = off };
         },
         5 => {
             if (arg > b.len - n) return error.UnexpectedEof;
             const count: usize = @intCast(arg);
-            const pairs = try alloc.alloc(Pair, count);
+            var pairs = try std.ArrayListUnmanaged(Pair).initCapacity(alloc, @min(count, prealloc_limit));
             var off = n;
             var i: usize = 0;
             while (i < count) : (i += 1) {
@@ -237,9 +243,9 @@ fn decode_value(alloc: std.mem.Allocator, b: []const u8, depth: usize) CodecErro
                 off += k.consumed;
                 const v = try decode_value(alloc, b[off..], depth + 1);
                 off += v.consumed;
-                pairs[i] = .{ .key = k.value, .val = v.value };
+                try pairs.append(alloc, .{ .key = k.value, .val = v.value });
             }
-            return .{ .value = .{ .map = pairs }, .consumed = off };
+            return .{ .value = .{ .map = try pairs.toOwnedSlice(alloc) }, .consumed = off };
         },
         6 => {
             const inner = try decode_value(alloc, b[n..], depth + 1);
@@ -1797,7 +1803,9 @@ fn dec_UpdateAudiobookProgressRequest(alloc: std.mem.Allocator, m: Value, out: *
 }
 
 fn enc_PlaylistsResponse(out: *std.ArrayList(u8), v: *const types.PlaylistsResponse) CodecError!void {
-    try w_map_head(out, 1);
+    try w_map_head(out, 2);
+    try w_text(out, "total");
+    try w_uint(out, v.total);
     try w_text(out, "playlists");
     try w_array_head(out, v.playlists.len);
     for (v.playlists) |csil_it| {
@@ -1807,6 +1815,10 @@ fn enc_PlaylistsResponse(out: *std.ArrayList(u8), v: *const types.PlaylistsRespo
 
 fn dec_PlaylistsResponse(alloc: std.mem.Allocator, m: Value, out: *types.PlaylistsResponse) CodecError!void {
     if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "total");
+        out.total = try as_u64(csil_fv);
+    }
     {
         const csil_fv = try req(m, "playlists");
         if (csil_fv != .array) return error.WrongType;
@@ -1871,6 +1883,89 @@ fn dec_PlaylistDetail(alloc: std.mem.Allocator, m: Value, out: *types.PlaylistDe
     {
         const csil_fv = try req(m, "playlist");
         try dec_Playlist(alloc, csil_fv, &(out.playlist));
+    }
+}
+
+fn enc_BlockAccountRequest(out: *std.ArrayList(u8), v: *const types.BlockAccountRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "account_id");
+    try w_text(out, v.account_id);
+}
+
+fn dec_BlockAccountRequest(alloc: std.mem.Allocator, m: Value, out: *types.BlockAccountRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "account_id");
+        out.account_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_BlockedAccount(out: *std.ArrayList(u8), v: *const types.BlockedAccount) CodecError!void {
+    var csil_n: usize = 3;
+    if (v.display_name != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "handle");
+    try w_text(out, v.handle);
+    try w_text(out, "account_id");
+    try w_text(out, v.account_id);
+    try w_text(out, "blocked_at");
+    try w_tag(out, 0);
+    try w_text(out, (v.blocked_at).rfc3339);
+    if (v.display_name) |csil_x| {
+        try w_text(out, "display_name");
+        try w_text(out, csil_x);
+    }
+}
+
+fn dec_BlockedAccount(alloc: std.mem.Allocator, m: Value, out: *types.BlockedAccount) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "handle");
+        out.handle = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "account_id");
+        out.account_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "blocked_at");
+        out.blocked_at = .{ .rfc3339 = try as_tagged_text(csil_fv, 0), .epoch_seconds = 0 };
+    }
+    {
+        if (mget(m, "display_name")) |csil_fv| {
+            out.display_name = try as_text(csil_fv);
+        } else {
+            out.display_name = null;
+        }
+    }
+}
+
+fn enc_BlockedAccountsResponse(out: *std.ArrayList(u8), v: *const types.BlockedAccountsResponse) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "total");
+    try w_uint(out, v.total);
+    try w_text(out, "accounts");
+    try w_array_head(out, v.accounts.len);
+    for (v.accounts) |csil_it| {
+        try enc_BlockedAccount(out, &(csil_it));
+    }
+}
+
+fn dec_BlockedAccountsResponse(alloc: std.mem.Allocator, m: Value, out: *types.BlockedAccountsResponse) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "total");
+        out.total = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "accounts");
+        if (csil_fv != .array) return error.WrongType;
+        out.accounts = try alloc.alloc(types.BlockedAccount, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_BlockedAccount(alloc, csil_it, &(out.accounts[csil_i]));
+        }
     }
 }
 
@@ -3170,6 +3265,145 @@ fn dec_ShareResult(alloc: std.mem.Allocator, m: Value, out: *types.ShareResult) 
     {
         const csil_fv = try req(m, "player");
         try dec_Player(alloc, csil_fv, &(out.player));
+    }
+}
+
+fn enc_ShareAccess(out: *std.ArrayList(u8), v: *const types.ShareAccess) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_ShareAccess(alloc: std.mem.Allocator, src: Value, out: *types.ShareAccess) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "everyone")) {
+        out.* = .everyone;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "selected")) {
+        out.* = .selected;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_ShareAccessRequest(out: *std.ArrayList(u8), v: *const types.ShareAccessRequest) CodecError!void {
+    try w_map_head(out, 1);
+    try w_text(out, "player_id");
+    try w_text(out, v.player_id);
+}
+
+fn dec_ShareAccessRequest(alloc: std.mem.Allocator, m: Value, out: *types.ShareAccessRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "player_id");
+        out.player_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_ShareCandidate(out: *std.ArrayList(u8), v: *const types.ShareCandidate) CodecError!void {
+    var csil_n: usize = 3;
+    if (v.display_name != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "handle");
+    try w_text(out, v.handle);
+    try w_text(out, "selected");
+    try w_bool(out, v.selected);
+    try w_text(out, "account_id");
+    try w_text(out, v.account_id);
+    if (v.display_name) |csil_x| {
+        try w_text(out, "display_name");
+        try w_text(out, csil_x);
+    }
+}
+
+fn dec_ShareCandidate(alloc: std.mem.Allocator, m: Value, out: *types.ShareCandidate) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "handle");
+        out.handle = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "selected");
+        out.selected = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "account_id");
+        out.account_id = try as_text(csil_fv);
+    }
+    {
+        if (mget(m, "display_name")) |csil_fv| {
+            out.display_name = try as_text(csil_fv);
+        } else {
+            out.display_name = null;
+        }
+    }
+}
+
+fn enc_ShareAccessInfo(out: *std.ArrayList(u8), v: *const types.ShareAccessInfo) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "access");
+    try enc_ShareAccess(out, &(v.access));
+    try w_text(out, "accounts");
+    try w_array_head(out, v.accounts.len);
+    for (v.accounts) |csil_it| {
+        try enc_ShareCandidate(out, &(csil_it));
+    }
+    try w_text(out, "player_id");
+    try w_text(out, v.player_id);
+}
+
+fn dec_ShareAccessInfo(alloc: std.mem.Allocator, m: Value, out: *types.ShareAccessInfo) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "access");
+        try dec_ShareAccess(alloc, csil_fv, &(out.access));
+    }
+    {
+        const csil_fv = try req(m, "accounts");
+        if (csil_fv != .array) return error.WrongType;
+        out.accounts = try alloc.alloc(types.ShareCandidate, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_ShareCandidate(alloc, csil_it, &(out.accounts[csil_i]));
+        }
+    }
+    {
+        const csil_fv = try req(m, "player_id");
+        out.player_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_SetShareAccessRequest(out: *std.ArrayList(u8), v: *const types.SetShareAccessRequest) CodecError!void {
+    try w_map_head(out, 3);
+    try w_text(out, "access");
+    try enc_ShareAccess(out, &(v.access));
+    try w_text(out, "player_id");
+    try w_text(out, v.player_id);
+    try w_text(out, "account_ids");
+    try w_array_head(out, v.account_ids.len);
+    for (v.account_ids) |csil_it| {
+        try w_text(out, csil_it);
+    }
+}
+
+fn dec_SetShareAccessRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetShareAccessRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "access");
+        try dec_ShareAccess(alloc, csil_fv, &(out.access));
+    }
+    {
+        const csil_fv = try req(m, "player_id");
+        out.player_id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "account_ids");
+        if (csil_fv != .array) return error.WrongType;
+        out.account_ids = try alloc.alloc(types.AccountId, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            out.account_ids[csil_i] = try as_text(csil_it);
+        }
     }
 }
 
@@ -6069,6 +6303,54 @@ pub fn decode_PlaylistDetail(alloc: std.mem.Allocator, bytes: []const u8, out: *
     try dec_PlaylistDetail(alloc, root, out);
 }
 
+/// Encode a BlockAccountRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_BlockAccountRequest(alloc: std.mem.Allocator, v: *const types.BlockAccountRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_BlockAccountRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a BlockAccountRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_BlockAccountRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.BlockAccountRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_BlockAccountRequest(alloc, root, out);
+}
+
+/// Encode a BlockedAccount to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_BlockedAccount(alloc: std.mem.Allocator, v: *const types.BlockedAccount) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_BlockedAccount(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a BlockedAccount. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_BlockedAccount(alloc: std.mem.Allocator, bytes: []const u8, out: *types.BlockedAccount) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_BlockedAccount(alloc, root, out);
+}
+
+/// Encode a BlockedAccountsResponse to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_BlockedAccountsResponse(alloc: std.mem.Allocator, v: *const types.BlockedAccountsResponse) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_BlockedAccountsResponse(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a BlockedAccountsResponse. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_BlockedAccountsResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.BlockedAccountsResponse) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_BlockedAccountsResponse(alloc, root, out);
+}
+
 /// Encode a CoverArtRequest to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_CoverArtRequest(alloc: std.mem.Allocator, v: *const types.CoverArtRequest) CodecError![]u8 {
@@ -6627,6 +6909,86 @@ pub fn encode_ShareResult(alloc: std.mem.Allocator, v: *const types.ShareResult)
 pub fn decode_ShareResult(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ShareResult) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_ShareResult(alloc, root, out);
+}
+
+/// Encode a ShareAccess to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ShareAccess(alloc: std.mem.Allocator, v: *const types.ShareAccess) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ShareAccess(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ShareAccess. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ShareAccess(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ShareAccess) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ShareAccess(alloc, root, out);
+}
+
+/// Encode a ShareAccessRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ShareAccessRequest(alloc: std.mem.Allocator, v: *const types.ShareAccessRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ShareAccessRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ShareAccessRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ShareAccessRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ShareAccessRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ShareAccessRequest(alloc, root, out);
+}
+
+/// Encode a ShareCandidate to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ShareCandidate(alloc: std.mem.Allocator, v: *const types.ShareCandidate) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ShareCandidate(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ShareCandidate. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ShareCandidate(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ShareCandidate) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ShareCandidate(alloc, root, out);
+}
+
+/// Encode a ShareAccessInfo to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ShareAccessInfo(alloc: std.mem.Allocator, v: *const types.ShareAccessInfo) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ShareAccessInfo(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ShareAccessInfo. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ShareAccessInfo(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ShareAccessInfo) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ShareAccessInfo(alloc, root, out);
+}
+
+/// Encode a SetShareAccessRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_SetShareAccessRequest(alloc: std.mem.Allocator, v: *const types.SetShareAccessRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_SetShareAccessRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a SetShareAccessRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_SetShareAccessRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SetShareAccessRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_SetShareAccessRequest(alloc, root, out);
 }
 
 /// Encode a MediaOpen to CBOR. The returned slice is owned by the caller

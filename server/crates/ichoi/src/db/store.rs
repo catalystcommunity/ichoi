@@ -90,6 +90,87 @@ pub fn delete_account_row(conn: &mut SqliteConnection, id: &str) -> QueryResult<
     diesel::delete(accounts::table.find(id)).execute(conn)
 }
 
+// ---------------------------------------------------------------------- account blocks
+
+pub fn block_account(conn: &mut SqliteConnection, row: &AccountBlock) -> QueryResult<()> {
+    diesel::insert_into(account_blocks::table)
+        .values(row)
+        .on_conflict((
+            account_blocks::blocker_account_id,
+            account_blocks::blocked_account_id,
+        ))
+        .do_nothing()
+        .execute(conn)?;
+    Ok(())
+}
+
+pub fn unblock_account(
+    conn: &mut SqliteConnection,
+    blocker_account_id: &str,
+    blocked_account_id: &str,
+) -> QueryResult<()> {
+    diesel::delete(
+        account_blocks::table
+            .filter(account_blocks::blocker_account_id.eq(blocker_account_id))
+            .filter(account_blocks::blocked_account_id.eq(blocked_account_id)),
+    )
+    .execute(conn)?;
+    Ok(())
+}
+
+/// One page of blocks with each blocked account row, in one query.
+pub fn list_account_blocks(
+    conn: &mut SqliteConnection,
+    blocker_account_id: &str,
+    offset: i64,
+    limit: i64,
+) -> QueryResult<Vec<(AccountBlock, Account)>> {
+    account_blocks::table
+        .inner_join(accounts::table.on(accounts::id.eq(account_blocks::blocked_account_id)))
+        .filter(account_blocks::blocker_account_id.eq(blocker_account_id))
+        .order((
+            account_blocks::created_at.asc(),
+            account_blocks::blocked_account_id.asc(),
+        ))
+        .offset(offset)
+        .limit(limit)
+        .select((AccountBlock::as_select(), Account::as_select()))
+        .load(conn)
+}
+
+pub fn count_account_blocks(
+    conn: &mut SqliteConnection,
+    blocker_account_id: &str,
+) -> QueryResult<i64> {
+    account_blocks::table
+        .filter(account_blocks::blocker_account_id.eq(blocker_account_id))
+        .count()
+        .get_result(conn)
+}
+
+pub fn blocked_account_ids(
+    conn: &mut SqliteConnection,
+    blocker_account_id: &str,
+) -> QueryResult<Vec<String>> {
+    account_blocks::table
+        .filter(account_blocks::blocker_account_id.eq(blocker_account_id))
+        .select(account_blocks::blocked_account_id)
+        .load(conn)
+}
+
+pub fn account_is_blocked(
+    conn: &mut SqliteConnection,
+    blocker_account_id: &str,
+    blocked_account_id: &str,
+) -> QueryResult<bool> {
+    diesel::select(diesel::dsl::exists(
+        account_blocks::table
+            .filter(account_blocks::blocker_account_id.eq(blocker_account_id))
+            .filter(account_blocks::blocked_account_id.eq(blocked_account_id)),
+    ))
+    .get_result(conn)
+}
+
 // ---------------------------------------------------------------------------- sessions
 
 pub fn create_session(
@@ -897,25 +978,11 @@ pub fn upsert_playlist(conn: &mut SqliteConnection, row: &Playlist) -> QueryResu
     Ok(())
 }
 
-pub fn private_playlists_for_owner(
-    conn: &mut SqliteConnection,
-    owner: &str,
-) -> QueryResult<Vec<Playlist>> {
+pub fn playlists_for_owner(conn: &mut SqliteConnection, owner: &str) -> QueryResult<Vec<Playlist>> {
     playlists::table
         .filter(playlists::owner.eq(owner))
-        .filter(playlists::visibility.eq("private"))
         .select(Playlist::as_select())
         .load(conn)
-}
-
-pub fn clear_public_playlist_owner(conn: &mut SqliteConnection, owner: &str) -> QueryResult<usize> {
-    diesel::update(
-        playlists::table
-            .filter(playlists::owner.eq(owner))
-            .filter(playlists::visibility.ne("private")),
-    )
-    .set(playlists::owner.eq::<Option<String>>(None))
-    .execute(conn)
 }
 
 pub fn delete_playlist_row(conn: &mut SqliteConnection, id: &str) -> QueryResult<usize> {
@@ -1279,6 +1346,89 @@ pub fn player_name_taken(conn: &mut SqliteConnection, name: &str) -> QueryResult
         .count()
         .get_result(conn)?;
     Ok(n > 0)
+}
+
+// ---------------------------------------------------------------------- browser share access
+
+/// `everyone` when the share has no access row.
+pub fn share_access(conn: &mut SqliteConnection, player_id: &str) -> QueryResult<String> {
+    Ok(player_share_access::table
+        .find(player_id)
+        .select(player_share_access::access)
+        .first::<String>(conn)
+        .optional()?
+        .unwrap_or_else(|| "everyone".to_string()))
+}
+
+pub fn share_account_ids(conn: &mut SqliteConnection, player_id: &str) -> QueryResult<Vec<String>> {
+    player_share_accounts::table
+        .filter(player_share_accounts::player_id.eq(player_id))
+        .select(player_share_accounts::account_id)
+        .load(conn)
+}
+
+pub fn share_includes_account(
+    conn: &mut SqliteConnection,
+    player_id: &str,
+    account_id: &str,
+) -> QueryResult<bool> {
+    let n: i64 = player_share_accounts::table
+        .filter(player_share_accounts::player_id.eq(player_id))
+        .filter(player_share_accounts::account_id.eq(account_id))
+        .count()
+        .get_result(conn)?;
+    Ok(n > 0)
+}
+
+/// Replace a share's access mode and its selected accounts in one transaction.
+pub fn set_share_access(
+    conn: &mut SqliteConnection,
+    player_id: &str,
+    access: &str,
+    account_ids: &[String],
+) -> QueryResult<()> {
+    conn.transaction(|conn| {
+        diesel::insert_into(player_share_access::table)
+            .values((
+                player_share_access::player_id.eq(player_id),
+                player_share_access::access.eq(access),
+            ))
+            .on_conflict(player_share_access::player_id)
+            .do_update()
+            .set(player_share_access::access.eq(access))
+            .execute(conn)?;
+        diesel::delete(
+            player_share_accounts::table.filter(player_share_accounts::player_id.eq(player_id)),
+        )
+        .execute(conn)?;
+        for account_id in account_ids {
+            diesel::insert_into(player_share_accounts::table)
+                .values((
+                    player_share_accounts::player_id.eq(player_id),
+                    player_share_accounts::account_id.eq(account_id),
+                ))
+                .on_conflict_do_nothing()
+                .execute(conn)?;
+        }
+        Ok(())
+    })
+}
+
+/// Remove an account from every share that `owner_account_id` owns.
+pub fn remove_account_from_owned_shares(
+    conn: &mut SqliteConnection,
+    owner_account_id: &str,
+    account_id: &str,
+) -> QueryResult<usize> {
+    let owned = players::table
+        .filter(players::owner_account_id.eq(owner_account_id))
+        .select(players::id);
+    diesel::delete(
+        player_share_accounts::table
+            .filter(player_share_accounts::account_id.eq(account_id))
+            .filter(player_share_accounts::player_id.eq_any(owned)),
+    )
+    .execute(conn)
 }
 
 pub fn get_state(

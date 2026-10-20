@@ -278,7 +278,8 @@ UpdateAudiobookProgressRequest = Data.define(:track_id, :position_ms, :completed
 end
 
 # playlists [Array<Playlist>]
-PlaylistsResponse = Data.define(:playlists)
+# total [Integer]
+PlaylistsResponse = Data.define(:playlists, :total)
 
 # playlist_id [PlaylistId]
 PlaylistRequest = Data.define(:playlist_id)
@@ -289,6 +290,23 @@ DeletePlaylistRequest = Data.define(:playlist_id)
 # playlist [Playlist]
 # tracks [Array<Track>]
 PlaylistDetail = Data.define(:playlist, :tracks)
+
+# account_id [AccountId]
+BlockAccountRequest = Data.define(:account_id)
+
+# account_id [AccountId]
+# handle [Handle]
+# display_name [String]
+# blocked_at [Time]
+BlockedAccount = Data.define(:account_id, :handle, :display_name, :blocked_at) do
+  def initialize(account_id:, handle:, blocked_at:, display_name: nil)
+    super
+  end
+end
+
+# accounts [Array<BlockedAccount>]
+# total [Integer]
+BlockedAccountsResponse = Data.define(:accounts, :total)
 
 # album_id [AlbumId]
 # max_size [Integer]
@@ -522,6 +540,31 @@ DisableShareRequest = Data.define(:player_id)
 
 # player [Player]
 ShareResult = Data.define(:player)
+
+# ShareAccess is an alias for String.
+
+# player_id [PlayerId]
+ShareAccessRequest = Data.define(:player_id)
+
+# account_id [AccountId]
+# handle [String]
+# display_name [String]
+# selected [Boolean]
+ShareCandidate = Data.define(:account_id, :handle, :display_name, :selected) do
+  def initialize(account_id:, handle:, selected:, display_name: nil)
+    super
+  end
+end
+
+# player_id [PlayerId]
+# access [ShareAccess]
+# accounts [Array<ShareCandidate>]
+ShareAccessInfo = Data.define(:player_id, :access, :accounts)
+
+# player_id [PlayerId]
+# access [ShareAccess]
+# account_ids [Array<AccountId>]
+SetShareAccessRequest = Data.define(:player_id, :access, :account_ids)
 
 # kind [String]
 # stream_id [String]

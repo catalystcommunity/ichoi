@@ -5,8 +5,13 @@ Google Play form and approve each answer before submission.
 
 ## Summary answers
 
-- Does the developer collect user data: No.
-- Does the developer share user data: No.
+- Does the application collect user data under the Google Play form definition: Use
+  **Yes** for the draft. The application sends user data off the device to the server that
+  the user selects. Google defines collection to include data that goes to a third-party
+  server. A Console owner can use an applicable form exception only after legal approval.
+- Does the application share user data: Use **No** for the draft only if the Console owner
+  confirms the user-initiated transfer exception. The user selects the server and expects
+  the application to send requests to that server.
 - Does the application contain advertisements: No.
 - Does the application provide account deletion: Yes. Use the selected server
   in the application or follow the public deletion instructions.
@@ -18,6 +23,9 @@ server operators receive and control those requests. Catalyst Community does not
 operate those servers and does not receive their data. The public demonstration
 server is a separate service and does not require a guest to sign in.
 
+The current Google form defines collection as transmission off the device. Do not use
+"developer receives no data" as the reason for a **No data collected** answer.
+
 ## Data on a selected server
 
 When a user signs in or uses a server function, the selected server can store:
@@ -28,8 +36,9 @@ When a user signs in or uses a server function, the selected server can store:
 | Session token hash and expiry | Authentication and security | Deleted |
 | Audiobook position per track | Application function | Deleted |
 | Private playlists | Application function | Deleted |
-| Public playlists | Application function and user content | Owner link removed; playlist stays |
+| Public playlists | Application function and user content | Deleted |
 | Shared device registrations | Application function | Deleted |
+| Blocked-account relationships | Safety and application function | Deleted |
 | Reports submitted by the account | Safety and compliance | Deleted |
 | Reports that target the account | Safety and compliance | Deleted |
 | IP address in server logs | Security and operation | The server operator sets retention |
@@ -42,8 +51,8 @@ tokens with the Android Keystore. It does not create a persistent media cache.
 
 ## Review questions
 
-Before submission, a person must confirm how the current form classifies data
-that a user sends to an independent server that the user selects. If Google
-classifies this transfer as collection, disclose the applicable account,
-application activity, user content, and device or other identifier categories.
-Do not submit a "No data collected" answer until this classification is approved.
+Before submission, a person must map the current form fields to account information,
+application activity, user content, and device or other identifiers. Confirm each purpose,
+retention rule, optional status, and sharing exception. Keep the form consistent with the
+published privacy policy. Do not submit a "No data collected" answer unless Google or
+qualified counsel confirms the exception for this exact client design.

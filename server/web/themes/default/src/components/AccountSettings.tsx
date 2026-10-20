@@ -53,8 +53,8 @@ export function AccountSettings(): JSX.Element {
         onClose={() => !deleting() && setOpen(false)}
       >
         <p>
-          This action deletes your account from the selected server. It deletes your private
-          playlists. It does not delete public playlists that you created.
+          This action deletes your account and every public and private playlist that you own
+          from the selected server.
         </p>
         <p class="hint">Selected server: <span class="mono">{servers.active()?.url}</span></p>
         <form onSubmit={(event) => void removeAccount(event)}>

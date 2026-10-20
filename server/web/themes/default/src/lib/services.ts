@@ -44,6 +44,8 @@ import type {
   ImportTrackRequest,
   BeginImportRequest,
   BeginImportResult,
+  BlockAccountRequest,
+  BlockedAccountsResponse,
   FinishImportRequest,
   CancelImportRequest,
   ListAccountsResponse,
@@ -76,6 +78,9 @@ import type {
   SetDeviceAccessRequest,
   SetSettingRequest,
   Settings,
+  SetShareAccessRequest,
+  ShareAccessInfo,
+  ShareAccessRequest,
   ShareResult,
   SubscribeRequest,
   TrustDomainRequest,
@@ -178,11 +183,36 @@ export class LibraryService {
       decodeRecord<PlaylistsResponse>,
     );
   }
+  /** Loads every page of visible playlists. */
+  async listAllPlaylists(): Promise<PlaylistsResponse> {
+    const playlists: PlaylistsResponse["playlists"] = [];
+    for (;;) {
+      const page = await this.listPlaylists({ offset: playlists.length, limit: 1000 });
+      playlists.push(...page.playlists);
+      if (page.playlists.length === 0 || playlists.length >= page.total) {
+        return { playlists, total: page.total };
+      }
+    }
+  }
   getPlaylist(req: PlaylistRequest): Promise<PlaylistDetail> {
     return this.conn.call(LIBRARY, "get-playlist", encodeRecord(req), decodeRecord<PlaylistDetail>);
   }
   deletePlaylist(req: DeletePlaylistRequest): Promise<Ok> {
     return this.conn.call(LIBRARY, "delete-playlist", encodeRecord(req), decodeRecord<Ok>);
+  }
+  blockAccount(req: BlockAccountRequest): Promise<Ok> {
+    return this.conn.call(LIBRARY, "block-account", encodeRecord(req), decodeRecord<Ok>);
+  }
+  unblockAccount(req: BlockAccountRequest): Promise<Ok> {
+    return this.conn.call(LIBRARY, "unblock-account", encodeRecord(req), decodeRecord<Ok>);
+  }
+  listBlockedAccounts(page: Page = {}): Promise<BlockedAccountsResponse> {
+    return this.conn.call(
+      LIBRARY,
+      "list-blocked-accounts",
+      encodeRecord(page),
+      decodeRecord<BlockedAccountsResponse>,
+    );
   }
   reportContent(req: ReportContentRequest): Promise<ContentReport> {
     return this.conn.call(LIBRARY, "report-content", encodeRecord(req), decodeRecord<ContentReport>);
@@ -225,6 +255,12 @@ export class PlayerService {
   }
   disableShare(req: DisableShareRequest): Promise<Ok> {
     return this.conn.call(PLAYER, "disable-share", encodeRecord(req), decodeRecord<Ok>);
+  }
+  getShareAccess(req: ShareAccessRequest): Promise<ShareAccessInfo> {
+    return this.conn.call(PLAYER, "get-share-access", encodeRecord(req), decodeRecord<ShareAccessInfo>);
+  }
+  setShareAccess(req: SetShareAccessRequest): Promise<ShareAccessInfo> {
+    return this.conn.call(PLAYER, "set-share-access", encodeRecord(req), decodeRecord<ShareAccessInfo>);
   }
 
   /** Open a subscription to a shared target's live `PlayerState`. Sends the

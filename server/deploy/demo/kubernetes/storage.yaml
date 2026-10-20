@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ichoi-demo-state
+  namespace: ichoi-demo
+  labels:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/part-of: ichoi-demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ichoi-demo-media
+  namespace: ichoi-demo
+  labels:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/part-of: ichoi-demo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: longhorn

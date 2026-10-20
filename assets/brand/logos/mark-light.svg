@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title"><title id="title">Transparent mark for light backgrounds</title><g transform="translate(0 0) scale(1.0)"><circle xmlns="http://www.w3.org/2000/svg" cx="256" cy="256" r="184" fill="none" stroke="#087f78" stroke-width="24" />
+  <g xmlns="http://www.w3.org/2000/svg" fill="#a85c00">
+    <path d="M198 328V196Q198 185 209 182L331 150Q346 146 346 162V296H322V190L222 216V328Z" />
+    <ellipse cx="185" cy="330" rx="38" ry="28" transform="rotate(-18 185 330)" />
+    <ellipse cx="309" cy="298" rx="38" ry="28" transform="rotate(-18 309 298)" />
+  </g>
+</g></svg>

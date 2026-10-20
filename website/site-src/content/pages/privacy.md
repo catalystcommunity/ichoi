@@ -6,7 +6,7 @@ Description: "How Ichoi handles client data and selected-server data."
 <p class="eyebrow">Privacy policy</p>
 <h1>Privacy at Ichoi</h1>
 <p><strong>Last updated:</strong> 12 September 2026</p>
-<p>This policy describes the Ichoi application and website operated by Catalyst Community. Privacy contact: <a href="mailto:privacy@ichoi.invalid">privacy@ichoi.invalid</a>. This contact is a placeholder until a person approves the address.</p>
+<p>This policy describes the Ichoi application and website. Network Sanitation Committee, LLC publishes the Ichoi mobile applications and operates this website. Privacy contact: <a href="mailto:privacy@networksanitationcommittee.com">privacy@networksanitationcommittee.com</a>.</p>
 <h2>What the application sends</h2>
 <p>The application sends the server URL, sign-in data, session requests, browsing requests, playback requests, playlist actions, and reports to the server that you select. A report can include a playlist or account target, a selected reason, and optional details that you enter.</p>
 <p>The application stores a session token in secure local storage. It does not use ads, analytics, remote crash reporting, purchases, subscriptions, or donation functions. It does not add a persistent media cache.</p>
@@ -16,7 +16,8 @@ Description: "How Ichoi handles client data and selected-server data."
 <p>Each server operator controls the account, playlists, reports, media, logs, and retention for that server. The operator must publish its own notice and support process. Data goes only to servers that you select, subject to the requests that you make.</p>
 <p>A selected server can store these data:</p>
 <ul><li>Your LinkKeys subject, handle, display name, role, account creation time, session token hash, and session expiry.</li><li>Your audiobook position for each track.</li><li>Your private playlists and public playlists that you create.</li><li>Your shared device registrations.</li><li>Reports that you submit and reports that target your account.</li><li>Your IP address in server logs. The server operator sets the log retention period.</li></ul>
-<p>Account deletion removes your account, sessions, audiobook progress, private playlists, shared device registrations, submitted reports, and reports that target your account. Public playlists remain, but the server removes their owner link.</p>
+<p>Account deletion removes your account, sessions, audiobook progress, each public and private playlist that you own, shared device registrations, submitted reports, and reports that target your account.</p>
+<p>You can block an account from a playlist action. The selected server then hides public playlists from that account. Open the blocked-account list in Settings to unblock the account. A block applies only to the selected server.</p>
 <h2>Your choices</h2>
 <p>You can sign out to remove the local session. You can request account deletion from the selected server by following the <a href="account-deletion.html">account deletion instructions</a>. Contact the selected server operator for server data questions.</p>
 <h2>Changes</h2><p>We will update this page when the application or website data use changes. Check the date at the top of this page.</p>

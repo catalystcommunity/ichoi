@@ -90,6 +90,21 @@ module Library_service = struct
     | Ok payload -> Ok (Codec.decode_ok_bytes payload)
     | Error _ as e -> e
 
+  let block_account (c : client) (req : block_account_request) : (ok, string) result =
+    match c.call ~service:"LibraryService" ~op:"block-account" ~payload:(Codec.encode_block_account_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
+  let unblock_account (c : client) (req : block_account_request) : (ok, string) result =
+    match c.call ~service:"LibraryService" ~op:"unblock-account" ~payload:(Codec.encode_block_account_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
+  let list_blocked_accounts (c : client) (req : page) : (blocked_accounts_response, string) result =
+    match c.call ~service:"LibraryService" ~op:"list-blocked-accounts" ~payload:(Codec.encode_page_bytes req) with
+    | Ok payload -> Ok (Codec.decode_blocked_accounts_response_bytes payload)
+    | Error _ as e -> e
+
   let get_cover_art (c : client) (req : cover_art_request) : (cover_art, string) result =
     match c.call ~service:"LibraryService" ~op:"get-cover-art" ~payload:(Codec.encode_cover_art_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
@@ -136,6 +151,16 @@ module Player_service = struct
   let disable_share (c : client) (req : disable_share_request) : (ok, string) result =
     match c.call ~service:"PlayerService" ~op:"disable-share" ~payload:(Codec.encode_disable_share_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
+  let get_share_access (c : client) (req : share_access_request) : (share_access_info, string) result =
+    match c.call ~service:"PlayerService" ~op:"get-share-access" ~payload:(Codec.encode_share_access_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_share_access_info_bytes payload)
+    | Error _ as e -> e
+
+  let set_share_access (c : client) (req : set_share_access_request) : (share_access_info, string) result =
+    match c.call ~service:"PlayerService" ~op:"set-share-access" ~payload:(Codec.encode_set_share_access_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_share_access_info_bytes payload)
     | Error _ as e -> e
 end
 

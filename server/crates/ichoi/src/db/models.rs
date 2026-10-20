@@ -100,6 +100,16 @@ pub struct Playlist {
     pub visibility: String,
 }
 
+#[derive(Debug, Clone, Queryable, Selectable, Insertable)]
+#[diesel(table_name = account_blocks)]
+#[diesel(primary_key(blocker_account_id, blocked_account_id))]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct AccountBlock {
+    pub blocker_account_id: String,
+    pub blocked_account_id: String,
+    pub created_at: String,
+}
+
 #[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]
 #[diesel(table_name = nodes)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
@@ -160,6 +170,8 @@ pub struct Player {
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]
 #[diesel(table_name = player_state, primary_key(player_id))]
+// Clearing a field (listener, error, playback id) must write NULL, not skip the column.
+#[diesel(treat_none_as_null = true)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct PlayerStateRow {
     pub player_id: String,
@@ -198,6 +210,8 @@ pub struct NewQueueItem {
 
 #[derive(Debug, Clone, Queryable, Selectable, Insertable, Identifiable, AsChangeset)]
 #[diesel(table_name = player_undo_state, primary_key(player_id))]
+// Clearing a field (listener, error, playback id) must write NULL, not skip the column.
+#[diesel(treat_none_as_null = true)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct PlayerUndoState {
     pub player_id: String,

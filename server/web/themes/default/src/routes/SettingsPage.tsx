@@ -10,6 +10,7 @@ import { SatelliteAdmin } from "../components/SatelliteAdmin.tsx";
 import { AccountAccessAdmin } from "../components/AccountAccessAdmin.tsx";
 import { AccountSettings } from "../components/AccountSettings.tsx";
 import { ContentReportAdmin } from "../components/ContentReportAdmin.tsx";
+import { BlockedAccounts } from "../components/BlockedAccounts.tsx";
 
 export function SettingsPage(): JSX.Element {
   const { t, locale, setLocale } = useI18n();
@@ -224,6 +225,19 @@ export function SettingsPage(): JSX.Element {
         </Show>
         <Show when={isAdmin()}>
           <div class="field" style={{ "margin-top": "22px" }}>
+            <label for="share-default">{t("settings.shareDefault")}</label>
+            <select
+              id="share-default"
+              class="select"
+              value={settings()?.entries["share_default_access"] === "private" ? "private" : "everyone"}
+              onChange={(e) => void saveSetting("share_default_access", e.currentTarget.value)}
+            >
+              <option value="everyone">{t("settings.shareDefaultEveryone")}</option>
+              <option value="private">{t("settings.shareDefaultPrivate")}</option>
+            </select>
+            <span class="hint">{t("settings.shareDefaultHint")}</span>
+          </div>
+          <div class="field" style={{ "margin-top": "22px" }}>
             <label>{t("settings.libraryResync")}</label>
             <p class="hint">{t("settings.libraryResyncHint")}</p>
             <div class="row" style={{ gap: "12px", "margin-top": "10px" }}>
@@ -243,6 +257,7 @@ export function SettingsPage(): JSX.Element {
         </Show>
       </section>
       <AccountSettings />
+      <BlockedAccounts />
       <Show when={isAdmin()}>
         <ContentReportAdmin />
         <AccountAccessAdmin />

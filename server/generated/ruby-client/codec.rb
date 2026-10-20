@@ -1404,6 +1404,7 @@ class PlaylistsResponse
 
   def csil_to_tree
     csil_map = {}
+    csil_map["total"] = total
     csil_map["playlists"] = (playlists).map { |csil_e| (csil_e).csil_to_tree }
     csil_map
   end
@@ -1414,7 +1415,8 @@ class PlaylistsResponse
 
   def self.csil_from_tree(node)
     new(
-      playlists: (node["playlists"]).map { |csil_e| Playlist.csil_from_tree(csil_e) }
+      playlists: (node["playlists"]).map { |csil_e| Playlist.csil_from_tree(csil_e) },
+      total: node["total"]
     )
   end
 end
@@ -1489,6 +1491,86 @@ class PlaylistDetail
     new(
       playlist: Playlist.csil_from_tree(node["playlist"]),
       tracks: (node["tracks"]).map { |csil_e| Track.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for BlockAccountRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class BlockAccountRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["account_id"] = account_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      account_id: node["account_id"]
+    )
+  end
+end
+
+# CBOR codec for BlockedAccount: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class BlockedAccount
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["handle"] = handle
+    csil_map["account_id"] = account_id
+    csil_map["blocked_at"] = CsilCbor::Tag.new(0, (blocked_at).getutc.iso8601)
+    csil_map["display_name"] = display_name unless display_name.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      account_id: node["account_id"],
+      handle: node["handle"],
+      display_name: (node.key?("display_name") ? node["display_name"] : nil),
+      blocked_at: Time.iso8601((node["blocked_at"]).value)
+    )
+  end
+end
+
+# CBOR codec for BlockedAccountsResponse: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class BlockedAccountsResponse
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["total"] = total
+    csil_map["accounts"] = (accounts).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      accounts: (node["accounts"]).map { |csil_e| BlockedAccount.csil_from_tree(csil_e) },
+      total: node["total"]
     )
   end
 end
@@ -2444,6 +2526,126 @@ class ShareResult
   def self.csil_from_tree(node)
     new(
       player: Player.csil_from_tree(node["player"])
+    )
+  end
+end
+
+# CBOR codec for ShareAccessRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ShareAccessRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["player_id"] = player_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      player_id: node["player_id"]
+    )
+  end
+end
+
+# CBOR codec for ShareCandidate: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ShareCandidate
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["handle"] = handle
+    csil_map["selected"] = selected
+    csil_map["account_id"] = account_id
+    csil_map["display_name"] = display_name unless display_name.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      account_id: node["account_id"],
+      handle: node["handle"],
+      display_name: (node.key?("display_name") ? node["display_name"] : nil),
+      selected: node["selected"]
+    )
+  end
+end
+
+# CBOR codec for ShareAccessInfo: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ShareAccessInfo
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["access"] = (access)
+    csil_map["accounts"] = (accounts).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map["player_id"] = player_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      player_id: node["player_id"],
+      access: (case (node["access"])
+when "everyone" then "everyone"
+when "selected" then "selected"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["access"]).inspect}"
+end),
+      accounts: (node["accounts"]).map { |csil_e| ShareCandidate.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for SetShareAccessRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class SetShareAccessRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["access"] = (access)
+    csil_map["player_id"] = player_id
+    csil_map["account_ids"] = (account_ids).map { |csil_e| csil_e }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      player_id: node["player_id"],
+      access: (case (node["access"])
+when "everyone" then "everyone"
+when "selected" then "selected"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["access"]).inspect}"
+end),
+      account_ids: (node["account_ids"]).map { |csil_e| csil_e }
     )
   end
 end

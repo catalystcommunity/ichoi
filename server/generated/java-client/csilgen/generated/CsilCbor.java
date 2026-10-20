@@ -193,6 +193,12 @@ public final class CsilCbor {
         }
     }
 
+    /** Bounds the elements a decoded array or map reserves before it reads
+     * them. The declared length is checked against the remaining input, but one input
+     * byte can become a much larger value, so reserving the full declared length lets a
+     * small frame reserve a large multiple of its size at every nesting level. */
+    private static final int PREALLOC_LIMIT = 1024;
+
     private static CborValue dec(byte[] b, int[] pos, int depth) {
         if (depth > 64) {
             throw new CsilCborException("csil cbor: nesting limit exceeded");
@@ -261,7 +267,7 @@ public final class CsilCbor {
                     throw new CsilCborException("csil cbor: array length exceeds remaining input");
                 }
                 int n = (int) arg;
-                List<CborValue> items = new ArrayList<>(n);
+                List<CborValue> items = new ArrayList<>(Math.min(n, PREALLOC_LIMIT));
                 for (int i = 0; i < n; i++) {
                     items.add(dec(b, pos, depth + 1));
                 }
@@ -272,7 +278,7 @@ public final class CsilCbor {
                     throw new CsilCborException("csil cbor: map length exceeds remaining input");
                 }
                 int n = (int) arg;
-                List<CborEntry> entries = new ArrayList<>(n);
+                List<CborEntry> entries = new ArrayList<>(Math.min(n, PREALLOC_LIMIT));
                 for (int i = 0; i < n; i++) {
                     CborValue k = dec(b, pos, depth + 1);
                     CborValue val = dec(b, pos, depth + 1);
@@ -1409,14 +1415,16 @@ public final class CsilCbor {
     }
 
     static CborValue encPlaylistsResponse(PlaylistsResponse v) {
-        List<CborEntry> csilEntries = new ArrayList<>(1);
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("total"), new CborUint(v.total())));
         csilEntries.add(new CborEntry(new CborText("playlists"), encArray(v.playlists(), csilElem0 -> encPlaylist(csilElem0))));
         return new CborMap(csilEntries);
     }
 
     static PlaylistsResponse decPlaylistsResponse(CborValue csilRoot) {
         List<Playlist> playlists = decArray(require(csilRoot, "playlists"), csilE0 -> decPlaylist(csilE0));
-        return new PlaylistsResponse(playlists);
+        long total = asU64(require(csilRoot, "total"));
+        return new PlaylistsResponse(playlists, total);
     }
 
     public static byte[] encodePlaylistsResponse(PlaylistsResponse v) {
@@ -1484,6 +1492,77 @@ public final class CsilCbor {
 
     public static PlaylistDetail decodePlaylistDetail(byte[] data) {
         return decPlaylistDetail(decode(data));
+    }
+
+    static CborValue encBlockAccountRequest(BlockAccountRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static BlockAccountRequest decBlockAccountRequest(CborValue csilRoot) {
+        AccountId accountId = new AccountId(asText(require(csilRoot, "account_id")));
+        return new BlockAccountRequest(accountId);
+    }
+
+    public static byte[] encodeBlockAccountRequest(BlockAccountRequest v) {
+        return encode(encBlockAccountRequest(v));
+    }
+
+    public static BlockAccountRequest decodeBlockAccountRequest(byte[] data) {
+        return decBlockAccountRequest(decode(data));
+    }
+
+    static CborValue encBlockedAccount(BlockedAccount v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("handle"), new CborText((v.handle()).value())));
+        csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
+        csilEntries.add(new CborEntry(new CborText("blocked_at"), encTimestamp(v.blockedAt())));
+        if (v.displayName() != null) {
+            csilEntries.add(new CborEntry(new CborText("display_name"), new CborText(v.displayName())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static BlockedAccount decBlockedAccount(CborValue csilRoot) {
+        AccountId accountId = new AccountId(asText(require(csilRoot, "account_id")));
+        Handle handle = new Handle(asText(require(csilRoot, "handle")));
+        String displayName;
+        {
+            CborValue csilField = mapGet(csilRoot, "display_name");
+            displayName = csilField != null ? asText(csilField) : null;
+        }
+        Instant blockedAt = asTimestamp(require(csilRoot, "blocked_at"));
+        return new BlockedAccount(accountId, handle, displayName, blockedAt);
+    }
+
+    public static byte[] encodeBlockedAccount(BlockedAccount v) {
+        return encode(encBlockedAccount(v));
+    }
+
+    public static BlockedAccount decodeBlockedAccount(byte[] data) {
+        return decBlockedAccount(decode(data));
+    }
+
+    static CborValue encBlockedAccountsResponse(BlockedAccountsResponse v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("total"), new CborUint(v.total())));
+        csilEntries.add(new CborEntry(new CborText("accounts"), encArray(v.accounts(), csilElem0 -> encBlockedAccount(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static BlockedAccountsResponse decBlockedAccountsResponse(CborValue csilRoot) {
+        List<BlockedAccount> accounts = decArray(require(csilRoot, "accounts"), csilE0 -> decBlockedAccount(csilE0));
+        long total = asU64(require(csilRoot, "total"));
+        return new BlockedAccountsResponse(accounts, total);
+    }
+
+    public static byte[] encodeBlockedAccountsResponse(BlockedAccountsResponse v) {
+        return encode(encBlockedAccountsResponse(v));
+    }
+
+    public static BlockedAccountsResponse decodeBlockedAccountsResponse(byte[] data) {
+        return decBlockedAccountsResponse(decode(data));
     }
 
     static CborValue encCoverArtRequest(CoverArtRequest v) {
@@ -2361,6 +2440,102 @@ public final class CsilCbor {
 
     public static ShareResult decodeShareResult(byte[] data) {
         return decShareResult(decode(data));
+    }
+
+    static CborValue encShareAccessRequest(ShareAccessRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(1);
+        csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static ShareAccessRequest decShareAccessRequest(CborValue csilRoot) {
+        PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
+        return new ShareAccessRequest(playerId);
+    }
+
+    public static byte[] encodeShareAccessRequest(ShareAccessRequest v) {
+        return encode(encShareAccessRequest(v));
+    }
+
+    public static ShareAccessRequest decodeShareAccessRequest(byte[] data) {
+        return decShareAccessRequest(decode(data));
+    }
+
+    static CborValue encShareCandidate(ShareCandidate v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("handle"), new CborText(v.handle())));
+        csilEntries.add(new CborEntry(new CborText("selected"), new CborBool(v.selected())));
+        csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
+        if (v.displayName() != null) {
+            csilEntries.add(new CborEntry(new CborText("display_name"), new CborText(v.displayName())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static ShareCandidate decShareCandidate(CborValue csilRoot) {
+        AccountId accountId = new AccountId(asText(require(csilRoot, "account_id")));
+        String handle = asText(require(csilRoot, "handle"));
+        String displayName;
+        {
+            CborValue csilField = mapGet(csilRoot, "display_name");
+            displayName = csilField != null ? asText(csilField) : null;
+        }
+        boolean selected = asBool(require(csilRoot, "selected"));
+        return new ShareCandidate(accountId, handle, displayName, selected);
+    }
+
+    public static byte[] encodeShareCandidate(ShareCandidate v) {
+        return encode(encShareCandidate(v));
+    }
+
+    public static ShareCandidate decodeShareCandidate(byte[] data) {
+        return decShareCandidate(decode(data));
+    }
+
+    static CborValue encShareAccessInfo(ShareAccessInfo v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("access"), encShareAccess(v.access())));
+        csilEntries.add(new CborEntry(new CborText("accounts"), encArray(v.accounts(), csilElem0 -> encShareCandidate(csilElem0))));
+        csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static ShareAccessInfo decShareAccessInfo(CborValue csilRoot) {
+        PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
+        ShareAccess access = decShareAccess(require(csilRoot, "access"));
+        List<ShareCandidate> accounts = decArray(require(csilRoot, "accounts"), csilE0 -> decShareCandidate(csilE0));
+        return new ShareAccessInfo(playerId, access, accounts);
+    }
+
+    public static byte[] encodeShareAccessInfo(ShareAccessInfo v) {
+        return encode(encShareAccessInfo(v));
+    }
+
+    public static ShareAccessInfo decodeShareAccessInfo(byte[] data) {
+        return decShareAccessInfo(decode(data));
+    }
+
+    static CborValue encSetShareAccessRequest(SetShareAccessRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("access"), encShareAccess(v.access())));
+        csilEntries.add(new CborEntry(new CborText("player_id"), new CborText((v.playerId()).value())));
+        csilEntries.add(new CborEntry(new CborText("account_ids"), encArray(v.accountIds(), csilElem0 -> new CborText((csilElem0).value()))));
+        return new CborMap(csilEntries);
+    }
+
+    static SetShareAccessRequest decSetShareAccessRequest(CborValue csilRoot) {
+        PlayerId playerId = new PlayerId(asText(require(csilRoot, "player_id")));
+        ShareAccess access = decShareAccess(require(csilRoot, "access"));
+        List<AccountId> accountIds = decArray(require(csilRoot, "account_ids"), csilE0 -> new AccountId(asText(csilE0)));
+        return new SetShareAccessRequest(playerId, access, accountIds);
+    }
+
+    public static byte[] encodeSetShareAccessRequest(SetShareAccessRequest v) {
+        return encode(encSetShareAccessRequest(v));
+    }
+
+    public static SetShareAccessRequest decodeSetShareAccessRequest(byte[] data) {
+        return decSetShareAccessRequest(decode(data));
     }
 
     static CborValue encMediaOpen(MediaOpen v) {
@@ -4092,6 +4267,18 @@ public final class CsilCbor {
             return new PlayerCommand(decCmdPlaybackState(csilPayload));
         }
         throw new CsilCborException("csil cbor: PlayerCommand variant index " + csilIdx);
+    }
+
+    static CborValue encShareAccess(ShareAccess v) {
+        return new CborText((String) v.value());
+    }
+
+    static ShareAccess decShareAccess(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "everyone") || Objects.equals(csilVal, "selected"))) {
+            throw new CsilCborException("csil cbor: ShareAccess value " + csilVal + " is not a member of the declared enum");
+        }
+        return new ShareAccess(csilVal);
     }
 
     static CborValue encMediaControl(MediaControl v) {

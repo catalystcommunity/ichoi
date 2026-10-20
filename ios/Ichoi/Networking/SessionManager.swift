@@ -9,8 +9,9 @@ final class SessionManager: ObservableObject {
     private let profile: ServerProfile
     private let authenticator: LinkKeysAuthenticator
 
-    init(profile: ServerProfile, tokenStore: TokenStore = KeychainTokenStore(), authenticator: LinkKeysAuthenticator = LinkKeysAuthenticator()) {
-        self.profile = profile; self.tokenStore = tokenStore; self.authenticator = authenticator
+    // A default argument runs outside the main actor, so create the authenticator here.
+    init(profile: ServerProfile, tokenStore: TokenStore = KeychainTokenStore(), authenticator: LinkKeysAuthenticator? = nil) {
+        self.profile = profile; self.tokenStore = tokenStore; self.authenticator = authenticator ?? LinkKeysAuthenticator()
     }
 
     func restore() async {

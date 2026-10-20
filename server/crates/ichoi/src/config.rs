@@ -70,7 +70,10 @@ struct FileConfig {
     linkkeys_rp_domain: Option<String>,
     public_url: Option<String>,
     linkkeys_trusted_identities: Option<Vec<String>>,
+    linkkeys_trusted_user_ids: Option<Vec<String>>,
     access_mode: Option<String>,
+    anonymous_jukebox: Option<bool>,
+    zero_account_guest_access: Option<bool>,
     trusted_proxy_cidrs: Option<Vec<String>>,
     session_lifetime_hours: Option<u64>,
 }
@@ -129,8 +132,14 @@ pub struct Config {
     pub public_url: Option<String>,
     /// Admission selectors: either `domain` or `handle@domain`.
     pub linkkeys_trusted_identities: Vec<String>,
+    /// Stable LinkKeys identities in `user-uuid@domain` form.
+    pub linkkeys_trusted_user_ids: Vec<String>,
     /// Anonymous browser admission. Open is the backwards-compatible default.
     pub access_mode: AccessMode,
+    /// Permit anonymous users to create and control ownerless browser jukebox shares.
+    pub anonymous_jukebox: bool,
+    /// Preserve elevated guest permissions while the instance has no accounts.
+    pub zero_account_guest_access: bool,
     /// Immediate peers whose X-Forwarded-For header may be used for LAN classification.
     pub trusted_proxy_cidrs: Vec<IpNet>,
     /// Session lifetime. The default is 720 hours (30 days).
@@ -160,6 +169,22 @@ fn configurable_bool(value: Option<&str>, file_value: Option<bool>, default: boo
         Some("0" | "false" | "no" | "off") => false,
         Some(_) => default,
         None => file_value.unwrap_or(default),
+    }
+}
+
+/// Like `configurable_bool`, but an unrecognized value is a startup error. Access-policy
+/// flags must not fall back to a default when an operator mistypes a value.
+fn policy_bool(
+    key: &str,
+    value: Option<&str>,
+    file_value: Option<bool>,
+    default: bool,
+) -> anyhow::Result<bool> {
+    match value.map(str::trim).map(str::to_ascii_lowercase).as_deref() {
+        Some("1" | "true" | "yes" | "on") => Ok(true),
+        Some("0" | "false" | "no" | "off") => Ok(false),
+        Some(other) => anyhow::bail!("{key} must be true or false, not {other:?}"),
+        None => Ok(file_value.unwrap_or(default)),
     }
 }
 
@@ -212,6 +237,18 @@ impl Config {
 
         let role = Role::parse(&pick("ICHOI_ROLE", file.role, "core"));
         let access_mode = AccessMode::parse(&pick("ICHOI_ACCESS_MODE", file.access_mode, "open"))?;
+        let anonymous_jukebox = policy_bool(
+            "ICHOI_ANONYMOUS_JUKEBOX",
+            env("ICHOI_ANONYMOUS_JUKEBOX").as_deref(),
+            file.anonymous_jukebox,
+            false,
+        )?;
+        let zero_account_guest_access = policy_bool(
+            "ICHOI_ZERO_ACCOUNT_GUEST_ACCESS",
+            env("ICHOI_ZERO_ACCOUNT_GUEST_ACCESS").as_deref(),
+            file.zero_account_guest_access,
+            true,
+        )?;
         let linkkeys_local_rp = match std::env::var("ICHOI_LINKKEYS_LOCAL_RP") {
             Ok(value) => exactly_true(Some(&value)),
             Err(_) => file.linkkeys_local_rp.unwrap_or(false),
@@ -326,7 +363,23 @@ impl Config {
                     .collect()
             })
             .unwrap_or_default(),
+            linkkeys_trusted_user_ids: pick_opt(
+                "ICHOI_LINKKEYS_TRUSTED_USER_IDS",
+                file.linkkeys_trusted_user_ids
+                    .map(|values| values.join(",")),
+            )
+            .map(|value| {
+                value
+                    .split(',')
+                    .map(str::trim)
+                    .filter(|item| !item.is_empty())
+                    .map(|item| item.to_ascii_lowercase())
+                    .collect()
+            })
+            .unwrap_or_default(),
             access_mode,
+            anonymous_jukebox,
+            zero_account_guest_access,
             trusted_proxy_cidrs: pick_opt(
                 "ICHOI_TRUSTED_PROXY_CIDRS",
                 file.trusted_proxy_cidrs.map(|values| values.join(",")),
@@ -380,6 +433,27 @@ impl Config {
             .iter()
             .any(|network| network.contains(&address))
     }
+
+    pub fn trusts_linkkeys_user_domain(&self, domain: &str) -> bool {
+        self.linkkeys_trusted_user_ids.iter().any(|selector| {
+            selector
+                .rsplit_once('@')
+                .is_some_and(|(user_id, configured_domain)| {
+                    !user_id.is_empty() && configured_domain.eq_ignore_ascii_case(domain)
+                })
+        })
+    }
+
+    pub fn trusts_linkkeys_user_id(&self, user_id: &str, domain: &str) -> bool {
+        self.linkkeys_trusted_user_ids.iter().any(|selector| {
+            selector
+                .rsplit_once('@')
+                .is_some_and(|(configured_user_id, configured_domain)| {
+                    configured_user_id.eq_ignore_ascii_case(user_id)
+                        && configured_domain.eq_ignore_ascii_case(domain)
+                })
+        })
+    }
 }
 
 fn is_lan_address(address: std::net::IpAddr) -> bool {
@@ -402,9 +476,17 @@ mod tests {
     use std::path::PathBuf;
 
     use super::{
-        album_subfolder_words, configurable_bool, exactly_true, is_lan_address, read_secret_file,
-        session_lifetime_hours, AccessMode, FileConfig,
+        album_subfolder_words, configurable_bool, exactly_true, is_lan_address, policy_bool,
+        read_secret_file, session_lifetime_hours, AccessMode, FileConfig,
     };
+
+    #[test]
+    fn policy_bool_rejects_unrecognized_values() {
+        assert!(!policy_bool("K", Some("false"), Some(true), true).unwrap());
+        assert!(policy_bool("K", None, Some(true), false).unwrap());
+        assert!(policy_bool("K", None, None, true).unwrap());
+        assert!(policy_bool("K", Some("disabled"), None, true).is_err());
+    }
 
     #[test]
     fn local_rp_environment_enablement_is_exact() {
@@ -482,6 +564,9 @@ linkkeys_rp_api_key = "secret"
 linkkeys_rp_domain = "ichoi.example"
 public_url = "https://ichoi.example:4042"
 linkkeys_trusted_identities = ["alice@example.com"]
+linkkeys_trusted_user_ids = ["019d6ac9-58bf-7303-8a5a-e60fba633239@example.com"]
+anonymous_jukebox = true
+zero_account_guest_access = false
 "#,
         )
         .unwrap();
@@ -497,6 +582,9 @@ linkkeys_trusted_identities = ["alice@example.com"]
             parsed.public_url.as_deref(),
             Some("https://ichoi.example:4042")
         );
+        assert_eq!(parsed.anonymous_jukebox, Some(true));
+        assert_eq!(parsed.zero_account_guest_access, Some(false));
+        assert_eq!(parsed.linkkeys_trusted_user_ids.unwrap().len(), 1);
     }
 
     #[test]

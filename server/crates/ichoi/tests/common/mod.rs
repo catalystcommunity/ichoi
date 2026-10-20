@@ -51,7 +51,10 @@ pub fn test_config() -> Config {
         linkkeys_rp_domain: None,
         public_url: None,
         linkkeys_trusted_identities: vec![],
+        linkkeys_trusted_user_ids: vec![],
         access_mode: AccessMode::Open,
+        anonymous_jukebox: false,
+        zero_account_guest_access: true,
         trusted_proxy_cidrs: vec![],
         session_lifetime_hours: 720,
     }

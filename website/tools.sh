@@ -21,7 +21,7 @@ check_deploy() {
     while IFS= read -r value; do
         echo "deployment placeholder found: ${value}" >&2
         found=1
-    done < <(rg -n -o 'ichoi\.invalid|REPLACE-ME|privacy@ichoi\.invalid|support@ichoi\.invalid|demo\.ichoi\.invalid' \
+    done < <(grep -rnoE 'ichoi\.invalid|REPLACE-ME' \
         "$SCRIPT_DIR/values.yaml" "$SCRIPT_DIR/site-src" || true)
     if [[ "$found" -ne 0 ]]; then
         echo "replace all domain and contact placeholders before deployment" >&2

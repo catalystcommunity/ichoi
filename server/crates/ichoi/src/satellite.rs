@@ -472,10 +472,20 @@ async fn handle_media_event(
             }
         }
         MediaEvent::Variant1(chunk) => {
-            if let Some(active) = media.get(&chunk.stream_id) {
-                if let Some(task) = playback.get(&active.player_id) {
-                    task.push(chunk.data)?;
-                }
+            let Some(player_id) = media.get(&chunk.stream_id).map(|a| a.player_id.clone()) else {
+                return Ok(());
+            };
+            let rejected = playback
+                .get(&player_id)
+                .is_some_and(|task| task.push(chunk.data).is_err());
+            if rejected {
+                // The decoder has already stopped and reported why. Stop the rest of this
+                // stream; the connection to the core is still healthy.
+                log::debug!(
+                    "satellite media chunk dropped after playback ended: player={player_id}"
+                );
+                playback.remove(&player_id);
+                stop_player_media(out_tx, media, &player_id)?;
             }
         }
         MediaEvent::Variant2(end) => {
@@ -829,6 +839,9 @@ fn decode_stream_to_default_output(
                 last_report_ms = position_ms;
             }
         }
+    }
+    if let Some(sink) = sink.as_mut() {
+        sink.drain(&cancel)?;
     }
     Ok(())
 }

@@ -1,7 +1,14 @@
 PRODUCT_NAME = Ichoi
+TARGETED_DEVICE_FAMILY = 1
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+// Release inputs. scripts/release-build.sh sets them from the release version.
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
 SWIFT_VERSION = 5.9
 IPHONEOS_DEPLOYMENT_TARGET = 16.0
 INFOPLIST_FILE = Ichoi/Info.plist
 GENERATE_INFOPLIST_FILE = NO
 CODE_SIGN_STYLE = Automatic
+// Apple Developer Team ID. It is public; signing keys stay in the secret store.
+DEVELOPMENT_TEAM = W9N9XMS694
 PRODUCT_BUNDLE_IDENTIFIER = $(ICHOI_PERMANENT_BUNDLE_ID)

@@ -166,6 +166,12 @@ public static partial class Cbor
         }
     }
 
+    // PreallocLimit bounds the elements a decoded array or map reserves before it reads
+    // them. The declared length is checked against the remaining input, but one input
+    // byte can become a much larger value, so reserving the full declared length lets a
+    // small frame reserve a large multiple of its size at every nesting level.
+    const int PreallocLimit = 1024;
+
     static CborValue Dec(byte[] b, ref int csilPos, int csilDepth)
     {
         if (csilDepth > 64) { throw new CborException("nesting limit exceeded"); }
@@ -226,7 +232,7 @@ public static partial class Cbor
             {
                 if (arg > (ulong)(b.Length - csilPos)) { throw new CborException("array length exceeds remaining input"); }
                 var n = (int)arg;
-                var items = new System.Collections.Generic.List<CborValue>(n);
+                var items = new System.Collections.Generic.List<CborValue>(System.Math.Min(n, PreallocLimit));
                 for (int csilI = 0; csilI < n; csilI++) { items.Add(Dec(b, ref csilPos, csilDepth + 1)); }
                 return new CborValue.Array(items);
             }
@@ -234,7 +240,7 @@ public static partial class Cbor
             {
                 if (arg > (ulong)(b.Length - csilPos)) { throw new CborException("map length exceeds remaining input"); }
                 var n = (int)arg;
-                var kvs = new System.Collections.Generic.List<(CborValue, CborValue)>(n);
+                var kvs = new System.Collections.Generic.List<(CborValue, CborValue)>(System.Math.Min(n, PreallocLimit));
                 for (int csilI = 0; csilI < n; csilI++)
                 {
                     var k = Dec(b, ref csilPos, csilDepth + 1);
@@ -399,6 +405,9 @@ public static class Codec
         PlaylistRequest csilTyped => PlaylistRequestToCborValue(csilTyped),
         DeletePlaylistRequest csilTyped => DeletePlaylistRequestToCborValue(csilTyped),
         PlaylistDetail csilTyped => PlaylistDetailToCborValue(csilTyped),
+        BlockAccountRequest csilTyped => BlockAccountRequestToCborValue(csilTyped),
+        BlockedAccount csilTyped => BlockedAccountToCborValue(csilTyped),
+        BlockedAccountsResponse csilTyped => BlockedAccountsResponseToCborValue(csilTyped),
         CoverArtRequest csilTyped => CoverArtRequestToCborValue(csilTyped),
         CoverArt csilTyped => CoverArtToCborValue(csilTyped),
         ReportContentRequest csilTyped => ReportContentRequestToCborValue(csilTyped),
@@ -434,6 +443,11 @@ public static class Codec
         EnableShareRequest csilTyped => EnableShareRequestToCborValue(csilTyped),
         DisableShareRequest csilTyped => DisableShareRequestToCborValue(csilTyped),
         ShareResult csilTyped => ShareResultToCborValue(csilTyped),
+        ShareAccess csilTyped => ShareAccessToCborValue(csilTyped),
+        ShareAccessRequest csilTyped => ShareAccessRequestToCborValue(csilTyped),
+        ShareCandidate csilTyped => ShareCandidateToCborValue(csilTyped),
+        ShareAccessInfo csilTyped => ShareAccessInfoToCborValue(csilTyped),
+        SetShareAccessRequest csilTyped => SetShareAccessRequestToCborValue(csilTyped),
         MediaOpen csilTyped => MediaOpenToCborValue(csilTyped),
         MediaSeek csilTyped => MediaSeekToCborValue(csilTyped),
         MediaPause csilTyped => MediaPauseToCborValue(csilTyped),
@@ -552,6 +566,9 @@ public static class Codec
         if (csilType == typeof(PlaylistRequest)) return PlaylistRequestFromCborValue(value);
         if (csilType == typeof(DeletePlaylistRequest)) return DeletePlaylistRequestFromCborValue(value);
         if (csilType == typeof(PlaylistDetail)) return PlaylistDetailFromCborValue(value);
+        if (csilType == typeof(BlockAccountRequest)) return BlockAccountRequestFromCborValue(value);
+        if (csilType == typeof(BlockedAccount)) return BlockedAccountFromCborValue(value);
+        if (csilType == typeof(BlockedAccountsResponse)) return BlockedAccountsResponseFromCborValue(value);
         if (csilType == typeof(CoverArtRequest)) return CoverArtRequestFromCborValue(value);
         if (csilType == typeof(CoverArt)) return CoverArtFromCborValue(value);
         if (csilType == typeof(ReportContentRequest)) return ReportContentRequestFromCborValue(value);
@@ -587,6 +604,11 @@ public static class Codec
         if (csilType == typeof(EnableShareRequest)) return EnableShareRequestFromCborValue(value);
         if (csilType == typeof(DisableShareRequest)) return DisableShareRequestFromCborValue(value);
         if (csilType == typeof(ShareResult)) return ShareResultFromCborValue(value);
+        if (csilType == typeof(ShareAccess)) return ShareAccessFromCborValue(value);
+        if (csilType == typeof(ShareAccessRequest)) return ShareAccessRequestFromCborValue(value);
+        if (csilType == typeof(ShareCandidate)) return ShareCandidateFromCborValue(value);
+        if (csilType == typeof(ShareAccessInfo)) return ShareAccessInfoFromCborValue(value);
+        if (csilType == typeof(SetShareAccessRequest)) return SetShareAccessRequestFromCborValue(value);
         if (csilType == typeof(MediaOpen)) return MediaOpenFromCborValue(value);
         if (csilType == typeof(MediaSeek)) return MediaSeekFromCborValue(value);
         if (csilType == typeof(MediaPause)) return MediaPauseFromCborValue(value);
@@ -1760,6 +1782,7 @@ public static class Codec
     public static CborValue PlaylistsResponseToCborValue(PlaylistsResponse value)
     {
         var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("total"), new CborValue.Uint(value.Total)));
         csilEntries.Add((new CborValue.Text("playlists"), new CborValue.Array(value.Playlists.Select(csilElem => (CborValue)PlaylistToCborValue(csilElem)).ToList())));
         return new CborValue.Map(csilEntries);
     }
@@ -1768,9 +1791,11 @@ public static class Codec
     public static PlaylistsResponse PlaylistsResponseFromCborValue(CborValue value)
     {
         var csilField0 = Cbor.AsArray(Cbor.Require(value, "playlists")).Select(csilElem => PlaylistFromCborValue(csilElem)).ToList();
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "total"));
         return new PlaylistsResponse
         {
             Playlists = csilField0,
+            Total = csilField1,
         };
     }
 
@@ -1828,6 +1853,75 @@ public static class Codec
         {
             Playlist = csilField0,
             Tracks = csilField1,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a BlockAccountRequest.</summary>
+    public static CborValue BlockAccountRequestToCborValue(BlockAccountRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("account_id"), new CborValue.Text(value.AccountId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a BlockAccountRequest from a decoded CBOR value tree.</summary>
+    public static BlockAccountRequest BlockAccountRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "account_id"));
+        return new BlockAccountRequest
+        {
+            AccountId = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a BlockedAccount.</summary>
+    public static CborValue BlockedAccountToCborValue(BlockedAccount value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("handle"), new CborValue.Text(value.Handle)));
+        csilEntries.Add((new CborValue.Text("account_id"), new CborValue.Text(value.AccountId)));
+        csilEntries.Add((new CborValue.Text("blocked_at"), Cbor.EncTimestamp(value.BlockedAt)));
+        if (value.DisplayName is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("display_name"), new CborValue.Text(csilV3)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a BlockedAccount from a decoded CBOR value tree.</summary>
+    public static BlockedAccount BlockedAccountFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "account_id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "handle"));
+        string? csilField2 = Cbor.MapGet(value, "display_name") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
+        var csilField3 = Cbor.AsTimestamp(Cbor.Require(value, "blocked_at"));
+        return new BlockedAccount
+        {
+            AccountId = csilField0,
+            Handle = csilField1,
+            DisplayName = csilField2,
+            BlockedAt = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a BlockedAccountsResponse.</summary>
+    public static CborValue BlockedAccountsResponseToCborValue(BlockedAccountsResponse value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("total"), new CborValue.Uint(value.Total)));
+        csilEntries.Add((new CborValue.Text("accounts"), new CborValue.Array(value.Accounts.Select(csilElem => (CborValue)BlockedAccountToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a BlockedAccountsResponse from a decoded CBOR value tree.</summary>
+    public static BlockedAccountsResponse BlockedAccountsResponseFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "accounts")).Select(csilElem => BlockedAccountFromCborValue(csilElem)).ToList();
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "total"));
+        return new BlockedAccountsResponse
+        {
+            Accounts = csilField0,
+            Total = csilField1,
         };
     }
 
@@ -2731,6 +2825,118 @@ public static class Codec
         return new ShareResult
         {
             Player = csilField0,
+        };
+    }
+
+    /// <summary>The bare-literal CBOR value for a ShareAccess.</summary>
+    public static CborValue ShareAccessToCborValue(ShareAccess value) => value switch
+    {
+        ShareAccess.Everyone => new CborValue.Text("everyone"),
+        ShareAccess.Selected => new CborValue.Text("selected"),
+        _ => throw new CborException("invalid ShareAccess"),
+    };
+
+    /// <summary>Reconstruct a ShareAccess from its bare-literal CBOR value.</summary>
+    public static ShareAccess ShareAccessFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "everyone" => ShareAccess.Everyone,
+        "selected" => ShareAccess.Selected,
+        _ => throw new CborException("invalid ShareAccess value"),
+    };
+
+    /// <summary>The canonical CBOR value tree for a ShareAccessRequest.</summary>
+    public static CborValue ShareAccessRequestToCborValue(ShareAccessRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ShareAccessRequest from a decoded CBOR value tree.</summary>
+    public static ShareAccessRequest ShareAccessRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
+        return new ShareAccessRequest
+        {
+            PlayerId = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ShareCandidate.</summary>
+    public static CborValue ShareCandidateToCborValue(ShareCandidate value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("handle"), new CborValue.Text(value.Handle)));
+        csilEntries.Add((new CborValue.Text("selected"), new CborValue.Bool(value.Selected)));
+        csilEntries.Add((new CborValue.Text("account_id"), new CborValue.Text(value.AccountId)));
+        if (value.DisplayName is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("display_name"), new CborValue.Text(csilV3)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ShareCandidate from a decoded CBOR value tree.</summary>
+    public static ShareCandidate ShareCandidateFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "account_id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "handle"));
+        string? csilField2 = Cbor.MapGet(value, "display_name") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
+        var csilField3 = Cbor.AsBool(Cbor.Require(value, "selected"));
+        return new ShareCandidate
+        {
+            AccountId = csilField0,
+            Handle = csilField1,
+            DisplayName = csilField2,
+            Selected = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ShareAccessInfo.</summary>
+    public static CborValue ShareAccessInfoToCborValue(ShareAccessInfo value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("access"), ShareAccessToCborValue(value.Access)));
+        csilEntries.Add((new CborValue.Text("accounts"), new CborValue.Array(value.Accounts.Select(csilElem => (CborValue)ShareCandidateToCborValue(csilElem)).ToList())));
+        csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ShareAccessInfo from a decoded CBOR value tree.</summary>
+    public static ShareAccessInfo ShareAccessInfoFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
+        var csilField1 = ShareAccessFromCborValue(Cbor.Require(value, "access"));
+        var csilField2 = Cbor.AsArray(Cbor.Require(value, "accounts")).Select(csilElem => ShareCandidateFromCborValue(csilElem)).ToList();
+        return new ShareAccessInfo
+        {
+            PlayerId = csilField0,
+            Access = csilField1,
+            Accounts = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a SetShareAccessRequest.</summary>
+    public static CborValue SetShareAccessRequestToCborValue(SetShareAccessRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("access"), ShareAccessToCborValue(value.Access)));
+        csilEntries.Add((new CborValue.Text("player_id"), new CborValue.Text(value.PlayerId)));
+        csilEntries.Add((new CborValue.Text("account_ids"), new CborValue.Array(value.AccountIds.Select(csilElem => (CborValue)new CborValue.Text(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a SetShareAccessRequest from a decoded CBOR value tree.</summary>
+    public static SetShareAccessRequest SetShareAccessRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "player_id"));
+        var csilField1 = ShareAccessFromCborValue(Cbor.Require(value, "access"));
+        var csilField2 = Cbor.AsArray(Cbor.Require(value, "account_ids")).Select(csilElem => Cbor.AsText(csilElem)).ToList();
+        return new SetShareAccessRequest
+        {
+            PlayerId = csilField0,
+            Access = csilField1,
+            AccountIds = csilField2,
         };
     }
 

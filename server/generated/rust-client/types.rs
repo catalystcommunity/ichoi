@@ -400,6 +400,7 @@ pub struct UpdateAudiobookProgressRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlaylistsResponse {
     pub playlists: Vec<Playlist>,
+    pub total: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -416,6 +417,25 @@ pub struct DeletePlaylistRequest {
 pub struct PlaylistDetail {
     pub playlist: Playlist,
     pub tracks: Vec<Track>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockAccountRequest {
+    pub account_id: AccountId,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockedAccount {
+    pub account_id: AccountId,
+    pub handle: Handle,
+    pub display_name: Option<String>,
+    pub blocked_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockedAccountsResponse {
+    pub accounts: Vec<BlockedAccount>,
+    pub total: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -744,6 +764,40 @@ pub struct DisableShareRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ShareResult {
     pub player: Player,
+}
+
+/// ShareAccess variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShareAccess {
+    Everyone,
+    Selected,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShareAccessRequest {
+    pub player_id: PlayerId,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShareCandidate {
+    pub account_id: AccountId,
+    pub handle: String,
+    pub display_name: Option<String>,
+    pub selected: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ShareAccessInfo {
+    pub player_id: PlayerId,
+    pub access: ShareAccess,
+    pub accounts: Vec<ShareCandidate>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SetShareAccessRequest {
+    pub player_id: PlayerId,
+    pub access: ShareAccess,
+    pub account_ids: Vec<AccountId>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

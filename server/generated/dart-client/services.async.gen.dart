@@ -163,6 +163,33 @@ final class LibraryAsyncClient {
     return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<Ok> blockAccount(BlockAccountRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'block-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> unblockAccount(BlockAccountRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'unblock-account',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<BlockedAccountsResponse> listBlockedAccounts(Page request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'list-blocked-accounts',
+      request.toCbor(),
+    );
+    return BlockedAccountsResponse.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<CoverArt> getCoverArt(CoverArtRequest request) async {
     final csilResp = await transport.call(
       'LibraryService',
@@ -254,6 +281,24 @@ final class PlayerAsyncClient {
       request.toCbor(),
     );
     return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ShareAccessInfo> getShareAccess(ShareAccessRequest request) async {
+    final csilResp = await transport.call(
+      'PlayerService',
+      'get-share-access',
+      request.toCbor(),
+    );
+    return ShareAccessInfo.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ShareAccessInfo> setShareAccess(SetShareAccessRequest request) async {
+    final csilResp = await transport.call(
+      'PlayerService',
+      'set-share-access',
+      request.toCbor(),
+    );
+    return ShareAccessInfo.fromCborValue(CsilCbor.decode(csilResp));
   }
 }
 

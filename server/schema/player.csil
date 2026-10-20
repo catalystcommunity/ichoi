@@ -76,11 +76,37 @@ EnableShareRequest  = { ? suffix: text .size (1..48) .default "Device" }
 DisableShareRequest = { player_id: PlayerId }
 ShareResult         = { player: Player }
 
+;; Who may see and control an account-owned browser share. `everyone` means every signed-in
+;; account. `selected` means the owner and the listed accounts only; an empty list is private.
+;; New shares use the admin setting `share_default_access` ("everyone" or "private").
+ShareAccess = "everyone" / "selected"
+ShareAccessRequest = { player_id: PlayerId }
+ShareCandidate = {
+    account_id: AccountId,
+    handle: text,
+    ? display_name: text,
+    selected: bool
+}
+;; `accounts` lists every account the owner can pick. It excludes the owner and the accounts
+;; the owner has blocked.
+ShareAccessInfo = {
+    player_id: PlayerId,
+    access: ShareAccess,
+    accounts: [* ShareCandidate]
+}
+SetShareAccessRequest = {
+    player_id: PlayerId,
+    access: ShareAccess,
+    account_ids: [* AccountId]
+}
+
 service PlayerService {
     list-players: ListPlayersRequest -> ListPlayersResponse / ServiceError,
     get-state: SubscribeRequest -> PlayerState / ServiceError,
     subscribe: SubscribeRequest <-> PlayerState,
     control: CommandRequest -> PlayerState / ServiceError,
     enable-share: EnableShareRequest -> ShareResult / ServiceError,
-    disable-share: DisableShareRequest -> Ok / ServiceError
+    disable-share: DisableShareRequest -> Ok / ServiceError,
+    get-share-access: ShareAccessRequest -> ShareAccessInfo / ServiceError,
+    set-share-access: SetShareAccessRequest -> ShareAccessInfo / ServiceError
 }

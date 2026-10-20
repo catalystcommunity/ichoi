@@ -10,15 +10,16 @@ services:
       ICHOI_DB_DIR: /data
       ICHOI_REQUIRE_MUSIC: "1"
       ICHOI_ACCESS_MODE: open
-      ICHOI_PUBLIC_URL: https://demo.ichoi.invalid
+      ICHOI_ANONYMOUS_JUKEBOX: "true"
+      ICHOI_ZERO_ACCOUNT_GUEST_ACCESS: "false"
+      ICHOI_PUBLIC_URL: https://ichoi.catalystsquad.com
       ICHOI_SESSION_LIFETIME_HOURS: "24"
       ICHOI_LINKKEYS_RP: "true"
-      ICHOI_LINKKEYS_RP_ADDR: linkkeys.ichoi.invalid:4987
-      ICHOI_LINKKEYS_RP_FINGERPRINTS: REPLACE-ME
+      ICHOI_LINKKEYS_RP_ADDR: linkkeys.catalystsquad.com:4987
+      ICHOI_LINKKEYS_RP_FINGERPRINTS: c20dadc7bea8ecf47c2d2f43ff78004c5bad28d5f56874c142ddd76c888aaf06,50d7df1ea0298a90d38ed5d7c366172944d7bbed56d9fbd3e9a6e23e39ed7360,63a01719e9df06d7f33b206d301382c610703fc72dd0b54ed11e15faea3c3b80
       ICHOI_LINKKEYS_RP_API_KEY_FILE: /run/secrets/linkkeys_rp_api_key
-      ICHOI_LINKKEYS_RP_DOMAIN: demo.ichoi.invalid
-      ICHOI_LINKKEYS_TRUSTED_IDENTITIES: REPLACE-ME-EXACT-HANDLE@REPLACE-ME-DOMAIN
-      ICHOI_ADMIN_TOKEN: REPLACE-ME-ONE-TIME-BOOTSTRAP
+      ICHOI_LINKKEYS_RP_DOMAIN: catalystsquad.com
+      ICHOI_LINKKEYS_TRUSTED_USER_IDS: 019d6ac9-58bf-7303-8a5a-e60fba633239@todandlorna.com,019d74d1-6696-7ea0-8dcf-02e8f965482d@todandlorna.com
       LOG_LEVEL: ${LOG_LEVEL:-warn}
     volumes:
       - ./music:/music:ro

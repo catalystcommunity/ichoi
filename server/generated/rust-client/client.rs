@@ -193,6 +193,37 @@ impl<T: Transport> LibraryClient<T> {
         decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// block-account (request/response).
+    pub fn block_account(&self, req: BlockAccountRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "block-account",
+            &encode_block_account_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// unblock-account (request/response).
+    pub fn unblock_account(&self, req: BlockAccountRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "unblock-account",
+            &encode_block_account_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// list-blocked-accounts (request/response).
+    pub fn list_blocked_accounts(&self, req: Page) -> Result<BlockedAccountsResponse, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "list-blocked-accounts",
+            &encode_page(&req),
+        )?;
+        decode_blocked_accounts_response(&csil_resp)
+            .map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// get-cover-art (request/response).
     pub fn get_cover_art(&self, req: CoverArtRequest) -> Result<CoverArt, ClientError> {
         let csil_resp = self.transport.call(
@@ -303,6 +334,32 @@ impl<T: Transport> PlayerClient<T> {
             &encode_disable_share_request(&req),
         )?;
         decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// get-share-access (request/response).
+    pub fn get_share_access(
+        &self,
+        req: ShareAccessRequest,
+    ) -> Result<ShareAccessInfo, ClientError> {
+        let csil_resp = self.transport.call(
+            "PlayerService",
+            "get-share-access",
+            &encode_share_access_request(&req),
+        )?;
+        decode_share_access_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// set-share-access (request/response).
+    pub fn set_share_access(
+        &self,
+        req: SetShareAccessRequest,
+    ) -> Result<ShareAccessInfo, ClientError> {
+        let csil_resp = self.transport.call(
+            "PlayerService",
+            "set-share-access",
+            &encode_set_share_access_request(&req),
+        )?;
+        decode_share_access_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 }
 

@@ -196,6 +196,39 @@ pub const LibraryClient = struct {
         try codec.decode_Ok(alloc, csil_respb, out);
     }
 
+    /// Invoke LibraryService/block-account with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn block_account(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.BlockAccountRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_BlockAccountRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "block-account", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/unblock-account with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn unblock_account(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.BlockAccountRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_BlockAccountRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "unblock-account", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/list-blocked-accounts with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_blocked_accounts(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.Page, out: *types.BlockedAccountsResponse) anyerror!void {
+        const csil_reqb = try codec.encode_Page(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "list-blocked-accounts", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_BlockedAccountsResponse(alloc, csil_respb, out);
+    }
+
     /// Invoke LibraryService/get-cover-art with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.
@@ -304,6 +337,28 @@ pub const PlayerClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "PlayerService", "disable-share", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
+    /// Invoke PlayerService/get-share-access with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn get_share_access(self: PlayerClient, alloc: std.mem.Allocator, req: *const types.ShareAccessRequest, out: *types.ShareAccessInfo) anyerror!void {
+        const csil_reqb = try codec.encode_ShareAccessRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "PlayerService", "get-share-access", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ShareAccessInfo(alloc, csil_respb, out);
+    }
+
+    /// Invoke PlayerService/set-share-access with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn set_share_access(self: PlayerClient, alloc: std.mem.Allocator, req: *const types.SetShareAccessRequest, out: *types.ShareAccessInfo) anyerror!void {
+        const csil_reqb = try codec.encode_SetShareAccessRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "PlayerService", "set-share-access", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ShareAccessInfo(alloc, csil_respb, out);
     }
 };
 

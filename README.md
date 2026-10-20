@@ -87,6 +87,9 @@ settings:
 | RP domain | `ICHOI_LINKKEYS_RP_DOMAIN` | unset |
 | Public HTTPS origin | `ICHOI_PUBLIC_URL` | unset |
 | Trusted LinkKeys identities | `ICHOI_LINKKEYS_TRUSTED_IDENTITIES` | unset |
+| Trusted stable LinkKeys user IDs | `ICHOI_LINKKEYS_TRUSTED_USER_IDS` | unset |
+| Anonymous browser jukebox shares | `ICHOI_ANONYMOUS_JUKEBOX` | disabled |
+| Elevated zero-account guest access | `ICHOI_ZERO_ACCOUNT_GUEST_ACCESS` | enabled |
 | ffmpeg override | `ICHOI_FFMPEG` | bundled → `PATH` |
 | Default transcode codec | `ICHOI_TRANSCODE_CODEC` | `aac` |
 | Log level | `LOG_LEVEL` | `warn` |
@@ -137,6 +140,8 @@ a public DNS identity or RP sidecar. Enable it with all three settings:
 ICHOI_LINKKEYS_LOCAL_RP=true
 ICHOI_LINKKEYS_LOCAL_RP_NAME="Kitchen Ichoi"
 ICHOI_LINKKEYS_TRUSTED_IDENTITIES="family.example,alice@friends.example"
+# Optional stable identity admission when the public handle is not the login name:
+ICHOI_LINKKEYS_TRUSTED_USER_IDS="user-uuid@friends.example"
 ```
 
 Only the exact lowercase value `true` enables the mode. A domain entry accepts every
@@ -165,6 +170,18 @@ ICHOI_ACCESS_MODE=open
 ICHOI_ACCESS_MODE=login-required
 ICHOI_ACCESS_MODE=lan-guests
 ```
+
+A signed-in person who shares a browser device selects who can use it: everyone who is
+signed in, or only the accounts they select. An admin sets the starting access for new shares
+with the `share_default_access` server setting (`everyone` by default, or `private`).
+
+Set `ICHOI_ANONYMOUS_JUKEBOX=true` to let guests create and control ownerless browser
+jukebox shares. This setting does not expose native outputs or account-owned browser
+shares. Set `ICHOI_ZERO_ACCOUNT_GUEST_ACCESS=false` on a public server that must require
+login for persistent changes before its first account exists. This setting blocks guest
+administration, playlist saves, progress saves, media copies, and guest control of shared
+devices such as server and satellite speakers. It does not block guest browsing, playback in
+the guest's own browser, or the anonymous jukebox setting.
 
 LAN mode recognizes loopback, link-local, RFC1918 IPv4, and unique-local IPv6 addresses.
 When a reverse proxy terminates TLS, Ichoi uses `X-Forwarded-For` only when the immediate
@@ -197,6 +214,10 @@ ICHOI_LINKKEYS_TRUSTED_IDENTITIES="family.example,alice@friends.example"
 The environment value is the deployment-managed portion of the trust set. It is reconciled
 at startup; administrators can add and revoke additional domain or exact-handle entries in
 Settings, and those database-managed entries are unioned with configured entries.
+
+Use `ICHOI_LINKKEYS_TRUSTED_USER_IDS` when admission must follow a login account instead of
+its public handle. Each entry is the stable verified LinkKeys user UUID and domain. Ichoi
+can start login for that domain, but it completes login only for the configured user UUID.
 
 The API key must belong to an RP service account with LinkKeys' `api_access`
 relation. The file form is preferred for containers because it keeps the key
@@ -242,6 +263,17 @@ ichoi uninstall --scope user --keep-config
   under `~/Library/Application Support/Ichoi`.
 - Windows user scope installs an `ONLOGON` scheduled task. System scope installs a native
   Windows Service and stores configuration under `%PROGRAMDATA%\Ichoi`.
+- Windows 11 plays audio from a service only while a user is signed in. A locked session is
+  sufficient. For a headless Windows satellite, add `--auto-signin` to a `--scope system`
+  installation. The installer creates the hidden standard local account `IchoiAudio` with a
+  random password. It keeps the password only as an LSA secret, signs in the account at boot,
+  and locks the session immediately. Other users can sign in with "Other user" on the lock
+  screen. `ichoi uninstall` removes the account and restores the previous sign-in settings.
+- The `--auto-signin` installer stops before it changes the machine if another account signs
+  in automatically, if a sign-in legal notice is set, or if an `IchoiAudio` account exists
+  that Ichoi did not create. Use `--replace-auto-signin` to replace the automatic sign-in of
+  the other account or to use the existing `IchoiAudio` account. Use `--dry-run` to see each
+  change first.
 
 Linux retains its runtime-loaded ALSA backend. macOS and Windows builds compile only their
 native CoreAudio/WASAPI backend, so those dependencies never enter Linux artifacts.

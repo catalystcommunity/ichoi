@@ -5,6 +5,7 @@ package csilgen.generated;
 import java.util.List;
 
 public record PlaylistsResponse(
-    List<Playlist> playlists /* wire: "playlists" */
+    List<Playlist> playlists /* wire: "playlists" */,
+    long total /* wire: "total" */
 ) {
 }

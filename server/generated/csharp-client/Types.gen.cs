@@ -489,6 +489,8 @@ public sealed record PlaylistsResponse
 {
     // CBOR key: playlists
     public required System.Collections.Generic.List<Playlist> Playlists { get; init; }
+    // CBOR key: total
+    public required ulong Total { get; init; }
 }
 
 public sealed record PlaylistRequest
@@ -509,6 +511,32 @@ public sealed record PlaylistDetail
     public required Playlist Playlist { get; init; }
     // CBOR key: tracks
     public required System.Collections.Generic.List<Track> Tracks { get; init; }
+}
+
+public sealed record BlockAccountRequest
+{
+    // CBOR key: account_id
+    public required AccountId AccountId { get; init; }
+}
+
+public sealed record BlockedAccount
+{
+    // CBOR key: account_id
+    public required AccountId AccountId { get; init; }
+    // CBOR key: handle
+    public required Handle Handle { get; init; }
+    // CBOR key: display_name
+    public string? DisplayName { get; init; }
+    // CBOR key: blocked_at
+    public required System.DateTimeOffset BlockedAt { get; init; }
+}
+
+public sealed record BlockedAccountsResponse
+{
+    // CBOR key: accounts
+    public required System.Collections.Generic.List<BlockedAccount> Accounts { get; init; }
+    // CBOR key: total
+    public required ulong Total { get; init; }
 }
 
 public sealed record CoverArtRequest
@@ -917,6 +945,52 @@ public sealed record ShareResult
 {
     // CBOR key: player
     public required Player Player { get; init; }
+}
+
+public enum ShareAccess
+{
+    // wire value: everyone
+    Everyone,
+    // wire value: selected
+    Selected,
+}
+
+public sealed record ShareAccessRequest
+{
+    // CBOR key: player_id
+    public required PlayerId PlayerId { get; init; }
+}
+
+public sealed record ShareCandidate
+{
+    // CBOR key: account_id
+    public required AccountId AccountId { get; init; }
+    // CBOR key: handle
+    public required string Handle { get; init; }
+    // CBOR key: display_name
+    public string? DisplayName { get; init; }
+    // CBOR key: selected
+    public required bool Selected { get; init; }
+}
+
+public sealed record ShareAccessInfo
+{
+    // CBOR key: player_id
+    public required PlayerId PlayerId { get; init; }
+    // CBOR key: access
+    public required ShareAccess Access { get; init; }
+    // CBOR key: accounts
+    public required System.Collections.Generic.List<ShareCandidate> Accounts { get; init; }
+}
+
+public sealed record SetShareAccessRequest
+{
+    // CBOR key: player_id
+    public required PlayerId PlayerId { get; init; }
+    // CBOR key: access
+    public required ShareAccess Access { get; init; }
+    // CBOR key: account_ids
+    public required System.Collections.Generic.List<AccountId> AccountIds { get; init; }
 }
 
 public sealed record MediaOpen

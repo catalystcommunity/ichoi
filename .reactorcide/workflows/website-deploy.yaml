@@ -1,0 +1,23 @@
+name: Ichoi Website Deploy
+id: ichoi-website-deploy
+description: "Deploy the project website when website/VERSION.txt changes on main."
+
+# A text change can merge without a deploy. A person raises website/VERSION.txt to release.
+on:
+  events:
+    - push
+  branches:
+    - main
+
+paths:
+  include:
+    - "website/VERSION.txt"
+
+jobs:
+  ichoi-website-check:
+    job_file: website-check.yaml
+
+  ichoi-website-deploy:
+    job_file: website-deploy.yaml
+    depends_on:
+      - ichoi-website-check

@@ -1,4 +1,4 @@
-demo.ichoi.invalid {
+ichoi.catalystsquad.com {
     encode zstd gzip
     reverse_proxy ichoi:4042
     log {

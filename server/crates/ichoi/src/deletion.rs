@@ -152,9 +152,9 @@ pub fn delete_account(
     if account.role == "admin" && store::count_admin_accounts(conn)? <= 1 {
         return Err(DeletionError::LastAdmin);
     }
-    let private_playlists = store::private_playlists_for_owner(conn, account_id)?;
+    let owned_playlists = store::playlists_for_owner(conn, account_id)?;
     let mut staged = Vec::new();
-    for playlist in &private_playlists {
+    for playlist in &owned_playlists {
         match stage_playlist_file(music_root, playlist) {
             Ok(Some(item)) => staged.push(item),
             Ok(None) => {}
@@ -167,11 +167,10 @@ pub fn delete_account(
 
     let transaction = conn.transaction::<_, diesel::result::Error, _>(|conn| {
         store::delete_content_reports_for_target(conn, "account", account_id)?;
-        for playlist in &private_playlists {
+        for playlist in &owned_playlists {
             store::delete_content_reports_for_target(conn, "playlist", &playlist.id)?;
             store::delete_playlist_row(conn, &playlist.id)?;
         }
-        store::clear_public_playlist_owner(conn, account_id)?;
         store::delete_account_row(conn, account_id)?;
         Ok(())
     });

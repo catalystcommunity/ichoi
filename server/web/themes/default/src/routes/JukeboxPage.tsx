@@ -18,6 +18,7 @@ import { CsilServiceError } from "../lib/csil.ts";
 import { EmptyState, Spinner } from "../components/common.tsx";
 import { Dialog } from "../components/Dialog.tsx";
 import { TargetAudioBlocked } from "../components/AudioBlocked.tsx";
+import { ShareAccessDialog } from "../components/ShareAccessDialog.tsx";
 import { formatDuration } from "../lib/format.ts";
 import {
   IconBroadcast,
@@ -58,6 +59,9 @@ export function JukeboxPage(): JSX.Element {
   const shared = () => players().filter((p) => p.kind === "shared");
   const priv = () => players().filter((p) => p.kind === "private");
   const mine = () => shared().filter((player) => pb.owned().includes(player.id));
+  // Only an account-owned share has access controls; ownerless guest shares stay open.
+  const mineOwned = () => mine().find((player) => player.owner !== undefined);
+  const [accessPlayer, setAccessPlayer] = createSignal<Player>();
 
   const enableShare = async (e: Event) => {
     e.preventDefault();
@@ -93,15 +97,24 @@ export function JukeboxPage(): JSX.Element {
               </button>
             }
           >
-            <button
-              type="button"
-              class="btn"
-              onClick={() => {
-                void Promise.all(mine().map((player) => pb.releaseDevice(player.id)));
-              }}
-            >
-              <IconBroadcast size={16} /> {t("jukebox.stopSharingThisDevice")}
-            </button>
+            <div class="row" style={{ gap: "8px" }}>
+              <Show when={mineOwned()}>
+                {(player) => (
+                  <button type="button" class="btn" onClick={() => setAccessPlayer(player())}>
+                    {t("jukebox.shareAccess")}
+                  </button>
+                )}
+              </Show>
+              <button
+                type="button"
+                class="btn"
+                onClick={() => {
+                  void Promise.all(mine().map((player) => pb.releaseDevice(player.id)));
+                }}
+              >
+                <IconBroadcast size={16} /> {t("jukebox.stopSharingThisDevice")}
+              </button>
+            </div>
           </Show>
         </div>
       </header>
@@ -174,6 +187,7 @@ export function JukeboxPage(): JSX.Element {
           </div>
         </form>
       </Dialog>
+      <ShareAccessDialog player={accessPlayer()} onClose={() => setAccessPlayer(undefined)} />
     </div>
   );
 }

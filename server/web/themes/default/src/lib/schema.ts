@@ -121,6 +121,22 @@ export interface Playlist {
   root_relative_path: string;
 }
 
+export interface BlockAccountRequest {
+  account_id: string;
+}
+
+export interface BlockedAccount {
+  account_id: string;
+  handle: string;
+  display_name?: string;
+  blocked_at: Date;
+}
+
+export interface BlockedAccountsResponse {
+  accounts: BlockedAccount[];
+  total: number;
+}
+
 export interface BrowseRequest {
   library?: Library;
   offset?: number;
@@ -216,6 +232,7 @@ export interface UpdateAudiobookProgressRequest {
 }
 export interface PlaylistsResponse {
   playlists: Playlist[];
+  total: number;
 }
 export interface PlaylistRequest {
   playlist_id: string;
@@ -352,6 +369,27 @@ export interface DisableShareRequest {
 }
 export interface ShareResult {
   player: Player;
+}
+/** `everyone`: every signed-in account. `selected`: the owner and the listed accounts. */
+export type ShareAccess = "everyone" | "selected";
+export interface ShareAccessRequest {
+  player_id: string;
+}
+export interface ShareCandidate {
+  account_id: string;
+  handle: string;
+  display_name?: string;
+  selected: boolean;
+}
+export interface ShareAccessInfo {
+  player_id: string;
+  access: ShareAccess;
+  accounts: ShareCandidate[];
+}
+export interface SetShareAccessRequest {
+  player_id: string;
+  access: ShareAccess;
+  account_ids: string[];
 }
 
 // --- media.csil ----------------------------------------------------------

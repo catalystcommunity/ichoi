@@ -57,6 +57,18 @@ public final class LibraryClient {
         return CsilCbor.decodeOk(transport.call("LibraryService", "delete-playlist", CsilCbor.encodeDeletePlaylistRequest(req)));
     }
 
+    public Ok blockAccount(BlockAccountRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("LibraryService", "block-account", CsilCbor.encodeBlockAccountRequest(req)));
+    }
+
+    public Ok unblockAccount(BlockAccountRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("LibraryService", "unblock-account", CsilCbor.encodeBlockAccountRequest(req)));
+    }
+
+    public BlockedAccountsResponse listBlockedAccounts(Page req) throws ClientException {
+        return CsilCbor.decodeBlockedAccountsResponse(transport.call("LibraryService", "list-blocked-accounts", CsilCbor.encodePage(req)));
+    }
+
     public CoverArt getCoverArt(CoverArtRequest req) throws ClientException {
         return CsilCbor.decodeCoverArt(transport.call("LibraryService", "get-cover-art", CsilCbor.encodeCoverArtRequest(req)));
     }

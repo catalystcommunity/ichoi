@@ -93,6 +93,24 @@ pub trait LibraryService {
         ctx: &Self::Context,
         input: DeletePlaylistRequest,
     ) -> Result<Ok, ServiceError>;
+    /// block-account (request/response).
+    fn block_account(
+        &self,
+        ctx: &Self::Context,
+        input: BlockAccountRequest,
+    ) -> Result<Ok, ServiceError>;
+    /// unblock-account (request/response).
+    fn unblock_account(
+        &self,
+        ctx: &Self::Context,
+        input: BlockAccountRequest,
+    ) -> Result<Ok, ServiceError>;
+    /// list-blocked-accounts (request/response).
+    fn list_blocked_accounts(
+        &self,
+        ctx: &Self::Context,
+        input: Page,
+    ) -> Result<BlockedAccountsResponse, ServiceError>;
     /// get-cover-art (request/response).
     fn get_cover_art(
         &self,
@@ -154,6 +172,18 @@ pub trait PlayerService {
         ctx: &Self::Context,
         input: DisableShareRequest,
     ) -> Result<Ok, ServiceError>;
+    /// get-share-access (request/response).
+    fn get_share_access(
+        &self,
+        ctx: &Self::Context,
+        input: ShareAccessRequest,
+    ) -> Result<ShareAccessInfo, ServiceError>;
+    /// set-share-access (request/response).
+    fn set_share_access(
+        &self,
+        ctx: &Self::Context,
+        input: SetShareAccessRequest,
+    ) -> Result<ShareAccessInfo, ServiceError>;
 }
 
 /// Decode one inbound channel frame for PlayerService (with the generated

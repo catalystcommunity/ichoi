@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ichoi-demo
+  labels:
+    app.kubernetes.io/name: ichoi
+    app.kubernetes.io/part-of: ichoi-demo

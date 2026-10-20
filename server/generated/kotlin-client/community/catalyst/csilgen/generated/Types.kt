@@ -388,7 +388,8 @@ data class UpdateAudiobookProgressRequest(
 
 /** PlaylistsResponse record. */
 data class PlaylistsResponse(
-    val playlists: List<Playlist>
+    val playlists: List<Playlist>,
+    val total: ULong
 )
 
 /** PlaylistRequest record. */
@@ -407,6 +408,29 @@ data class DeletePlaylistRequest(
 data class PlaylistDetail(
     val playlist: Playlist,
     val tracks: List<Track>
+)
+
+/** BlockAccountRequest record. */
+data class BlockAccountRequest(
+    // wire key: account_id
+    val accountId: AccountId
+)
+
+/** BlockedAccount record. */
+data class BlockedAccount(
+    // wire key: account_id
+    val accountId: AccountId,
+    val handle: Handle,
+    // wire key: display_name
+    val displayName: String? = null,
+    // wire key: blocked_at
+    val blockedAt: java.time.Instant
+)
+
+/** BlockedAccountsResponse record. */
+data class BlockedAccountsResponse(
+    val accounts: List<BlockedAccount>,
+    val total: ULong
 )
 
 /** CoverArtRequest record. */
@@ -709,6 +733,42 @@ data class DisableShareRequest(
 /** ShareResult record. */
 data class ShareResult(
     val player: Player
+)
+
+/** ShareAccess enum (bare-literal wire). */
+enum class ShareAccess { Everyone, Selected }
+
+/** ShareAccessRequest record. */
+data class ShareAccessRequest(
+    // wire key: player_id
+    val playerId: PlayerId
+)
+
+/** ShareCandidate record. */
+data class ShareCandidate(
+    // wire key: account_id
+    val accountId: AccountId,
+    val handle: String,
+    // wire key: display_name
+    val displayName: String? = null,
+    val selected: Boolean
+)
+
+/** ShareAccessInfo record. */
+data class ShareAccessInfo(
+    // wire key: player_id
+    val playerId: PlayerId,
+    val access: ShareAccess,
+    val accounts: List<ShareCandidate>
+)
+
+/** SetShareAccessRequest record. */
+data class SetShareAccessRequest(
+    // wire key: player_id
+    val playerId: PlayerId,
+    val access: ShareAccess,
+    // wire key: account_ids
+    val accountIds: List<AccountId>
 )
 
 /** MediaOpen record. */

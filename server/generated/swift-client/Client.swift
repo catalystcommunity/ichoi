@@ -113,6 +113,21 @@ public struct LibraryClient {
         return try Ok.fromCbor(csilResp)
     }
 
+    public func blockAccount(_ request: BlockAccountRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "LibraryService", op: "block-account", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
+    public func unblockAccount(_ request: BlockAccountRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "LibraryService", op: "unblock-account", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
+    public func listBlockedAccounts(_ request: Page) throws -> BlockedAccountsResponse {
+        let csilResp = try transport.call(service: "LibraryService", op: "list-blocked-accounts", request: request.toCbor())
+        return try BlockedAccountsResponse.fromCbor(csilResp)
+    }
+
     public func getCoverArt(_ request: CoverArtRequest) throws -> CoverArt {
         let csilResp = try transport.call(service: "LibraryService", op: "get-cover-art", request: request.toCbor())
         return try CoverArt.fromCbor(csilResp)
@@ -167,6 +182,16 @@ public struct PlayerClient {
     public func disableShare(_ request: DisableShareRequest) throws -> Ok {
         let csilResp = try transport.call(service: "PlayerService", op: "disable-share", request: request.toCbor())
         return try Ok.fromCbor(csilResp)
+    }
+
+    public func getShareAccess(_ request: ShareAccessRequest) throws -> ShareAccessInfo {
+        let csilResp = try transport.call(service: "PlayerService", op: "get-share-access", request: request.toCbor())
+        return try ShareAccessInfo.fromCbor(csilResp)
+    }
+
+    public func setShareAccess(_ request: SetShareAccessRequest) throws -> ShareAccessInfo {
+        let csilResp = try transport.call(service: "PlayerService", op: "set-share-access", request: request.toCbor())
+        return try ShareAccessInfo.fromCbor(csilResp)
     }
 
 }

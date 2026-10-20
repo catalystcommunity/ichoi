@@ -32,4 +32,12 @@ public final class PlayerClient {
     public Ok disableShare(DisableShareRequest req) throws ClientException {
         return CsilCbor.decodeOk(transport.call("PlayerService", "disable-share", CsilCbor.encodeDisableShareRequest(req)));
     }
+
+    public ShareAccessInfo getShareAccess(ShareAccessRequest req) throws ClientException {
+        return CsilCbor.decodeShareAccessInfo(transport.call("PlayerService", "get-share-access", CsilCbor.encodeShareAccessRequest(req)));
+    }
+
+    public ShareAccessInfo setShareAccess(SetShareAccessRequest req) throws ClientException {
+        return CsilCbor.decodeShareAccessInfo(transport.call("PlayerService", "set-share-access", CsilCbor.encodeSetShareAccessRequest(req)));
+    }
 }

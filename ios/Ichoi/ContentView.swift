@@ -73,10 +73,15 @@ struct LibraryView: View {
                             Button(playlist.name) { Task { await openPlaylist(playlist.id) } }
                             Spacer()
                             if model.sessionManager?.session != nil {
-                                Menu("Report") {
+                                Menu("Actions") {
                                     Button("Report playlist") { beginReport(.playlist, id: playlist.id) }
                                     if let owner = playlist.owner {
                                         Button("Report user") { beginReport(.account, id: owner) }
+                                        if owner != model.sessionManager?.session?.accountId {
+                                            Button("Block user", role: .destructive) {
+                                                Task { await block(owner) }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -119,16 +124,47 @@ struct LibraryView: View {
         do {
             let api = try client()
             albums = (try await api.listAlbums(BrowseRequest(library: .music))).albums
-            playlists = (try await api.listPlaylists(BrowseRequest(library: .music))).playlists
-        } catch { error = "Check the selected server URL and try again." }
+            playlists = try await allPlaylists(api)
+        } catch { self.error = "Check the selected server URL and try again." }
+    }
+    /// Loads every page, so no visible playlist is cut off.
+    private func allPlaylists(_ api: LibraryAsyncClient) async throws -> [Playlist] {
+        var playlists: [Playlist] = []
+        while true {
+            let page = try await api.listPlaylists(
+                BrowseRequest(library: .music, offset: UInt64(playlists.count), limit: 1_000))
+            playlists += page.playlists
+            if page.playlists.isEmpty || UInt64(playlists.count) >= page.total { return playlists }
+        }
     }
     private func openAlbum(_ id: String) async {
         do { tracks = (try await client().getAlbum(AlbumRequest(albumId: id))).tracks }
-        catch { error = "The album could not be loaded from the selected server." }
+        catch { self.error = "The album could not be loaded from the selected server." }
     }
     private func openPlaylist(_ id: String) async {
         do { tracks = (try await client().getPlaylist(PlaylistRequest(playlistId: id))).tracks }
-        catch { error = "The playlist could not be loaded from the selected server." }
+        catch { self.error = "The playlist could not be loaded from the selected server." }
+    }
+    private func block(_ accountID: String) async {
+        guard let profile = model.profile else { return }
+        do {
+            try await ComplianceValidation.changeAccountBlock(
+                profileID: profile.id.uuidString,
+                accountID: accountID,
+                request: { _, target in
+                    _ = try await client().blockAccount(BlockAccountRequest(accountId: target))
+                },
+                refresh: { selectedProfileID in
+                    guard model.profile?.id.uuidString == selectedProfileID else { return }
+                    playlists = try await allPlaylists(client())
+                }
+            )
+            guard model.profile?.id == profile.id else { return }
+            tracks = []
+        } catch {
+            guard model.profile?.id == profile.id else { return }
+            self.error = "The account was not blocked on the selected server."
+        }
     }
 }
 

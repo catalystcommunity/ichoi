@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, AdminDeleteAccountRequest, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BrowseRequest, CancelImportRequest, ChangeTopic, CmdClear, CmdEnqueue, CmdEnqueueNext, CmdMoveItem, CmdNext, CmdPause, CmdPlay, CmdPlaybackCompleted, CmdPlaybackFailed, CmdPlaybackState, CmdPrevious, CmdRemove, CmdRemoveItem, CmdReorder, CmdReplaceAndPlay, CmdSeek, CmdSetRepeat, CmdSetShuffle, CmdUndo, CmdVolume, Codec, CommandRequest, ContentReport, ContentReportId, ContentReportReason, ContentReportStatus, ContentReportTargetType, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeEvent, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RepeatMode, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, Settings, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
+import type { Account, AccountId, AdminDeleteAccountRequest, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BlockAccountRequest, BlockedAccount, BlockedAccountsResponse, BrowseRequest, CancelImportRequest, ChangeTopic, CmdClear, CmdEnqueue, CmdEnqueueNext, CmdMoveItem, CmdNext, CmdPause, CmdPlay, CmdPlaybackCompleted, CmdPlaybackFailed, CmdPlaybackState, CmdPrevious, CmdRemove, CmdRemoveItem, CmdReorder, CmdReplaceAndPlay, CmdSeek, CmdSetRepeat, CmdSetShuffle, CmdUndo, CmdVolume, Codec, CommandRequest, ContentReport, ContentReportId, ContentReportReason, ContentReportStatus, ContentReportTargetType, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeEvent, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RepeatMode, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, SetShareAccessRequest, Settings, ShareAccess, ShareAccessInfo, ShareAccessRequest, ShareCandidate, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -1152,6 +1152,7 @@ export function fromUpdateAudiobookProgressRequestCbor(bytes: Uint8Array): Updat
 
 export function toPlaylistsResponseCborValue(v: PlaylistsResponse): CborValue {
   const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("total", v.total);
   csilMap.set("playlists", v.playlists.map((csilE): CborValue => toPlaylistCborValue(csilE)));
   return csilMap;
 }
@@ -1159,6 +1160,7 @@ export function toPlaylistsResponseCborValue(v: PlaylistsResponse): CborValue {
 export function fromPlaylistsResponseCborValue(value: CborValue): PlaylistsResponse {
   return {
     playlists: asArray(requireKey(value, "playlists")).map((csilE) => fromPlaylistCborValue(csilE)),
+    total: asNumber(requireKey(value, "total")),
   };
 }
 
@@ -1230,6 +1232,74 @@ export function toPlaylistDetailCbor(v: PlaylistDetail): Uint8Array {
 
 export function fromPlaylistDetailCbor(bytes: Uint8Array): PlaylistDetail {
   return fromPlaylistDetailCborValue(decode(bytes));
+}
+
+export function toBlockAccountRequestCborValue(v: BlockAccountRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("account_id", v.accountId);
+  return csilMap;
+}
+
+export function fromBlockAccountRequestCborValue(value: CborValue): BlockAccountRequest {
+  return {
+    accountId: asString(requireKey(value, "account_id")),
+  };
+}
+
+export function toBlockAccountRequestCbor(v: BlockAccountRequest): Uint8Array {
+  return encodeValue(toBlockAccountRequestCborValue(v));
+}
+
+export function fromBlockAccountRequestCbor(bytes: Uint8Array): BlockAccountRequest {
+  return fromBlockAccountRequestCborValue(decode(bytes));
+}
+
+export function toBlockedAccountCborValue(v: BlockedAccount): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("handle", v.handle);
+  csilMap.set("account_id", v.accountId);
+  csilMap.set("blocked_at", { tag: 0, value: csilTsToText(v.blockedAt) });
+  if (v.displayName !== undefined) csilMap.set("display_name", v.displayName);
+  return csilMap;
+}
+
+export function fromBlockedAccountCborValue(value: CborValue): BlockedAccount {
+  return {
+    accountId: asString(requireKey(value, "account_id")),
+    handle: asString(requireKey(value, "handle")),
+    displayName: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "display_name")),
+    blockedAt: asTimestamp(requireKey(value, "blocked_at")),
+  };
+}
+
+export function toBlockedAccountCbor(v: BlockedAccount): Uint8Array {
+  return encodeValue(toBlockedAccountCborValue(v));
+}
+
+export function fromBlockedAccountCbor(bytes: Uint8Array): BlockedAccount {
+  return fromBlockedAccountCborValue(decode(bytes));
+}
+
+export function toBlockedAccountsResponseCborValue(v: BlockedAccountsResponse): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("total", v.total);
+  csilMap.set("accounts", v.accounts.map((csilE): CborValue => toBlockedAccountCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromBlockedAccountsResponseCborValue(value: CborValue): BlockedAccountsResponse {
+  return {
+    accounts: asArray(requireKey(value, "accounts")).map((csilE) => fromBlockedAccountCborValue(csilE)),
+    total: asNumber(requireKey(value, "total")),
+  };
+}
+
+export function toBlockedAccountsResponseCbor(v: BlockedAccountsResponse): Uint8Array {
+  return encodeValue(toBlockedAccountsResponseCborValue(v));
+}
+
+export function fromBlockedAccountsResponseCbor(bytes: Uint8Array): BlockedAccountsResponse {
+  return fromBlockedAccountsResponseCborValue(decode(bytes));
 }
 
 export function toCoverArtRequestCborValue(v: CoverArtRequest): CborValue {
@@ -2063,6 +2133,100 @@ export function toShareResultCbor(v: ShareResult): Uint8Array {
 
 export function fromShareResultCbor(bytes: Uint8Array): ShareResult {
   return fromShareResultCborValue(decode(bytes));
+}
+
+export function toShareAccessRequestCborValue(v: ShareAccessRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("player_id", v.playerId);
+  return csilMap;
+}
+
+export function fromShareAccessRequestCborValue(value: CborValue): ShareAccessRequest {
+  return {
+    playerId: asString(requireKey(value, "player_id")),
+  };
+}
+
+export function toShareAccessRequestCbor(v: ShareAccessRequest): Uint8Array {
+  return encodeValue(toShareAccessRequestCborValue(v));
+}
+
+export function fromShareAccessRequestCbor(bytes: Uint8Array): ShareAccessRequest {
+  return fromShareAccessRequestCborValue(decode(bytes));
+}
+
+export function toShareCandidateCborValue(v: ShareCandidate): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("handle", v.handle);
+  csilMap.set("selected", v.selected);
+  csilMap.set("account_id", v.accountId);
+  if (v.displayName !== undefined) csilMap.set("display_name", v.displayName);
+  return csilMap;
+}
+
+export function fromShareCandidateCborValue(value: CborValue): ShareCandidate {
+  return {
+    accountId: asString(requireKey(value, "account_id")),
+    handle: asString(requireKey(value, "handle")),
+    displayName: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "display_name")),
+    selected: asBool(requireKey(value, "selected")),
+  };
+}
+
+export function toShareCandidateCbor(v: ShareCandidate): Uint8Array {
+  return encodeValue(toShareCandidateCborValue(v));
+}
+
+export function fromShareCandidateCbor(bytes: Uint8Array): ShareCandidate {
+  return fromShareCandidateCborValue(decode(bytes));
+}
+
+export function toShareAccessInfoCborValue(v: ShareAccessInfo): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("access", v.access);
+  csilMap.set("accounts", v.accounts.map((csilE): CborValue => toShareCandidateCborValue(csilE)));
+  csilMap.set("player_id", v.playerId);
+  return csilMap;
+}
+
+export function fromShareAccessInfoCborValue(value: CborValue): ShareAccessInfo {
+  return {
+    playerId: asString(requireKey(value, "player_id")),
+    access: (asEnumMember(asString(requireKey(value, "access")), ["everyone", "selected"]) as "everyone" | "selected"),
+    accounts: asArray(requireKey(value, "accounts")).map((csilE) => fromShareCandidateCborValue(csilE)),
+  };
+}
+
+export function toShareAccessInfoCbor(v: ShareAccessInfo): Uint8Array {
+  return encodeValue(toShareAccessInfoCborValue(v));
+}
+
+export function fromShareAccessInfoCbor(bytes: Uint8Array): ShareAccessInfo {
+  return fromShareAccessInfoCborValue(decode(bytes));
+}
+
+export function toSetShareAccessRequestCborValue(v: SetShareAccessRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("access", v.access);
+  csilMap.set("player_id", v.playerId);
+  csilMap.set("account_ids", v.accountIds);
+  return csilMap;
+}
+
+export function fromSetShareAccessRequestCborValue(value: CborValue): SetShareAccessRequest {
+  return {
+    playerId: asString(requireKey(value, "player_id")),
+    access: (asEnumMember(asString(requireKey(value, "access")), ["everyone", "selected"]) as "everyone" | "selected"),
+    accountIds: asArray(requireKey(value, "account_ids")).map((csilE) => asString(csilE)),
+  };
+}
+
+export function toSetShareAccessRequestCbor(v: SetShareAccessRequest): Uint8Array {
+  return encodeValue(toSetShareAccessRequestCborValue(v));
+}
+
+export function fromSetShareAccessRequestCbor(bytes: Uint8Array): SetShareAccessRequest {
+  return fromSetShareAccessRequestCborValue(decode(bytes));
 }
 
 export function toMediaOpenCborValue(v: MediaOpen): CborValue {

@@ -176,6 +176,19 @@ pub const PlayerKind = enum {
     }
 };
 
+/// ShareAccess is an enumeration.
+pub const ShareAccess = enum {
+    everyone,
+    selected,
+
+    pub fn wire_name(self: ShareAccess) []const u8 {
+        return switch (self) {
+            .everyone => "everyone",
+            .selected => "selected",
+        };
+    }
+};
+
 /// MediaEndReason is an enumeration.
 pub const MediaEndReason = enum {
     eos,
@@ -384,6 +397,13 @@ pub const AudiobookProgressResponse = struct {
 /// PlaylistsResponse is a structured data type.
 pub const PlaylistsResponse = struct {
     playlists: []Playlist,
+    total: u64,
+};
+
+/// BlockedAccountsResponse is a structured data type.
+pub const BlockedAccountsResponse = struct {
+    accounts: []BlockedAccount,
+    total: u64,
 };
 
 /// CoverArt is a structured data type.
@@ -914,6 +934,19 @@ pub const PlaylistDetail = struct {
     tracks: []Track,
 };
 
+/// BlockAccountRequest is a structured data type.
+pub const BlockAccountRequest = struct {
+    account_id: AccountId,
+};
+
+/// BlockedAccount is a structured data type.
+pub const BlockedAccount = struct {
+    account_id: AccountId,
+    handle: Handle,
+    display_name: ?[]const u8 = null,
+    blocked_at: CsilTimestamp,
+};
+
 /// CoverArtRequest is a structured data type.
 pub const CoverArtRequest = struct {
     album_id: AlbumId,
@@ -1049,6 +1082,33 @@ pub const DisableShareRequest = struct {
 /// ShareResult is a structured data type.
 pub const ShareResult = struct {
     player: Player,
+};
+
+/// ShareAccessRequest is a structured data type.
+pub const ShareAccessRequest = struct {
+    player_id: PlayerId,
+};
+
+/// ShareCandidate is a structured data type.
+pub const ShareCandidate = struct {
+    account_id: AccountId,
+    handle: []const u8,
+    display_name: ?[]const u8 = null,
+    selected: bool,
+};
+
+/// ShareAccessInfo is a structured data type.
+pub const ShareAccessInfo = struct {
+    player_id: PlayerId,
+    access: ShareAccess,
+    accounts: []ShareCandidate,
+};
+
+/// SetShareAccessRequest is a structured data type.
+pub const SetShareAccessRequest = struct {
+    player_id: PlayerId,
+    access: ShareAccess,
+    account_ids: []AccountId,
 };
 
 /// MediaOpen is a structured data type.

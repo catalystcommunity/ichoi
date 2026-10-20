@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="320" viewBox="0 0 1120 320" role="img" aria-labelledby="title"><title id="title">Mask previews: Apple, Android circle, Android rounded square, Android themed circle</title><rect width="1120" height="320" rx="0" fill="#293137"/><defs><clipPath id="apple-mask"><rect width="240" height="240" rx="54"/></clipPath><clipPath id="android-circle"><circle cx="54" cy="54" r="36"/></clipPath><clipPath id="android-square"><rect x="18" y="18" width="72" height="72" rx="16"/></clipPath></defs><g transform="translate(20 40)" clip-path="url(#apple-mask)"><rect width="240" height="240" rx="0" fill="#101417"/><g transform="translate(0 0) scale(0.46875)"><circle xmlns="http://www.w3.org/2000/svg" cx="256" cy="256" r="184" fill="none" stroke="#37d6c6" stroke-width="24" />
+  <g xmlns="http://www.w3.org/2000/svg" fill="#ffb454">
+    <path d="M198 328V196Q198 185 209 182L331 150Q346 146 346 162V296H322V190L222 216V328Z" />
+    <ellipse cx="185" cy="330" rx="38" ry="28" transform="rotate(-18 185 330)" />
+    <ellipse cx="309" cy="298" rx="38" ry="28" transform="rotate(-18 309 298)" />
+  </g>
+</g></g><svg x="300" y="40" width="240" height="240" viewBox="18 18 72 72"><g clip-path="url(#android-circle)"><rect width="108" height="108" rx="0" fill="#101417"/><g transform="translate(12.204081632653065 12.204081632653065) scale(0.16326530612244897)"><circle xmlns="http://www.w3.org/2000/svg" cx="256" cy="256" r="184" fill="none" stroke="#37d6c6" stroke-width="24" />
+  <g xmlns="http://www.w3.org/2000/svg" fill="#ffb454">
+    <path d="M198 328V196Q198 185 209 182L331 150Q346 146 346 162V296H322V190L222 216V328Z" />
+    <ellipse cx="185" cy="330" rx="38" ry="28" transform="rotate(-18 185 330)" />
+    <ellipse cx="309" cy="298" rx="38" ry="28" transform="rotate(-18 309 298)" />
+  </g>
+</g></g></svg><svg x="580" y="40" width="240" height="240" viewBox="18 18 72 72"><g clip-path="url(#android-square)"><rect width="108" height="108" rx="0" fill="#101417"/><g transform="translate(12.204081632653065 12.204081632653065) scale(0.16326530612244897)"><circle xmlns="http://www.w3.org/2000/svg" cx="256" cy="256" r="184" fill="none" stroke="#37d6c6" stroke-width="24" />
+  <g xmlns="http://www.w3.org/2000/svg" fill="#ffb454">
+    <path d="M198 328V196Q198 185 209 182L331 150Q346 146 346 162V296H322V190L222 216V328Z" />
+    <ellipse cx="185" cy="330" rx="38" ry="28" transform="rotate(-18 185 330)" />
+    <ellipse cx="309" cy="298" rx="38" ry="28" transform="rotate(-18 309 298)" />
+  </g>
+</g></g></svg><svg x="860" y="40" width="240" height="240" viewBox="18 18 72 72"><g clip-path="url(#android-circle)"><rect width="108" height="108" rx="0" fill="#d3e8e2"/><g transform="translate(12.204081632653065 12.204081632653065) scale(0.16326530612244897)"><circle xmlns="http://www.w3.org/2000/svg" cx="256" cy="256" r="184" fill="none" stroke="#174b5b" stroke-width="24" />
+  <g xmlns="http://www.w3.org/2000/svg" fill="#174b5b">
+    <path d="M198 328V196Q198 185 209 182L331 150Q346 146 346 162V296H322V190L222 216V328Z" />
+    <ellipse cx="185" cy="330" rx="38" ry="28" transform="rotate(-18 185 330)" />
+    <ellipse cx="309" cy="298" rx="38" ry="28" transform="rotate(-18 309 298)" />
+  </g>
+</g></g></svg></svg>

@@ -26,8 +26,8 @@ struct ReportView: View {
             let transport = try CSILHTTPTransport(profile: profile, token: token)
             _ = try await LibraryAsyncClient(transport: transport).reportContent(ReportContentRequest(targetType: targetType, targetId: targetID, reason: reason, details: clean))
             dismiss()
-        } catch ComplianceValidationError.detailsTooLong { error = "Details must be 2,000 Unicode characters or fewer." }
-        catch { error = "The report was not sent. Contact the administrator of \(profile.url.absoluteString)." }
+        } catch ComplianceValidationError.detailsTooLong { self.error = "Details must be 2,000 Unicode characters or fewer." }
+        catch { self.error = "The report was not sent. Contact the administrator of \(profile.url.absoluteString)." }
     }
 }
 

@@ -97,6 +97,21 @@ class LibraryClient
     Ok.from_cbor(@transport.call("LibraryService", "delete-playlist", req.to_cbor))
   end
 
+  # block-account: -> Ok
+  def block_account(req)
+    Ok.from_cbor(@transport.call("LibraryService", "block-account", req.to_cbor))
+  end
+
+  # unblock-account: -> Ok
+  def unblock_account(req)
+    Ok.from_cbor(@transport.call("LibraryService", "unblock-account", req.to_cbor))
+  end
+
+  # list-blocked-accounts: -> BlockedAccountsResponse
+  def list_blocked_accounts(req)
+    BlockedAccountsResponse.from_cbor(@transport.call("LibraryService", "list-blocked-accounts", req.to_cbor))
+  end
+
   # get-cover-art: -> CoverArt
   def get_cover_art(req)
     CoverArt.from_cbor(@transport.call("LibraryService", "get-cover-art", req.to_cbor))
@@ -149,6 +164,16 @@ class PlayerClient
   # disable-share: -> Ok
   def disable_share(req)
     Ok.from_cbor(@transport.call("PlayerService", "disable-share", req.to_cbor))
+  end
+
+  # get-share-access: -> ShareAccessInfo
+  def get_share_access(req)
+    ShareAccessInfo.from_cbor(@transport.call("PlayerService", "get-share-access", req.to_cbor))
+  end
+
+  # set-share-access: -> ShareAccessInfo
+  def set_share_access(req)
+    ShareAccessInfo.from_cbor(@transport.call("PlayerService", "set-share-access", req.to_cbor))
   end
 end
 

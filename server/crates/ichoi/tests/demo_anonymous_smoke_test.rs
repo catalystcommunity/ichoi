@@ -15,6 +15,8 @@ async fn demo_guest_can_browse_and_stream_but_cannot_write_after_bootstrap() {
     let music = tempfile::tempdir().unwrap();
     let mut config = common::test_config();
     config.music_dir = Some(music.path().to_owned());
+    config.anonymous_jukebox = true;
+    config.zero_account_guest_access = false;
     app.config = Arc::new(config);
 
     {
@@ -97,8 +99,17 @@ async fn demo_guest_can_browse_and_stream_but_cannot_write_after_bootstrap() {
     );
     assert_eq!(import.unwrap_err().code, 401);
 
-    let share = app.enable_share(&guest, EnableShareRequest { suffix: None });
-    assert_eq!(share.unwrap_err().code, 401);
+    let share = app
+        .enable_share(&guest, EnableShareRequest { suffix: None })
+        .expect("demo guests can share a browser output");
+    app.control(
+        &guest,
+        CommandRequest {
+            player_id: share.player.id,
+            command: PlayerCommand::Variant9(CmdPause { op: "pause".into() }),
+        },
+    )
+    .expect("demo guests can control their jukebox share");
 
     let progress = app.update_audiobook_progress(
         &guest,
@@ -109,4 +120,86 @@ async fn demo_guest_can_browse_and_stream_but_cannot_write_after_bootstrap() {
         },
     );
     assert_eq!(progress.unwrap_err().code, 401);
+}
+
+#[tokio::test]
+async fn demo_requires_login_for_persistent_actions_before_first_login() {
+    let (mut app, pool) = common::test_app();
+    let music = tempfile::tempdir().unwrap();
+    let mut config = common::test_config();
+    config.music_dir = Some(music.path().to_owned());
+    config.anonymous_jukebox = true;
+    config.zero_account_guest_access = false;
+    app.config = Arc::new(config);
+    {
+        let mut conn = pool.get().unwrap();
+        common::create_artist(&mut conn, &common::DataMap::new());
+        common::create_album(&mut conn, &common::DataMap::new());
+        common::create_track(&mut conn, &common::DataMap::new());
+    }
+
+    let guest = common::ctx_anon();
+    let share = app
+        .enable_share(&guest, EnableShareRequest { suffix: None })
+        .expect("anonymous jukebox remains available");
+    app.control(
+        &guest,
+        CommandRequest {
+            player_id: share.player.id,
+            command: PlayerCommand::Variant9(CmdPause { op: "pause".into() }),
+        },
+    )
+    .expect("anonymous jukebox control remains available");
+
+    let playlist_response = ichoi::server::http::router(app.clone(), ".".into())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/playlists/from-queue")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    serde_json::json!({"name": "Denied", "track_ids": ["track-1"]}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(playlist_response.status(), StatusCode::UNAUTHORIZED);
+
+    assert_eq!(
+        app.update_audiobook_progress(
+            &guest,
+            UpdateAudiobookProgressRequest {
+                track_id: "track-1".into(),
+                position_ms: 1,
+                completed: false,
+            },
+        )
+        .unwrap_err()
+        .code,
+        401
+    );
+    assert_eq!(
+        app.export_manifest(
+            &guest,
+            ExportManifestRequest {
+                track_id: "track-1".into(),
+            },
+        )
+        .unwrap_err()
+        .code,
+        401
+    );
+    assert_eq!(
+        app.list_accounts(
+            &guest,
+            Page {
+                offset: None,
+                limit: None,
+            },
+        )
+        .unwrap_err()
+        .code,
+        401
+    );
 }

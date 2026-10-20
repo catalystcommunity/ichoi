@@ -102,6 +102,21 @@ public struct LibraryAsyncClient {
         return try Ok.fromCbor(csilResp)
     }
 
+    public func blockAccount(_ request: BlockAccountRequest) async throws -> Ok {
+        let csilResp = try await transport.call(service: "LibraryService", op: "block-account", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
+    public func unblockAccount(_ request: BlockAccountRequest) async throws -> Ok {
+        let csilResp = try await transport.call(service: "LibraryService", op: "unblock-account", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
+    public func listBlockedAccounts(_ request: Page) async throws -> BlockedAccountsResponse {
+        let csilResp = try await transport.call(service: "LibraryService", op: "list-blocked-accounts", request: request.toCbor())
+        return try BlockedAccountsResponse.fromCbor(csilResp)
+    }
+
     public func getCoverArt(_ request: CoverArtRequest) async throws -> CoverArt {
         let csilResp = try await transport.call(service: "LibraryService", op: "get-cover-art", request: request.toCbor())
         return try CoverArt.fromCbor(csilResp)
@@ -156,6 +171,16 @@ public struct PlayerAsyncClient {
     public func disableShare(_ request: DisableShareRequest) async throws -> Ok {
         let csilResp = try await transport.call(service: "PlayerService", op: "disable-share", request: request.toCbor())
         return try Ok.fromCbor(csilResp)
+    }
+
+    public func getShareAccess(_ request: ShareAccessRequest) async throws -> ShareAccessInfo {
+        let csilResp = try await transport.call(service: "PlayerService", op: "get-share-access", request: request.toCbor())
+        return try ShareAccessInfo.fromCbor(csilResp)
+    }
+
+    public func setShareAccess(_ request: SetShareAccessRequest) async throws -> ShareAccessInfo {
+        let csilResp = try await transport.call(service: "PlayerService", op: "set-share-access", request: request.toCbor())
+        return try ShareAccessInfo.fromCbor(csilResp)
     }
 
 }

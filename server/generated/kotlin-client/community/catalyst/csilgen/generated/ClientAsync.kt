@@ -66,6 +66,15 @@ class LibraryAsyncClient(private val transport: AsyncTransport) {
     suspend fun deletePlaylist(request: DeletePlaylistRequest): Ok {
         return decode<Ok>(transport.call("LibraryService", "delete-playlist", encode(request)))
     }
+    suspend fun blockAccount(request: BlockAccountRequest): Ok {
+        return decode<Ok>(transport.call("LibraryService", "block-account", encode(request)))
+    }
+    suspend fun unblockAccount(request: BlockAccountRequest): Ok {
+        return decode<Ok>(transport.call("LibraryService", "unblock-account", encode(request)))
+    }
+    suspend fun listBlockedAccounts(request: Page): BlockedAccountsResponse {
+        return decode<BlockedAccountsResponse>(transport.call("LibraryService", "list-blocked-accounts", encode(request)))
+    }
     suspend fun getCoverArt(request: CoverArtRequest): CoverArt {
         return decode<CoverArt>(transport.call("LibraryService", "get-cover-art", encode(request)))
     }
@@ -98,6 +107,12 @@ class PlayerAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun disableShare(request: DisableShareRequest): Ok {
         return decode<Ok>(transport.call("PlayerService", "disable-share", encode(request)))
+    }
+    suspend fun getShareAccess(request: ShareAccessRequest): ShareAccessInfo {
+        return decode<ShareAccessInfo>(transport.call("PlayerService", "get-share-access", encode(request)))
+    }
+    suspend fun setShareAccess(request: SetShareAccessRequest): ShareAccessInfo {
+        return decode<ShareAccessInfo>(transport.call("PlayerService", "set-share-access", encode(request)))
     }
 }
 

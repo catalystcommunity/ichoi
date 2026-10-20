@@ -97,6 +97,18 @@ class LibraryClient:
         """delete-playlist"""
         return Ok.from_cbor(self._transport.call("LibraryService", "delete-playlist", req.to_cbor()))
 
+    def block_account(self, req: BlockAccountRequest) -> Ok:
+        """block-account"""
+        return Ok.from_cbor(self._transport.call("LibraryService", "block-account", req.to_cbor()))
+
+    def unblock_account(self, req: BlockAccountRequest) -> Ok:
+        """unblock-account"""
+        return Ok.from_cbor(self._transport.call("LibraryService", "unblock-account", req.to_cbor()))
+
+    def list_blocked_accounts(self, req: Page) -> BlockedAccountsResponse:
+        """list-blocked-accounts"""
+        return BlockedAccountsResponse.from_cbor(self._transport.call("LibraryService", "list-blocked-accounts", req.to_cbor()))
+
     def get_cover_art(self, req: CoverArtRequest) -> CoverArt:
         """get-cover-art"""
         return CoverArt.from_cbor(self._transport.call("LibraryService", "get-cover-art", req.to_cbor()))
@@ -139,6 +151,14 @@ class PlayerClient:
     def disable_share(self, req: DisableShareRequest) -> Ok:
         """disable-share"""
         return Ok.from_cbor(self._transport.call("PlayerService", "disable-share", req.to_cbor()))
+
+    def get_share_access(self, req: ShareAccessRequest) -> ShareAccessInfo:
+        """get-share-access"""
+        return ShareAccessInfo.from_cbor(self._transport.call("PlayerService", "get-share-access", req.to_cbor()))
+
+    def set_share_access(self, req: SetShareAccessRequest) -> ShareAccessInfo:
+        """set-share-access"""
+        return ShareAccessInfo.from_cbor(self._transport.call("PlayerService", "set-share-access", req.to_cbor()))
 
 class MediaClient:
     """Typed client for the MediaService service."""

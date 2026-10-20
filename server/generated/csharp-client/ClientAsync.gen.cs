@@ -54,6 +54,12 @@ public sealed class LibraryAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<PlaylistDetail>(await transport.Call("LibraryService", "get-playlist", Codec.Encode(playlistRequest)));
     public async System.Threading.Tasks.Task<Ok> DeletePlaylistAsync(DeletePlaylistRequest deletePlaylistRequest) =>
         Codec.Decode<Ok>(await transport.Call("LibraryService", "delete-playlist", Codec.Encode(deletePlaylistRequest)));
+    public async System.Threading.Tasks.Task<Ok> BlockAccountAsync(BlockAccountRequest blockAccountRequest) =>
+        Codec.Decode<Ok>(await transport.Call("LibraryService", "block-account", Codec.Encode(blockAccountRequest)));
+    public async System.Threading.Tasks.Task<Ok> UnblockAccountAsync(BlockAccountRequest blockAccountRequest) =>
+        Codec.Decode<Ok>(await transport.Call("LibraryService", "unblock-account", Codec.Encode(blockAccountRequest)));
+    public async System.Threading.Tasks.Task<BlockedAccountsResponse> ListBlockedAccountsAsync(Page page) =>
+        Codec.Decode<BlockedAccountsResponse>(await transport.Call("LibraryService", "list-blocked-accounts", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<CoverArt> GetCoverArtAsync(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(await transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
     public async System.Threading.Tasks.Task<AudiobookProgressResponse> GetAudiobookProgressAsync(AudiobookProgressRequest audiobookProgressRequest) =>
@@ -79,6 +85,10 @@ public sealed class PlayerAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<ShareResult>(await transport.Call("PlayerService", "enable-share", Codec.Encode(enableShareRequest)));
     public async System.Threading.Tasks.Task<Ok> DisableShareAsync(DisableShareRequest disableShareRequest) =>
         Codec.Decode<Ok>(await transport.Call("PlayerService", "disable-share", Codec.Encode(disableShareRequest)));
+    public async System.Threading.Tasks.Task<ShareAccessInfo> GetShareAccessAsync(ShareAccessRequest shareAccessRequest) =>
+        Codec.Decode<ShareAccessInfo>(await transport.Call("PlayerService", "get-share-access", Codec.Encode(shareAccessRequest)));
+    public async System.Threading.Tasks.Task<ShareAccessInfo> SetShareAccessAsync(SetShareAccessRequest setShareAccessRequest) =>
+        Codec.Decode<ShareAccessInfo>(await transport.Call("PlayerService", "set-share-access", Codec.Encode(setShareAccessRequest)));
 }
 
 // MediaService has no unary operation csilgen can put on an RPC client (channel-only,

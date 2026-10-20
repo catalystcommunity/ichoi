@@ -251,6 +251,7 @@ export interface UpdateAudiobookProgressRequest {
 
 export interface PlaylistsResponse {
   playlists: Playlist[];
+  total: number;
 }
 
 export interface PlaylistRequest {
@@ -264,6 +265,22 @@ export interface DeletePlaylistRequest {
 export interface PlaylistDetail {
   playlist: Playlist;
   tracks: Track[];
+}
+
+export interface BlockAccountRequest {
+  accountId: AccountId;
+}
+
+export interface BlockedAccount {
+  accountId: AccountId;
+  handle: Handle;
+  displayName?: string;
+  blockedAt: Date;
+}
+
+export interface BlockedAccountsResponse {
+  accounts: BlockedAccount[];
+  total: number;
 }
 
 export interface CoverArtRequest {
@@ -456,6 +473,31 @@ export interface DisableShareRequest {
 
 export interface ShareResult {
   player: Player;
+}
+
+export type ShareAccess = "everyone" | "selected";
+
+export interface ShareAccessRequest {
+  playerId: PlayerId;
+}
+
+export interface ShareCandidate {
+  accountId: AccountId;
+  handle: string;
+  displayName?: string;
+  selected: boolean;
+}
+
+export interface ShareAccessInfo {
+  playerId: PlayerId;
+  access: ShareAccess;
+  accounts: ShareCandidate[];
+}
+
+export interface SetShareAccessRequest {
+  playerId: PlayerId;
+  access: ShareAccess;
+  accountIds: AccountId[];
 }
 
 export interface MediaOpen {

@@ -83,7 +83,7 @@ public struct StreamPref: Equatable, Sendable {
     /// wire key: transcode_codec
     public let transcodeCodec: TranscodeCodec?
 
-    public init(maxBitrateKbps: UInt64? = nil, preferOriginal: Bool? = false, transcodeCodec: TranscodeCodec? = "aac") {
+    public init(maxBitrateKbps: UInt64? = nil, preferOriginal: Bool? = false, transcodeCodec: TranscodeCodec? = .aac) {
         self.maxBitrateKbps = maxBitrateKbps
         self.preferOriginal = preferOriginal
         self.transcodeCodec = transcodeCodec
@@ -450,7 +450,7 @@ public struct BrowseRequest: Equatable, Sendable {
     public let offset: UInt64?
     public let limit: UInt64?
 
-    public init(library: Library? = "music", offset: UInt64? = 0, limit: UInt64? = 100) {
+    public init(library: Library? = .music, offset: UInt64? = 0, limit: UInt64? = 100) {
         self.library = library
         self.offset = offset
         self.limit = limit
@@ -564,7 +564,7 @@ public struct ArtistRequest: Equatable, Sendable {
     public let artistId: ArtistId
     public let library: Library?
 
-    public init(artistId: ArtistId, library: Library? = "music") {
+    public init(artistId: ArtistId, library: Library? = .music) {
         self.artistId = artistId
         self.library = library
     }
@@ -599,7 +599,7 @@ public struct SearchRequest: Equatable, Sendable {
     public let library: Library?
     public let limit: UInt64?
 
-    public init(query: String, library: Library? = "music", limit: UInt64? = 50) {
+    public init(query: String, library: Library? = .music, limit: UInt64? = 50) {
         self.query = query
         self.library = library
         self.limit = limit
@@ -852,14 +852,17 @@ public struct UpdateAudiobookProgressRequest: Equatable, Sendable {
 /// PlaylistsResponse is a generated CSIL record type.
 public struct PlaylistsResponse: Equatable, Sendable {
     public let playlists: [Playlist]
+    public let total: UInt64
 
-    public init(playlists: [Playlist]) {
+    public init(playlists: [Playlist], total: UInt64) {
         self.playlists = playlists
+        self.total = total
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
-        "playlists": "playlists"
+        "playlists": "playlists",
+        "total": "total"
     ]
 }
 
@@ -907,6 +910,64 @@ public struct PlaylistDetail: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "playlist": "playlist",
         "tracks": "tracks"
+    ]
+}
+
+/// BlockAccountRequest is a generated CSIL record type.
+public struct BlockAccountRequest: Equatable, Sendable {
+    /// wire key: account_id
+    public let accountId: AccountId
+
+    public init(accountId: AccountId) {
+        self.accountId = accountId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "accountId": "account_id"
+    ]
+}
+
+/// BlockedAccount is a generated CSIL record type.
+public struct BlockedAccount: Equatable, Sendable {
+    /// wire key: account_id
+    public let accountId: AccountId
+    public let handle: Handle
+    /// wire key: display_name
+    public let displayName: String?
+    /// wire key: blocked_at
+    public let blockedAt: String
+
+    public init(accountId: AccountId, handle: Handle, displayName: String? = nil, blockedAt: String) {
+        self.accountId = accountId
+        self.handle = handle
+        self.displayName = displayName
+        self.blockedAt = blockedAt
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "accountId": "account_id",
+        "handle": "handle",
+        "displayName": "display_name",
+        "blockedAt": "blocked_at"
+    ]
+}
+
+/// BlockedAccountsResponse is a generated CSIL record type.
+public struct BlockedAccountsResponse: Equatable, Sendable {
+    public let accounts: [BlockedAccount]
+    public let total: UInt64
+
+    public init(accounts: [BlockedAccount], total: UInt64) {
+        self.accounts = accounts
+        self.total = total
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "accounts": "accounts",
+        "total": "total"
     ]
 }
 
@@ -1645,6 +1706,95 @@ public struct ShareResult: Equatable, Sendable {
     ]
 }
 
+/// ShareAccess is a generated CSIL string enum (a closed set of wire values).
+public enum ShareAccess: String, Equatable, Sendable, CaseIterable {
+    case everyone = "everyone"
+    case selected = "selected"
+}
+
+/// ShareAccessRequest is a generated CSIL record type.
+public struct ShareAccessRequest: Equatable, Sendable {
+    /// wire key: player_id
+    public let playerId: PlayerId
+
+    public init(playerId: PlayerId) {
+        self.playerId = playerId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "playerId": "player_id"
+    ]
+}
+
+/// ShareCandidate is a generated CSIL record type.
+public struct ShareCandidate: Equatable, Sendable {
+    /// wire key: account_id
+    public let accountId: AccountId
+    public let handle: String
+    /// wire key: display_name
+    public let displayName: String?
+    public let selected: Bool
+
+    public init(accountId: AccountId, handle: String, displayName: String? = nil, selected: Bool) {
+        self.accountId = accountId
+        self.handle = handle
+        self.displayName = displayName
+        self.selected = selected
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "accountId": "account_id",
+        "handle": "handle",
+        "displayName": "display_name",
+        "selected": "selected"
+    ]
+}
+
+/// ShareAccessInfo is a generated CSIL record type.
+public struct ShareAccessInfo: Equatable, Sendable {
+    /// wire key: player_id
+    public let playerId: PlayerId
+    public let access: ShareAccess
+    public let accounts: [ShareCandidate]
+
+    public init(playerId: PlayerId, access: ShareAccess, accounts: [ShareCandidate]) {
+        self.playerId = playerId
+        self.access = access
+        self.accounts = accounts
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "playerId": "player_id",
+        "access": "access",
+        "accounts": "accounts"
+    ]
+}
+
+/// SetShareAccessRequest is a generated CSIL record type.
+public struct SetShareAccessRequest: Equatable, Sendable {
+    /// wire key: player_id
+    public let playerId: PlayerId
+    public let access: ShareAccess
+    /// wire key: account_ids
+    public let accountIds: [AccountId]
+
+    public init(playerId: PlayerId, access: ShareAccess, accountIds: [AccountId]) {
+        self.playerId = playerId
+        self.access = access
+        self.accountIds = accountIds
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "playerId": "player_id",
+        "access": "access",
+        "accountIds": "account_ids"
+    ]
+}
+
 /// MediaOpen is a generated CSIL record type.
 public struct MediaOpen: Equatable, Sendable {
     public let kind: String
@@ -2101,7 +2251,7 @@ public struct NodeReport: Equatable, Sendable {
     /// wire key: audio_blocked
     public let audioBlocked: Bool?
 
-    public init(playerId: PlayerId, event: NodeEvent? = "state", status: PlayerStatus, queueItemId: UInt64? = nil, playbackId: String? = nil, positionMs: UInt64? = nil, error: String? = nil, audioBlocked: Bool? = false) {
+    public init(playerId: PlayerId, event: NodeEvent? = .state, status: PlayerStatus, queueItemId: UInt64? = nil, playbackId: String? = nil, positionMs: UInt64? = nil, error: String? = nil, audioBlocked: Bool? = false) {
         self.playerId = playerId
         self.event = event
         self.status = status
@@ -2693,7 +2843,7 @@ public struct ImportTrackRequest: Equatable, Sendable {
     public let contentHash: String?
     public let data: [UInt8]
 
-    public init(library: Library? = "music", rootRelativePath: String, contentType: String, contentHash: String? = nil, data: [UInt8]) {
+    public init(library: Library? = .music, rootRelativePath: String, contentType: String, contentHash: String? = nil, data: [UInt8]) {
         self.library = library
         self.rootRelativePath = rootRelativePath
         self.contentType = contentType
@@ -2762,7 +2912,7 @@ public struct BeginImportRequest: Equatable, Sendable {
     public let trackFileIndex: UInt64
     public let files: [TransferFile]
 
-    public init(library: Library? = "music", trackFileIndex: UInt64, files: [TransferFile]) {
+    public init(library: Library? = .music, trackFileIndex: UInt64, files: [TransferFile]) {
         self.library = library
         self.trackFileIndex = trackFileIndex
         self.files = files
