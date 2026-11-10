@@ -8,6 +8,7 @@ workstation as it does on a worker.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -37,6 +38,7 @@ RUST_TARGETS = ("x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl")
 BUILD_PACKAGES = ("musl-tools",)
 AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
 CSILGEN_REPOSITORY = "https://github.com/catalystcommunity/csilgen.git"
+CSILGEN_RELEASES_API = "https://api.github.com/repos/catalystcommunity/csilgen/releases"
 RUSTUP_URL = "https://sh.rustup.rs"
 
 
@@ -285,6 +287,23 @@ def _csilgen_release(code_dir: Path) -> str:
     return release
 
 
+def _pinned_release_list(release: str, directory: Path) -> Path:
+    """Write a one-item GitHub release list for the pinned release and return its path."""
+    url = f"{CSILGEN_RELEASES_API}/tags/{release}"
+    request = urllib.request.Request(
+        url,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "ichoi-ci"},
+    )
+    with urllib.request.urlopen(request, timeout=60) as response:
+        data = json.loads(response.read().decode("utf-8"))
+    if data.get("tag_name") != release or data.get("draft") or data.get("prerelease"):
+        raise RuntimeError(f"{release} is not a published csilgen release")
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / "pinned-release.json"
+    path.write_text(json.dumps([data]), encoding="utf-8")
+    return path
+
+
 def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
     """Install and verify the pinned release in an isolated directory."""
     release = _csilgen_release(code_dir)
@@ -318,6 +337,11 @@ def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
     install_environment["CARGO_HOME"] = str(cargo_home)
     install_environment["CSILGEN_BIN_DIR"] = str(bin_dir)
     install_environment["CSILGEN_GENERATOR_DIR"] = str(generator_dir)
+    # `install-all` installs the newest release in the list that CSILGEN_GITHUB_API returns,
+    # not the release of the checkout. Give it a list that holds only the pinned release.
+    install_environment["CSILGEN_GITHUB_API"] = _pinned_release_list(
+        release, install_root
+    ).as_uri()
     installed = _run(
         ["./tools.sh", "install-all"],
         cwd=checkout,
@@ -355,13 +379,29 @@ def csil(code_dir: Path) -> None:
     _run(["./tools.sh", "gen"], cwd=code_dir, env=environment)
 
     log_stdout("=== Verifying all generated code is current ===")
+    # git refuses a checkout that another user owns. A mounted checkout can be one.
+    count = int(environment.get("GIT_CONFIG_COUNT", "0"))
+    environment[f"GIT_CONFIG_KEY_{count}"] = "safe.directory"
+    environment[f"GIT_CONFIG_VALUE_{count}"] = str(code_dir)
+    environment["GIT_CONFIG_COUNT"] = str(count + 1)
     stale = _run(
-        ["git", "diff", "--exit-code", "--", "server/generated"],
+        ["git", "diff", "--exit-code", "--stat", "--", "server/generated"],
         cwd=code_dir,
         env=environment,
         check=False,
+        capture_output=True,
     )
-    if stale.returncode != 0:
+    # git exits 1 for a difference. Any other non-zero status is a git error, not stale code.
+    if stale.returncode not in (0, 1):
+        raise RuntimeError(f"git diff failed ({stale.returncode}): {stale.stderr.strip()}")
+    if stale.returncode == 1:
+        # Show what changed in the job log. Otherwise a stale result names no file.
+        log_stdout(stale.stdout)
+        shown = _run(
+            ["git", "diff", "--", "server/generated"],
+            cwd=code_dir, env=environment, check=False, capture_output=True,
+        )
+        log_stdout("\n".join(shown.stdout.splitlines()[:200]))
         raise RuntimeError(
             "Generated code is stale. Run tools.sh gen and commit the result. "
             "Generated code is never hand-edited (see CONTRIBUTING.md)."

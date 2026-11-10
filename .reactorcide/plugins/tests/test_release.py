@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import importlib.util
 import hashlib
+import json
 import os
 import sys
 import tempfile
@@ -89,8 +90,12 @@ class CsilgenInstallTest(unittest.TestCase):
     @unittest.mock.patch.object(
         ci_plugin.tempfile, "mkdtemp", return_value="/tmp/csilgen-install-test"
     )
+    @unittest.mock.patch.object(
+        ci_plugin, "_pinned_release_list",
+        return_value=Path("/tmp/csilgen-install-test/source/installed/pinned-release.json"),
+    )
     @unittest.mock.patch.object(ci_plugin, "_run")
-    def test_installs_generators_under_the_runtime_home_path(self, run, _mkdtemp):
+    def test_installs_generators_under_the_runtime_home_path(self, run, _pinned, _mkdtemp):
         run.return_value = unittest.mock.Mock(
             stdout="Installed GitHub Release: csilgen/v0.2.7\n", stderr=""
         )
@@ -111,12 +116,43 @@ class CsilgenInstallTest(unittest.TestCase):
                 "/tmp/csilgen-install-test/source/installed/bin:"
             )
         )
+        self.assertEqual(
+            install_environment["CSILGEN_GITHUB_API"],
+            "file:///tmp/csilgen-install-test/source/installed/pinned-release.json",
+        )
+
+    def _release_response(self, payload):
+        response = unittest.mock.MagicMock()
+        response.read.return_value = json.dumps(payload).encode("utf-8")
+        response.__enter__.return_value = response
+        return response
+
+    def test_pinned_release_list_holds_only_the_pinned_release(self):
+        payload = {"tag_name": "csilgen/v0.2.7", "draft": False, "prerelease": False, "assets": []}
+        with tempfile.TemporaryDirectory() as directory, unittest.mock.patch.object(
+            ci_plugin.urllib.request, "urlopen", return_value=self._release_response(payload)
+        ) as urlopen:
+            path = ci_plugin._pinned_release_list("csilgen/v0.2.7", Path(directory))
+            self.assertEqual(json.loads(path.read_text()), [payload])
+        self.assertTrue(urlopen.call_args.args[0].full_url.endswith("/releases/tags/csilgen/v0.2.7"))
+
+    def test_pinned_release_list_rejects_another_tag(self):
+        payload = {"tag_name": "csilgen/v0.2.8", "draft": False, "prerelease": False}
+        with tempfile.TemporaryDirectory() as directory, unittest.mock.patch.object(
+            ci_plugin.urllib.request, "urlopen", return_value=self._release_response(payload)
+        ):
+            with self.assertRaisesRegex(RuntimeError, "not a published csilgen release"):
+                ci_plugin._pinned_release_list("csilgen/v0.2.7", Path(directory))
 
     @unittest.mock.patch.object(
         ci_plugin.tempfile, "mkdtemp", return_value="/tmp/csilgen-install-test"
     )
+    @unittest.mock.patch.object(
+        ci_plugin, "_pinned_release_list",
+        return_value=Path("/tmp/csilgen-install-test/source/installed/pinned-release.json"),
+    )
     @unittest.mock.patch.object(ci_plugin, "_run")
-    def test_rejects_a_release_that_does_not_match_the_pin(self, run, _mkdtemp):
+    def test_rejects_a_release_that_does_not_match_the_pin(self, run, _pinned, _mkdtemp):
         run.return_value = unittest.mock.Mock(
             stdout="Installed GitHub Release: csilgen/v0.2.8\n", stderr=""
         )
