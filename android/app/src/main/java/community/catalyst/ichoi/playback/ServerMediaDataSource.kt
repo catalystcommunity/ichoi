@@ -1,18 +1,18 @@
 package community.catalyst.ichoi.playback
 
 import android.media.MediaDataSource
-import community.catalyst.ichoi.security.PinnedNetwork
+import community.catalyst.ichoi.security.ServerNetwork
 import community.catalyst.ichoi.storage.ServerProfile
 import java.io.IOException
 import okhttp3.Request
 
-/** Reads media ranges through the selected pinned connection without a disk cache. */
-class PinnedMediaDataSource(
+/** Reads media ranges from the selected server without a disk cache. */
+class ServerMediaDataSource(
     private val profile: ServerProfile,
     private val url: String,
     private val token: String?,
 ) : MediaDataSource() {
-    private val client = PinnedNetwork.client(profile)
+    private val client = ServerNetwork.client(profile)
     @Volatile private var closed = false
     @Volatile private var knownSize = -1L
 

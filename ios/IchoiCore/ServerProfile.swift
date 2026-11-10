@@ -4,15 +4,14 @@ public struct ServerProfile: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
     public var name: String
     public var url: URL
-    public var coreKeyFingerprints: [String]
     public var allowsPrivateHTTP: Bool
 
-    public init(id: UUID = UUID(), name: String, url: URL, coreKeyFingerprints: [String] = [], allowsPrivateHTTP: Bool = false) throws {
+    // Profiles saved by 0.1.0 can also hold "coreKeyFingerprints". Decoding ignores that key.
+    public init(id: UUID = UUID(), name: String, url: URL, allowsPrivateHTTP: Bool = false) throws {
         let normalized = try ServerURLPolicy.validate(url: url, privateHTTPConsent: allowsPrivateHTTP)
         self.id = id
         self.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         self.url = normalized
-        self.coreKeyFingerprints = coreKeyFingerprints
         self.allowsPrivateHTTP = allowsPrivateHTTP
     }
 }

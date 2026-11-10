@@ -31,17 +31,19 @@ struct ServerConnectionView: View {
     @EnvironmentObject private var model: AppModel
     @State private var name = ""
     @State private var url = "https://"
-    @State private var pins = ""
     @State private var privateHTTP = false
     var body: some View {
         Form {
             Section("Connect to an Ichoi server") {
                 TextField("Name (optional)", text: $name)
                 TextField("https://server.example", text: $url).textInputAutocapitalization(.never).autocorrectionDisabled()
-                TextField("HTTPS TLS SHA-256 fingerprints (optional)", text: $pins).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Toggle("Allow HTTP on my private network", isOn: $privateHTTP)
                 Text("Use plain HTTP only for a private address, after you confirm this choice. Public HTTP is rejected.").font(.footnote)
-                Button("Add my server") { model.addProfile(name: name, urlString: url, allowPrivateHTTP: privateHTTP, pins: pins.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }) }.buttonStyle(.borderedProminent)
+                Button("Add my server") { model.addProfile(name: name, urlString: url, allowPrivateHTTP: privateHTTP) }.buttonStyle(.borderedProminent)
+            }
+            Section("Try Ichoi") {
+                Text("The public demo needs no login for browsing and playback.").font(.footnote)
+                Button("Connect to demo server") { model.connectDemo() }
             }
         }.navigationTitle("Ichoi")
     }

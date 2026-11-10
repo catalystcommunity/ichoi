@@ -24,10 +24,14 @@ final class AppModel: ObservableObject {
 
     func acceptTerms() { hasAcceptedTerms = true; UserDefaults.standard.set(true, forKey: "ichoi.terms.accepted.v1") }
     func restoreSession() async { await sessionManager?.restore() }
-    func addProfile(name: String, urlString: String, allowPrivateHTTP: Bool, pins: [String]) {
+    func connectDemo() {
+        if let saved = savedProfiles.first(where: { $0.url == IchoiConfig.demoURL }) { selectProfile(saved); return }
+        addProfile(name: "Ichoi demo", urlString: IchoiConfig.demoURL.absoluteString, allowPrivateHTTP: false)
+    }
+    func addProfile(name: String, urlString: String, allowPrivateHTTP: Bool) {
         guard let url = URL(string: urlString) else { message = "Enter a valid server URL."; return }
         do {
-            let value = try ServerProfile(name: name.isEmpty ? url.host ?? "Ichoi server" : name, url: url, coreKeyFingerprints: pins, allowsPrivateHTTP: allowPrivateHTTP)
+            let value = try ServerProfile(name: name.isEmpty ? url.host ?? "Ichoi server" : name, url: url, allowsPrivateHTTP: allowPrivateHTTP)
             try profiles.save(value); profile = value; sessionManager = SessionManager(profile: value); message = nil
         } catch ServerURLPolicyError.publicHTTPNotAllowed { message = "Public HTTP is not allowed. Use HTTPS." }
         catch ServerURLPolicyError.privateHTTPConsentRequired { message = "Confirm private-network HTTP before saving this server." }

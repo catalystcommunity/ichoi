@@ -30,8 +30,4 @@ class ConnectionSecurityTest {
         assertFalse(ConnectionSecurity.allowRedirect(301))
         assertTrue(ConnectionSecurity.allowRedirect(200))
     }
-
-    @Test fun pinMismatchIsRejected() {
-        assertFalse(ConnectionSecurity.pinMatches("00", byteArrayOf(1), byteArrayOf(2)))
-    }
 }

@@ -56,4 +56,10 @@ final class ServerProfileTests: XCTestCase {
         }
         XCTAssertFalse(calls.contains("refresh:server-two"))
     }
+
+    func testProfileSavedWithFingerprintsStillLoads() throws {
+        let json = #"[{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"Old","url":"https://ichoi.catalystsquad.com","coreKeyFingerprints":["ab:cd"],"allowsPrivateHTTP":false}]"#
+        let profiles = try JSONDecoder().decode([ServerProfile].self, from: Data(json.utf8))
+        XCTAssertEqual(profiles.map(\.url.absoluteString), ["https://ichoi.catalystsquad.com"])
+    }
 }
