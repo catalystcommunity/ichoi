@@ -3,8 +3,6 @@ package community.catalyst.ichoi.security
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.URI
-import java.security.MessageDigest
-import java.util.Base64
 
 sealed class EndpointDecision {
     data object Secure : EndpointDecision()
@@ -40,19 +38,6 @@ object ConnectionSecurity {
             (octets[0] == 169 && octets[1] == 254) ||
             (octets[0] == 172 && octets[1] in 16..31) ||
             (octets[0] == 192 && octets[1] == 168))
-    }
-
-    fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes)
-        .joinToString("") { "%02x".format(it) }
-
-    fun pinMatches(pin: String, certificate: ByteArray, publicKey: ByteArray): Boolean {
-        val expected = pin.removePrefix("sha256/").removePrefix("sha256:").replace(":", "").replace(" ", "")
-        if (expected.isBlank()) return false
-        val certDigest = MessageDigest.getInstance("SHA-256").digest(certificate)
-        val keyDigest = MessageDigest.getInstance("SHA-256").digest(publicKey)
-        return expected.equals(certDigest.joinToString("") { "%02x".format(it) }, true) ||
-            expected.equals(keyDigest.joinToString("") { "%02x".format(it) }, true) ||
-            expected == Base64.getEncoder().encodeToString(certDigest) || expected == Base64.getEncoder().encodeToString(keyDigest)
     }
 
     /** Redirects are never followed. Reconnect to the exact user-selected URL instead. */

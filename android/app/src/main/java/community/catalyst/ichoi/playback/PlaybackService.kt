@@ -34,14 +34,13 @@ class PlaybackService : Service() {
         val profile = ServerProfile(
             id = intent.getStringExtra(EXTRA_PROFILE_ID) ?: return START_NOT_STICKY,
             url = intent.getStringExtra(EXTRA_SERVER_URL) ?: return START_NOT_STICKY,
-            pinnedSha256 = intent.getStringExtra(EXTRA_PIN).orEmpty(),
             allowPrivateHttp = intent.getBooleanExtra(EXTRA_PRIVATE_HTTP, false),
         )
         startForeground(NOTIFICATION_ID, notification(intent.getStringExtra(EXTRA_TITLE) ?: "Ichoi"))
         stopPlayback()
         player = MediaPlayer().apply {
             setAudioAttributes(AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).setUsage(AudioAttributes.USAGE_MEDIA).build())
-            setDataSource(PinnedMediaDataSource(profile, url, token))
+            setDataSource(ServerMediaDataSource(profile, url, token))
             setOnCompletionListener { stopPlayback() }
             setOnErrorListener { _, _, _ -> stopPlayback(); true }
             prepareAsync()
@@ -67,7 +66,6 @@ class PlaybackService : Service() {
         const val EXTRA_TOKEN = "session_token"
         const val EXTRA_PROFILE_ID = "profile_id"
         const val EXTRA_SERVER_URL = "server_url"
-        const val EXTRA_PIN = "server_pin"
         const val EXTRA_PRIVATE_HTTP = "private_http"
         private const val CHANNEL = "ichoi_playback"
         private const val NOTIFICATION_ID = 7

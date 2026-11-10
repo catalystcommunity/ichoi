@@ -3,7 +3,7 @@ package community.catalyst.ichoi.api
 import community.catalyst.csilgen.generated.AsyncTransport
 import community.catalyst.csilgen.generated.CborValue
 import community.catalyst.csilgen.generated.CsilCbor
-import community.catalyst.ichoi.security.PinnedNetwork
+import community.catalyst.ichoi.security.ServerNetwork
 import community.catalyst.ichoi.storage.ServerProfile
 import java.io.IOException
 import java.net.URI
@@ -62,7 +62,7 @@ class HttpCsilTransport(private val profile: ServerProfile, private val token: S
             }
         }
         try {
-            socket = PinnedNetwork.client(profile).newWebSocket(
+            socket = ServerNetwork.client(profile).newWebSocket(
                 okhttp3.Request.Builder().url(endpoint.toString()).build(),
                 listener,
             )

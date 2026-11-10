@@ -58,9 +58,9 @@ uses no non-exempt encryption. The app uses only the standard HTTPS of the opera
 
 ## Privacy and network behavior
 
-The app uses HTTPS by default. It checks the configured HTTPS certificate fingerprints. It
-rejects an HTTPS redirect to HTTP and rejects a pin mismatch. It permits HTTP only when all
-of these conditions are true:
+The app uses HTTPS by default. iOS checks the server certificate, the same as a browser.
+The app has no certificate pins. It rejects an HTTPS redirect to HTTP. It permits HTTP only
+when all of these conditions are true:
 
 1. The user turns on the private-network HTTP option.
 2. The host is a private IPv4, private IPv6, or localhost address.
@@ -153,7 +153,9 @@ Check these items on a supported iPhone and simulator:
 - generated Swift files are present in the Xcode build and are unchanged after `./tools.sh gen`;
 - signing and entitlements contain only the required app capabilities;
 - background audio continues after the screen locks, and the playback controls work;
-- HTTPS works with a matching pin, while a mismatch and a downgrade redirect fail;
+- **Connect to demo server** opens the demo library with no login;
+- HTTPS works with a trusted certificate, while an untrusted certificate and a downgrade
+  redirect fail;
 - private HTTP works only after consent, and public HTTP always fails;
 - two server profiles keep different tokens; sign-out removes only the selected token;
 - first-run terms acceptance persists, and account deletion keeps the token on failure;

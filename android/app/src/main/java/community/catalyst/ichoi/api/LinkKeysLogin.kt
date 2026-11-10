@@ -1,6 +1,6 @@
 package community.catalyst.ichoi.api
 
-import community.catalyst.ichoi.security.PinnedNetwork
+import community.catalyst.ichoi.security.ServerNetwork
 import community.catalyst.ichoi.storage.ServerProfile
 import java.io.IOException
 import java.net.URI
@@ -13,7 +13,7 @@ import org.json.JSONObject
 object LinkKeysLogin {
     fun start(profile: ServerProfile, identity: String): String {
         require(identity.isNotBlank()) { "Enter a LinkKeys identity" }
-        val client = PinnedNetwork.client(profile)
+        val client = ServerNetwork.client(profile)
         val statusRequest = Request.Builder().url(resolve(profile.url, "/api/auth")).get().build()
         val status = client.newCall(statusRequest).execute().use { response ->
             if (!response.isSuccessful) throw IOException("The server did not provide login settings")

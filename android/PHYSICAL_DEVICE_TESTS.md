@@ -9,8 +9,9 @@ and one current 64-bit device.
 2. Add a public HTTP server. Confirm that the app rejects it. Add a private IPv4 and a
    private IPv6 HTTP server. Confirm that the warning appears and that Cancel does not save
    the profile. Confirm that I understand permits the connection.
-3. Use a wrong certificate pin. Confirm that the connection fails. Return a redirect from
-   the server. Confirm that the app reports a redirect error and does not follow it.
+3. Tap **Connect to demo server**. Confirm that the library opens with no login. Use a
+   server with an expired or self-signed certificate. Confirm that the connection fails.
+   Return a redirect from the server. Confirm that the app reports a redirect error and does not follow it.
 4. Sign in. Play a track. Lock the device and switch audio output. Confirm that the
    foreground media notification stays visible and that no media file appears in shared or
    app-private storage.
@@ -30,4 +31,4 @@ and one current 64-bit device.
    block affects only the selected server.
 
 Record the device model, Android version, app version, test date, and each result before a
-store submission. AND-05 remains blocked until a reviewed production demo URL exists.
+store submission.

@@ -28,7 +28,7 @@ spec:
         kubernetes.io/arch: amd64
       containers:
         - name: ichoi
-          image: containers.catalystsquad.com/public/catalystcommunity/ichoi:demo-20260920-dispatch@sha256:328fd5400e3baf4192e11b317bc1dd2d0f4994207bc6686890b294f793a73ad5
+          image: containers.catalystsquad.com/public/catalystcommunity/ichoi:0.9.3@sha256:6c1a3fc2f772bbcfb0fee2689bc7c3d5221d81b3294be24e5e4a1550f4da3843
           imagePullPolicy: IfNotPresent
           env:
             - name: ICHOI_ROLE

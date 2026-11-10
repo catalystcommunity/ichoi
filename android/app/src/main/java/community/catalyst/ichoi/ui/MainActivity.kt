@@ -59,41 +59,39 @@ class MainActivity : Activity() {
         link("Read the Terms of Use", TERMS_URL)
         link("Read the Privacy Policy", PRIVACY_URL)
         val add = button("Add my server") { addServerDialog() }
+        val demo = button("Connect to demo server") { connect(profiles.put(DEMO_URL)) }
         add.isEnabled = FirstRunPolicy.canConnect(terms.isChecked)
+        demo.isEnabled = add.isEnabled
         content.addView(add)
+        content.addView(demo)
         terms.setOnCheckedChangeListener { _, checked ->
             getPreferences(0).edit().putBoolean(TERMS, checked).apply()
             add.isEnabled = FirstRunPolicy.canConnect(checked)
+            demo.isEnabled = add.isEnabled
         }
         profiles.all().forEach { saved ->
             val reconnect = button("Connect to ${saved.url}") { connect(saved) }
             reconnect.isEnabled = FirstRunPolicy.canConnect(terms.isChecked)
             content.addView(reconnect)
         }
-        // There is no demo action until a real, reviewed demo URL is available.
     }
 
     private fun addServerDialog() {
         val fields = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 8, 32, 0) }
         val url = EditText(this).apply { hint = "Server URL (https://...)"; inputType = 0x10 or 0x80000 }
-        val pin = EditText(this).apply { hint = "Pinned SHA-256 fingerprints, separated by commas" }
         fields.addView(url)
-        fields.addView(pin)
         AlertDialog.Builder(this).setTitle("Add my server").setView(fields).setNegativeButton("Cancel", null)
-            .setPositiveButton("Connect") { _, _ -> validateAndConnect(url.text.toString(), pin.text.toString()) }.show()
+            .setPositiveButton("Connect") { _, _ -> validateAndConnect(url.text.toString()) }.show()
     }
 
-    private fun validateAndConnect(raw: String, pin: String) {
+    private fun validateAndConnect(raw: String) {
         when (val decision = ConnectionSecurity.check(raw)) {
-            EndpointDecision.Secure -> {
-                if (pin.isBlank()) showError("At least one TLS pin is required for HTTPS")
-                else connect(profiles.put(raw.trim(), pin, false))
-            }
+            EndpointDecision.Secure -> connect(profiles.put(raw.trim(), false))
             is EndpointDecision.PrivateHttpNeedsConsent -> AlertDialog.Builder(this)
                 .setTitle("Use an unencrypted private connection?")
                 .setMessage("Only use plain HTTP on a private network. Other people on that network can read this connection.")
                 .setNegativeButton("Cancel", null)
-                .setPositiveButton("I understand") { _, _ -> connect(profiles.put(raw.trim(), "", true)) }.show()
+                .setPositiveButton("I understand") { _, _ -> connect(profiles.put(raw.trim(), true)) }.show()
             is EndpointDecision.Rejected -> showError(decision.reason)
         }
     }
@@ -193,7 +191,6 @@ class MainActivity : Activity() {
                 .putExtra(PlaybackService.EXTRA_TOKEN, sessions.token(selected.id))
                 .putExtra(PlaybackService.EXTRA_PROFILE_ID, selected.id)
                 .putExtra(PlaybackService.EXTRA_SERVER_URL, selected.url)
-                .putExtra(PlaybackService.EXTRA_PIN, selected.pinnedSha256)
                 .putExtra(PlaybackService.EXTRA_PRIVATE_HTTP, selected.allowPrivateHttp))
         }) }
         content.addView(button("Back") { connect(profile!!) })
@@ -364,6 +361,8 @@ class MainActivity : Activity() {
         private const val TERMS = "termsAccepted"
         private const val PENDING_LOGIN_PROFILE = "pendingLoginProfile"
         private const val TERMS_URL = "https://catalystichoi.com/terms.html"
+        // The public demo. Guests browse and play without a login.
+        private const val DEMO_URL = "https://ichoi.catalystsquad.com"
         private const val PRIVACY_URL = "https://catalystichoi.com/privacy.html"
     }
 }

@@ -9,8 +9,9 @@ the CSIL schema when the schema changes.
 
 The client uses the server CSIL-Events WebSocket. LinkKeys login returns through the
 allow-listed `ichoi://linkkeys` callback. The app stores each session token through the
-Android Keystore. HTTPS profiles require at least one TLS SHA-256 pin. Private HTTP
-profiles require explicit consent and do not use a TLS pin.
+Android Keystore. HTTPS uses the normal platform certificate check, the same as a
+browser. The app has no certificate pins. Private HTTP profiles require explicit consent.
+**Connect to demo server** opens `https://ichoi.catalystsquad.com`.
 
 ## Checks
 
@@ -21,7 +22,7 @@ graph. The release application ID is `com.catalystsquad.ichoi`. Debug builds use
 different ID.
 
 Physical-device checks remain external: test on Android 10 and the current Android release,
-including first run, HTTPS pinning, private HTTP consent, redirects, playback, sign-out,
+including first run, HTTPS, private HTTP consent, redirects, playback, sign-out,
 account deletion failure retention, and report submission. No production demo URL is
 selected in this project.
 

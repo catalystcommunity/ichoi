@@ -45,7 +45,7 @@ When a user signs in or uses a server function, the selected server can store:
 
 ## Data on the device
 
-The Android client stores server URLs, pinned key fingerprints, terms
+The Android client stores server URLs, terms
 acceptance, interface preferences, and session tokens. It protects session
 tokens with the Android Keystore. It does not create a persistent media cache.
 

@@ -4,7 +4,7 @@ This document maps the Google Play Developer Program Policies to an Android app 
 client for any Ichoi instance. It records the design decisions that keep the app compliant.
 It lists the work that the server, the client, and the store listing need.
 
-Status: local work that does not need release inputs is complete. AND-05 remains blocked.
+Status: local work that does not need release inputs is complete.
 IOS-11 needs a macOS archive check. Store submission also has external
 blockers.
 
@@ -95,7 +95,7 @@ These decisions are fixed. Do not change them without a review of this document.
 | Privacy policy URL in Play Console | **LISTING** | Required even if the app collects nothing. Host it on a public, non-PDF, stable URL. |
 | Privacy policy link in the app | **CLIENT** | Put it in Settings and in the first-run screen. |
 | Data safety form | **LISTING** | Declare: the app sends data only to user-configured servers. The developer collects nothing. See section 3 for the data that a server stores. |
-| Encryption in transit | **CLIENT** | Default to the TLS CSIL listener (port 4043) with core key pinning, or HTTPS through the reverse proxy. Permit plain HTTP only after an explicit user choice, and only for private network addresses. Disclose this in the privacy policy. |
+| Encryption in transit | **CLIENT** | Use HTTPS through the reverse proxy with the normal platform certificate check. Do not pin certificates; a public CA certificate rotates. Permit plain HTTP only after an explicit user choice, and only for private network addresses. Disclose this in the privacy policy. |
 | Account creation implies account deletion | **SERVER** | A LinkKeys login auto-creates a member account. Add a server API operation and expose it in the Android, iOS, and browser clients. Decision 2 defines the deletion behavior. |
 | Web URL for deletion requests | **LISTING** | Use the project account-deletion help page. It must direct the user to the selected server's browser deletion path or administrator. It must state that the server operator controls the account. |
 | Prominent disclosure and consent | **N/A** | The app does not collect data outside the user's reasonable expectation. If satellite mode is added, show a one-time in-app notice that other users can start playback on this device. |
@@ -616,9 +616,11 @@ token replacement, sign-out, and token removal.
 
 **Depends on:** AND-02
 
-Use pinned CSIL TLS or HTTPS by default. Permit plain HTTP only for a private address after
-an explicit warning and confirmation. Reject public plain-HTTP addresses. Test IPv4, IPv6,
-redirects, pin mismatch, and user cancellation.
+Use HTTPS with the normal platform certificate check by default. The client has no
+certificate pins: the server sits behind a reverse proxy with a public CA certificate, and
+that certificate rotates. Permit plain HTTP only for a private address after an explicit
+warning and confirmation. Reject public plain-HTTP addresses. Test IPv4, IPv6, redirects,
+an untrusted certificate, and user cancellation.
 
 ### AND-04: Add first-run and server connection
 
@@ -632,12 +634,15 @@ repeated launch, link handling, validation, and connection failure.
 
 ### AND-05: Add the demo connection
 
-**State:** BLOCKED
+**State:** DONE
 
 **Depends on:** AND-04 and DEMO-04
 
 Add **Connect to demo server** with the fixed production URL. A reviewer must reach playable
 content in two taps. Test the default profile and offline failure.
+
+The first-run screen has **Connect to demo server** for `https://ichoi.catalystsquad.com`.
+It is available after the terms are accepted.
 
 ### AND-06: Add playback and the foreground service
 
@@ -714,7 +719,7 @@ application manifest. Verify the icon on Android 10 and the current Android rele
 use the Google Play store-listing icon as a launcher resource without the required adaptive
 icon layers.
 
-Store-release verification stays blocked until AND-05 is complete.
+AND-05 is complete. Store-release verification needs the physical-device record.
 Physical-device checks stay external. `android/PHYSICAL_DEVICE_TESTS.md` gives the required
 Android 10 through current-release test record.
 
@@ -728,7 +733,7 @@ document.
 |---|---|---|---|
 | IOS-00 | **DONE** | none | The permanent bundle ID is `com.catalystsquad.ichoi`. The release guard rejects every other Release bundle ID. |
 | IOS-01 | **DONE** | none | The Swift project uses one development-only bundle ID, has a release guard, and references generated Swift without editing it. |
-| IOS-02 | **DONE** | IOS-01 | Server profiles, TLS pinning, downgrade rejection, and private-address HTTP consent are present. |
+| IOS-02 | **DONE** | IOS-01 | Server profiles, the normal iOS certificate check with no pins, downgrade rejection, private-address HTTP consent, and **Connect to demo server** are present. |
 | IOS-03 | **DONE** | IOS-02 | LinkKeys sessions use the allow-listed native callback and store tokens by profile in the Keychain. |
 | IOS-04 | **DONE** | IOS-03, SITE-03, SITE-05 | First-run terms, legal links, profile selection, and server connection are present. |
 | IOS-05 | **DONE** | IOS-02 | In-memory local playback and supported background audio are present. |
@@ -901,6 +906,6 @@ change.
 | PLAY-05 | **EXTERNAL** | PLAY-01 | Set the target audience to ages 18 and over. Do not join the Families program. |
 | PLAY-06 | **DONE** | SITE-05 | Draft the content-rating and UGC questionnaire answers. |
 | PLAY-07 | **READY** | DEMO-04 | Update the App access draft with the production URL, reviewer LinkKeys identity, credential, and steps for every sign-in-only function. |
-| PLAY-08 | **BLOCKED** | AND-05, DEMO-05 | Capture at least two accurate screenshots against the production demo. |
+| PLAY-08 | **READY** | AND-05, DEMO-05 | Capture at least two accurate screenshots against the production demo. |
 | PLAY-09 | **EXTERNAL** | SRV-11 through SRV-13, AND-10 through AND-12, SITE-08, PLAY-02 through PLAY-08, PLAY-10 | Confirm API level 36 or the newer required level, complete the Console forms, upload the bundle, and submit it for review. |
 | PLAY-10 | **EXTERNAL** | ART-00 | Upload `assets/brand/stores/google-play-icon-512.png` and `assets/brand/stores/google-play-feature-1024x500.png`. |
