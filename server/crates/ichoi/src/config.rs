@@ -77,6 +77,7 @@ struct FileConfig {
     zero_account_guest_access: Option<bool>,
     trusted_proxy_cidrs: Option<Vec<String>>,
     session_lifetime_hours: Option<u64>,
+    artwork_cache_mb: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -147,6 +148,8 @@ pub struct Config {
     pub trusted_proxy_cidrs: Vec<IpNet>,
     /// Session lifetime. The default is 720 hours (30 days).
     pub session_lifetime_hours: u64,
+    /// Artwork cache limit in decimal MB. Zero disables caching.
+    pub artwork_cache_mb: usize,
 }
 
 fn env(key: &str) -> Option<String> {
@@ -222,6 +225,20 @@ fn session_lifetime_hours(value: Option<String>, file_value: Option<u64>) -> any
     Ok(hours)
 }
 
+fn artwork_cache_mb(value: Option<String>, file_value: Option<usize>) -> anyhow::Result<usize> {
+    let mb = match value {
+        Some(value) => value.parse::<usize>().map_err(|_| {
+            anyhow::anyhow!("ICHOI_ARTWORK_CACHE_MB must be a non-negative integer")
+        })?,
+        None => file_value.unwrap_or(200),
+    };
+    anyhow::ensure!(
+        mb.checked_mul(1_000_000).is_some(),
+        "ICHOI_ARTWORK_CACHE_MB is too large"
+    );
+    Ok(mb)
+}
+
 impl Config {
     /// Resolve config: env → file (`ICHOI_CONFIG` path or `./ichoi.toml`) → defaults.
     pub fn load() -> anyhow::Result<Config> {
@@ -284,6 +301,10 @@ impl Config {
         )?;
 
         Ok(Config {
+            artwork_cache_mb: artwork_cache_mb(
+                env("ICHOI_ARTWORK_CACHE_MB"),
+                file.artwork_cache_mb,
+            )?,
             role,
             music_dir,
             audiobook_dir,
@@ -481,12 +502,29 @@ fn pb_to_string(p: PathBuf) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::artwork_cache_mb;
     use std::path::PathBuf;
 
     use super::{
         album_subfolder_words, configurable_bool, exactly_true, is_lan_address, policy_bool,
         read_secret_file, session_lifetime_hours, AccessMode, FileConfig,
     };
+
+    #[test]
+    fn artwork_cache_configuration_validates_and_uses_precedence() {
+        assert_eq!(artwork_cache_mb(None, None).unwrap(), 200);
+        let file: FileConfig = toml::from_str("artwork_cache_mb = 80").unwrap();
+        assert_eq!(artwork_cache_mb(None, file.artwork_cache_mb).unwrap(), 80);
+        assert_eq!(artwork_cache_mb(Some("50".into()), Some(80)).unwrap(), 50);
+        assert_eq!(artwork_cache_mb(Some("0".into()), None).unwrap(), 0);
+        for invalid in [
+            "-1".to_string(),
+            "large".to_string(),
+            usize::MAX.to_string(),
+        ] {
+            assert!(artwork_cache_mb(Some(invalid), None).is_err());
+        }
+    }
 
     #[test]
     fn policy_bool_rejects_unrecognized_values() {

@@ -4,6 +4,7 @@ import ImageIO
 
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var remote: RemotePlayback
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Group {
@@ -14,7 +15,8 @@ struct ContentView: View {
         .tint(Color("AccentColor"))
         .background(Color("BrandBackground"))
         .appControls()
-        .onChange(of: scenePhase) { model.messages.setActive($0 == .active) }
+        .onChange(of: scenePhase) { model.messages.setActive($0 == .active); remote.setActive($0 == .active) }
+        .task(id: [model.profile?.id.uuidString, model.sessionManager?.session?.accountId]) { remote.configure(profile: model.profile, token: model.token()) }
         .task { await model.restoreSession() }
     }
 }
@@ -57,6 +59,8 @@ struct ServerConnectionView: View {
 
 struct LibraryView: View {
     @EnvironmentObject private var model: AppModel
+    @State private var browse = "Albums"
+    @State private var loadGeneration = UUID()
     @State private var query = ""
     @State private var searchResults: SearchResponse?
     @State private var searchLoading = false
@@ -72,22 +76,39 @@ struct LibraryView: View {
     @State private var tracks: [Track] = []
     @State private var showSettings = false
     @State private var showReport = false
+    @State private var libraryLoading = false
+    @State private var libraryError: String?
+    @State private var signInRequired = false
     @State private var reportID = ""
     @State private var reportTarget: ContentReportTargetType = .playlist
     var body: some View {
         NavigationStack {
             List {
+                if let libraryError {
+                    Section(signInRequired ? "Sign in to your library" : "Could not load your library") {
+                        Text(libraryError)
+                        if signInRequired {
+                            Button("Sign in with LinkKeys") { showSettings = true }.buttonStyle(.borderedProminent)
+                        } else {
+                            Button("Retry") { Task { await load() } }
+                        }
+                    }
+                }
+                if libraryLoading { ProgressView("Loading your library…") }
                 Picker("Library", selection: $library) {
                     Text("Music").tag(Library.music)
                     Text("Audiobooks").tag(Library.audiobook)
                 }.pickerStyle(.segmented)
+                Picker("Browse", selection: $browse) { Text("Albums").tag("Albums"); Text("Artists").tag("Artists"); Text("Playlists").tag("Playlists") }.pickerStyle(.segmented)
                 if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Section("Search results") {
                         if searchLoading { ProgressView("Searching…") }
                         if let result = searchResults {
-                            ForEach(result.albums, id: \.id) { album in
-                                ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "") { Task { await openAlbum(album.id) } }
-                            }
+                            LazyVGrid(columns: [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], alignment: .leading, spacing: 22) {
+                                ForEach(result.albums, id: \.id) { album in
+                                    ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "", tile: true) { Task { await openAlbum(album.id) } }
+                                }
+                            }.listRowBackground(Color.clear).listRowSeparator(.hidden)
                             ForEach(result.artists, id: \.id) { artist in
                                 Button(artist.name) { Task { await openArtist(artist.id) } }
                             }
@@ -96,17 +117,20 @@ struct LibraryView: View {
                         }
                     }
                 } else {
+                if browse == "Albums" {
                 Section(library == .music ? "Albums" : "Audiobooks") {
-                    if albums.isEmpty { Text("No albums loaded. Pull to refresh.").foregroundStyle(.secondary) }
-                    ForEach(albums, id: \.id) { album in
-                        ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "") {
-                            Task { await openAlbum(album.id) }
+                    if albums.isEmpty && !libraryLoading && libraryError == nil { Text("No albums in this library.").foregroundStyle(.secondary) }
+                    LazyVGrid(columns: [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], alignment: .leading, spacing: 22) {
+                        ForEach(albums, id: \.id) { album in
+                            ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "", tile: true) { Task { await openAlbum(album.id) } }
                         }
-                    }
+                    }.listRowBackground(Color.clear).listRowSeparator(.hidden)
                     if UInt64(albums.count) < albumTotal {
                         Button("Load more albums") { Task { await loadMoreAlbums() } }
                     }
                 }
+                }
+                if browse == "Artists" {
                 Section("Artists") {
                     ForEach(artists, id: \.id) { artist in
                         ArtworkRow(kind: .artist, id: artist.id, title: artist.name, subtitle: "\(artist.albumCount) albums") {
@@ -117,6 +141,8 @@ struct LibraryView: View {
                         Button("Load more artists") { Task { await loadMoreArtists() } }
                     }
                 }
+                }
+                if browse == "Playlists" {
                 Section("Playlists") {
                     if playlists.isEmpty { Text("No playlists are available.").foregroundStyle(.secondary) }
                     ForEach(playlists, id: \.id) { playlist in
@@ -139,21 +165,16 @@ struct LibraryView: View {
                         }
                     }
                 }
-                Section("Tracks") {
-                    if tracks.isEmpty { Text("Select an album or playlist.").foregroundStyle(.secondary) }
-                    ForEach(tracks, id: \.id) { track in
-                        TrackRow(track: track, profile: model.profile, bearerToken: model.token())
-                    }
                 }
                 }
             }
-            .searchable(text: $query, prompt: "Search your library")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search artists, albums, and tracks")
             .task(id: query) { await search() }
             .onChange(of: library) { _ in query = ""; searchResults = nil }
             .scrollContentBackground(.hidden)
             .background(Color("BrandBackground"))
             .refreshable { await load() }
-            .navigationTitle(model.profile?.name ?? "Ichoi")
+            .navigationTitle("Your library")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { Button("Queue", systemImage: "list.bullet") { showQueue = true } }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -212,13 +233,22 @@ struct LibraryView: View {
     private func load() async {
         let profileID = model.profile?.id
         let accountID = model.sessionManager?.session?.accountId
+        let generation = UUID(); loadGeneration = generation
+        libraryLoading = true
+        libraryError = nil
+        signInRequired = false
+        defer {
+            if loadGeneration == generation && model.profile?.id == profileID && model.sessionManager?.session?.accountId == accountID {
+                libraryLoading = false
+            }
+        }
         do {
             let api = try client()
             let selectedLibrary = library
             let loadedAlbums = try await api.listAlbums(BrowseRequest(library: selectedLibrary))
             let loadedArtists = try await api.listArtists(BrowseRequest(library: selectedLibrary))
             let loadedPlaylists = try await allPlaylists(api)
-            guard !Task.isCancelled, model.profile?.id == profileID,
+            guard !Task.isCancelled, loadGeneration == generation, model.profile?.id == profileID,
                   model.sessionManager?.session?.accountId == accountID else { return }
             guard library == selectedLibrary else { return }
             albums = loadedAlbums.albums
@@ -227,9 +257,12 @@ struct LibraryView: View {
             artistTotal = loadedArtists.total
             playlists = loadedPlaylists
         } catch {
-            guard !Task.isCancelled, model.profile?.id == profileID,
+            guard !Task.isCancelled, loadGeneration == generation, model.profile?.id == profileID,
                   model.sessionManager?.session?.accountId == accountID else { return }
-            model.message = "Check the selected server URL and try again."
+            signInRequired = (error as? CsilClientError)?.code == 401
+            libraryError = signInRequired
+                ? "This server requires sign-in. Use your LinkKeys identity to continue."
+                : "The library could not be loaded. Check your connection and try again."
         }
     }
     private func loadMoreAlbums() async {
@@ -322,19 +355,20 @@ struct TrackRow: View {
     let profile: ServerProfile?
     let bearerToken: String?
     @EnvironmentObject private var playback: PlaybackManager
+    @EnvironmentObject private var remote: RemotePlayback
     var body: some View {
         HStack {
             Image(systemName: "music.note"); Text(track.title); Spacer()
             Button("Play") {
                 guard let profile else { return }
-                playback.enqueue(track, profile: profile, token: bearerToken)
-                if let entry = playback.queue.last { playback.playQueued(entry) }
+                if remote.target != nil { remote.play(track) }
+                else { playback.enqueue(track, profile: profile, token: bearerToken); if let entry = playback.queue.last { playback.playQueued(entry) } }
             }.foregroundStyle(.tint)
             Button("Add to queue", systemImage: "text.badge.plus") {
                 guard let profile else { return }
-                playback.enqueue(track, profile: profile, token: bearerToken)
+                if remote.target != nil { remote.enqueue(track) } else { playback.enqueue(track, profile: profile, token: bearerToken) }
             }.labelStyle(.iconOnly)
-        }.accessibilityElement(children: .combine).accessibilityLabel("Play \(track.title)")
+        }.buttonStyle(.borderless).accessibilityElement(children: .contain)
     }
 }
 
@@ -345,6 +379,7 @@ struct ArtworkRow: View {
     let id: String
     let title: String
     let subtitle: String
+    var tile = false
     let open: () -> Void
     @State private var image: UIImage?
     @State private var libraryPickerOpen = false
@@ -356,7 +391,8 @@ struct ArtworkRow: View {
 
     var body: some View {
         Button(action: open) {
-            HStack(spacing: 14) {
+            let layout = tile ? AnyLayout(VStackLayout(alignment: .leading, spacing: 9)) : AnyLayout(HStackLayout(spacing: 14))
+            layout {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8).fill(Color.accentColor.opacity(0.12))
                     if let image {
@@ -367,10 +403,10 @@ struct ArtworkRow: View {
                             Text(title).font(.caption).multilineTextAlignment(.center).lineLimit(4)
                         }.padding(6)
                     }
-                }.frame(width: 88, height: 88).clipped().accessibilityLabel("Cover art for \(title)")
+                }.frame(width: tile ? min(220, (UIScreen.main.bounds.width - 72) / 2) : 72, height: tile ? min(220, (UIScreen.main.bounds.width - 72) / 2) : 72).clipped().clipShape(RoundedRectangle(cornerRadius: 9)).accessibilityLabel("Cover art for \(title)")
                 VStack(alignment: .leading) {
-                    Text(title).foregroundStyle(Color("BrandText"))
-                    if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(Color("BrandMuted")) }
+                    Text(title).font(tile ? .subheadline.weight(.semibold) : .body).lineLimit(2).foregroundStyle(Color("BrandText"))
+                    if !subtitle.isEmpty { Text(subtitle).font(.caption).lineLimit(1).foregroundStyle(Color("BrandMuted")) }
                 }
                 if busy { ProgressView() }
             }

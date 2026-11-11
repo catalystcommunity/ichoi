@@ -28,6 +28,8 @@ final class PlaybackManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         currentQueueID = entry.id
         play(profile: entry.profile, url: entry.profile.url.appendingPathComponent("media").appendingPathComponent(entry.track.id), title: entry.track.title, bearerToken: entry.token, sourceCodec: entry.track.codec.rawValue)
     }
+    func nextQueued() { completed() }
+    func previousQueued() { if let index = queue.firstIndex(where: { $0.id == currentQueueID }), index > 0 { playQueued(queue[index - 1]) } }
     private func completed() {
         if let index = queue.firstIndex(where: { $0.id == currentQueueID }), index + 1 < queue.count { playQueued(queue[index + 1]) }
         else { stop() }

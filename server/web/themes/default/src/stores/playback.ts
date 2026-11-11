@@ -1,0 +1,1150 @@
+// Playback store. Drives either LOCAL playback (this browser's private queue + <audio>) or a
+// shared target (§6): when a target is selected, the queue is the target's SERVER queue —
+// controllers send commands and the OWNER (the client that shared the device) plays it. The
+// server pushes PlayerState over PlayerService.subscribe, so every client stays in sync.
+
+import { State, observe, type Accessor, type Observable } from "../lib/state.ts";
+import { type PlaybackSnapshot } from "../lib/audio/player.ts";
+import type {
+  Player,
+  PlayerCommand,
+  PlayerState,
+  QueueItem,
+  RepeatMode,
+  StreamPref,
+  Track,
+} from "../lib/schema.ts";
+import { useServers } from "./servers.ts";
+import { useToast } from "./toasts.ts";
+import { satelliteOutput, satelliteToken } from "../lib/satellite-mode.ts";
+import { finishUpdateReload, updateReloadInProgress } from "../lib/app-update.ts";
+import { onFirstGesture, probeAutoplay } from "../lib/audio-unlock.ts";
+import { planVolumeChange } from "../lib/volume.ts";
+import { appendTracks, insertTrackNext } from "../lib/queue-plan.ts";
+import { useI18n } from "../lib/i18n.ts";
+import {
+  isBrowserShareTarget,
+  parseOwnedTargetStore,
+  resolveOutputTarget,
+} from "../lib/output-target.ts";
+import { requireTermsForPlaylist } from "../lib/compliance.ts";
+
+export const LOCAL_TARGET = "local";
+const PREF_KEY = "ichoi.streamPref";
+const OWNED_KEY = "ichoi.ownedDevices";
+const REPEAT_KEY = "ichoi.repeatMode";
+const SHUFFLE_KEY = "ichoi.shuffle";
+const VOLUME_KEY = "ichoi.localVolume";
+
+function loadPref(): StreamPref {
+  try {
+    const raw = localStorage.getItem(PREF_KEY);
+    if (raw) return JSON.parse(raw) as StreamPref;
+  } catch {
+    /* ignore */
+  }
+  return { transcode_codec: "aac" };
+}
+
+function loadOwned() {
+  try {
+    return parseOwnedTargetStore(localStorage.getItem(OWNED_KEY));
+  } catch {
+    return { servers: {}, legacy: [] };
+  }
+}
+
+function loadRepeatMode(): RepeatMode {
+  try {
+    const value = localStorage.getItem(REPEAT_KEY);
+    return value === "all" || value === "one" ? value : "off";
+  } catch {
+    return "off";
+  }
+}
+
+function loadShuffle(): boolean {
+  try {
+    return localStorage.getItem(SHUFFLE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function loadVolume(): number {
+  try {
+    return planVolumeChange(LOCAL_TARGET, Number(localStorage.getItem(VOLUME_KEY) ?? 100)).volume;
+  } catch {
+    return 100;
+  }
+}
+
+type Status = PlaybackSnapshot["status"];
+function mapStatus(s: string): Status {
+  return s === "playing" ? "playing" : s === "paused" ? "paused" : "idle";
+}
+
+function qiToTrack(qi: QueueItem): Track {
+  return {
+    id: qi.track_id,
+    library: qi.library ?? "music",
+    title: qi.title ?? "",
+    duration_ms: qi.duration_ms ?? 0,
+    codec: "mp3",
+    sample_rate: 0,
+    channels: 0,
+    root_relative_path: "",
+  } as Track;
+}
+
+export interface PlaybackContextValue extends Observable {
+  dispose(): void;
+  snapshot: Accessor<PlaybackSnapshot>;
+  queue: Track[];
+  currentIndex: Accessor<number>;
+  current: Accessor<Track | undefined>;
+  pref: Accessor<StreamPref>;
+  setPref: (p: StreamPref) => void;
+  playNow: (tracks: Track[], startIndex?: number, startMs?: number) => Promise<void>;
+  enqueue: (tracks: Track[]) => void;
+  playNext: (track: Track) => void;
+  playIndex: (index: number) => Promise<void>;
+  togglePlay: () => void;
+  next: () => Promise<void>;
+  previous: () => Promise<void>;
+  seek: (ms: number) => void;
+  volume: Accessor<number>;
+  setVolume: (volume: number) => void;
+  clearQueue: () => void;
+  canUndoQueue: Accessor<boolean>;
+  undoQueue: () => Promise<void>;
+  removeAt: (index: number) => void;
+  move: (from: number, to: number) => void;
+  saveQueueAsPlaylist: (name: string) => Promise<void>;
+  /** Output target: `LOCAL_TARGET` (this browser) or a shared player id. */
+  target: Accessor<string>;
+  setTarget: (id: string) => void;
+  /** Shared targets you can send playback to. */
+  sharedTargets: Accessor<Player[]>;
+  /** Shared-device ids this browser is the output (speaker) for. */
+  owned: Accessor<string[]>;
+  /** Remember that this client owns (is the output for) a shared device. */
+  markOwned: (id: string) => void;
+  /** Stop being a device's output and remove the share entirely. */
+  releaseDevice: (id: string) => Promise<void>;
+  /** Satisfy browser autoplay policy and bind the selected satellite audio sink. */
+  enableOutputAudio: () => Promise<void>;
+  outputAudioReady: Accessor<boolean>;
+  /** Satellite mode: this browser is connected but cannot make sound until somebody touches
+   * it. Reported to the server so controllers can say so before sending music here. */
+  audioBlocked: Accessor<boolean>;
+  repeatMode: Accessor<RepeatMode>;
+  cycleRepeatMode: () => void;
+  shuffle: Accessor<boolean>;
+  toggleShuffle: () => void;
+}
+
+
+
+export function createPlayback(): PlaybackContextValue {
+  const state = new State();
+  const removals: (() => void)[] = [];
+  const own = (remove: () => void) => removals.push(remove);
+  const servers = useServers();
+  const toast = useToast();
+  const { t } = useI18n();
+  const satelliteMode = Boolean(satelliteToken());
+  const [getQueue, updateQueue] = state.cell<Track[]>("queue", []);
+  let queue: Track[] = [];
+  function setQueue(next: Track[] | ((tracks: Track[]) => Track[])): void {
+    queue = typeof next === "function" ? next(getQueue()) : next;
+    updateQueue(queue);
+  }
+  const [currentIndex, setCurrentIndex] = state.cell("currentIndex", -1);
+  const [snapshot, setSnapshot] = state.cell<PlaybackSnapshot>("snapshot", {
+    status: "idle",
+    positionMs: 0,
+    decoderMissing: false,
+  });
+  const [pref, setPrefSignal] = state.cell<StreamPref>("pref", loadPref());
+  const loadedOwned = loadOwned();
+  const [ownedByServer, setOwnedByServer] = state.cell<Record<string, string[]>>("ownedByServer", loadedOwned.servers);
+  const [legacyOwned, setLegacyOwned] = state.cell("legacyOwned", loadedOwned.legacy);
+  const [target, setTargetSignal] = state.cell<string>("target", 
+    satelliteMode ? "satellite-pending" : LOCAL_TARGET,
+  );
+  const [outputAudioReady, setOutputAudioReady] = state.cell("outputAudioReady", false);
+  const [audioBlocked, setAudioBlocked] = state.cell("audioBlocked", false);
+  const [localRepeatMode, setLocalRepeatMode] = state.cell<RepeatMode>("localRepeatMode", loadRepeatMode());
+  const [localShuffle, setLocalShuffle] = state.cell("localShuffle", loadShuffle());
+  const [localVolume, setLocalVolume] = state.cell("localVolume", loadVolume());
+  const [remoteVolume, setRemoteVolume] = state.cell("remoteVolume", 100);
+  const [remoteState, setRemoteState] = state.cell<PlayerState | undefined>("remoteState", undefined);
+  const [undoState, setUndoState] = state.cell<{
+    serverId: string | undefined;
+    target: string;
+    tracks: Track[];
+    index: number;
+    snapshot: PlaybackSnapshot;
+  } | undefined>("undoState", undefined);
+  let lastOutputReportSecond = -1;
+
+  const satellitePlayerId = () => servers.active()?.satellitePlayerId;
+  const owned = () => ownedByServer()[servers.activeId() ?? ""] ?? [];
+  const isLocal = () => !satelliteMode && target() === LOCAL_TARGET;
+  const volume = () => isLocal() ? localVolume() : remoteVolume();
+  const repeatMode = () => isLocal() ? localRepeatMode() : remoteState()?.repeat_mode ?? "off";
+  const shuffle = () => isLocal() ? localShuffle() : remoteState()?.shuffle ?? false;
+
+  function outputContext(): {
+    playerId: string;
+    playbackId: string;
+    item: QueueItem;
+  } | undefined {
+    const playerId = satelliteMode ? satellitePlayerId() : target();
+    const state = remoteState();
+    if (!playerId || playerId === LOCAL_TARGET || !state || !isOwned(playerId)) return undefined;
+    const index = state.current_index ?? -1;
+    const item = index >= 0 ? state.queue[index] : undefined;
+    if (!item || !state.playback_id) return undefined;
+    return { playerId, playbackId: state.playback_id, item };
+  }
+
+  function reportOutputState(status: "stopped" | "playing" | "paused", positionMs = 0): void {
+    const context = outputContext();
+    if (!context) return;
+    const api = servers.api();
+    if (!api) return;
+    if (satelliteMode) {
+      api.node.report({
+        player_id: context.playerId,
+        event: "state",
+        status,
+        queue_item_id: context.item.queue_item_id,
+        playback_id: context.playbackId,
+        position_ms: positionMs,
+        audio_blocked: audioBlocked(),
+      });
+    } else {
+      void control({
+        op: "playback-state",
+        status,
+        queue_item_id: context.item.queue_item_id,
+        playback_id: context.playbackId,
+        position_ms: positionMs,
+      }, context.playerId);
+    }
+  }
+
+  function reportOutputTerminal(completed: boolean, error?: string): void {
+    const context = outputContext();
+    const api = servers.api();
+    if (!context || !api) return;
+    if (satelliteMode) {
+      api.node.report({
+        player_id: context.playerId,
+        event: completed ? "completed" : "failed",
+        status: "stopped",
+        queue_item_id: context.item.queue_item_id,
+        playback_id: context.playbackId,
+        position_ms: Math.round(snapshot().positionMs),
+        error: completed ? undefined : (error ?? "browser playback failed").slice(0, 1024),
+        audio_blocked: audioBlocked(),
+      });
+    } else {
+      void control(completed
+        ? {
+            op: "playback-completed",
+            queue_item_id: context.item.queue_item_id,
+            playback_id: context.playbackId,
+          }
+        : {
+            op: "playback-failed",
+            queue_item_id: context.item.queue_item_id,
+            playback_id: context.playbackId,
+            error: (error ?? "browser playback failed").slice(0, 1024),
+          }, context.playerId);
+    }
+  }
+
+  /** Push the blocked flag out of band, when it changed without playback changing. */
+  function reportAudioBlocked(): void {
+    if (!satelliteMode) return;
+    const context = outputContext();
+    const api = servers.api();
+    const playerId = satellitePlayerId();
+    if (!api || !playerId) return;
+    if (!context) {
+      api.node.report({
+        player_id: playerId,
+        event: "ready",
+        status: "stopped",
+        audio_blocked: audioBlocked(),
+      });
+      return;
+    }
+    const status = snapshot().status === "playing"
+      ? "playing"
+      : snapshot().status === "paused" ? "paused" : "stopped";
+    api.node.report({
+      player_id: context.playerId,
+      event: "state",
+      status,
+      queue_item_id: context.item.queue_item_id,
+      playback_id: context.playbackId,
+      position_ms: Math.round(snapshot().positionMs),
+      audio_blocked: audioBlocked(),
+    });
+  }
+
+  function setBlocked(blocked: boolean): void {
+    if (audioBlocked() === blocked) return;
+    setAudioBlocked(blocked);
+    reportAudioBlocked();
+  }
+
+  const isOwned = (id: string) =>
+    owned().includes(id) || (satelliteMode && id === satellitePlayerId());
+
+  function persistOwned(next: Record<string, string[]>): void {
+    try {
+      localStorage.setItem(OWNED_KEY, JSON.stringify({ version: 2, servers: next }));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function markOwned(id: string): void {
+    if (!isBrowserShareTarget(id)) return;
+    const serverId = servers.activeId();
+    if (!serverId) return;
+    setOwnedByServer((current) => {
+      const ids = current[serverId] ?? [];
+      const next = ids.includes(id) ? current : { ...current, [serverId]: [...ids, id] };
+      persistOwned(next);
+      return next;
+    });
+  }
+
+  function unmarkOwned(id: string): void {
+    const serverId = servers.activeId();
+    if (!serverId) return;
+    setOwnedByServer((current) => {
+      const ids = current[serverId] ?? [];
+      const next = { ...current, [serverId]: ids.filter((value) => value !== id) };
+      persistOwned(next);
+      return next;
+    });
+  }
+
+  // Older versions stored one global list. Assign it once to the first active server so it
+  // cannot claim matching player IDs on every connected instance.
+  own(observe([state, servers], () => [servers.activeId(), legacyOwned()] as const, () => {
+    const serverId = servers.activeId();
+    const legacy = legacyOwned();
+    if (!serverId || legacy.length === 0) return;
+    setOwnedByServer((current) => {
+      const existing = current[serverId] ?? [];
+      const next = { ...current, [serverId]: [...new Set([...existing, ...legacy])] };
+      persistOwned(next);
+      return next;
+    });
+    setLegacyOwned([]);
+  }));
+
+  // A shared id is `share:<owner>:<suffix>`; enable-share re-claims by suffix.
+  function suffixOf(id: string): string {
+    if (!isBrowserShareTarget(id)) return "";
+    const parts = id.split(":");
+    return parts.length > 2 ? parts.slice(2).join(":") : "";
+  }
+
+  // --- Audio engine (HTTP /media + native <audio>; §5 bridge) ---------------
+  const audio = typeof Audio !== "undefined" ? new Audio() : undefined;
+  let suppressPauseReport = false;
+  if (audio) { audio.volume = localVolume() / 100; audio.preload = "auto"; }
+  const warmMedia = (url: string | undefined, duration = 0, position = 0) => navigator.serviceWorker?.controller?.postMessage({ type: "ichoi-media-buffer", url, duration, position });
+
+  own(observe([servers], () => [servers.activeId(), servers.active()?.session?.account_id], () => warmMedia(undefined)));
+
+  async function applySatelliteSink(): Promise<void> {
+    if (!satelliteMode || !audio || !("setSinkId" in audio)) return;
+    await audio.setSinkId(satelliteOutput().id);
+  }
+
+  function mediaBase(): string | undefined {
+    const url = servers.active()?.url;
+    if (!url) return undefined;
+    return url.replace(/^ws/, "http").replace(/\/ws$/, "");
+  }
+
+  function mediaUrl(id: string): string | undefined {
+    const base = mediaBase();
+    if (!base) return undefined;
+    const p = pref();
+    const params = new URLSearchParams();
+    if (p.max_bitrate_kbps) params.set("bitrate", String(p.max_bitrate_kbps));
+    if (p.transcode_codec) params.set("format", p.transcode_codec);
+    const qs = params.toString();
+    return `${base}/media/${encodeURIComponent(id)}${qs ? `?${qs}` : ""}`;
+  }
+
+  if (audio) {
+    audio.addEventListener("timeupdate", () => {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: audio.currentTime * 1000 }));
+      const second = Math.floor(audio.currentTime);
+      if (second % 10 === 0) warmMedia(audio.src, (audio.duration || 0) * 1000, audio.currentTime * 1000);
+      if (second !== lastOutputReportSecond) {
+        lastOutputReportSecond = second;
+        reportOutputState("playing", second * 1000);
+      }
+    });
+    audio.addEventListener("loadedmetadata", () =>
+      setSnapshot((s): PlaybackSnapshot => ({
+        ...s,
+        durationMs: Number.isFinite(audio.duration) ? audio.duration * 1000 : undefined,
+      })),
+    );
+    audio.addEventListener("play", () => {
+      setOutputAudioReady(true);
+      finishUpdateReload();
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "playing" }));
+      reportOutputState("playing", Math.round(audio.currentTime * 1000));
+    });
+    audio.addEventListener("pause", () => {
+      setSnapshot((s): PlaybackSnapshot => (s.status === "ended" ? s : { ...s, status: "paused" }));
+      if (!suppressPauseReport && !audio.ended && !updateReloadInProgress()) {
+        reportOutputState("paused", Math.round(audio.currentTime * 1000));
+      }
+    });
+    audio.addEventListener("ended", () => {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "ended" }));
+      if (!isLocal()) reportOutputTerminal(true);
+    });
+    audio.addEventListener("error", () => {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: "playback error" }));
+      if (!isLocal()) reportOutputTerminal(false, "browser playback error");
+    });
+  }
+
+  // --- Shared targets -------------------------------------------------------
+  const [sharedTargets, setSharedTargets] = state.cell<Player[]>("sharedTargets", []);
+  const [playersLoaded, setPlayersLoaded] = state.cell("playersLoaded", false);
+  let offCatalog: (() => void) | undefined;
+  own(observe([servers], () => [servers.activeId(), servers.data()] as const, ([, dataStore]) => {
+      offCatalog?.();
+      offCatalog = undefined;
+      setSharedTargets([]);
+      setPlayersLoaded(false);
+      if (!dataStore) return;
+      offCatalog = dataStore.playerCatalog.watch((change) => {
+        // This component owns only the target selector. It ignores private-player changes.
+        const next = change.players.filter((player) => player.kind === "shared");
+        const current = sharedTargets();
+        if (next.length !== current.length || next.some((player, index) => player !== current[index])) {
+          setSharedTargets(next);
+        }
+        setPlayersLoaded(true);
+      });
+    }));
+  own(() => offCatalog?.());
+
+  // Auto-output a device this client owns, once, when it first appears (so the phone that
+  // shared "TodPhone" resumes playing its queue on load).
+  let autoSelected = false;
+  own(observe([state, servers], () => [satellitePlayerId(), sharedTargets(), owned()] as const, () => {
+    if (satelliteMode) {
+      const playerId = satellitePlayerId();
+      if (playerId && sharedTargets().some((player) => player.id === playerId)) {
+        setTarget(playerId);
+      }
+      return;
+    }
+    if (autoSelected) return;
+    const ids = sharedTargets().map((p) => p.id);
+    const mine = owned().find((id) => ids.includes(id));
+    if (mine) {
+      autoSelected = true;
+      setTarget(mine);
+    }
+  }));
+
+  // --- Remote (shared-target) state ----------------------------------------
+  let ownerPlaybackId: string | undefined;
+
+  function driveOwnerAudio(state: PlayerState): void {
+    if (!audio) return;
+    const idx = state.current_index ?? -1;
+    const item = idx >= 0 && idx < state.queue.length ? state.queue[idx] : undefined;
+    if (state.status === "playing" && item) {
+      if (state.playback_id !== ownerPlaybackId) {
+        ownerPlaybackId = state.playback_id;
+        const url = mediaUrl(item.track_id);
+        if (url) {
+          // Replacing src can emit pause for the old stream. That event does not describe the
+          // new server playback, so do not send it as a state transition.
+          suppressPauseReport = true;
+          warmMedia(url, item.duration_ms ?? 0, state.position_ms ?? 0);
+          const sameSource = audio.src === new URL(url, location.href).href && audio.readyState >= 1;
+          if (sameSource) audio.currentTime = (state.position_ms ?? 0) / 1000;
+          else audio.src = url;
+          queueMicrotask(() => {
+            suppressPauseReport = false;
+          });
+          const startMs = state.position_ms ?? 0;
+          if (startMs > 0 && !sameSource) {
+            const restorePosition = () => {
+              audio.currentTime = startMs / 1000;
+              audio.removeEventListener("loadedmetadata", restorePosition);
+            };
+            audio.addEventListener("loadedmetadata", restorePosition);
+          }
+          void applySatelliteSink()
+            .then(() => audio.play())
+            .catch(async (e) => {
+              // The server told this output to play and the browser refused. Say why on the
+              // satellite, and tell the server so other people see it too.
+              setBlocked(!(await probeAutoplay()));
+              setSnapshot((snapshot): PlaybackSnapshot => ({
+                ...snapshot,
+                status: "error",
+                error: `Enable browser audio and try again: ${String(e)}`,
+              }));
+            });
+        }
+      } else if (audio.paused) {
+        const requestedSeconds = (state.position_ms ?? 0) / 1000;
+        if (Math.abs(audio.currentTime - requestedSeconds) > 1) {
+          audio.currentTime = requestedSeconds;
+        }
+        void applySatelliteSink().then(() => audio.play()).catch(() => undefined);
+      }
+    } else if (state.status === "paused") {
+      audio.pause();
+    } else {
+      audio.pause();
+      ownerPlaybackId = undefined;
+    }
+  }
+
+  function applyRemote(t: string, state: PlayerState): void {
+    // One channel fans out every subscribed player's pushes; ignore states for other players
+    // (a stale server-side subscription from a previous target can still deliver here).
+    if (state.player_id !== t || target() !== t) return;
+    const currentState = remoteState();
+    if (currentState && state.revision < currentState.revision) return;
+    setRemoteState(state);
+    // Position updates must not recreate queue rows or discard keyboard focus.
+    if (!currentState || JSON.stringify(currentState.queue) !== JSON.stringify(state.queue)) {
+      setQueue(state.queue.map(qiToTrack));
+    }
+    setCurrentIndex(state.current_index ?? -1);
+    setRemoteVolume(state.volume);
+    const idx = state.current_index ?? -1;
+    const cur = idx >= 0 && idx < state.queue.length ? state.queue[idx] : undefined;
+    if (isOwned(t)) {
+      if (audio) audio.volume = state.volume / 100;
+      setSnapshot((current): PlaybackSnapshot => ({
+        ...current,
+        status: mapStatus(state.status),
+        positionMs: state.position_ms ?? current.positionMs,
+        durationMs: cur?.duration_ms,
+        error: state.error,
+      }));
+      driveOwnerAudio(state);
+    } else {
+      setSnapshot({
+        status: mapStatus(state.status),
+        positionMs: state.position_ms ?? 0,
+        durationMs: cur?.duration_ms,
+        decoderMissing: false,
+        error: state.error,
+      });
+    }
+  }
+
+  // Reconcile only the active target. The per-server state store owns the one wire decoder and
+  // reference-counts the server subscription across all interested components.
+  let unsub: (() => void) | undefined;
+  own(observe([state, servers], () => [target(), servers.data()] as const, ([t, dataStore]) => {
+      unsub?.();
+      unsub = undefined;
+      if (t === LOCAL_TARGET) return;
+      if (!dataStore) return;
+      try {
+        unsub = dataStore.playerStates.watch(t, (state) => applyRemote(t, state));
+      } catch (e) {
+        console.warn("[playback] subscribe failed", e);
+      }
+    }));
+  own(() => unsub?.());
+
+  let controlChain: Promise<PlayerState | undefined> = Promise.resolve(undefined);
+  let volumeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function control(command: PlayerCommand, t = target()): Promise<PlayerState | undefined> {
+    if (t === LOCAL_TARGET || t === "satellite-pending") return Promise.resolve(undefined);
+    controlChain = controlChain
+      .then(async () => {
+        const dataStore = servers.data();
+        if (!dataStore) return;
+        return dataStore.playerStates.control({ player_id: t, command });
+      })
+      .catch((e) => {
+        console.warn("[playback] control failed", e);
+        const message = e instanceof Error ? e.message : String(e);
+        toast.show(`Playback command failed: ${message}`);
+        return undefined;
+      });
+    return controlChain;
+  }
+
+  // Re-assert output ownership on every (re)connect: the server forgets device presence when a
+  // socket drops, so a client re-shares the devices it owns to make them live again and resume
+  // driving their audio. This is what "reconciles devices with what's actually connected".
+  own(observe([servers], () => [servers.activeId(), servers.active()?.state] as const,
+      ([, state]) => {
+        if (state !== "ready") return;
+        const a = servers.api();
+        if (!a) return;
+        for (const id of owned()) {
+          const suffix = suffixOf(id);
+          if (suffix) void a.player.enableShare({ suffix }).catch(() => undefined);
+        }
+      }));
+
+  async function releaseDevice(id: string): Promise<void> {
+    if (!isBrowserShareTarget(id) || !owned().includes(id)) return;
+    const a = servers.api();
+    if (a) {
+      try {
+        await a.player.disableShare({ player_id: id });
+      } catch (e) {
+        console.warn("[playback] release device failed", e);
+      }
+    }
+    unmarkOwned(id);
+    if (target() === id) setTarget(LOCAL_TARGET);
+  }
+
+  // --- Target switching -----------------------------------------------------
+  let savedLocal: { tracks: Track[]; index: number } | undefined;
+
+  function setTarget(id: string): void {
+    id = resolveOutputTarget(id, sharedTargets(), owned());
+    if (satelliteMode && id !== satellitePlayerId()) return;
+    const prev = target();
+    if (prev === id) return;
+    setUndoState(undefined);
+    if (prev === LOCAL_TARGET && id !== LOCAL_TARGET) {
+      savedLocal = { tracks: queue.slice(), index: currentIndex() };
+      audio?.pause();
+      ownerPlaybackId = undefined;
+    }
+    setTargetSignal(id);
+    if (id === LOCAL_TARGET) {
+      ownerPlaybackId = undefined;
+      if (audio) audio.volume = localVolume() / 100;
+      if (savedLocal) {
+        setQueue(savedLocal.tracks);
+        setCurrentIndex(savedLocal.index);
+      }
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "paused" }));
+    } else {
+      // Do not show the previous target's queue while the subscription changes. Fetch an
+      // explicit snapshot as well, so target switching does not depend on channel timing.
+      setQueue([]);
+      setRemoteState(undefined);
+      setCurrentIndex(-1);
+      setSnapshot({ status: "idle", positionMs: 0, decoderMissing: false });
+      const dataStore = servers.data();
+      if (dataStore) {
+        void dataStore.playerStates
+          .fetch(id)
+          .catch((error) => console.warn("[playback] target state failed", error));
+      }
+    }
+  }
+
+  own(observe([state], () => [target(), playersLoaded(), sharedTargets()] as const, () => {
+    const t = target();
+    if (t === LOCAL_TARGET || t === "satellite-pending") return;
+    if (!playersLoaded()) return;
+    if (sharedTargets().some((p) => p.id === t)) return;
+    if (satelliteMode) return;
+
+    const remoteQueue = queue.slice();
+    const remoteIndex = currentIndex();
+    const localQueue = savedLocal?.tracks ?? [];
+    if (localQueue.length === 0) {
+      savedLocal = { tracks: remoteQueue, index: remoteIndex };
+    } else {
+      toast.show("Target device has left");
+    }
+    setTarget(LOCAL_TARGET);
+    audio?.pause();
+    setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "paused" }));
+  }));
+
+  const current = () => {
+    const i = currentIndex();
+    return i >= 0 && i < queue.length ? queue[i] : undefined;
+  };
+
+  const setPref = (p: StreamPref) => {
+    setPrefSignal(p);
+    try {
+      localStorage.setItem(PREF_KEY, JSON.stringify(p));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  function cycleRepeatMode(): void {
+    if (!isLocal()) {
+      const current = repeatMode();
+      const next = current === "off" ? "all" : current === "all" ? "one" : "off";
+      void control({ op: "set-repeat", repeat_mode: next });
+      return;
+    }
+    setLocalRepeatMode((current) => {
+      const next = current === "off" ? "all" : current === "all" ? "one" : "off";
+      try {
+        localStorage.setItem(REPEAT_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  function toggleShuffle(): void {
+    if (!isLocal()) {
+      void control({ op: "set-shuffle", shuffle: !shuffle() });
+      return;
+    }
+    setLocalShuffle((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(SHUFFLE_KEY, String(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
+
+  function randomQueueIndex(): number {
+    if (queue.length <= 1) return currentIndex();
+    const current = currentIndex();
+    const candidate = Math.floor(Math.random() * (queue.length - 1));
+    return candidate >= current ? candidate + 1 : candidate;
+  }
+
+  // --- Local playback -------------------------------------------------------
+  async function openIndex(index: number, startMs = 0): Promise<void> {
+    const track = queue[index];
+    if (!track || !audio) return;
+    setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: startMs }));
+    setCurrentIndex(index);
+    const url = mediaUrl(track.id);
+    if (!url) return;
+    warmMedia(url, track.duration_ms ?? 0, startMs);
+    audio.src = url;
+    if (startMs > 0) {
+      const seek = () => {
+        audio.currentTime = startMs / 1000;
+        audio.removeEventListener("loadedmetadata", seek);
+      };
+      audio.addEventListener("loadedmetadata", seek);
+    }
+    try {
+      await audio.play();
+    } catch (e) {
+      setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "error", error: String(e) }));
+    }
+  }
+
+  async function enableOutputAudio(): Promise<void> {
+    if (!audio) throw new Error("Browser audio is unavailable");
+    try {
+      await applySatelliteSink();
+      const AudioContextClass = globalThis.AudioContext;
+      if (AudioContextClass) {
+        const context = new AudioContextClass();
+        await context.resume();
+        await context.close();
+      }
+      setOutputAudioReady(true);
+      setBlocked(false);
+      // Start whatever the server asked for while the page was still blocked.
+      if (audio.currentSrc && audio.paused) await audio.play();
+    } catch (cause) {
+      // Ask the browser what the real state is rather than reading it out of the failure:
+      // a rejected play() can also mean a bad sink or a media error.
+      setBlocked(!(await probeAutoplay()));
+      throw cause;
+    }
+  }
+
+  // --- Satellite autoplay unlock (§6.4) --------------------------------------
+  // A satellite plays what somebody else queued, so the browser must already trust this page
+  // by the time a directive arrives. Probe once on load, take the FIRST gesture anywhere on
+  // the page as the unlock (no particular button needed), and keep the server informed so
+  // controllers can warn instead of playing into silence.
+  if (satelliteMode) {
+    void probeAutoplay().then((allowed) => {
+      if (allowed) setOutputAudioReady(true);
+      setBlocked(!allowed);
+    });
+    own(
+      onFirstGesture(() => {
+        void enableOutputAudio().catch((error) => console.warn("[playback] unlock failed", error));
+      }),
+    );
+    // The first report can only leave once the socket is up and the satellite knows its own
+    // player id. This also re-reports after a reconnect, where registration clears the
+    // server's previous view. `on` keeps the effect off the position/status signals that
+    // reportAudioBlocked reads, which would otherwise re-fire it every second.
+    own(observe([servers],
+        () => [Boolean(servers.api()), satellitePlayerId()] as const,
+        ([hasApi, playerId]) => {
+          if (hasApi && playerId) reportAudioBlocked();
+        }));
+  }
+
+  async function playNow(tracks: Track[], startIndex = 0, startMs = 0): Promise<void> {
+    rememberQueue();
+    if (isLocal()) {
+      setQueue(tracks.slice());
+      if (tracks.length) await openIndex(startIndex, startMs);
+    } else {
+      if (!tracks.length) return;
+      await control({
+        op: "replace-and-play",
+        track_ids: tracks.map((track) => track.id),
+        start_index: startIndex,
+        position_ms: startMs,
+      });
+    }
+  }
+
+  function enqueue(tracks: Track[]): void {
+    if (!tracks.length) return;
+    rememberQueue();
+    if (isLocal()) {
+      const plan = appendTracks(queue, currentIndex(), tracks);
+      setQueue(plan.tracks);
+      setCurrentIndex(plan.currentIndex);
+    } else {
+      void control({ op: "enqueue", track_ids: tracks.map((t) => t.id) });
+    }
+  }
+
+  function playNext(track: Track): void {
+    rememberQueue();
+    if (isLocal()) {
+      const plan = insertTrackNext(queue, currentIndex(), track);
+      setQueue(plan.tracks);
+      setCurrentIndex(plan.currentIndex);
+    } else {
+      void control({ op: "enqueue-next", track_ids: [track.id] });
+    }
+  }
+
+  async function playIndex(index: number): Promise<void> {
+    if (isLocal()) await openIndex(index);
+    else {
+      const item = remoteState()?.queue[index];
+      if (item) await control({ op: "play", queue_item_id: item.queue_item_id });
+    }
+  }
+
+  function togglePlay(): void {
+    if (!isLocal()) {
+      void control(snapshot().status === "playing" ? { op: "pause" } : { op: "play" });
+      return;
+    }
+    if (!audio) return;
+    if (!audio.paused) audio.pause();
+    else if (audio.currentSrc) void audio.play().catch(error => {
+      setSnapshot(s => ({ ...s, status: "error", error: String(error) }));
+    });
+    else if (current()) void openIndex(currentIndex());
+  }
+
+  async function next(): Promise<void> {
+    if (!queue.length) return;
+    if (!isLocal()) {
+      await control({ op: "next" });
+      return;
+    }
+    if (shuffle() && queue.length > 1) {
+      await playIndex(randomQueueIndex());
+      return;
+    }
+    const i = currentIndex();
+    if (i + 1 < queue.length) {
+      await playIndex(i + 1);
+    } else if (repeatMode() === "all") {
+      await playIndex(0);
+    } else if (isLocal()) {
+      stopLocalPlayback();
+    }
+  }
+
+  async function advanceAfterEnd(): Promise<void> {
+    if (repeatMode() === "one" && currentIndex() >= 0) {
+      await playIndex(currentIndex());
+      return;
+    }
+    await next();
+  }
+
+  own(observe([state], () => [snapshot().status] as const, ([status], previous) => {
+    if (isLocal() && status === "ended" && previous?.[0] !== "ended") void advanceAfterEnd();
+  }));
+
+  async function previous(): Promise<void> {
+    if (!isLocal()) {
+      await control({ op: "previous" });
+      return;
+    }
+    if (snapshot().positionMs > 3000 && audio) {
+      audio.currentTime = 0;
+      return;
+    }
+    const i = currentIndex();
+    if (i > 0) await openIndex(i - 1);
+    else if (audio) audio.currentTime = 0;
+  }
+
+  function seek(ms: number): void {
+    if (audio?.src) warmMedia(audio.src, (audio.duration || 0) * 1000, ms);
+    if (isLocal()) {
+      if (audio) audio.currentTime = ms / 1000;
+    } else {
+      if (audio && isOwned(target())) audio.currentTime = ms / 1000;
+      void control({ op: "seek", position_ms: ms });
+    }
+  }
+
+  function setVolume(value: number): void {
+    const change = planVolumeChange(target(), value);
+    if (change.mediaVolume !== undefined) {
+      setLocalVolume(change.volume);
+      if (audio) audio.volume = change.mediaVolume;
+      try {
+        localStorage.setItem(VOLUME_KEY, String(change.volume));
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    setRemoteVolume(change.volume);
+    if (audio && isOwned(target())) audio.volume = change.volume / 100;
+    if (volumeTimer !== undefined) clearTimeout(volumeTimer);
+    const volumeTarget = target();
+    const command = change.command;
+    if (command) {
+      volumeTimer = setTimeout(() => {
+        volumeTimer = undefined;
+        void control(command, volumeTarget);
+      }, 50);
+    }
+  }
+
+  function stopLocalPlayback(): void {
+    if (audio) {
+      audio.pause();
+      warmMedia(undefined);
+      audio.removeAttribute("src");
+      audio.load();
+    }
+    setCurrentIndex(-1);
+    setSnapshot((s): PlaybackSnapshot => ({ ...s, status: "idle", positionMs: 0, durationMs: undefined, error: undefined }));
+  }
+
+  function clearQueue(): void {
+    if (!queue.length) return;
+    rememberQueue();
+    if (!isLocal()) {
+      void control({ op: "clear" });
+      return;
+    }
+    stopLocalPlayback();
+    setQueue([]);
+  }
+
+  async function saveQueueAsPlaylist(name: string): Promise<void> {
+    requireTermsForPlaylist();
+    const base = mediaBase();
+    if (!base) throw new Error("Connect a server first.");
+    const session = servers.active()?.session;
+    const visibility = session && session.role !== "guest" ? "private" : "public";
+    const res = await fetch(`${base}/api/playlists/from-queue`, {
+      method: "POST",
+      signal: AbortSignal.timeout(15_000),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name,
+        visibility,
+        track_ids: queue.map((track) => track.id),
+      }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    toast.show("Queue saved as playlist");
+  }
+
+  function removeAt(index: number): void {
+    if (index < 0 || index >= queue.length) return;
+    rememberQueue();
+    if (!isLocal()) {
+      const item = remoteState()?.queue[index];
+      if (item) void control({ op: "remove-item", queue_item_id: item.queue_item_id });
+      return;
+    }
+    const cur = currentIndex();
+    const wasCurrent = index === cur;
+    const wasPlaying = snapshot().status === "playing";
+    const beforeLen = queue.length;
+    setQueue((q) => q.filter((_, i) => i !== index));
+    if (wasCurrent) {
+      if (beforeLen <= 1) {
+        stopLocalPlayback();
+        setQueue([]);
+      }
+      else if (wasPlaying) void openIndex(Math.min(index, beforeLen - 2));
+      else {
+        stopLocalPlayback();
+        setCurrentIndex(Math.min(index, beforeLen - 2));
+      }
+    } else if (index < cur) {
+      setCurrentIndex(cur - 1);
+    }
+  }
+
+  function move(from: number, to: number): void {
+    if (from === to || from < 0 || from >= queue.length || to < 0 || to >= queue.length) return;
+    rememberQueue();
+    if (!isLocal()) {
+      const items = remoteState()?.queue;
+      const item = items?.[from];
+      if (item && items) {
+        const remaining = items.filter((candidate) => candidate.queue_item_id !== item.queue_item_id);
+        void control({
+          op: "move-item",
+          queue_item_id: item.queue_item_id,
+          before_queue_item_id: remaining[to]?.queue_item_id,
+        });
+      }
+      return;
+    }
+    const cur = currentIndex();
+    setQueue((q) => {
+      const arr = [...q];
+      const [item] = arr.splice(from, 1);
+      if (item) arr.splice(to, 0, item);
+      return arr;
+    });
+    if (from === cur) setCurrentIndex(to);
+    else if (from < cur && to >= cur) setCurrentIndex(cur - 1);
+    else if (from > cur && to <= cur) setCurrentIndex(cur + 1);
+  }
+
+  function rememberQueue(): void {
+    if (isLocal()) {
+      setUndoState({
+        serverId: servers.activeId(),
+        target: target(),
+        tracks: queue.slice(),
+        index: currentIndex(),
+        snapshot: { ...snapshot() },
+      });
+    }
+    toast.show(t("queue.changed"), { label: t("queue.undo"), run: () => void undoQueue() });
+  }
+
+  const canUndoQueue = () => isLocal()
+    ? undoState()?.target === target() && undoState()?.serverId === servers.activeId()
+    : remoteState()?.can_undo ?? false;
+
+  async function undoQueue(): Promise<void> {
+    if (!isLocal()) {
+      if (remoteState()?.can_undo) await control({ op: "undo" });
+      return;
+    }
+    const saved = undoState();
+    if (!saved || saved.target !== target() || saved.serverId !== servers.activeId()) return;
+    setUndoState(undefined);
+
+    audio?.pause();
+    audio?.removeAttribute("src");
+    audio?.load();
+    setQueue(saved.tracks);
+    setCurrentIndex(saved.index);
+    setSnapshot(saved.snapshot);
+    const track = saved.tracks[saved.index];
+    const url = track ? mediaUrl(track.id) : undefined;
+    if (!audio || !url) return;
+    audio.src = url;
+    if (saved.snapshot.positionMs > 0) {
+      const restorePosition = () => {
+        audio.currentTime = saved.snapshot.positionMs / 1000;
+        audio.removeEventListener("loadedmetadata", restorePosition);
+      };
+      audio.addEventListener("loadedmetadata", restorePosition);
+    }
+    if (saved.snapshot.status === "playing") await audio.play();
+  }
+
+  own(() => {
+    if (volumeTimer !== undefined) clearTimeout(volumeTimer);
+    audio?.pause();
+  });
+
+  const value: PlaybackContextValue = {
+    snapshot,
+    get queue() { return queue; },
+    subscribe: listener => state.subscribe(listener),
+    dispose: () => removals.splice(0).forEach(remove => remove()),
+    currentIndex,
+    current,
+    pref,
+    setPref,
+    playNow,
+    enqueue,
+    playNext,
+    playIndex,
+    togglePlay,
+    next,
+    previous,
+    seek,
+    volume,
+    setVolume,
+    clearQueue,
+    canUndoQueue,
+    undoQueue,
+    removeAt,
+    move,
+    saveQueueAsPlaylist,
+    target,
+    setTarget,
+    sharedTargets,
+    owned,
+    markOwned,
+    releaseDevice,
+    enableOutputAudio,
+    outputAudioReady,
+    audioBlocked,
+    repeatMode,
+    cycleRepeatMode,
+    shuffle,
+    toggleShuffle,
+  };
+
+  return value;
+}
+
+let instance: PlaybackContextValue | undefined;
+export function usePlayback(): PlaybackContextValue { return instance ??= createPlayback(); }

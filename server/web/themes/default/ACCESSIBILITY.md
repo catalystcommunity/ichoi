@@ -1,80 +1,41 @@
-# Accessibility — Ichoi default theme
+# Default theme access checks
 
-Accessibility is a first-commit requirement (DESIGN §11), not a later pass. This
-theme targets **WCAG 2.1 AA** and is verified manually on **Firefox** (the
-project's first-class browser). The same i18n and a11y primitives are available to
-third-party themes.
+The Zest theme uses a primary navigation landmark, a main content region, and a
+persistent playback region. A skip link moves to the main region. Each page has
+a heading. Loading and connection messages use status roles. Request errors use
+an alert role and include a Retry control.
 
-## Structure & semantics
+## Keyboard controls
 
-- **Landmarks.** One `<nav aria-label="Primary">` rail, one `<main id="main-content">`,
-  one `<footer>` transport. A **skip link** (`.skip-link`) is the first focusable
-  element and jumps to `#main-content`.
-- **Headings.** Each screen opens with a single `<h1>`; sections use `<h2>` tied to
-  their region via `aria-labelledby`.
-- **Lists.** Album grids, track lists, and the server switcher are real `<ul>/<li>`
-  with `role="list"` (preserved even where CSS removes bullets).
-- **Native controls.** Everything actionable is a `<button>`, `<a>`, `<input>`, or
-  `<select>` — no click-only `<div>`s — so keyboard and AT semantics come for free.
+Links, native inputs, and Zest controls support keyboard use. The active route
+has `aria-current="page"`. Sliders have labels. Ctrl+K or Command+K opens search.
+Escape closes the queue. Zest dialogs manage focus while open.
 
-## Keyboard
+Track rows use the Zest ListView. Queue actions have labels that include the
+track name. Move up, Move down, Remove, and Undo do not need a drag operation.
+Nested action keys stop at the action group. This works around a Zest ListView
+issue that otherwise takes Space from a button. The upstream request is in
+`../zest/component-bugs.md`, relative to the Ichoi repository.
 
-- Every interactive element is reachable and operable by keyboard; tab order
-  follows source order (rail → main → transport).
-- Track rows, album tiles, and jukebox transport are buttons: **Enter/Space**
-  activate them.
-- **Sliders** (scrubber, volume) are `<input type="range">` — arrow keys adjust.
-- The **modal dialog** (`Dialog.tsx`) moves focus inside on open, restores it to
-  the trigger on close, closes on **Escape**, and closes on backdrop click. It is
-  `role="dialog" aria-modal="true"` and labelled by its heading.
+The player and device selector remain visible during navigation and queue edits.
+A More dialog exposes controls that do not fit on narrow screens. Playback
+position updates do not replace unchanged queue rows.
 
-## Focus visibility
+## Appearance
 
-- `:focus-visible` draws a 2px signal-cyan outline with offset on every focusable
-  element. Focus styling is never removed — only refined.
+The theme supports system, light, and dark modes. Focus has a visible outline.
+Status text accompanies state colors. Reduced-motion settings disable animation
+and transitions. Cover placeholders show the item title when no image is present.
+The responsive layout keeps the player below the main scroll area.
 
-## ARIA
+## Current limits
 
-- Icons are `aria-hidden` and decorative; every icon-only button carries an
-  `aria-label` (localized).
-- The nav uses the router's `aria-current="page"` on the active link (also the
-  styling hook, so the visual and programmatic "current" never diverge).
-- Live connection status uses a text label alongside the color dot, so state is
-  never conveyed by color alone. Segmented/toggle controls expose
-  `aria-pressed` / `aria-checked`; the theme picker is a `role="radiogroup"`.
-- `Spinner` is `role="status" aria-live="polite"`.
+The interface is English. A complete screen-reader audit and an automated
+contrast audit have not been completed for the new theme. Browser checks cover
+390-pixel mobile layout, catalog errors, retry, search retention, and queue edits.
+These checks are not a WCAG certification.
 
-## Color & contrast
+## Next Actions
 
-- Body and UI text meet AA contrast in both themes. Status is always paired with
-  text — the amber "on air" lamp is accompanied by an "On air / Idle" label, and
-  lossless/role badges carry text, not just hue.
-
-## Motion
-
-- `prefers-reduced-motion: reduce` collapses all animation and transition
-  durations to ~0 and **freezes the signal meter** at a static level. The meter,
-  connection pulse, and hover lifts are the only motion, and all are gated.
-
-## Theme & appearance
-
-- `prefers-color-scheme` is honored by default; the user's explicit choice (and
-  the server's `theme` setting) override it via `<html data-theme>`, which wins in
-  both directions so there is no flash of the wrong theme.
-- `color-scheme` is declared so native form controls and scrollbars match.
-
-## Internationalization
-
-- All user-facing strings resolve through the i18n layer (`t("…")`); there are no
-  hard-coded English strings in components. `<html lang>` is updated on locale
-  change. Layout uses logical, wrap-friendly flex/grid so translated strings that
-  run longer do not clip.
-
-## Known gaps / follow-ups
-
-- Drag-to-reorder the queue is not implemented; reordering is keyboard-first once
-  added (the CSIL `reorder` command exists).
-- A roving-tabindex enhancement for very long track lists would reduce tab stops;
-  today every row is individually tabbable.
-- Automated axe/Lighthouse runs and Firefox screen-reader passes should be wired
-  into CI alongside the playwright-mcp check named in DESIGN §11.
+Check keyboard navigation, dialogs, and virtual lists with a screen reader on
+Firefox before release. Check long titles and large text on physical phones.

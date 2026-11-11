@@ -2,74 +2,101 @@ package community.catalyst.ichoi.ui
 
 import android.content.Context
 import android.content.Intent
-import community.catalyst.ichoi.R
+import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import community.catalyst.ichoi.R
 import community.catalyst.ichoi.playback.PlaybackService
 import community.catalyst.ichoi.playback.PlaybackStatus
+import community.catalyst.ichoi.playback.PlaybackQueue
+import community.catalyst.ichoi.playback.RemotePlayback
+import community.catalyst.csilgen.generated.PlayerStatus
 
 class PlaybackControls(context: Context) : LinearLayout(context) {
     var openQueue: (() -> Unit)? = null
-    private val title = TextView(context)
-    private val time = TextView(context)
+    var chooseTarget: (() -> Unit)? = null
+    private val title = TextView(context).apply { textSize = 15f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setTypeface(typeface, android.graphics.Typeface.BOLD) }
+    private val time = TextView(context).apply { textSize = 11f }
     private var seeking = false
     private val seek = SeekBar(context).apply { contentDescription = "Playback position" }
-    private val toggle = Button(context).apply {
-        setOnClickListener {
-            command(if (PlaybackStatus.current.phase == PlaybackStatus.Phase.PLAYING) PlaybackService.ACTION_PAUSE else PlaybackService.ACTION_RESUME)
-        }
+    private val target = control("This phone") { chooseTarget?.invoke() }
+    private val toggle = control("Play") {
+        if (RemotePlayback.target != null) RemotePlayback.toggle()
+        else if (PlaybackStatus.current.phase == PlaybackStatus.Phase.STOPPED) PlaybackQueue.play(context, 0)
+        else command(if (PlaybackStatus.current.phase == PlaybackStatus.Phase.PLAYING) PlaybackService.ACTION_PAUSE else PlaybackService.ACTION_RESUME)
     }
-    private val listener: (PlaybackStatus.State) -> Unit = { state ->
-        visibility = if (state.phase == PlaybackStatus.Phase.STOPPED) GONE else VISIBLE
-        time.setTextColor(context.getColor(if (state.phase == PlaybackStatus.Phase.PLAYING) R.color.ichoi_signal else R.color.ichoi_muted))
-        title.text = "${state.title}\n${state.server}"
-        time.text = if (state.phase == PlaybackStatus.Phase.LOADING) "Loading…" else "${formatTime(state.positionMs)} / ${formatTime(state.durationMs)}"
-        toggle.text = if (state.phase == PlaybackStatus.Phase.PAUSED) "Resume" else "Pause"
-        toggle.isEnabled = state.phase == PlaybackStatus.Phase.PLAYING || state.phase == PlaybackStatus.Phase.PAUSED
-        seek.isEnabled = toggle.isEnabled && state.durationMs > 0
-        if (!seeking) { seek.max = state.durationMs; seek.progress = state.positionMs }
+    private val listener: (PlaybackStatus.State) -> Unit = { render() }
+    private val remoteListener: () -> Unit = { render() }
+    private fun control(label: String, action: () -> Unit) = Button(context).apply {
+        text = label; isAllCaps = false; textSize = 13f; minWidth = 0; minimumWidth = 0
+        setPadding(8, 0, 8, 0); setOnClickListener { action() }
     }
-
     init {
         orientation = VERTICAL
         setBackgroundColor(context.getColor(R.color.ichoi_surface))
         title.setTextColor(context.getColor(R.color.ichoi_text))
-        toggle.isAllCaps = false
+        time.setTextColor(context.getColor(R.color.ichoi_muted))
         val padding = (12 * resources.displayMetrics.density).toInt()
-        setPadding(padding, 0, padding, padding)
-        addView(title)
-        addView(time)
-        addView(seek)
+        setPadding(padding, padding / 2, padding, padding / 2)
         addView(LinearLayout(context).apply {
-            addView(Button(context).apply { text = "Queue"; isAllCaps = false; setOnClickListener { openQueue?.invoke() } }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(toggle, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
-            addView(Button(context).apply {
-                text = "Stop"
-                setOnClickListener { command(PlaybackService.ACTION_STOP) }
-            }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+            gravity = Gravity.CENTER_VERTICAL
+            addView(title, LayoutParams(0, -2, 1f))
+            addView(toggle, LayoutParams(-2, dp(44)))
+            addView(control("Next") {
+                if (RemotePlayback.target != null) RemotePlayback.next()
+                else PlaybackQueue.completed(context)
+            }, LayoutParams(-2, dp(44)))
+        })
+        addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(time, LayoutParams(-2, -2))
+            addView(seek, LayoutParams(0, dp(30), 1f))
+        })
+        addView(LinearLayout(context).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            addView(target, LayoutParams(0, dp(44), 1f))
+            addView(control("Queue") { openQueue?.invoke() }, LayoutParams(-2, dp(44)))
+            addView(control("Stop") {
+                if (RemotePlayback.target != null) RemotePlayback.command(community.catalyst.csilgen.generated.PlayerCommandVariant9(community.catalyst.csilgen.generated.CmdPause("pause")))
+                else command(PlaybackService.ACTION_STOP)
+            }, LayoutParams(-2, dp(44)))
         })
         seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(bar: SeekBar) { seeking = true }
             override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {}
             override fun onStopTrackingTouch(bar: SeekBar) {
                 seeking = false
-                command(PlaybackService.ACTION_SEEK, bar.progress)
+                if (RemotePlayback.target != null) RemotePlayback.seek(bar.progress) else command(PlaybackService.ACTION_SEEK, bar.progress)
             }
         })
-        visibility = GONE
+        render()
     }
-
-    fun start() { PlaybackStatus.observe(listener) }
-    fun stop() { PlaybackStatus.removeObserver(listener) }
-
+    private fun render() {
+        val remote = RemotePlayback.target
+        val state = PlaybackStatus.current
+        val remoteState = RemotePlayback.state
+        val item = remoteState?.queue?.getOrNull(remoteState.currentIndex?.toInt() ?: -1)
+        val playing = if (remote != null) remoteState?.status == PlayerStatus.Playing else state.phase == PlaybackStatus.Phase.PLAYING
+        val position = if (remote != null) (remoteState?.positionMs ?: 0uL).coerceAtMost(Int.MAX_VALUE.toULong()).toInt() else state.positionMs
+        val duration = if (remote != null) (item?.durationMs ?: 0uL).coerceAtMost(Int.MAX_VALUE.toULong()).toInt() else state.durationMs
+        visibility = VISIBLE
+        title.text = if (remote != null) item?.title ?: "Ready on ${remote.name}" else state.title.ifBlank { "Ready when you are" }
+        target.text = "Playing on · ${remote?.name ?: "This phone"} ▾"
+        target.contentDescription = "Playback device: ${remote?.name ?: "This phone"}. Change device"
+        time.text = RemotePlayback.error?.takeIf { remote != null } ?: if (state.phase == PlaybackStatus.Phase.LOADING && remote == null) "Loading…" else "${formatTime(position)} / ${formatTime(duration)}"
+        toggle.text = if (playing) "Pause" else "Play"
+        toggle.isEnabled = if (remote != null) remoteState != null else state.phase != PlaybackStatus.Phase.LOADING
+        seek.isEnabled = duration > 0
+        if (!seeking) { seek.max = duration; seek.progress = position }
+    }
+    fun start() { PlaybackStatus.observe(listener); RemotePlayback.observe(remoteListener) }
+    fun stop() { PlaybackStatus.removeObserver(listener); RemotePlayback.removeObserver(remoteListener) }
     private fun command(action: String, position: Int = 0) {
-        try {
-            context.startService(Intent(context, PlaybackService::class.java).setAction(action)
-                .putExtra(PlaybackService.EXTRA_POSITION, position))
-        } catch (_: Exception) { AppMessages.show("The playback control could not be applied. Try again.") }
+        try { context.startService(Intent(context, PlaybackService::class.java).setAction(action).putExtra(PlaybackService.EXTRA_POSITION, position)) }
+        catch (_: Exception) { AppMessages.show("The playback control could not be applied. Try again.") }
     }
-
+    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun formatTime(ms: Int): String = "${ms / 60_000}:${(ms / 1000 % 60).toString().padStart(2, '0')}"
 }

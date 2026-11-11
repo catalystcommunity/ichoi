@@ -58,6 +58,7 @@ pub fn test_config() -> Config {
         zero_account_guest_access: true,
         trusted_proxy_cidrs: vec![],
         session_lifetime_hours: 720,
+        artwork_cache_mb: 200,
     }
 }
 

@@ -203,6 +203,15 @@ fn embedded_front_competes_on_quality_with_local_images_and_selected_candidate_c
             .code,
         404
     );
+    // Warm this exact thumbnail key before replacing the source file.
+    app.get_artwork_candidate(
+        &common::ctx_anon(),
+        ArtworkCandidateRequest {
+            candidate_id: back.id.clone(),
+            ..request()
+        },
+    )
+    .unwrap();
     image(&folder.join("Back.png"), 700, 700, 8);
     assert_eq!(
         app.get_artwork_candidate(

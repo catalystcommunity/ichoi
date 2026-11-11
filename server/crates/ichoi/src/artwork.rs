@@ -1,15 +1,168 @@
 //! Artwork storage and bounded image decoding. Manual choices take precedence over scans.
+use sha2::{Digest, Sha256};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{Cursor, Read};
 use std::path::Path;
+use std::sync::{mpsc, OnceLock};
+use std::time::{Duration, Instant};
 
 use diesel::prelude::*;
 use diesel::sql_types::{Binary, Nullable, Text};
 use image::{ImageFormat, ImageReader, Limits};
-use libichoi::csil::types::{ArtworkKind, CoverArt};
+use libichoi::csil::types::{ArtworkKind, CoverArt, ServiceError};
 
 use crate::db::store;
 
 pub const MAX_UPLOAD: usize = 8 * 1024 * 1024;
+
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+const QUEUE_CAPACITY: usize = 32;
+type Job = Box<dyn FnOnce() + Send>;
+
+/// One worker per application. The cache lives only on this thread.
+pub struct ArtworkWorker {
+    cache_bytes: usize,
+    sender: OnceLock<Result<mpsc::SyncSender<Job>, String>>,
+}
+
+impl ArtworkWorker {
+    pub fn new(cache_bytes: usize) -> Self {
+        Self {
+            cache_bytes,
+            sender: OnceLock::new(),
+        }
+    }
+
+    fn sender(&self) -> Result<&mpsc::SyncSender<Job>, ServiceError> {
+        self.sender
+            .get_or_init(|| {
+                let (sender, receiver) = mpsc::sync_channel::<Job>(QUEUE_CAPACITY);
+                let cache_bytes = self.cache_bytes;
+                std::thread::Builder::new()
+                    .name("ichoi-artwork".into())
+                    .spawn(move || {
+                        THUMBNAILS.with(|cache| {
+                            *cache.borrow_mut() = Some(ThumbnailCache::new(cache_bytes))
+                        });
+                        while let Ok(job) = receiver.recv() {
+                            job();
+                        }
+                    })
+                    .map_err(|error| error.to_string())?;
+                Ok(sender)
+            })
+            .as_ref()
+            .map_err(|_| worker_error(503, "Artwork worker is unavailable. Try again."))
+    }
+
+    pub fn run<T: Send + 'static>(
+        &self,
+        work: impl FnOnce() -> Result<T, ServiceError> + Send + 'static,
+    ) -> Result<T, ServiceError> {
+        self.run_with_timeout(REQUEST_TIMEOUT, work)
+    }
+
+    fn run_with_timeout<T: Send + 'static>(
+        &self,
+        timeout: Duration,
+        work: impl FnOnce() -> Result<T, ServiceError> + Send + 'static,
+    ) -> Result<T, ServiceError> {
+        let (reply, result) = mpsc::sync_channel(1);
+        let deadline = Instant::now() + timeout;
+        self.sender()?
+            .try_send(Box::new(move || {
+                // Do not perform work for a request that expired while queued.
+                if Instant::now() >= deadline {
+                    return;
+                }
+                let value = std::panic::catch_unwind(std::panic::AssertUnwindSafe(work))
+                    .unwrap_or_else(|_| {
+                        Err(worker_error(500, "Artwork processing failed. Try again."))
+                    });
+                let _ = reply.send(value);
+            }))
+            .map_err(|_| worker_error(503, "Artwork queue is busy. Try again."))?;
+        result
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .map_err(|_| worker_error(504, "Artwork request timed out. Try again."))?
+    }
+}
+
+fn worker_error(code: i64, message: &str) -> ServiceError {
+    ServiceError {
+        code,
+        message: message.into(),
+    }
+}
+
+struct ThumbnailCache {
+    entries: HashMap<String, (CoverArt, u64, usize)>,
+    recency: BTreeMap<u64, String>,
+    clock: u64,
+    bytes: usize,
+    limit: usize,
+}
+impl ThumbnailCache {
+    fn new(limit: usize) -> Self {
+        Self {
+            entries: HashMap::new(),
+            recency: BTreeMap::new(),
+            clock: 0,
+            bytes: 0,
+            limit,
+        }
+    }
+    fn get(&mut self, key: &str) -> Option<CoverArt> {
+        let (art, stamp, _) = self.entries.get_mut(key)?;
+        self.recency.remove(stamp);
+        self.clock += 1;
+        *stamp = self.clock;
+        self.recency.insert(*stamp, key.into());
+        Some(art.clone())
+    }
+    fn insert(&mut self, key: String, art: &CoverArt) {
+        // Charge image bytes, MIME text, and both retained copies of the key.
+        let cost = art
+            .data
+            .len()
+            .saturating_add(art.content_type.len())
+            .saturating_add(key.len().saturating_mul(2));
+        if self.limit == 0 || cost > self.limit {
+            return;
+        }
+        if let Some((_, stamp, cost)) = self.entries.remove(&key) {
+            self.recency.remove(&stamp);
+            self.bytes -= cost;
+        }
+        while self.bytes > self.limit - cost {
+            let Some((_, oldest)) = self.recency.pop_first() else {
+                break;
+            };
+            if let Some((_, _, cost)) = self.entries.remove(&oldest) {
+                self.bytes -= cost;
+            }
+        }
+        self.clock += 1;
+        self.bytes += cost;
+        self.recency.insert(self.clock, key.clone());
+        self.entries.insert(key, (art.clone(), self.clock, cost));
+    }
+}
+thread_local! {
+    // Scans and uploads outside the worker do not create additional caches.
+    static THUMBNAILS: RefCell<Option<ThumbnailCache>> = const { RefCell::new(None) };
+}
+pub(crate) fn cached_thumbnail(key: &str) -> Option<CoverArt> {
+    THUMBNAILS.with(|cache| cache.borrow_mut().as_mut()?.get(key))
+}
+pub(crate) fn cache_thumbnail(key: String, art: &CoverArt) {
+    THUMBNAILS.with(|cache| {
+        if let Some(cache) = cache.borrow_mut().as_mut() {
+            cache.insert(key, art);
+        }
+    });
+}
 
 pub fn kind_name(kind: &ArtworkKind) -> &'static str {
     match kind {
@@ -89,15 +242,21 @@ pub fn normalize(bytes: &[u8], max_size: u64) -> anyhow::Result<CoverArt> {
         !bytes.is_empty() && bytes.len() <= MAX_UPLOAD,
         "Choose an image no larger than 8 MB."
     );
-    let decoded = decode(bytes)?;
     let size = max_size.clamp(32, 1600) as u32;
+    let key = format!("image:{size}:{:x}", Sha256::digest(bytes));
+    if let Some(art) = cached_thumbnail(&key) {
+        return Ok(art);
+    }
+    let decoded = decode(bytes)?;
     let thumbnail = decoded.thumbnail(size, size).to_rgb8();
     let mut data = Vec::new();
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut data, 88).encode_image(&thumbnail)?;
-    Ok(CoverArt {
+    let art = CoverArt {
         content_type: "image/jpeg".into(),
         data,
-    })
+    };
+    cache_thumbnail(key, &art);
+    Ok(art)
 }
 
 pub(crate) fn decode(bytes: &[u8]) -> anyhow::Result<image::DynamicImage> {
@@ -230,4 +389,116 @@ pub fn set_editor(conn: &mut SqliteConnection, id: &str, enabled: bool) -> Query
     };
     diesel::sql_query(sql).bind::<Text, _>(id).execute(conn)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod worker_tests {
+    use super::*;
+    use std::sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    };
+
+    fn art(size: usize) -> CoverArt {
+        CoverArt {
+            content_type: "image/jpeg".into(),
+            data: vec![1; size],
+        }
+    }
+
+    #[test]
+    fn cache_evicts_by_bytes_and_retains_recent_entries() {
+        let mut cache = ThumbnailCache::new(224);
+        cache.insert("a".into(), &art(100));
+        cache.insert("b".into(), &art(100));
+        assert_eq!(cache.bytes, 224);
+        assert!(cache.get("a").is_some());
+        cache.insert("c".into(), &art(100));
+        assert!(cache.get("b").is_none());
+        assert!(cache.get("a").is_some());
+        cache.insert("a".into(), &art(10));
+        assert_eq!(cache.bytes, 134);
+        cache.insert("large".into(), &art(225));
+        assert_eq!(cache.bytes, 134);
+        assert!(cache.get("large").is_none());
+        let mut disabled = ThumbnailCache::new(0);
+        disabled.insert("a".into(), &art(1));
+        assert!(disabled.get("a").is_none());
+    }
+
+    #[test]
+    fn byte_budget_replaces_the_old_512_entry_limit() {
+        let mut cache = ThumbnailCache::new(1_000_000);
+        for i in 0..600 {
+            cache.insert(i.to_string(), &art(100));
+        }
+        assert_eq!(cache.entries.len(), 600);
+        assert!(cache.bytes <= cache.limit);
+    }
+
+    #[test]
+    fn requests_share_a_dedicated_thread_and_cache() {
+        let worker = ArtworkWorker::new(1000);
+        let thread = worker
+            .run(|| {
+                cache_thumbnail("shared".into(), &art(100));
+                Ok(std::thread::current().id())
+            })
+            .unwrap();
+        assert_ne!(thread, std::thread::current().id());
+        worker
+            .run(move || {
+                assert_eq!(thread, std::thread::current().id());
+                assert!(cached_thumbnail("shared").is_some());
+                Ok(())
+            })
+            .unwrap();
+        // Other request and scan threads have no extra artwork cache.
+        assert!(cached_thumbnail("shared").is_none());
+        let other = ArtworkWorker::new(1000);
+        assert!(other
+            .run(|| Ok(cached_thumbnail("shared").is_none()))
+            .unwrap());
+    }
+
+    #[test]
+    fn full_queue_fails_promptly_and_expired_work_is_skipped() {
+        let worker = ArtworkWorker::new(1000);
+        let (release, gate) = mpsc::channel();
+        let (started, ready) = mpsc::channel();
+        worker
+            .sender()
+            .unwrap()
+            .send(Box::new(move || {
+                started.send(()).unwrap();
+                let _ = gate.recv_timeout(Duration::from_secs(2));
+            }))
+            .unwrap();
+        ready.recv_timeout(Duration::from_secs(1)).unwrap();
+        let ran = Arc::new(AtomicBool::new(false));
+        let check = ran.clone();
+        let error = worker
+            .run_with_timeout(Duration::from_millis(20), move || {
+                check.store(true, Ordering::SeqCst);
+                Ok(())
+            })
+            .unwrap_err();
+        assert_eq!(error.code, 504);
+        for _ in 1..QUEUE_CAPACITY {
+            worker.sender().unwrap().try_send(Box::new(|| {})).unwrap();
+        }
+        assert_eq!(worker.run(|| Ok(())).unwrap_err().code, 503);
+        release.send(()).unwrap();
+        // A sentinel confirms that all older jobs were processed or skipped.
+        let (done, completed) = mpsc::channel();
+        worker
+            .sender()
+            .unwrap()
+            .send(Box::new(move || {
+                let _ = done.send(());
+            }))
+            .unwrap();
+        completed.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert!(!ran.load(Ordering::SeqCst));
+    }
 }

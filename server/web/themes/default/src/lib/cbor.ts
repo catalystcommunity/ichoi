@@ -16,10 +16,12 @@
 /** A CBOR tag: a tag number applied to a nested value. Used for tag-0 timestamps
  * and the tag-24 encoded-CBOR envelope payload. */
 export class CborTag {
-  constructor(
-    readonly tag: number,
-    readonly value: CborValue,
-  ) {}
+  readonly tag: number;
+  readonly value: CborValue;
+  constructor(tag: number, value: CborValue) {
+    this.tag = tag;
+    this.value = value;
+  }
 }
 
 /** The closed set of JS values our codec round-trips. Plain objects become CBOR
@@ -220,7 +222,8 @@ export type DecodedValue =
 
 class Reader {
   pos = 0;
-  constructor(readonly buf: Uint8Array) {}
+  readonly buf: Uint8Array;
+  constructor(buf: Uint8Array) { this.buf = buf; }
 
   u8(): number {
     if (this.pos >= this.buf.length) throw new CborError("unexpected end of input");

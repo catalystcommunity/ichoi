@@ -111,6 +111,35 @@ class SettingsNavigationTest {
         assertFalse(activity.getPreferences(0).contains("pendingLoginProfile"))
     }
 
+    @Test fun privateServerShowsSignInInsteadOfAMissingLibrariesError() {
+        val selected = ServerProfile("private", server.url("/").toString(), true)
+        enqueueResponse("list-libraries", ServiceError(401L, "sign in required").toCbor())
+        invoke("connect", arrayOf(ServerProfile::class.java), selected)
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (!labels().contains("Sign in with LinkKeys") && System.nanoTime() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        assertTrue(labels().contains("Sign in to your library"))
+        assertTrue(labels().contains("Sign in with LinkKeys"))
+        assertFalse(labels().contains("Loading library…"))
+        assertFalse(labels().any { it.contains("missing field") })
+    }
+
+    @Test fun serverFailureHasARetryAndStopsTheLoadingState() {
+        val selected = ServerProfile("unavailable", server.url("/").toString(), true)
+        enqueueResponse("list-libraries", ServiceError(503L, "Please try again later").toCbor())
+        invoke("connect", arrayOf(ServerProfile::class.java), selected)
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+        while (!labels().contains("Retry") && System.nanoTime() < deadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        assertTrue(labels().contains("Retry"))
+        assertTrue(labels().contains("Please try again later"))
+        assertFalse(labels().contains("Loading library…"))
+    }
+
     @Test fun lateResponseDoesNotPopulateASecondSettingsVisit() {
         openSettings()
         val firstReply = replies.poll(5, TimeUnit.SECONDS) ?: error("No first request")

@@ -12,7 +12,7 @@ import android.widget.TextView
 import java.io.ByteArrayOutputStream
 
 /** A named placeholder stays visible until a valid cover is available. */
-class ArtworkRow(context: Context, title: String, subtitle: String = "") : LinearLayout(context) {
+class ArtworkRow(context: Context, title: String, subtitle: String = "", tile: Boolean = false) : LinearLayout(context) {
     private val fallback = TextView(context).apply {
         text = title.trim().ifBlank { "Untitled album" }
         textSize = 13f
@@ -26,25 +26,75 @@ class ArtworkRow(context: Context, title: String, subtitle: String = "") : Linea
         visibility = View.GONE
     }
     init {
-        orientation = HORIZONTAL
+        orientation = if (tile) VERTICAL else HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, 12, 0, 12)
+        setPadding(0, 0, 0, (16 * resources.displayMetrics.density).toInt())
         isFocusable = true
-        val size = (96 * resources.displayMetrics.density).toInt()
+        val density = resources.displayMetrics.density
+        val size = ((if (tile) (resources.configuration.screenWidthDp - 56) / 2 else 72) * density).toInt()
         addView(FrameLayout(context).apply {
-            addView(fallback, FrameLayout.LayoutParams(size, size))
-            addView(image, FrameLayout.LayoutParams(size, size))
+            background = android.graphics.drawable.GradientDrawable().apply { cornerRadius = 10 * density; setColor(context.getColor(community.catalyst.ichoi.R.color.ichoi_surface)) }
+            clipToOutline = true
+            addView(fallback, FrameLayout.LayoutParams(-1, -1))
+            addView(image, FrameLayout.LayoutParams(-1, -1))
         }, LayoutParams(size, size))
-        addView(TextView(context).apply {
-            text = if (subtitle.isBlank()) title else "$title\n$subtitle"
-            textSize = 17f
-            setPadding(20, 0, 0, 0)
-        }, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
+        val copy = LinearLayout(context).apply {
+            orientation = VERTICAL
+            setPadding(if (tile) 0 else (14 * density).toInt(), if (tile) (9 * density).toInt() else 0, 0, 0)
+            addView(TextView(context).apply {
+                text = title; textSize = if (tile) 14f else 16f; maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(context.getColor(community.catalyst.ichoi.R.color.ichoi_text))
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            })
+            if (subtitle.isNotBlank()) addView(TextView(context).apply {
+                text = subtitle; textSize = 12f; maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(context.getColor(community.catalyst.ichoi.R.color.ichoi_muted))
+            })
+        }
+        addView(copy, if (tile) LayoutParams(size, -2) else LayoutParams(0, -2, 1f))
     }
+
     fun showCover(bitmap: Bitmap?) {
         image.setImageBitmap(bitmap)
         image.visibility = if (bitmap == null) View.GONE else View.VISIBLE
         fallback.visibility = if (bitmap == null) View.VISIBLE else View.GONE
+    }
+
+    fun whenVisible(load: () -> Unit) {
+        var loaded = false
+        var observer: android.view.ViewTreeObserver? = null
+        val bounds = android.graphics.Rect()
+        fun check() {
+            if (!loaded && isAttachedToWindow && getGlobalVisibleRect(bounds) && !bounds.isEmpty) {
+                loaded = true
+                load()
+            }
+        }
+        val scroll = android.view.ViewTreeObserver.OnScrollChangedListener { check() }
+        val layout = android.view.ViewTreeObserver.OnGlobalLayoutListener { check() }
+        addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(view: View) {
+                if (loaded) return
+                observer = viewTreeObserver
+                observer?.addOnScrollChangedListener(scroll)
+                observer?.addOnGlobalLayoutListener(layout)
+                post { check() }
+            }
+            override fun onViewDetachedFromWindow(view: View) {
+                observer?.takeIf { it.isAlive }?.let {
+                    it.removeOnScrollChangedListener(scroll)
+                    it.removeOnGlobalLayoutListener(layout)
+                }
+                observer = null
+            }
+        })
+        if (isAttachedToWindow) {
+            observer = viewTreeObserver
+            observer?.addOnScrollChangedListener(scroll)
+            observer?.addOnGlobalLayoutListener(layout)
+            post { check() }
+        }
     }
 }
 

@@ -89,6 +89,41 @@ existing handlers. It also routes the existing account-deletion operations. A
 failed content-report load stays in that panel and does not replace Settings.
 An older server shows a message that the report panel requires a server update.
 
+## Artwork worker and memory limit
+
+The core handles album covers, artist covers, candidate lists, and candidate
+previews on one dedicated thread. This thread owns the thumbnail cache. All
+clients of that core share it. Scans and uploads do not create extra caches.
+The worker starts on the first artwork read.
+
+The default cache limit is 200 MB. One MB is 1,000,000 bytes. Set the environment
+variable or the TOML key to change the limit:
+
+```sh
+ICHOI_ARTWORK_CACHE_MB=200 ichoi serve
+```
+
+```toml
+artwork_cache_mb = 200
+```
+
+The environment variable takes precedence over TOML. Restart the core to apply
+a change. Zero disables caching; artwork still uses the worker. Invalid or
+negative values stop startup. Both Compose examples expose the variable.
+
+The cache limit counts compressed image bytes, MIME text, and cache keys. It is
+not a limit on total process memory. Image decoding, replies in transit, and
+collection overhead use more memory. The cache removes the least recently used
+entries when it needs space. An image larger than the limit is returned without
+being cached. The old 512-entry server limit no longer applies. The separate
+browser cache remains unchanged.
+
+The queue holds at most 32 waiting reads. A full queue returns a retryable error.
+A request can wait up to 15 seconds, including queue time. Expired queued work
+is skipped. Work already in progress can finish and fill the cache. The existing
+file and image hashes prevent an old thumbnail from replacing changed artwork.
+No thumbnail files are written to disk.
+
 ## Validation
 
 Automated checks cover cover quality, sleeve exclusion, mixed folders, numbered

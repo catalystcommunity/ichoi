@@ -82,12 +82,14 @@ export const CONTROL = {
 
 /** A ServiceError surfaced from a correlated reply. */
 export class CsilServiceError extends Error {
+  readonly code: number;
   constructor(
-    readonly code: number,
+    code: number,
     message: string,
   ) {
     super(message);
     this.name = "CsilServiceError";
+    this.code = code;
   }
 }
 
@@ -146,6 +148,8 @@ export interface CsilConnectionOptions {
   nodeToken?: string;
   /** Per-request timeout (ms) for correlated calls. */
   callTimeoutMs?: number;
+  /** Maximum time to open the socket and receive the hello acknowledgement. */
+  connectTimeoutMs?: number;
   onState?: (state: ConnState, detail?: string) => void;
 }
 
@@ -167,6 +171,8 @@ export class CsilConnection {
   private closedByClient = false;
   private reconnectAttempts = 0;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
+  private connectTimer?: ReturnType<typeof setTimeout>;
+  private connectPromise?: Promise<void>;
   private heartbeatTimer?: ReturnType<typeof setInterval>;
   private lastInboundAt = 0;
   private readonly opts: Required<Pick<CsilConnectionOptions, "callTimeoutMs">> &
@@ -184,9 +190,14 @@ export class CsilConnection {
    * once the connection is ready for application events. */
   connect(): Promise<void> {
     if (this.state === "ready") return Promise.resolve();
+    if (this.connectPromise) return this.connectPromise;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
     this.closedByClient = false;
     this.setState("connecting");
-    return new Promise((resolve, reject) => {
+    const promise = new Promise<void>((resolve, reject) => {
       this.readyWaiters.push({ resolve, reject });
       let ws: WebSocket;
       try {
@@ -199,11 +210,22 @@ export class CsilConnection {
       this.ws = ws;
       this.lastInboundAt = Date.now();
 
-      ws.onopen = () => this.sendHello();
+      this.connectTimer = setTimeout(() => {
+        this.reconnectStaleSocket("connection timed out");
+      }, this.opts.connectTimeoutMs ?? this.opts.callTimeoutMs);
+      ws.onopen = () => {
+        try { this.sendHello(); }
+        catch { this.reconnectStaleSocket("handshake failed"); }
+      };
       ws.onmessage = (ev) => this.onMessage(ev);
-      ws.onerror = () => this.setState("error", "socket error");
+      ws.onerror = () => this.reconnectStaleSocket("socket error");
       ws.onclose = (ev) => this.onClose(ev.code, ev.reason);
     });
+    const connected = promise.finally(() => {
+      if (this.connectPromise === connected) this.connectPromise = undefined;
+    });
+    this.connectPromise = connected;
+    return connected;
   }
 
   /** Orderly shutdown: send `$close` then close the socket. */
@@ -222,7 +244,7 @@ export class CsilConnection {
         /* best effort */
       }
     }
-    this.ws?.close();
+    this.disposeSocket();
     this.teardown("closed", reason);
   }
 
@@ -240,7 +262,6 @@ export class CsilConnection {
     decodeResponse: (bytes: Uint8Array) => Res,
     timeoutMs = this.opts.callTimeoutMs,
   ): Promise<Res> {
-    await this.ensureReady();
     const id = this.nextId++;
     const event = wireOp(operation);
     const payload = await new Promise<Uint8Array>((resolve, reject) => {
@@ -249,7 +270,14 @@ export class CsilConnection {
         reject(new Error(`csil: call ${service}.${operation} timed out`));
       }, timeoutMs);
       this.pending.set(id, { resolve, reject, timer });
-      this.rawSend({ service, event, id, payload: requestBytes });
+      void this.ensureReady().then(() => {
+        // A request that expired during the handshake must never be sent later.
+        if (this.pending.has(id)) this.rawSend({ service, event, id, payload: requestBytes });
+      }).catch((error) => {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(error);
+      });
     });
     // Peek for the ServiceError arm before handing to the typed decoder.
     const decoded = cborDecode(payload);
@@ -368,6 +396,9 @@ export class CsilConnection {
     switch (env.event) {
       case CONTROL.HELLO_ACK: {
         // Handshake complete. (We offered only verbose, so we accept the ack.)
+        if (this.state !== "connecting") break;
+        clearTimeout(this.connectTimer);
+        this.connectTimer = undefined;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
         this.setState("ready");
@@ -385,12 +416,19 @@ export class CsilConnection {
         break;
       case CONTROL.CLOSE: {
         const detail = this.readCloseReason(env.payload);
-        this.teardown("closed", detail);
+        this.reconnectStaleSocket(detail);
         break;
       }
       case CONTROL.ERROR: {
         const detail = this.readCloseReason(env.payload);
-        console.error(`[csil] transport error: ${detail}`);
+        const pending = env.id === undefined ? undefined : this.pending.get(env.id);
+        if (pending) {
+          clearTimeout(pending.timer);
+          this.pending.delete(env.id!);
+          pending.reject(new Error(`csil: ${detail}`));
+        } else if (env.id === undefined) {
+          this.reconnectStaleSocket(detail);
+        }
         break;
       }
       default:
@@ -419,6 +457,7 @@ export class CsilConnection {
   }
 
   private onClose(code: number, reason: string): void {
+    this.disposeSocket();
     this.stopHeartbeat();
     this.teardown("closed", `ws close ${code}${reason ? `: ${reason}` : ""}`);
     if (!this.closedByClient) this.scheduleReconnect();
@@ -458,7 +497,7 @@ export class CsilConnection {
     }, 20_000);
   }
 
-  private reconnectStaleSocket(): void {
+  private disposeSocket(): void {
     const stale = this.ws;
     this.ws = undefined;
     if (stale) {
@@ -467,13 +506,17 @@ export class CsilConnection {
       stale.onerror = null;
       stale.onclose = null;
       try {
-        stale.close(4000, "heartbeat timeout");
+        stale.close();
       } catch {
         /* the replacement connection does not depend on orderly stale-socket shutdown */
       }
     }
+  }
+
+  private reconnectStaleSocket(detail = "heartbeat timeout"): void {
+    this.disposeSocket();
     this.stopHeartbeat();
-    this.teardown("closed", "heartbeat timeout");
+    this.teardown("closed", detail);
     this.scheduleReconnect();
   }
 
@@ -492,7 +535,8 @@ export class CsilConnection {
   }
 
   private teardown(state: ConnState, detail?: string): void {
-    if (this.state === state && state === "closed") return;
+    clearTimeout(this.connectTimer);
+    this.connectTimer = undefined;
     this.setState(state, detail);
     const err = new Error(`csil: connection ${state}${detail ? ` (${detail})` : ""}`);
     for (const [, p] of this.pending) {

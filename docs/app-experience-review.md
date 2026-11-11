@@ -113,6 +113,44 @@ There were no broken images or horizontal overflow at those widths. The header
 selected the correct mark in each mode. Normal text color pairs have a contrast
 ratio of at least 4.5:1. The website changes are not deployed.
 
+## Zest and native app changes (2026-11-11)
+
+The web UI now uses Zest components and explicit state subscriptions. SolidJS
+and its router, primitives, JSX source, and build plugin have been removed.
+The library has cover grids, search, and list sorting. The persistent player
+has a device selector and a queue panel with direct edit controls. Queue edits
+keep the search input and results mounted. Settings requests fail separately.
+
+Android and iOS now show cover grids and persistent device and queue controls.
+Both can select shared players and edit the selected player's queue. Commands
+run in order. Poll replies from an old server or device cannot replace current
+state. The published builds have not been replaced.
+
+Native transports check ServiceError before they decode a successful response.
+A 401 reply now opens sign-in controls instead of reporting a missing libraries
+field. Requests have a 15-second deadline, including the handshake. Existing
+bare-domain normalization remains in use.
+
+Cover requests use smaller visible images on the web, a bounded browser cache,
+and separate artwork connections. The server caches thumbnails in memory.
+Three local 256-pixel requests took 99, 110, and 137 ms on first access, then
+2, 2, and 1 ms on repeat access. These are local measurements with a copied
+catalog and local media. They do not measure the home server or its network.
+
+Validation for this change: 20 browser reliability checks, the web unit suite
+and build, 14 Rust artwork tests, and Rust Clippy pass. Android has 46 passing
+unit tests, a passing lint check, and a debug build. The unsigned iOS simulator
+build and 14 core tests pass. The keyboard check confirmed that Space activates
+a queue Remove button. Removing a selected idle track keeps playback idle.
+The browser also started a local track through the development proxy. The
+Android emulator reached the new demo library. System UI errors and a later
+emulator exit limited its cover-loading review. The iPhone simulator loaded
+the demo grid and covers. Physical audio checks remain necessary.
+
+The Zest component request file records a nested-button keyboard defect and a
+request for a responsive virtual cover grid. The app has a local workaround for
+the keyboard defect. No Zest component source was changed.
+
 ## Next Actions
 
 1. Test cached seeks on the physical Linux and Windows satellites. Measure the

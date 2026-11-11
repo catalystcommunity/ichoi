@@ -155,9 +155,11 @@ COPY migrations/ migrations/
 COPY version/ version/
 RUN cargo build --release --target "$(cat /tmp/triple)" --bin ichoi && \
     cp "target/$(cat /tmp/triple)/release/ichoi" /ichoi
+# SQLite needs a writable directory when a query exceeds its sort buffer.
+RUN mkdir -p /runtime/tmp && chmod 1777 /runtime/tmp
 
 # -----------------------------------------------------------------------------
-# Stage 2b: build the web UI (SolidJS SPA). The output is arch-independent static
+# Stage 2b: build the web UI (Zest components). The output is arch-independent static
 # assets, built once on the native host and served from /app in the final image.
 # -----------------------------------------------------------------------------
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS web
@@ -169,6 +171,8 @@ RUN cd themes/default && npm ci && npm run build
 # Stage 3: the minimal runtime image.
 # -----------------------------------------------------------------------------
 FROM scratch
+# Preserve /tmp permissions for deployments that use a non-root UID.
+COPY --from=builder /runtime/ /
 # The ichoi binary and its bundled ffmpeg live in the same directory, so Ichoi's
 # ffmpeg resolution (bundled-next-to-binary, DESIGN Sec.5.3) finds it with no
 # configuration.
