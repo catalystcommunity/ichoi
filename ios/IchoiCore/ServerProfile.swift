@@ -25,6 +25,14 @@ public enum ServerURLPolicyError: Error, Equatable {
 }
 
 public enum ServerURLPolicy {
+    public static func parse(_ input: String, privateHTTPConsent: Bool = false) throws -> URL {
+        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else { throw ServerURLPolicyError.invalidHost }
+        let normalized = value.contains("://") ? value : "https://" + value
+        guard let url = URL(string: normalized) else { throw ServerURLPolicyError.invalidHost }
+        return try validate(url: url, privateHTTPConsent: privateHTTPConsent)
+    }
+
     public static func validate(url: URL, privateHTTPConsent: Bool) throws -> URL {
         guard let scheme = url.scheme?.lowercased() else { throw ServerURLPolicyError.missingScheme }
         guard scheme == "https" || scheme == "http" else { throw ServerURLPolicyError.unsupportedScheme }

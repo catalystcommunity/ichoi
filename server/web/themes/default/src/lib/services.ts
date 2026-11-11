@@ -26,6 +26,9 @@ import type {
   CommandRequest,
   CoverArt,
   CoverArtRequest,
+  ArtworkRequest,
+  ArtworkCandidates,
+  SetArtworkRequest,
   CreateNodeTokenRequest,
   ContentReport,
   DeleteAccountRequest,
@@ -217,6 +220,18 @@ export class LibraryService {
   reportContent(req: ReportContentRequest): Promise<ContentReport> {
     return this.conn.call(LIBRARY, "report-content", encodeRecord(req), decodeRecord<ContentReport>);
   }
+  getArtwork(req: ArtworkRequest): Promise<CoverArt> {
+    return this.conn.call(LIBRARY, "get-artwork", encodeRecord(req), decodeRecord<CoverArt>);
+  }
+  listArtworkCandidates(req: ArtworkRequest & { offset?: number; limit?: number }): Promise<ArtworkCandidates> {
+    return this.conn.call(LIBRARY, "list-artwork-candidates", encodeRecord(req), decodeRecord<ArtworkCandidates>);
+  }
+  getArtworkCandidate(req: ArtworkRequest & { candidate_id: string }): Promise<CoverArt> {
+    return this.conn.call(LIBRARY, "get-artwork-candidate", encodeRecord(req), decodeRecord<CoverArt>);
+  }
+  setArtwork(req: SetArtworkRequest): Promise<Ok> {
+    return this.conn.call(LIBRARY, "set-artwork", encodeRecord(req), decodeRecord<Ok>);
+  }
   getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
     return this.conn.call(LIBRARY, "get-cover-art", encodeRecord(req), decodeRecord<CoverArt>);
   }
@@ -311,6 +326,9 @@ export class AdminService {
 
   listAccounts(page: Page = {}): Promise<ListAccountsResponse> {
     return this.conn.call(ADMIN, "list-accounts", encodeRecord(page), decodeRecord<ListAccountsResponse>);
+  }
+  setLibraryEditor(req: { account_id: string; enabled: boolean }): Promise<Ok> {
+    return this.conn.call(ADMIN, "set-library-editor", encodeRecord(req), decodeRecord<Ok>);
   }
   setRole(req: SetRoleRequest): Promise<Account> {
     return this.conn.call(ADMIN, "set-role", encodeRecord(req), decodeRecord<Account>);

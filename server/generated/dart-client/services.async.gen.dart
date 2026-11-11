@@ -199,6 +199,44 @@ final class LibraryAsyncClient {
     return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  Future<CoverArt> getArtwork(ArtworkRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'get-artwork',
+      request.toCbor(),
+    );
+    return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<ArtworkCandidates> listArtworkCandidates(
+    ArtworkCandidatesRequest request,
+  ) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'list-artwork-candidates',
+      request.toCbor(),
+    );
+    return ArtworkCandidates.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<CoverArt> getArtworkCandidate(ArtworkCandidateRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'get-artwork-candidate',
+      request.toCbor(),
+    );
+    return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> setArtwork(SetArtworkRequest request) async {
+    final csilResp = await transport.call(
+      'LibraryService',
+      'set-artwork',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   Future<AudiobookProgressResponse> getAudiobookProgress(
     AudiobookProgressRequest request,
   ) async {
@@ -351,6 +389,15 @@ final class AdminAsyncClient {
       request.toCbor(),
     );
     return Account.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Future<Ok> setLibraryEditor(SetLibraryEditorRequest request) async {
+    final csilResp = await transport.call(
+      'AdminService',
+      'set-library-editor',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   Future<Ok> deleteAccount(AdminDeleteAccountRequest request) async {

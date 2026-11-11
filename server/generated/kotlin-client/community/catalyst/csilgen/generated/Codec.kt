@@ -620,6 +620,7 @@ fun SessionInfo.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("can_admin") to CborValue.CBool(this.canAdmin))
     csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
     this.displayName?.let { csilV -> csilEntries.add(CborValue.CText("display_name") to CborValue.CText(csilV)) }
+    this.canEditLibrary?.let { csilV -> csilEntries.add(CborValue.CText("can_edit_library") to CborValue.CBool(csilV)) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -633,8 +634,9 @@ fun sessionInfoFromCborValue(cbor: CborValue): SessionInfo {
     val displayName = CsilCbor.mapGet(cbor, "display_name")?.let { csilV -> CsilCbor.asText(csilV) }
     val role = roleFromCborValue(CsilCbor.require(cbor, "role"))
     val canAdmin = CsilCbor.asBoolean(CsilCbor.require(cbor, "can_admin"))
+    val canEditLibrary = CsilCbor.mapGet(cbor, "can_edit_library")?.let { csilV -> CsilCbor.asBoolean(csilV) }
     val token = CsilCbor.mapGet(cbor, "token")?.let { csilV -> CsilCbor.asText(csilV) }
-    return SessionInfo(accountId = accountId, handle = handle, displayName = displayName, role = role, canAdmin = canAdmin, token = token)
+    return SessionInfo(accountId = accountId, handle = handle, displayName = displayName, role = role, canAdmin = canAdmin, canEditLibrary = canEditLibrary, token = token)
 }
 
 /** Decode CSIL CBOR bytes into a SessionInfo. */
@@ -1445,6 +1447,167 @@ fun coverArtFromCborValue(cbor: CborValue): CoverArt {
 
 /** Decode CSIL CBOR bytes into a CoverArt. */
 fun coverArtFromCbor(bytes: ByteArray): CoverArt = coverArtFromCborValue(CsilCbor.decode(bytes))
+
+/** Encode a ArtworkKind enum as its bare literal value. */
+fun ArtworkKind.toCborValue(): CborValue = when (this) {
+    ArtworkKind.Album -> CborValue.CText("album")
+    ArtworkKind.Artist -> CborValue.CText("artist")
+}
+
+/** Decode a bare literal value into a ArtworkKind enum. */
+fun artworkKindFromCborValue(cbor: CborValue): ArtworkKind = when (CsilCbor.asText(cbor)) {
+    "album" -> ArtworkKind.Album
+    "artist" -> ArtworkKind.Artist
+    else -> throw CborError("unknown ArtworkKind value")
+}
+
+/** The CBOR value tree for a ArtworkRequest (deep, canonical key order). */
+fun ArtworkRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("kind") to this.kind.toCborValue())
+    this.maxSize?.let { csilV -> csilEntries.add(CborValue.CText("max_size") to CborValue.CUint(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ArtworkRequest to canonical CSIL CBOR bytes. */
+fun ArtworkRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ArtworkRequest from a decoded CBOR value tree. */
+fun artworkRequestFromCborValue(cbor: CborValue): ArtworkRequest {
+    val kind = artworkKindFromCborValue(CsilCbor.require(cbor, "kind"))
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val maxSize = CsilCbor.mapGet(cbor, "max_size")?.let { csilV -> CsilCbor.asULong(csilV) }
+    return ArtworkRequest(kind = kind, id = id, maxSize = maxSize)
+}
+
+/** Decode CSIL CBOR bytes into a ArtworkRequest. */
+fun artworkRequestFromCbor(bytes: ByteArray): ArtworkRequest = artworkRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a SetArtworkRequest (deep, canonical key order). */
+fun SetArtworkRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    this.data?.let { csilV -> csilEntries.add(CborValue.CText("data") to CborValue.CBytes(csilV)) }
+    csilEntries.add(CborValue.CText("kind") to this.kind.toCborValue())
+    this.candidateId?.let { csilV -> csilEntries.add(CborValue.CText("candidate_id") to CborValue.CText(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a SetArtworkRequest to canonical CSIL CBOR bytes. */
+fun SetArtworkRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a SetArtworkRequest from a decoded CBOR value tree. */
+fun setArtworkRequestFromCborValue(cbor: CborValue): SetArtworkRequest {
+    val kind = artworkKindFromCborValue(CsilCbor.require(cbor, "kind"))
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val data = CsilCbor.mapGet(cbor, "data")?.let { csilV -> CsilCbor.asBytes(csilV) }
+    val candidateId = CsilCbor.mapGet(cbor, "candidate_id")?.let { csilV -> CsilCbor.asText(csilV) }
+    return SetArtworkRequest(kind = kind, id = id, data = data, candidateId = candidateId)
+}
+
+/** Decode CSIL CBOR bytes into a SetArtworkRequest. */
+fun setArtworkRequestFromCbor(bytes: ByteArray): SetArtworkRequest = setArtworkRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ArtworkCandidatesRequest (deep, canonical key order). */
+fun ArtworkCandidatesRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("kind") to this.kind.toCborValue())
+    this.limit?.let { csilV -> csilEntries.add(CborValue.CText("limit") to CborValue.CUint(csilV)) }
+    this.offset?.let { csilV -> csilEntries.add(CborValue.CText("offset") to CborValue.CUint(csilV)) }
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ArtworkCandidatesRequest to canonical CSIL CBOR bytes. */
+fun ArtworkCandidatesRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ArtworkCandidatesRequest from a decoded CBOR value tree. */
+fun artworkCandidatesRequestFromCborValue(cbor: CborValue): ArtworkCandidatesRequest {
+    val kind = artworkKindFromCborValue(CsilCbor.require(cbor, "kind"))
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val offset = CsilCbor.mapGet(cbor, "offset")?.let { csilV -> CsilCbor.asULong(csilV) }
+    val limit = CsilCbor.mapGet(cbor, "limit")?.let { csilV -> CsilCbor.asULong(csilV) }
+    return ArtworkCandidatesRequest(kind = kind, id = id, offset = offset, limit = limit)
+}
+
+/** Decode CSIL CBOR bytes into a ArtworkCandidatesRequest. */
+fun artworkCandidatesRequestFromCbor(bytes: ByteArray): ArtworkCandidatesRequest = artworkCandidatesRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ArtworkCandidateRequest (deep, canonical key order). */
+fun ArtworkCandidateRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("kind") to this.kind.toCborValue())
+    this.maxSize?.let { csilV -> csilEntries.add(CborValue.CText("max_size") to CborValue.CUint(csilV)) }
+    csilEntries.add(CborValue.CText("candidate_id") to CborValue.CText(this.candidateId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ArtworkCandidateRequest to canonical CSIL CBOR bytes. */
+fun ArtworkCandidateRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ArtworkCandidateRequest from a decoded CBOR value tree. */
+fun artworkCandidateRequestFromCborValue(cbor: CborValue): ArtworkCandidateRequest {
+    val kind = artworkKindFromCborValue(CsilCbor.require(cbor, "kind"))
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val candidateId = CsilCbor.asText(CsilCbor.require(cbor, "candidate_id"))
+    val maxSize = CsilCbor.mapGet(cbor, "max_size")?.let { csilV -> CsilCbor.asULong(csilV) }
+    return ArtworkCandidateRequest(kind = kind, id = id, candidateId = candidateId, maxSize = maxSize)
+}
+
+/** Decode CSIL CBOR bytes into a ArtworkCandidateRequest. */
+fun artworkCandidateRequestFromCbor(bytes: ByteArray): ArtworkCandidateRequest = artworkCandidateRequestFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ArtworkCandidate (deep, canonical key order). */
+fun ArtworkCandidate.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("id") to CborValue.CText(this.id))
+    csilEntries.add(CborValue.CText("role") to CborValue.CText(this.role))
+    csilEntries.add(CborValue.CText("label") to CborValue.CText(this.label))
+    csilEntries.add(CborValue.CText("width") to CborValue.CUint(this.width))
+    csilEntries.add(CborValue.CText("height") to CborValue.CUint(this.height))
+    csilEntries.add(CborValue.CText("suggested") to CborValue.CBool(this.suggested))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ArtworkCandidate to canonical CSIL CBOR bytes. */
+fun ArtworkCandidate.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ArtworkCandidate from a decoded CBOR value tree. */
+fun artworkCandidateFromCborValue(cbor: CborValue): ArtworkCandidate {
+    val id = CsilCbor.asText(CsilCbor.require(cbor, "id"))
+    val label = CsilCbor.asText(CsilCbor.require(cbor, "label"))
+    val width = CsilCbor.asULong(CsilCbor.require(cbor, "width"))
+    val height = CsilCbor.asULong(CsilCbor.require(cbor, "height"))
+    val role = CsilCbor.asText(CsilCbor.require(cbor, "role"))
+    val suggested = CsilCbor.asBoolean(CsilCbor.require(cbor, "suggested"))
+    return ArtworkCandidate(id = id, label = label, width = width, height = height, role = role, suggested = suggested)
+}
+
+/** Decode CSIL CBOR bytes into a ArtworkCandidate. */
+fun artworkCandidateFromCbor(bytes: ByteArray): ArtworkCandidate = artworkCandidateFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a ArtworkCandidates (deep, canonical key order). */
+fun ArtworkCandidates.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("total") to CborValue.CUint(this.total))
+    csilEntries.add(CborValue.CText("candidates") to CborValue.CArray((this.candidates).map { csilE -> csilE.toCborValue() }))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a ArtworkCandidates to canonical CSIL CBOR bytes. */
+fun ArtworkCandidates.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a ArtworkCandidates from a decoded CBOR value tree. */
+fun artworkCandidatesFromCborValue(cbor: CborValue): ArtworkCandidates {
+    val candidates = CsilCbor.asArray(CsilCbor.require(cbor, "candidates")).map { csilE -> artworkCandidateFromCborValue(csilE) }
+    val total = CsilCbor.asULong(CsilCbor.require(cbor, "total"))
+    return ArtworkCandidates(candidates = candidates, total = total)
+}
+
+/** Decode CSIL CBOR bytes into a ArtworkCandidates. */
+fun artworkCandidatesFromCbor(bytes: ByteArray): ArtworkCandidates = artworkCandidatesFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a ReportContentRequest (deep, canonical key order). */
 fun ReportContentRequest.toCborValue(): CborValue {
@@ -2844,6 +3007,7 @@ fun Account.toCborValue(): CborValue {
     csilEntries.add(CborValue.CText("handle") to CborValue.CText(this.handle))
     csilEntries.add(CborValue.CText("created_at") to CborValue.CTag(0uL, CborValue.CText((this.createdAt).toString())))
     this.displayName?.let { csilV -> csilEntries.add(CborValue.CText("display_name") to CborValue.CText(csilV)) }
+    this.canEditLibrary?.let { csilV -> csilEntries.add(CborValue.CText("can_edit_library") to CborValue.CBool(csilV)) }
     return CborValue.CMap(csilEntries)
 }
 
@@ -2857,7 +3021,8 @@ fun accountFromCborValue(cbor: CborValue): Account {
     val displayName = CsilCbor.mapGet(cbor, "display_name")?.let { csilV -> CsilCbor.asText(csilV) }
     val role = roleFromCborValue(CsilCbor.require(cbor, "role"))
     val createdAt = java.time.Instant.parse(CsilCbor.asTaggedText(CsilCbor.require(cbor, "created_at"), 0uL))
-    return Account(id = id, handle = handle, displayName = displayName, role = role, createdAt = createdAt)
+    val canEditLibrary = CsilCbor.mapGet(cbor, "can_edit_library")?.let { csilV -> CsilCbor.asBoolean(csilV) }
+    return Account(id = id, handle = handle, displayName = displayName, role = role, createdAt = createdAt, canEditLibrary = canEditLibrary)
 }
 
 /** Decode CSIL CBOR bytes into a Account. */
@@ -2881,6 +3046,27 @@ fun listAccountsResponseFromCborValue(cbor: CborValue): ListAccountsResponse {
 
 /** Decode CSIL CBOR bytes into a ListAccountsResponse. */
 fun listAccountsResponseFromCbor(bytes: ByteArray): ListAccountsResponse = listAccountsResponseFromCborValue(CsilCbor.decode(bytes))
+
+/** The CBOR value tree for a SetLibraryEditorRequest (deep, canonical key order). */
+fun SetLibraryEditorRequest.toCborValue(): CborValue {
+    val csilEntries = ArrayList<Pair<CborValue, CborValue>>()
+    csilEntries.add(CborValue.CText("enabled") to CborValue.CBool(this.enabled))
+    csilEntries.add(CborValue.CText("account_id") to CborValue.CText(this.accountId))
+    return CborValue.CMap(csilEntries)
+}
+
+/** Encode a SetLibraryEditorRequest to canonical CSIL CBOR bytes. */
+fun SetLibraryEditorRequest.toCbor(): ByteArray = CsilCbor.encode(this.toCborValue())
+
+/** Reconstruct a SetLibraryEditorRequest from a decoded CBOR value tree. */
+fun setLibraryEditorRequestFromCborValue(cbor: CborValue): SetLibraryEditorRequest {
+    val accountId = CsilCbor.asText(CsilCbor.require(cbor, "account_id"))
+    val enabled = CsilCbor.asBoolean(CsilCbor.require(cbor, "enabled"))
+    return SetLibraryEditorRequest(accountId = accountId, enabled = enabled)
+}
+
+/** Decode CSIL CBOR bytes into a SetLibraryEditorRequest. */
+fun setLibraryEditorRequestFromCbor(bytes: ByteArray): SetLibraryEditorRequest = setLibraryEditorRequestFromCborValue(CsilCbor.decode(bytes))
 
 /** The CBOR value tree for a SetRoleRequest (deep, canonical key order). */
 fun SetRoleRequest.toCborValue(): CborValue {
@@ -3833,6 +4019,12 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is BlockedAccountsResponse -> value.toCborValue()
     is CoverArtRequest -> value.toCborValue()
     is CoverArt -> value.toCborValue()
+    is ArtworkRequest -> value.toCborValue()
+    is SetArtworkRequest -> value.toCborValue()
+    is ArtworkCandidatesRequest -> value.toCborValue()
+    is ArtworkCandidateRequest -> value.toCborValue()
+    is ArtworkCandidate -> value.toCborValue()
+    is ArtworkCandidates -> value.toCborValue()
     is ReportContentRequest -> value.toCborValue()
     is Player -> value.toCborValue()
     is QueueItem -> value.toCborValue()
@@ -3888,6 +4080,7 @@ private fun csilToCborValue(value: Any?): CborValue = when (value) {
     is NodeReport -> value.toCborValue()
     is Account -> value.toCborValue()
     is ListAccountsResponse -> value.toCborValue()
+    is SetLibraryEditorRequest -> value.toCborValue()
     is SetRoleRequest -> value.toCborValue()
     is AdminDeleteAccountRequest -> value.toCborValue()
     is TrustDomainRequest -> value.toCborValue()
@@ -3977,6 +4170,12 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     BlockedAccountsResponse::class -> blockedAccountsResponseFromCborValue(cbor)
     CoverArtRequest::class -> coverArtRequestFromCborValue(cbor)
     CoverArt::class -> coverArtFromCborValue(cbor)
+    ArtworkRequest::class -> artworkRequestFromCborValue(cbor)
+    SetArtworkRequest::class -> setArtworkRequestFromCborValue(cbor)
+    ArtworkCandidatesRequest::class -> artworkCandidatesRequestFromCborValue(cbor)
+    ArtworkCandidateRequest::class -> artworkCandidateRequestFromCborValue(cbor)
+    ArtworkCandidate::class -> artworkCandidateFromCborValue(cbor)
+    ArtworkCandidates::class -> artworkCandidatesFromCborValue(cbor)
     ReportContentRequest::class -> reportContentRequestFromCborValue(cbor)
     Player::class -> playerFromCborValue(cbor)
     QueueItem::class -> queueItemFromCborValue(cbor)
@@ -4032,6 +4231,7 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     NodeReport::class -> nodeReportFromCborValue(cbor)
     Account::class -> accountFromCborValue(cbor)
     ListAccountsResponse::class -> listAccountsResponseFromCborValue(cbor)
+    SetLibraryEditorRequest::class -> setLibraryEditorRequestFromCborValue(cbor)
     SetRoleRequest::class -> setRoleRequestFromCborValue(cbor)
     AdminDeleteAccountRequest::class -> adminDeleteAccountRequestFromCborValue(cbor)
     TrustDomainRequest::class -> trustDomainRequestFromCborValue(cbor)

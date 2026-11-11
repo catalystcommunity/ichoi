@@ -21,6 +21,10 @@ public final class AdminClient {
         return CsilCbor.decodeAccount(transport.call("AdminService", "set-role", CsilCbor.encodeSetRoleRequest(req)));
     }
 
+    public Ok setLibraryEditor(SetLibraryEditorRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("AdminService", "set-library-editor", CsilCbor.encodeSetLibraryEditorRequest(req)));
+    }
+
     public Ok deleteAccount(AdminDeleteAccountRequest req) throws ClientException {
         return CsilCbor.decodeOk(transport.call("AdminService", "delete-account", CsilCbor.encodeAdminDeleteAccountRequest(req)));
     }

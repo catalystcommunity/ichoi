@@ -1,3 +1,6 @@
+import { useNavigate } from "@solidjs/router";
+import { useServers } from "../stores/servers.tsx";
+import { queueReturn } from "../lib/browse-memory.ts";
 import { For, Show, createSignal, type JSX } from "solid-js";
 import { useI18n } from "../lib/i18n.tsx";
 import { usePlayback } from "../stores/playback.tsx";
@@ -8,6 +11,8 @@ import { useToast } from "../stores/toasts.tsx";
 
 export function NowPlayingPage(): JSX.Element {
   const pb = usePlayback();
+  const servers = useServers();
+  const navigate = useNavigate();
   const toast = useToast();
   const { t } = useI18n();
   const playing = () => pb.snapshot().status === "playing";
@@ -46,6 +51,7 @@ export function NowPlayingPage(): JSX.Element {
 
   return (
     <div class="page">
+      <button type="button" class="btn btn-ghost" onClick={() => navigate(queueReturn(servers.activeId() ?? ""), { scroll: false })}>← Back to browsing</button>
       <header class="page-head row spread">
         <div>
           <div class="eyebrow">{t("nav.nowPlaying")}</div>

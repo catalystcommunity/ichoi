@@ -73,6 +73,22 @@ public final class LibraryClient {
         return CsilCbor.decodeCoverArt(transport.call("LibraryService", "get-cover-art", CsilCbor.encodeCoverArtRequest(req)));
     }
 
+    public CoverArt getArtwork(ArtworkRequest req) throws ClientException {
+        return CsilCbor.decodeCoverArt(transport.call("LibraryService", "get-artwork", CsilCbor.encodeArtworkRequest(req)));
+    }
+
+    public ArtworkCandidates listArtworkCandidates(ArtworkCandidatesRequest req) throws ClientException {
+        return CsilCbor.decodeArtworkCandidates(transport.call("LibraryService", "list-artwork-candidates", CsilCbor.encodeArtworkCandidatesRequest(req)));
+    }
+
+    public CoverArt getArtworkCandidate(ArtworkCandidateRequest req) throws ClientException {
+        return CsilCbor.decodeCoverArt(transport.call("LibraryService", "get-artwork-candidate", CsilCbor.encodeArtworkCandidateRequest(req)));
+    }
+
+    public Ok setArtwork(SetArtworkRequest req) throws ClientException {
+        return CsilCbor.decodeOk(transport.call("LibraryService", "set-artwork", CsilCbor.encodeSetArtworkRequest(req)));
+    }
+
     public AudiobookProgressResponse getAudiobookProgress(AudiobookProgressRequest req) throws ClientException {
         return CsilCbor.decodeAudiobookProgressResponse(transport.call("LibraryService", "get-audiobook-progress", CsilCbor.encodeAudiobookProgressRequest(req)));
     }

@@ -1,8 +1,9 @@
 ;; Ichoi — administration (admin role; §6.6). Accounts, trust, nodes, settings, import.
 
-Account = { id: AccountId, handle: Handle, ? display_name: text, role: Role, created_at: timestamp }
+Account = { id: AccountId, handle: Handle, ? display_name: text, role: Role, created_at: timestamp, ? can_edit_library: bool }
 
 ListAccountsResponse = { accounts: [* Account] }
+SetLibraryEditorRequest = { account_id: AccountId, enabled: bool }
 SetRoleRequest       = { account_id: AccountId, role: Role }
 AdminDeleteAccountRequest = { account_id: AccountId, confirmation_handle: Handle }
 
@@ -111,6 +112,7 @@ UpdateContentReportStatusRequest = {
 service AdminService {
     list-accounts: Page -> ListAccountsResponse / ServiceError,
     set-role: SetRoleRequest -> Account / ServiceError,
+    set-library-editor: SetLibraryEditorRequest -> Ok / ServiceError,
     delete-account: AdminDeleteAccountRequest -> Ok / ServiceError,
     trust-domain: TrustDomainRequest -> TrustedDomains / ServiceError,
     list-trusted-domains: Page -> TrustedDomains / ServiceError,

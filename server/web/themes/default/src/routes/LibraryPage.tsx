@@ -1,4 +1,5 @@
-import { createSignal, Show, type JSX } from "solid-js";
+import { savedView, rememberView } from "../lib/browse-memory.ts";
+import { createEffect, onCleanup, createSignal, Show, type JSX } from "solid-js";
 import { useI18n } from "../lib/i18n.tsx";
 import { useServers } from "../stores/servers.tsx";
 import { VirtualAlbumGrid } from "../components/VirtualAlbumGrid.tsx";
@@ -12,11 +13,19 @@ type AlbumSort = "title" | "artist" | "year" | "tracks";
 export function LibraryPage(): JSX.Element {
   const servers = useServers();
   const { t } = useI18n();
-  const [tab, setTab] = createSignal<Tab>("albums");
-  const [albumView, setAlbumView] = createSignal<AlbumView>("grid");
-  const [albumQuery, setAlbumQuery] = createSignal("");
-  const [albumSort, setAlbumSort] = createSignal<AlbumSort>("title");
+  const [tab, setTab] = createSignal<Tab>(savedView((servers.activeId() ?? "") + "|tab", "albums"));
+  const [albumView, setAlbumView] = createSignal<AlbumView>(savedView((servers.activeId() ?? "") + "|albumView", "grid"));
+  const [albumQuery, setAlbumQuery] = createSignal(savedView((servers.activeId() ?? "") + "|albumQuery", ""));
+  const [albumSort, setAlbumSort] = createSignal<AlbumSort>(savedView((servers.activeId() ?? "") + "|albumSort", "title"));
 
+  const reset = () => { setTab("albums"); setAlbumView("grid"); setAlbumQuery(""); setAlbumSort("title"); };
+  window.addEventListener("ichoi:reset-browse", reset);
+  onCleanup(() => window.removeEventListener("ichoi:reset-browse", reset));
+  createEffect(() => {
+    const key = (servers.activeId() ?? "") + "|";
+    rememberView(key + "tab", tab()); rememberView(key + "albumView", albumView());
+    rememberView(key + "albumQuery", albumQuery()); rememberView(key + "albumSort", albumSort());
+  });
   return (
     <div class="page catalog-page">
       <header class="page-head">

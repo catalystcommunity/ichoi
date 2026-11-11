@@ -110,12 +110,13 @@ type AuthRequest struct {
 
 // SessionInfo represents a structured data type
 type SessionInfo struct {
-	AccountId   AccountId `json:"account_id" yaml:"account_id"`
-	Handle      Handle    `json:"handle" yaml:"handle"`
-	DisplayName *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	Role        Role      `json:"role" yaml:"role"`
-	CanAdmin    bool      `json:"can_admin" yaml:"can_admin"`
-	Token       *string   `json:"token,omitempty" yaml:"token,omitempty"`
+	AccountId      AccountId `json:"account_id" yaml:"account_id"`
+	Handle         Handle    `json:"handle" yaml:"handle"`
+	DisplayName    *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Role           Role      `json:"role" yaml:"role"`
+	CanAdmin       bool      `json:"can_admin" yaml:"can_admin"`
+	CanEditLibrary *bool     `json:"can_edit_library,omitempty" yaml:"can_edit_library,omitempty"`
+	Token          *string   `json:"token,omitempty" yaml:"token,omitempty"`
 }
 
 // DeleteAccountRequest represents a structured data type
@@ -358,6 +359,56 @@ type CoverArtRequest struct {
 type CoverArt struct {
 	ContentType string `json:"content_type" yaml:"content_type"`
 	Data        []byte `json:"data" yaml:"data"`
+}
+
+// ArtworkKind is a type alias
+type ArtworkKind string
+
+// ArtworkRequest represents a structured data type
+type ArtworkRequest struct {
+	Kind    ArtworkKind `json:"kind" yaml:"kind"`
+	Id      string      `json:"id" yaml:"id"`
+	MaxSize *uint64     `json:"max_size,omitempty" yaml:"max_size,omitempty"`
+}
+
+// SetArtworkRequest represents a structured data type
+type SetArtworkRequest struct {
+	Kind        ArtworkKind `json:"kind" yaml:"kind"`
+	Id          string      `json:"id" yaml:"id"`
+	Data        *[]byte     `json:"data,omitempty" yaml:"data,omitempty"`
+	CandidateId *string     `json:"candidate_id,omitempty" yaml:"candidate_id,omitempty"`
+}
+
+// ArtworkCandidatesRequest represents a structured data type
+type ArtworkCandidatesRequest struct {
+	Kind   ArtworkKind `json:"kind" yaml:"kind"`
+	Id     string      `json:"id" yaml:"id"`
+	Offset *uint64     `json:"offset,omitempty" yaml:"offset,omitempty"`
+	Limit  *uint64     `json:"limit,omitempty" yaml:"limit,omitempty"`
+}
+
+// ArtworkCandidateRequest represents a structured data type
+type ArtworkCandidateRequest struct {
+	Kind        ArtworkKind `json:"kind" yaml:"kind"`
+	Id          string      `json:"id" yaml:"id"`
+	CandidateId string      `json:"candidate_id" yaml:"candidate_id"`
+	MaxSize     *uint64     `json:"max_size,omitempty" yaml:"max_size,omitempty"`
+}
+
+// ArtworkCandidate represents a structured data type
+type ArtworkCandidate struct {
+	Id        string `json:"id" yaml:"id"`
+	Label     string `json:"label" yaml:"label"`
+	Width     uint64 `json:"width" yaml:"width"`
+	Height    uint64 `json:"height" yaml:"height"`
+	Role      string `json:"role" yaml:"role"`
+	Suggested bool   `json:"suggested" yaml:"suggested"`
+}
+
+// ArtworkCandidates represents a structured data type
+type ArtworkCandidates struct {
+	Candidates []ArtworkCandidate `json:"candidates" yaml:"candidates"`
+	Total      uint64             `json:"total" yaml:"total"`
 }
 
 // ReportContentRequest represents a structured data type
@@ -760,16 +811,23 @@ type NodeReport struct {
 
 // Account represents a structured data type
 type Account struct {
-	Id          AccountId `json:"id" yaml:"id"`
-	Handle      Handle    `json:"handle" yaml:"handle"`
-	DisplayName *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
-	Role        Role      `json:"role" yaml:"role"`
-	CreatedAt   time.Time `json:"created_at" yaml:"created_at"`
+	Id             AccountId `json:"id" yaml:"id"`
+	Handle         Handle    `json:"handle" yaml:"handle"`
+	DisplayName    *string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Role           Role      `json:"role" yaml:"role"`
+	CreatedAt      time.Time `json:"created_at" yaml:"created_at"`
+	CanEditLibrary *bool     `json:"can_edit_library,omitempty" yaml:"can_edit_library,omitempty"`
 }
 
 // ListAccountsResponse represents a structured data type
 type ListAccountsResponse struct {
 	Accounts []Account `json:"accounts" yaml:"accounts"`
+}
+
+// SetLibraryEditorRequest represents a structured data type
+type SetLibraryEditorRequest struct {
+	AccountId AccountId `json:"account_id" yaml:"account_id"`
+	Enabled   bool      `json:"enabled" yaml:"enabled"`
 }
 
 // SetRoleRequest represents a structured data type

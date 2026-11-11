@@ -95,9 +95,10 @@ end
 # display_name [String]
 # role [Role]
 # can_admin [Boolean]
+# can_edit_library [Boolean]
 # token [String]
-SessionInfo = Data.define(:account_id, :handle, :display_name, :role, :can_admin, :token) do
-  def initialize(account_id:, handle:, role:, display_name: nil, can_admin: false, token: nil)
+SessionInfo = Data.define(:account_id, :handle, :display_name, :role, :can_admin, :can_edit_library, :token) do
+  def initialize(account_id:, handle:, role:, display_name: nil, can_admin: false, can_edit_library: nil, token: nil)
     super
   end
 end
@@ -319,6 +320,59 @@ end
 # content_type [String]
 # data [String]
 CoverArt = Data.define(:content_type, :data)
+
+# ArtworkKind is an alias for String.
+
+# kind [ArtworkKind]
+# id [String]
+# max_size [Integer]
+ArtworkRequest = Data.define(:kind, :id, :max_size) do
+  def initialize(kind:, id:, max_size: nil)
+    super
+  end
+end
+
+# kind [ArtworkKind]
+# id [String]
+# data [String]
+# candidate_id [String]
+SetArtworkRequest = Data.define(:kind, :id, :data, :candidate_id) do
+  def initialize(kind:, id:, data: nil, candidate_id: nil)
+    super
+  end
+end
+
+# kind [ArtworkKind]
+# id [String]
+# offset [Integer]
+# limit [Integer]
+ArtworkCandidatesRequest = Data.define(:kind, :id, :offset, :limit) do
+  def initialize(kind:, id:, offset: nil, limit: nil)
+    super
+  end
+end
+
+# kind [ArtworkKind]
+# id [String]
+# candidate_id [String]
+# max_size [Integer]
+ArtworkCandidateRequest = Data.define(:kind, :id, :candidate_id, :max_size) do
+  def initialize(kind:, id:, candidate_id:, max_size: nil)
+    super
+  end
+end
+
+# id [String]
+# label [String]
+# width [Integer]
+# height [Integer]
+# role [String]
+# suggested [Boolean]
+ArtworkCandidate = Data.define(:id, :label, :width, :height, :role, :suggested)
+
+# candidates [Array<ArtworkCandidate>]
+# total [Integer]
+ArtworkCandidates = Data.define(:candidates, :total)
 
 # target_type [ContentReportTargetType]
 # target_id [String]
@@ -721,14 +775,19 @@ end
 # display_name [String]
 # role [Role]
 # created_at [Time]
-Account = Data.define(:id, :handle, :display_name, :role, :created_at) do
-  def initialize(id:, handle:, role:, created_at:, display_name: nil)
+# can_edit_library [Boolean]
+Account = Data.define(:id, :handle, :display_name, :role, :created_at, :can_edit_library) do
+  def initialize(id:, handle:, role:, created_at:, display_name: nil, can_edit_library: nil)
     super
   end
 end
 
 # accounts [Array<Account>]
 ListAccountsResponse = Data.define(:accounts)
+
+# account_id [AccountId]
+# enabled [Boolean]
+SetLibraryEditorRequest = Data.define(:account_id, :enabled)
 
 # account_id [AccountId]
 # role [Role]

@@ -11,6 +11,14 @@ final class ServerProfileTests: XCTestCase {
         XCTAssertThrowsError(try ServerURLPolicy.validate(url: URL(string: "https://user@music.example")!, privateHTTPConsent: false))
     }
 
+    func testBareDomainUsesHTTPSAndPreservesSecurityChecks() throws {
+        XCTAssertEqual(try ServerURLPolicy.parse("  ichoi.catalystsquad.com  ").absoluteString, "https://ichoi.catalystsquad.com")
+        XCTAssertEqual(try ServerURLPolicy.parse("music.example:8443").port, 8443)
+        XCTAssertThrowsError(try ServerURLPolicy.parse("music.example/path"))
+        XCTAssertThrowsError(try ServerURLPolicy.parse("user@music.example"))
+        XCTAssertThrowsError(try ServerURLPolicy.parse("http://music.example"))
+        XCTAssertThrowsError(try ServerURLPolicy.parse(""))
+    }
     func testProfileSeparation() throws {
         let defaults = UserDefaults(suiteName: "IchoiCoreTests")!
         defaults.removePersistentDomain(forName: "IchoiCoreTests")

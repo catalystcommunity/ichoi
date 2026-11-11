@@ -133,6 +133,26 @@ public struct LibraryClient {
         return try CoverArt.fromCbor(csilResp)
     }
 
+    public func getArtwork(_ request: ArtworkRequest) throws -> CoverArt {
+        let csilResp = try transport.call(service: "LibraryService", op: "get-artwork", request: request.toCbor())
+        return try CoverArt.fromCbor(csilResp)
+    }
+
+    public func listArtworkCandidates(_ request: ArtworkCandidatesRequest) throws -> ArtworkCandidates {
+        let csilResp = try transport.call(service: "LibraryService", op: "list-artwork-candidates", request: request.toCbor())
+        return try ArtworkCandidates.fromCbor(csilResp)
+    }
+
+    public func getArtworkCandidate(_ request: ArtworkCandidateRequest) throws -> CoverArt {
+        let csilResp = try transport.call(service: "LibraryService", op: "get-artwork-candidate", request: request.toCbor())
+        return try CoverArt.fromCbor(csilResp)
+    }
+
+    public func setArtwork(_ request: SetArtworkRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "LibraryService", op: "set-artwork", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
     public func getAudiobookProgress(_ request: AudiobookProgressRequest) throws -> AudiobookProgressResponse {
         let csilResp = try transport.call(service: "LibraryService", op: "get-audiobook-progress", request: request.toCbor())
         return try AudiobookProgressResponse.fromCbor(csilResp)
@@ -239,6 +259,11 @@ public struct AdminClient {
     public func setRole(_ request: SetRoleRequest) throws -> Account {
         let csilResp = try transport.call(service: "AdminService", op: "set-role", request: request.toCbor())
         return try Account.fromCbor(csilResp)
+    }
+
+    public func setLibraryEditor(_ request: SetLibraryEditorRequest) throws -> Ok {
+        let csilResp = try transport.call(service: "AdminService", op: "set-library-editor", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
     }
 
     public func deleteAccount(_ request: AdminDeleteAccountRequest) throws -> Ok {

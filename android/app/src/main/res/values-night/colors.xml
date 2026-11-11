@@ -1,0 +1,5 @@
+<resources>
+    <color name="ichoi_bg">#16130E</color><color name="ichoi_surface">#201C15</color>
+    <color name="ichoi_text">#F3ECDD</color><color name="ichoi_muted">#B0A690</color>
+    <color name="ichoi_accent">#FFB454</color><color name="ichoi_signal">#37D6C6</color>
+</resources>

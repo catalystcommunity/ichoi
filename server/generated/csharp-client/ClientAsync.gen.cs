@@ -62,6 +62,14 @@ public sealed class LibraryAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<BlockedAccountsResponse>(await transport.Call("LibraryService", "list-blocked-accounts", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<CoverArt> GetCoverArtAsync(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(await transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
+    public async System.Threading.Tasks.Task<CoverArt> GetArtworkAsync(ArtworkRequest artworkRequest) =>
+        Codec.Decode<CoverArt>(await transport.Call("LibraryService", "get-artwork", Codec.Encode(artworkRequest)));
+    public async System.Threading.Tasks.Task<ArtworkCandidates> ListArtworkCandidatesAsync(ArtworkCandidatesRequest artworkCandidatesRequest) =>
+        Codec.Decode<ArtworkCandidates>(await transport.Call("LibraryService", "list-artwork-candidates", Codec.Encode(artworkCandidatesRequest)));
+    public async System.Threading.Tasks.Task<CoverArt> GetArtworkCandidateAsync(ArtworkCandidateRequest artworkCandidateRequest) =>
+        Codec.Decode<CoverArt>(await transport.Call("LibraryService", "get-artwork-candidate", Codec.Encode(artworkCandidateRequest)));
+    public async System.Threading.Tasks.Task<Ok> SetArtworkAsync(SetArtworkRequest setArtworkRequest) =>
+        Codec.Decode<Ok>(await transport.Call("LibraryService", "set-artwork", Codec.Encode(setArtworkRequest)));
     public async System.Threading.Tasks.Task<AudiobookProgressResponse> GetAudiobookProgressAsync(AudiobookProgressRequest audiobookProgressRequest) =>
         Codec.Decode<AudiobookProgressResponse>(await transport.Call("LibraryService", "get-audiobook-progress", Codec.Encode(audiobookProgressRequest)));
     public async System.Threading.Tasks.Task<AudiobookProgress> UpdateAudiobookProgressAsync(UpdateAudiobookProgressRequest updateAudiobookProgressRequest) =>
@@ -112,6 +120,8 @@ public sealed class AdminAsyncClient(ICsilAsyncTransport transport)
         Codec.Decode<ListAccountsResponse>(await transport.Call("AdminService", "list-accounts", Codec.Encode(page)));
     public async System.Threading.Tasks.Task<Account> SetRoleAsync(SetRoleRequest setRoleRequest) =>
         Codec.Decode<Account>(await transport.Call("AdminService", "set-role", Codec.Encode(setRoleRequest)));
+    public async System.Threading.Tasks.Task<Ok> SetLibraryEditorAsync(SetLibraryEditorRequest setLibraryEditorRequest) =>
+        Codec.Decode<Ok>(await transport.Call("AdminService", "set-library-editor", Codec.Encode(setLibraryEditorRequest)));
     public async System.Threading.Tasks.Task<Ok> DeleteAccountAsync(AdminDeleteAccountRequest adminDeleteAccountRequest) =>
         Codec.Decode<Ok>(await transport.Call("AdminService", "delete-account", Codec.Encode(adminDeleteAccountRequest)));
     public async System.Threading.Tasks.Task<TrustedDomains> TrustDomainAsync(TrustDomainRequest trustDomainRequest) =>

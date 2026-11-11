@@ -17,14 +17,24 @@ export function ContentReportAdmin(): JSX.Element {
   const servers = useServers();
   const [offset, setOffset] = createSignal(0);
   const [message, setMessage] = createSignal<string>();
+  const [loadError, setLoadError] = createSignal<string>();
   const [data, { refetch }] = createResource(
     () => servers.active()?.session?.can_admin ? servers.api() : undefined,
     async (api) => {
+      setLoadError(undefined);
+      try {
       const [reports, accounts] = await Promise.all([
         loadAllContentReports((page) => api!.admin.listContentReports(page)),
         loadAllAccounts((page) => api!.admin.listAccounts(page)),
       ]);
       return { reports, accounts };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setLoadError(message.includes("unknown operation")
+          ? "Content reports are not available on this server. Update the server to use this panel."
+          : `Could not load content reports: ${message}`);
+        return undefined;
+      }
     },
   );
   const visible = () => reportPage(data()?.reports ?? [], offset(), PAGE_SIZE);
@@ -74,7 +84,8 @@ export function ContentReportAdmin(): JSX.Element {
     <section class="panel" aria-labelledby="content-reports-title">
       <h2 id="content-reports-title">Content reports</h2>
       <p class="hint">Review reports for this server. Open reports appear first.</p>
-      <Show when={!data.loading} fallback={<Spinner label="Loading reports…" />}>
+      <Show when={loadError()}><p class="error" role="alert">{loadError()}</p><button type="button" class="btn" onClick={() => void refetch()}>Retry</button></Show>
+      <Show when={!data.loading && !loadError()} fallback={data.loading ? <Spinner label="Loading reports…" /> : undefined}>
         <Show when={visible().length > 0} fallback={<EmptyState title="No content reports" />}>
           <div class="settings-list">
             <For each={visible()}>

@@ -20,7 +20,8 @@ class ServerProfileStore(context: Context) {
     }
 
     @Synchronized
-    fun put(url: String, allowPrivateHttp: Boolean = false): ServerProfile {
+    fun put(rawUrl: String, allowPrivateHttp: Boolean = false): ServerProfile {
+        val url = community.catalyst.ichoi.security.ConnectionSecurity.normalize(rawUrl)
         val existing = all().firstOrNull { it.url == url }
         val profile = existing?.copy(allowPrivateHttp = allowPrivateHttp) ?: ServerProfile(UUID.randomUUID().toString(), url, allowPrivateHttp)
         val values = all().filterNot { it.id == profile.id } + profile

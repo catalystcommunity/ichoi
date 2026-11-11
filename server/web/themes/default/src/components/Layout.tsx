@@ -1,3 +1,4 @@
+import { resetBrowsing, savedQuery, savedScroll, rememberScroll, rememberQueueReturn } from "../lib/browse-memory.ts";
 // The app shell: nav rail (brand + primary nav + server switcher) on the left,
 // routed content in the middle, the persistent transport pinned to the bottom.
 import {
@@ -7,6 +8,7 @@ import {
   ErrorBoundary,
   For,
   onCleanup,
+  onMount,
   Show,
   type JSX,
 } from "solid-js";
@@ -50,6 +52,32 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
   const servers = useServers();
   const location = useLocation();
   const navigate = useNavigate();
+  let mainRef!: HTMLElement;
+  let routeRef!: HTMLDivElement;
+  let scrollKey = "";
+  let restoreTop: number | undefined;
+  let previousPath = "/";
+  const restoreScroll = () => {
+    if (restoreTop === undefined || !mainRef) return;
+    mainRef.scrollTop = restoreTop;
+    if (Math.abs(mainRef.scrollTop - restoreTop) < 2) restoreTop = undefined;
+  };
+  createEffect(() => {
+    const server = servers.activeId() ?? "";
+    const path = location.pathname + location.search;
+    if (location.pathname === "/now-playing" && previousPath !== path) rememberQueueReturn(server, previousPath);
+    previousPath = path;
+    scrollKey = server + "|" + path;
+    restoreTop = savedScroll(scrollKey);
+    requestAnimationFrame(restoreScroll);
+  });
+  onMount(() => {
+    const observer = new ResizeObserver(restoreScroll);
+    observer.observe(routeRef);
+    const contentObserver = new MutationObserver(() => requestAnimationFrame(restoreScroll));
+    contentObserver.observe(routeRef, { childList: true, subtree: true });
+    onCleanup(() => { observer.disconnect(); contentObserver.disconnect(); });
+  });
   const satelliteMode = Boolean(satelliteToken());
   const [updating, setUpdating] = createSignal(false);
   const [access] = createResource(async () => {
@@ -97,7 +125,7 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
 
       <nav class="rail" aria-label="Primary">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true" />
+          <img class="brand-mark" src="/brand/ichoi-mark.svg" alt="" />
           <span>
             <span class="brand-name">{t("app.name")}</span>
             <br />
@@ -111,9 +139,10 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
               <>
                 <li>
                   <A
-                    href={item.href}
+                    href={item.href === "/search" && savedQuery(servers.activeId() ?? "") ? `/search?q=${encodeURIComponent(savedQuery(servers.activeId() ?? ""))}` : item.href}
                     end={"end" in item ? item.end : false}
                     class="nav-link"
+                    onClick={() => { if (item.href === "/") resetBrowsing(servers.activeId() ?? ""); }}
                     activeClass="active"
                   >
                     <item.icon />
@@ -122,7 +151,7 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
                 </li>
                 <Show when={item.href === "/" && hasAudiobooks()}>
                   <li>
-                    <A href="/audiobooks" class="nav-link" activeClass="active">
+                    <A href="/audiobooks" class="nav-link" activeClass="active" onClick={() => resetBrowsing(servers.activeId() ?? "")}>
                       <IconBook />
                       <span>{t("nav.audiobooks")}</span>
                     </A>
@@ -143,7 +172,9 @@ export function Layout(props: { children?: JSX.Element }): JSX.Element {
       </nav>
 
       <main class="main" id="main-content" tabindex="-1">
-        <div class="main-route">
+        <div ref={element => { mainRef = element; routeRef = element; }} class="main-route"
+          onScroll={() => { if (restoreTop === undefined) rememberScroll(scrollKey, mainRef.scrollTop); }}
+          onWheel={() => { restoreTop = undefined; }} onTouchStart={() => { restoreTop = undefined; }}>
           <ErrorBoundary
             fallback={(err, reset) => (
               <div class="page">

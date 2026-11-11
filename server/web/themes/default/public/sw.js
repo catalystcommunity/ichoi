@@ -1,3 +1,4 @@
+importScripts("/media-buffer.js");
 const CACHE = "ichoi-shell-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -14,6 +15,11 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+  const media = mediaBuffers.get(event.clientId);
+  if (media?.url === request.url) {
+    event.respondWith(media.respond(request).catch(() => fetch(request)));
+    return;
+  }
   if (
     url.origin !== location.origin ||
     url.pathname.startsWith("/media/") ||

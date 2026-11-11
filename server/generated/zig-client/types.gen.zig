@@ -163,6 +163,19 @@ pub const Library = enum {
     }
 };
 
+/// ArtworkKind is an enumeration.
+pub const ArtworkKind = enum {
+    album,
+    artist,
+
+    pub fn wire_name(self: ArtworkKind) []const u8 {
+        return switch (self) {
+            .album => "album",
+            .artist => "artist",
+        };
+    }
+};
+
 /// PlayerKind is an enumeration.
 pub const PlayerKind = enum {
     shared,
@@ -410,6 +423,22 @@ pub const BlockedAccountsResponse = struct {
 pub const CoverArt = struct {
     content_type: []const u8,
     data: []const u8,
+};
+
+/// ArtworkCandidate is a structured data type.
+pub const ArtworkCandidate = struct {
+    id: []const u8,
+    label: []const u8,
+    width: u64,
+    height: u64,
+    role: []const u8,
+    suggested: bool,
+};
+
+/// ArtworkCandidates is a structured data type.
+pub const ArtworkCandidates = struct {
+    candidates: []ArtworkCandidate,
+    total: u64,
 };
 
 /// ListPlayersRequest is a structured data type.
@@ -801,6 +830,7 @@ pub const SessionInfo = struct {
     display_name: ?[]const u8 = null,
     role: Role,
     can_admin: bool,
+    can_edit_library: ?bool = null,
     token: ?[]const u8 = null,
 };
 
@@ -950,6 +980,37 @@ pub const BlockedAccount = struct {
 /// CoverArtRequest is a structured data type.
 pub const CoverArtRequest = struct {
     album_id: AlbumId,
+    max_size: ?u64 = null,
+};
+
+/// ArtworkRequest is a structured data type.
+pub const ArtworkRequest = struct {
+    kind: ArtworkKind,
+    id: []const u8,
+    max_size: ?u64 = null,
+};
+
+/// SetArtworkRequest is a structured data type.
+pub const SetArtworkRequest = struct {
+    kind: ArtworkKind,
+    id: []const u8,
+    data: ?[]const u8 = null,
+    candidate_id: ?[]const u8 = null,
+};
+
+/// ArtworkCandidatesRequest is a structured data type.
+pub const ArtworkCandidatesRequest = struct {
+    kind: ArtworkKind,
+    id: []const u8,
+    offset: ?u64 = null,
+    limit: ?u64 = null,
+};
+
+/// ArtworkCandidateRequest is a structured data type.
+pub const ArtworkCandidateRequest = struct {
+    kind: ArtworkKind,
+    id: []const u8,
+    candidate_id: []const u8,
     max_size: ?u64 = null,
 };
 
@@ -1258,6 +1319,13 @@ pub const Account = struct {
     display_name: ?[]const u8 = null,
     role: Role,
     created_at: CsilTimestamp,
+    can_edit_library: ?bool = null,
+};
+
+/// SetLibraryEditorRequest is a structured data type.
+pub const SetLibraryEditorRequest = struct {
+    account_id: AccountId,
+    enabled: bool,
 };
 
 /// SetRoleRequest is a structured data type.

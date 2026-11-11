@@ -32,3 +32,25 @@ public enum ConnectionFactory {
         return URLSession(configuration: configuration, delegate: ServerSessionDelegate(originalURL: profile.url), delegateQueue: nil)
     }
 }
+
+
+/// Validate byte ranges before the media loader accepts response data.
+public struct MediaByteRange: Equatable {
+    public let start: Int64
+    public let end: Int64
+    public let total: Int64
+    public static let chunkSize: Int64 = 512 * 1024
+    public static func chunkEnd(start: Int64, exclusiveEnd: Int64) -> Int64 {
+        min(exclusiveEnd - 1, start + min(chunkSize - 1, Int64.max - start))
+    }
+    public static func parse(_ header: String?, requestedStart: Int64, requestedEnd: Int64) -> MediaByteRange? {
+        guard let header, header.hasPrefix("bytes ") else { return nil }
+        let parts = header.dropFirst(6).split(separator: "/")
+        guard parts.count == 2, let total = Int64(parts[1]), total > 0 else { return nil }
+        let bounds = parts[0].split(separator: "-")
+        guard bounds.count == 2, let start = Int64(bounds[0]), let end = Int64(bounds[1]),
+              start == requestedStart, start >= 0, end >= start, end <= requestedEnd,
+              end < total, end - start < chunkSize else { return nil }
+        return MediaByteRange(start: start, end: end, total: total)
+    }
+}

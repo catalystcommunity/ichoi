@@ -117,6 +117,30 @@ pub trait LibraryService {
         ctx: &Self::Context,
         input: CoverArtRequest,
     ) -> Result<CoverArt, ServiceError>;
+    /// get-artwork (request/response).
+    fn get_artwork(
+        &self,
+        ctx: &Self::Context,
+        input: ArtworkRequest,
+    ) -> Result<CoverArt, ServiceError>;
+    /// list-artwork-candidates (request/response).
+    fn list_artwork_candidates(
+        &self,
+        ctx: &Self::Context,
+        input: ArtworkCandidatesRequest,
+    ) -> Result<ArtworkCandidates, ServiceError>;
+    /// get-artwork-candidate (request/response).
+    fn get_artwork_candidate(
+        &self,
+        ctx: &Self::Context,
+        input: ArtworkCandidateRequest,
+    ) -> Result<CoverArt, ServiceError>;
+    /// set-artwork (request/response).
+    fn set_artwork(
+        &self,
+        ctx: &Self::Context,
+        input: SetArtworkRequest,
+    ) -> Result<Ok, ServiceError>;
     /// get-audiobook-progress (request/response).
     fn get_audiobook_progress(
         &self,
@@ -298,6 +322,12 @@ pub trait AdminService {
     /// set-role (request/response).
     fn set_role(&self, ctx: &Self::Context, input: SetRoleRequest)
         -> Result<Account, ServiceError>;
+    /// set-library-editor (request/response).
+    fn set_library_editor(
+        &self,
+        ctx: &Self::Context,
+        input: SetLibraryEditorRequest,
+    ) -> Result<Ok, ServiceError>;
     /// delete-account (request/response).
     fn delete_account(
         &self,

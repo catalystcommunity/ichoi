@@ -141,6 +141,8 @@ data class SessionInfo(
     val role: Role,
     // wire key: can_admin
     val canAdmin: Boolean = false,
+    // wire key: can_edit_library
+    val canEditLibrary: Boolean? = null,
     val token: String? = null
 )
 
@@ -461,6 +463,78 @@ data class CoverArt(
         return result
     }
 }
+
+/** ArtworkKind enum (bare-literal wire). */
+enum class ArtworkKind { Album, Artist }
+
+/** ArtworkRequest record. */
+data class ArtworkRequest(
+    val kind: ArtworkKind,
+    val id: String,
+    // wire key: max_size
+    val maxSize: ULong? = null
+)
+
+/** SetArtworkRequest record. */
+data class SetArtworkRequest(
+    val kind: ArtworkKind,
+    val id: String,
+    val data: ByteArray? = null,
+    // wire key: candidate_id
+    val candidateId: String? = null
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is SetArtworkRequest) return false
+        if (kind != other.kind) return false
+        if (id != other.id) return false
+        if (!(data?.contentEquals(other.data) ?: (other.data == null))) return false
+        if (candidateId != other.candidateId) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = kind.hashCode()
+        result = 31 * result + id.hashCode()
+        result = 31 * result + (data?.contentHashCode() ?: 0)
+        result = 31 * result + candidateId.hashCode()
+        return result
+    }
+}
+
+/** ArtworkCandidatesRequest record. */
+data class ArtworkCandidatesRequest(
+    val kind: ArtworkKind,
+    val id: String,
+    val offset: ULong? = null,
+    val limit: ULong? = null
+)
+
+/** ArtworkCandidateRequest record. */
+data class ArtworkCandidateRequest(
+    val kind: ArtworkKind,
+    val id: String,
+    // wire key: candidate_id
+    val candidateId: String,
+    // wire key: max_size
+    val maxSize: ULong? = null
+)
+
+/** ArtworkCandidate record. */
+data class ArtworkCandidate(
+    val id: String,
+    val label: String,
+    val width: ULong,
+    val height: ULong,
+    val role: String,
+    val suggested: Boolean
+)
+
+/** ArtworkCandidates record. */
+data class ArtworkCandidates(
+    val candidates: List<ArtworkCandidate>,
+    val total: ULong
+)
 
 /** ReportContentRequest record. */
 data class ReportContentRequest(
@@ -1032,12 +1106,21 @@ data class Account(
     val displayName: String? = null,
     val role: Role,
     // wire key: created_at
-    val createdAt: java.time.Instant
+    val createdAt: java.time.Instant,
+    // wire key: can_edit_library
+    val canEditLibrary: Boolean? = null
 )
 
 /** ListAccountsResponse record. */
 data class ListAccountsResponse(
     val accounts: List<Account>
+)
+
+/** SetLibraryEditorRequest record. */
+data class SetLibraryEditorRequest(
+    // wire key: account_id
+    val accountId: AccountId,
+    val enabled: Boolean
 )
 
 /** SetRoleRequest record. */

@@ -1,3 +1,6 @@
+import { savedScroll, rememberScroll } from "../lib/browse-memory.ts";
+import { useServers } from "../stores/servers.tsx";
+import { CoverArt } from "./CoverArt.tsx";
 import {
   createEffect,
   createMemo,
@@ -22,6 +25,9 @@ const OVERSCAN_ROWS = 3;
 
 export function VirtualArtistGrid(props: { api: ServerApi }): JSX.Element {
   const { t } = useI18n();
+  const servers = useServers();
+  const scrollKey = () => (servers.activeId() ?? "") + "|catalog|" + "artists";
+  let restorePosition: number | undefined = savedScroll(scrollKey());
   const navigate = useNavigate();
   let host!: HTMLDivElement;
   let scroller: HTMLElement | undefined;
@@ -58,6 +64,10 @@ export function VirtualArtistGrid(props: { api: ServerApi }): JSX.Element {
 
   function updateViewport(): void {
     if (!host || !scroller) return;
+    if (restorePosition !== undefined) {
+      scroller.scrollTop = restorePosition;
+      if (Math.abs(scroller.scrollTop - restorePosition) < 2) restorePosition = undefined;
+    } else rememberScroll(scrollKey(), scroller.scrollTop);
     const hostRect = host.getBoundingClientRect();
     const scrollRect = scroller.getBoundingClientRect();
     setViewportTop(Math.max(0, scrollRect.top - hostRect.top));
@@ -201,11 +211,7 @@ export function VirtualArtistGrid(props: { api: ServerApi }): JSX.Element {
                         onClick={() => navigate(`/artist/${encodeURIComponent(artist().id)}`)}
                         aria-label={artist().name}
                       >
-                        <span class="cover">
-                          <span class="cover-fallback">
-                            {artist().name.charAt(0).toUpperCase()}
-                          </span>
-                        </span>
+                        <CoverArt album={{ id: artist().id, title: artist().name }} kind="artist" />
                         <span>
                           <span class="tile-title">{artist().name}</span>
                           <span class="tile-sub">

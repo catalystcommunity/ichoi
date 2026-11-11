@@ -1,7 +1,9 @@
 # Ichoi brand assets
 
 Open `index.html` to see the designs.
-These files are ready for import. They are not installed in the app or website.
+These files supply the iOS, Android, and web app icons.
+Run `python3 scripts/install-brand-assets.py` from the repository root after an
+export. Website installation is separate.
 
 ## Select a file
 

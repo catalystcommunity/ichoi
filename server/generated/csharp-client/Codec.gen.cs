@@ -410,6 +410,13 @@ public static class Codec
         BlockedAccountsResponse csilTyped => BlockedAccountsResponseToCborValue(csilTyped),
         CoverArtRequest csilTyped => CoverArtRequestToCborValue(csilTyped),
         CoverArt csilTyped => CoverArtToCborValue(csilTyped),
+        ArtworkKind csilTyped => ArtworkKindToCborValue(csilTyped),
+        ArtworkRequest csilTyped => ArtworkRequestToCborValue(csilTyped),
+        SetArtworkRequest csilTyped => SetArtworkRequestToCborValue(csilTyped),
+        ArtworkCandidatesRequest csilTyped => ArtworkCandidatesRequestToCborValue(csilTyped),
+        ArtworkCandidateRequest csilTyped => ArtworkCandidateRequestToCborValue(csilTyped),
+        ArtworkCandidate csilTyped => ArtworkCandidateToCborValue(csilTyped),
+        ArtworkCandidates csilTyped => ArtworkCandidatesToCborValue(csilTyped),
         ReportContentRequest csilTyped => ReportContentRequestToCborValue(csilTyped),
         PlayerKind csilTyped => PlayerKindToCborValue(csilTyped),
         Player csilTyped => PlayerToCborValue(csilTyped),
@@ -472,6 +479,7 @@ public static class Codec
         NodeReport csilTyped => NodeReportToCborValue(csilTyped),
         Account csilTyped => AccountToCborValue(csilTyped),
         ListAccountsResponse csilTyped => ListAccountsResponseToCborValue(csilTyped),
+        SetLibraryEditorRequest csilTyped => SetLibraryEditorRequestToCborValue(csilTyped),
         SetRoleRequest csilTyped => SetRoleRequestToCborValue(csilTyped),
         AdminDeleteAccountRequest csilTyped => AdminDeleteAccountRequestToCborValue(csilTyped),
         TrustDomainRequest csilTyped => TrustDomainRequestToCborValue(csilTyped),
@@ -571,6 +579,13 @@ public static class Codec
         if (csilType == typeof(BlockedAccountsResponse)) return BlockedAccountsResponseFromCborValue(value);
         if (csilType == typeof(CoverArtRequest)) return CoverArtRequestFromCborValue(value);
         if (csilType == typeof(CoverArt)) return CoverArtFromCborValue(value);
+        if (csilType == typeof(ArtworkKind)) return ArtworkKindFromCborValue(value);
+        if (csilType == typeof(ArtworkRequest)) return ArtworkRequestFromCborValue(value);
+        if (csilType == typeof(SetArtworkRequest)) return SetArtworkRequestFromCborValue(value);
+        if (csilType == typeof(ArtworkCandidatesRequest)) return ArtworkCandidatesRequestFromCborValue(value);
+        if (csilType == typeof(ArtworkCandidateRequest)) return ArtworkCandidateRequestFromCborValue(value);
+        if (csilType == typeof(ArtworkCandidate)) return ArtworkCandidateFromCborValue(value);
+        if (csilType == typeof(ArtworkCandidates)) return ArtworkCandidatesFromCborValue(value);
         if (csilType == typeof(ReportContentRequest)) return ReportContentRequestFromCborValue(value);
         if (csilType == typeof(PlayerKind)) return PlayerKindFromCborValue(value);
         if (csilType == typeof(Player)) return PlayerFromCborValue(value);
@@ -633,6 +648,7 @@ public static class Codec
         if (csilType == typeof(NodeReport)) return NodeReportFromCborValue(value);
         if (csilType == typeof(Account)) return AccountFromCborValue(value);
         if (csilType == typeof(ListAccountsResponse)) return ListAccountsResponseFromCborValue(value);
+        if (csilType == typeof(SetLibraryEditorRequest)) return SetLibraryEditorRequestFromCborValue(value);
         if (csilType == typeof(SetRoleRequest)) return SetRoleRequestFromCborValue(value);
         if (csilType == typeof(AdminDeleteAccountRequest)) return AdminDeleteAccountRequestFromCborValue(value);
         if (csilType == typeof(TrustDomainRequest)) return TrustDomainRequestFromCborValue(value);
@@ -1046,6 +1062,10 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("display_name"), new CborValue.Text(csilV5)));
         }
+        if (value.CanEditLibrary is { } csilV6)
+        {
+            csilEntries.Add((new CborValue.Text("can_edit_library"), new CborValue.Bool(csilV6)));
+        }
         return new CborValue.Map(csilEntries);
     }
 
@@ -1057,7 +1077,8 @@ public static class Codec
         string? csilField2 = Cbor.MapGet(value, "display_name") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
         var csilField3 = RoleFromCborValue(Cbor.Require(value, "role"));
         var csilField4 = Cbor.AsBool(Cbor.Require(value, "can_admin"));
-        string? csilField5 = Cbor.MapGet(value, "token") is { } csilRaw5 ? Cbor.AsText(csilRaw5) : null;
+        bool? csilField5 = Cbor.MapGet(value, "can_edit_library") is { } csilRaw5 ? Cbor.AsBool(csilRaw5) : null;
+        string? csilField6 = Cbor.MapGet(value, "token") is { } csilRaw6 ? Cbor.AsText(csilRaw6) : null;
         return new SessionInfo
         {
             AccountId = csilField0,
@@ -1065,7 +1086,8 @@ public static class Codec
             DisplayName = csilField2,
             Role = csilField3,
             CanAdmin = csilField4,
-            Token = csilField5,
+            CanEditLibrary = csilField5,
+            Token = csilField6,
         };
     }
 
@@ -1967,6 +1989,199 @@ public static class Codec
         {
             ContentType = csilField0,
             Data = csilField1,
+        };
+    }
+
+    /// <summary>The bare-literal CBOR value for a ArtworkKind.</summary>
+    public static CborValue ArtworkKindToCborValue(ArtworkKind value) => value switch
+    {
+        ArtworkKind.Album => new CborValue.Text("album"),
+        ArtworkKind.Artist => new CborValue.Text("artist"),
+        _ => throw new CborException("invalid ArtworkKind"),
+    };
+
+    /// <summary>Reconstruct a ArtworkKind from its bare-literal CBOR value.</summary>
+    public static ArtworkKind ArtworkKindFromCborValue(CborValue value) => Cbor.AsText(value) switch
+    {
+        "album" => ArtworkKind.Album,
+        "artist" => ArtworkKind.Artist,
+        _ => throw new CborException("invalid ArtworkKind value"),
+    };
+
+    /// <summary>The canonical CBOR value tree for a ArtworkRequest.</summary>
+    public static CborValue ArtworkRequestToCborValue(ArtworkRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("kind"), ArtworkKindToCborValue(value.Kind)));
+        if (value.MaxSize is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("max_size"), new CborValue.Uint(csilV2)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ArtworkRequest from a decoded CBOR value tree.</summary>
+    public static ArtworkRequest ArtworkRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = ArtworkKindFromCborValue(Cbor.Require(value, "kind"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "id"));
+        ulong? csilField2 = Cbor.MapGet(value, "max_size") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
+        return new ArtworkRequest
+        {
+            Kind = csilField0,
+            Id = csilField1,
+            MaxSize = csilField2,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a SetArtworkRequest.</summary>
+    public static CborValue SetArtworkRequestToCborValue(SetArtworkRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        if (value.Data is { } csilV1)
+        {
+            csilEntries.Add((new CborValue.Text("data"), new CborValue.Bytes(csilV1)));
+        }
+        csilEntries.Add((new CborValue.Text("kind"), ArtworkKindToCborValue(value.Kind)));
+        if (value.CandidateId is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("candidate_id"), new CborValue.Text(csilV3)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a SetArtworkRequest from a decoded CBOR value tree.</summary>
+    public static SetArtworkRequest SetArtworkRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = ArtworkKindFromCborValue(Cbor.Require(value, "kind"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "id"));
+        byte[]? csilField2 = Cbor.MapGet(value, "data") is { } csilRaw2 ? Cbor.AsBytes(csilRaw2) : null;
+        string? csilField3 = Cbor.MapGet(value, "candidate_id") is { } csilRaw3 ? Cbor.AsText(csilRaw3) : null;
+        return new SetArtworkRequest
+        {
+            Kind = csilField0,
+            Id = csilField1,
+            Data = csilField2,
+            CandidateId = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ArtworkCandidatesRequest.</summary>
+    public static CborValue ArtworkCandidatesRequestToCborValue(ArtworkCandidatesRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("kind"), ArtworkKindToCborValue(value.Kind)));
+        if (value.Limit is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("limit"), new CborValue.Uint(csilV2)));
+        }
+        if (value.Offset is { } csilV3)
+        {
+            csilEntries.Add((new CborValue.Text("offset"), new CborValue.Uint(csilV3)));
+        }
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ArtworkCandidatesRequest from a decoded CBOR value tree.</summary>
+    public static ArtworkCandidatesRequest ArtworkCandidatesRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = ArtworkKindFromCborValue(Cbor.Require(value, "kind"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "id"));
+        ulong? csilField2 = Cbor.MapGet(value, "offset") is { } csilRaw2 ? Cbor.AsU64(csilRaw2) : null;
+        ulong? csilField3 = Cbor.MapGet(value, "limit") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        return new ArtworkCandidatesRequest
+        {
+            Kind = csilField0,
+            Id = csilField1,
+            Offset = csilField2,
+            Limit = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ArtworkCandidateRequest.</summary>
+    public static CborValue ArtworkCandidateRequestToCborValue(ArtworkCandidateRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("kind"), ArtworkKindToCborValue(value.Kind)));
+        if (value.MaxSize is { } csilV2)
+        {
+            csilEntries.Add((new CborValue.Text("max_size"), new CborValue.Uint(csilV2)));
+        }
+        csilEntries.Add((new CborValue.Text("candidate_id"), new CborValue.Text(value.CandidateId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ArtworkCandidateRequest from a decoded CBOR value tree.</summary>
+    public static ArtworkCandidateRequest ArtworkCandidateRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = ArtworkKindFromCborValue(Cbor.Require(value, "kind"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "id"));
+        var csilField2 = Cbor.AsText(Cbor.Require(value, "candidate_id"));
+        ulong? csilField3 = Cbor.MapGet(value, "max_size") is { } csilRaw3 ? Cbor.AsU64(csilRaw3) : null;
+        return new ArtworkCandidateRequest
+        {
+            Kind = csilField0,
+            Id = csilField1,
+            CandidateId = csilField2,
+            MaxSize = csilField3,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ArtworkCandidate.</summary>
+    public static CborValue ArtworkCandidateToCborValue(ArtworkCandidate value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("id"), new CborValue.Text(value.Id)));
+        csilEntries.Add((new CborValue.Text("role"), new CborValue.Text(value.Role)));
+        csilEntries.Add((new CborValue.Text("label"), new CborValue.Text(value.Label)));
+        csilEntries.Add((new CborValue.Text("width"), new CborValue.Uint(value.Width)));
+        csilEntries.Add((new CborValue.Text("height"), new CborValue.Uint(value.Height)));
+        csilEntries.Add((new CborValue.Text("suggested"), new CborValue.Bool(value.Suggested)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ArtworkCandidate from a decoded CBOR value tree.</summary>
+    public static ArtworkCandidate ArtworkCandidateFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "id"));
+        var csilField1 = Cbor.AsText(Cbor.Require(value, "label"));
+        var csilField2 = Cbor.AsU64(Cbor.Require(value, "width"));
+        var csilField3 = Cbor.AsU64(Cbor.Require(value, "height"));
+        var csilField4 = Cbor.AsText(Cbor.Require(value, "role"));
+        var csilField5 = Cbor.AsBool(Cbor.Require(value, "suggested"));
+        return new ArtworkCandidate
+        {
+            Id = csilField0,
+            Label = csilField1,
+            Width = csilField2,
+            Height = csilField3,
+            Role = csilField4,
+            Suggested = csilField5,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a ArtworkCandidates.</summary>
+    public static CborValue ArtworkCandidatesToCborValue(ArtworkCandidates value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("total"), new CborValue.Uint(value.Total)));
+        csilEntries.Add((new CborValue.Text("candidates"), new CborValue.Array(value.Candidates.Select(csilElem => (CborValue)ArtworkCandidateToCborValue(csilElem)).ToList())));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a ArtworkCandidates from a decoded CBOR value tree.</summary>
+    public static ArtworkCandidates ArtworkCandidatesFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsArray(Cbor.Require(value, "candidates")).Select(csilElem => ArtworkCandidateFromCborValue(csilElem)).ToList();
+        var csilField1 = Cbor.AsU64(Cbor.Require(value, "total"));
+        return new ArtworkCandidates
+        {
+            Candidates = csilField0,
+            Total = csilField1,
         };
     }
 
@@ -3557,6 +3772,10 @@ public static class Codec
         {
             csilEntries.Add((new CborValue.Text("display_name"), new CborValue.Text(csilV4)));
         }
+        if (value.CanEditLibrary is { } csilV5)
+        {
+            csilEntries.Add((new CborValue.Text("can_edit_library"), new CborValue.Bool(csilV5)));
+        }
         return new CborValue.Map(csilEntries);
     }
 
@@ -3568,6 +3787,7 @@ public static class Codec
         string? csilField2 = Cbor.MapGet(value, "display_name") is { } csilRaw2 ? Cbor.AsText(csilRaw2) : null;
         var csilField3 = RoleFromCborValue(Cbor.Require(value, "role"));
         var csilField4 = Cbor.AsTimestamp(Cbor.Require(value, "created_at"));
+        bool? csilField5 = Cbor.MapGet(value, "can_edit_library") is { } csilRaw5 ? Cbor.AsBool(csilRaw5) : null;
         return new Account
         {
             Id = csilField0,
@@ -3575,6 +3795,7 @@ public static class Codec
             DisplayName = csilField2,
             Role = csilField3,
             CreatedAt = csilField4,
+            CanEditLibrary = csilField5,
         };
     }
 
@@ -3593,6 +3814,27 @@ public static class Codec
         return new ListAccountsResponse
         {
             Accounts = csilField0,
+        };
+    }
+
+    /// <summary>The canonical CBOR value tree for a SetLibraryEditorRequest.</summary>
+    public static CborValue SetLibraryEditorRequestToCborValue(SetLibraryEditorRequest value)
+    {
+        var csilEntries = new System.Collections.Generic.List<(CborValue, CborValue)>();
+        csilEntries.Add((new CborValue.Text("enabled"), new CborValue.Bool(value.Enabled)));
+        csilEntries.Add((new CborValue.Text("account_id"), new CborValue.Text(value.AccountId)));
+        return new CborValue.Map(csilEntries);
+    }
+
+    /// <summary>Reconstruct a SetLibraryEditorRequest from a decoded CBOR value tree.</summary>
+    public static SetLibraryEditorRequest SetLibraryEditorRequestFromCborValue(CborValue value)
+    {
+        var csilField0 = Cbor.AsText(Cbor.Require(value, "account_id"));
+        var csilField1 = Cbor.AsBool(Cbor.Require(value, "enabled"));
+        return new SetLibraryEditorRequest
+        {
+            AccountId = csilField0,
+            Enabled = csilField1,
         };
     }
 

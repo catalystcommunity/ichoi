@@ -45,6 +45,7 @@ android {
     }
 
     buildFeatures { buildConfig = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -98,6 +99,9 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.11.0")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 tasks.withType<Test>().configureEach { useJUnitPlatform() }

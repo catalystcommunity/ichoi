@@ -364,7 +364,10 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   // --- Audio engine (HTTP /media + native <audio>; §5 bridge) ---------------
   const audio = typeof Audio !== "undefined" ? new Audio() : undefined;
   let suppressPauseReport = false;
-  if (audio) audio.volume = localVolume() / 100;
+  if (audio) { audio.volume = localVolume() / 100; audio.preload = "auto"; }
+  const warmMedia = (url: string | undefined, duration = 0, position = 0) => navigator.serviceWorker?.controller?.postMessage({ type: "ichoi-media-buffer", url, duration, position });
+
+  createEffect(() => { servers.activeId(); servers.active()?.session?.account_id; warmMedia(undefined); });
 
   async function applySatelliteSink(): Promise<void> {
     if (!satelliteMode || !audio || !("setSinkId" in audio)) return;
@@ -392,6 +395,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     audio.addEventListener("timeupdate", () => {
       setSnapshot((s): PlaybackSnapshot => ({ ...s, positionMs: audio.currentTime * 1000 }));
       const second = Math.floor(audio.currentTime);
+      if (second % 10 === 0) warmMedia(audio.src, (audio.duration || 0) * 1000, audio.currentTime * 1000);
       if (second !== lastOutputReportSecond) {
         lastOutputReportSecond = second;
         reportOutputState("playing", second * 1000);
@@ -484,12 +488,15 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
           // Replacing src can emit pause for the old stream. That event does not describe the
           // new server playback, so do not send it as a state transition.
           suppressPauseReport = true;
-          audio.src = url;
+          warmMedia(url, item.duration_ms ?? 0, state.position_ms ?? 0);
+          const sameSource = audio.src === new URL(url, location.href).href && audio.readyState >= 1;
+          if (sameSource) audio.currentTime = (state.position_ms ?? 0) / 1000;
+          else audio.src = url;
           queueMicrotask(() => {
             suppressPauseReport = false;
           });
           const startMs = state.position_ms ?? 0;
-          if (startMs > 0) {
+          if (startMs > 0 && !sameSource) {
             const restorePosition = () => {
               audio.currentTime = startMs / 1000;
               audio.removeEventListener("loadedmetadata", restorePosition);
@@ -749,6 +756,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
     setCurrentIndex(index);
     const url = mediaUrl(track.id);
     if (!url) return;
+    warmMedia(url, track.duration_ms ?? 0, startMs);
     audio.src = url;
     if (startMs > 0) {
       const seek = () => {
@@ -925,6 +933,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   }
 
   function seek(ms: number): void {
+    if (audio?.src) warmMedia(audio.src, (audio.duration || 0) * 1000, ms);
     if (isLocal()) {
       if (audio) audio.currentTime = ms / 1000;
     } else {
@@ -961,6 +970,7 @@ export function PlaybackProvider(props: ParentProps): JSX.Element {
   function stopLocalPlayback(): void {
     if (audio) {
       audio.pause();
+      warmMedia(undefined);
       audio.removeAttribute("src");
       audio.load();
     }

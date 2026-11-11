@@ -87,6 +87,12 @@ typedef enum Library {
     LIBRARY_AUDIOBOOK,
 } Library;
 
+/* ArtworkKind is an enumeration. */
+typedef enum ArtworkKind {
+    ARTWORK_KIND_ALBUM,
+    ARTWORK_KIND_ARTIST,
+} ArtworkKind;
+
 /* PlayerKind is an enumeration. */
 typedef enum PlayerKind {
     PLAYER_KIND_SHARED,
@@ -176,6 +182,12 @@ typedef struct BlockedAccount BlockedAccount;
 typedef struct BlockedAccountsResponse BlockedAccountsResponse;
 typedef struct CoverArtRequest CoverArtRequest;
 typedef struct CoverArt CoverArt;
+typedef struct ArtworkRequest ArtworkRequest;
+typedef struct SetArtworkRequest SetArtworkRequest;
+typedef struct ArtworkCandidatesRequest ArtworkCandidatesRequest;
+typedef struct ArtworkCandidateRequest ArtworkCandidateRequest;
+typedef struct ArtworkCandidate ArtworkCandidate;
+typedef struct ArtworkCandidates ArtworkCandidates;
 typedef struct ReportContentRequest ReportContentRequest;
 typedef struct Player Player;
 typedef struct QueueItem QueueItem;
@@ -235,6 +247,7 @@ typedef struct NodeDirective NodeDirective;
 typedef struct NodeReport NodeReport;
 typedef struct Account Account;
 typedef struct ListAccountsResponse ListAccountsResponse;
+typedef struct SetLibraryEditorRequest SetLibraryEditorRequest;
 typedef struct SetRoleRequest SetRoleRequest;
 typedef struct AdminDeleteAccountRequest AdminDeleteAccountRequest;
 typedef struct TrustDomainRequest TrustDomainRequest;
@@ -356,6 +369,7 @@ typedef struct SessionInfo {
     char *display_name;
     Role role;
     bool can_admin;
+    bool *can_edit_library;
     char *token;
 } SessionInfo;
 
@@ -612,6 +626,54 @@ typedef struct CoverArt {
     char *content_type;
     CsilBytes data;
 } CoverArt;
+
+/* ArtworkRequest is a structured data type. */
+typedef struct ArtworkRequest {
+    ArtworkKind kind;
+    char *id;
+    uint64_t *max_size;
+} ArtworkRequest;
+
+/* SetArtworkRequest is a structured data type. */
+typedef struct SetArtworkRequest {
+    ArtworkKind kind;
+    char *id;
+    CsilBytes *data;
+    char *candidate_id;
+} SetArtworkRequest;
+
+/* ArtworkCandidatesRequest is a structured data type. */
+typedef struct ArtworkCandidatesRequest {
+    ArtworkKind kind;
+    char *id;
+    uint64_t *offset;
+    uint64_t *limit;
+} ArtworkCandidatesRequest;
+
+/* ArtworkCandidateRequest is a structured data type. */
+typedef struct ArtworkCandidateRequest {
+    ArtworkKind kind;
+    char *id;
+    char *candidate_id;
+    uint64_t *max_size;
+} ArtworkCandidateRequest;
+
+/* ArtworkCandidate is a structured data type. */
+typedef struct ArtworkCandidate {
+    char *id;
+    char *label;
+    uint64_t width;
+    uint64_t height;
+    char *role;
+    bool suggested;
+} ArtworkCandidate;
+
+/* ArtworkCandidates is a structured data type. */
+typedef struct ArtworkCandidates {
+    ArtworkCandidate *candidates;
+    size_t candidates_count;
+    uint64_t total;
+} ArtworkCandidates;
 
 /* ReportContentRequest is a structured data type. */
 typedef struct ReportContentRequest {
@@ -1115,6 +1177,7 @@ typedef struct Account {
     char *display_name;
     Role role;
     CsilTimestamp created_at;
+    bool *can_edit_library;
 } Account;
 
 /* ListAccountsResponse is a structured data type. */
@@ -1122,6 +1185,12 @@ typedef struct ListAccountsResponse {
     Account *accounts;
     size_t accounts_count;
 } ListAccountsResponse;
+
+/* SetLibraryEditorRequest is a structured data type. */
+typedef struct SetLibraryEditorRequest {
+    AccountId account_id;
+    bool enabled;
+} SetLibraryEditorRequest;
 
 /* SetRoleRequest is a structured data type. */
 typedef struct SetRoleRequest {

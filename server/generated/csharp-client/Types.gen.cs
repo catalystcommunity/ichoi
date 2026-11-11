@@ -192,6 +192,8 @@ public sealed record SessionInfo
     public required Role Role { get; init; }
     // CBOR key: can_admin
     public required bool CanAdmin { get; init; }
+    // CBOR key: can_edit_library
+    public bool? CanEditLibrary { get; init; }
     // CBOR key: token
     public string? Token { get; init; }
 }
@@ -553,6 +555,84 @@ public sealed record CoverArt
     public required string ContentType { get; init; }
     // CBOR key: data
     public required byte[] Data { get; init; }
+}
+
+public enum ArtworkKind
+{
+    // wire value: album
+    Album,
+    // wire value: artist
+    Artist,
+}
+
+public sealed record ArtworkRequest
+{
+    // CBOR key: kind
+    public required ArtworkKind Kind { get; init; }
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: max_size
+    public ulong? MaxSize { get; init; }
+}
+
+public sealed record SetArtworkRequest
+{
+    // CBOR key: kind
+    public required ArtworkKind Kind { get; init; }
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: data
+    public byte[]? Data { get; init; }
+    // CBOR key: candidate_id
+    public string? CandidateId { get; init; }
+}
+
+public sealed record ArtworkCandidatesRequest
+{
+    // CBOR key: kind
+    public required ArtworkKind Kind { get; init; }
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: offset
+    public ulong? Offset { get; init; }
+    // CBOR key: limit
+    public ulong? Limit { get; init; }
+}
+
+public sealed record ArtworkCandidateRequest
+{
+    // CBOR key: kind
+    public required ArtworkKind Kind { get; init; }
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: candidate_id
+    public required string CandidateId { get; init; }
+    // CBOR key: max_size
+    public ulong? MaxSize { get; init; }
+}
+
+public sealed record ArtworkCandidate
+{
+    // CBOR key: id
+    public required string Id { get; init; }
+    // CBOR key: label
+    public required string Label { get; init; }
+    // CBOR key: width
+    public required ulong Width { get; init; }
+    // CBOR key: height
+    public required ulong Height { get; init; }
+    // CBOR key: role
+    public required string Role { get; init; }
+    // CBOR key: suggested
+    public required bool Suggested { get; init; }
+}
+
+public sealed record ArtworkCandidates
+{
+    // CBOR key: candidates
+    public required System.Collections.Generic.List<ArtworkCandidate> Candidates { get; init; }
+    // CBOR key: total
+    public required ulong Total { get; init; }
 }
 
 public sealed record ReportContentRequest
@@ -1285,12 +1365,22 @@ public sealed record Account
     public required Role Role { get; init; }
     // CBOR key: created_at
     public required System.DateTimeOffset CreatedAt { get; init; }
+    // CBOR key: can_edit_library
+    public bool? CanEditLibrary { get; init; }
 }
 
 public sealed record ListAccountsResponse
 {
     // CBOR key: accounts
     public required System.Collections.Generic.List<Account> Accounts { get; init; }
+}
+
+public sealed record SetLibraryEditorRequest
+{
+    // CBOR key: account_id
+    public required AccountId AccountId { get; init; }
+    // CBOR key: enabled
+    public required bool Enabled { get; init; }
 }
 
 public sealed record SetRoleRequest

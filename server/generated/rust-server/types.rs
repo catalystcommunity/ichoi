@@ -175,6 +175,7 @@ pub struct SessionInfo {
     pub role: Role,
     /// default: false
     pub can_admin: bool,
+    pub can_edit_library: Option<bool>,
     pub token: Option<String>,
 }
 
@@ -448,6 +449,60 @@ pub struct CoverArtRequest {
 pub struct CoverArt {
     pub content_type: String,
     pub data: Vec<u8>,
+}
+
+/// ArtworkKind variants
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArtworkKind {
+    Album,
+    Artist,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtworkRequest {
+    pub kind: ArtworkKind,
+    pub id: String,
+    pub max_size: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SetArtworkRequest {
+    pub kind: ArtworkKind,
+    pub id: String,
+    pub data: Option<Vec<u8>>,
+    pub candidate_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtworkCandidatesRequest {
+    pub kind: ArtworkKind,
+    pub id: String,
+    pub offset: Option<u64>,
+    pub limit: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtworkCandidateRequest {
+    pub kind: ArtworkKind,
+    pub id: String,
+    pub candidate_id: String,
+    pub max_size: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtworkCandidate {
+    pub id: String,
+    pub label: String,
+    pub width: u64,
+    pub height: u64,
+    pub role: String,
+    pub suggested: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArtworkCandidates {
+    pub candidates: Vec<ArtworkCandidate>,
+    pub total: u64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1022,11 +1077,18 @@ pub struct Account {
     pub display_name: Option<String>,
     pub role: Role,
     pub created_at: chrono::DateTime<chrono::Utc>,
+    pub can_edit_library: Option<bool>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ListAccountsResponse {
     pub accounts: Vec<Account>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SetLibraryEditorRequest {
+    pub account_id: AccountId,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -100,6 +100,14 @@ BlockedAccountsResponse = { accounts: [* BlockedAccount], total: uint }
 
 CoverArtRequest = { album_id: AlbumId, ? max_size: uint }
 CoverArt        = { content_type: text, data: bytes }
+ArtworkKind = "album" / "artist"
+ArtworkRequest = { kind: ArtworkKind, id: text, ? max_size: uint }
+;; Omit data to return to automatic artwork. Choices apply to this server's library.
+SetArtworkRequest = { kind: ArtworkKind, id: text, ? data: bytes, ? candidate_id: text }
+ArtworkCandidatesRequest = { kind: ArtworkKind, id: text, ? offset: uint, ? limit: uint }
+ArtworkCandidateRequest = { kind: ArtworkKind, id: text, candidate_id: text, ? max_size: uint }
+ArtworkCandidate = { id: text, label: text, width: uint, height: uint, role: text, suggested: bool }
+ArtworkCandidates = { candidates: [* ArtworkCandidate], total: uint }
 ReportContentRequest = {
     target_type: ContentReportTargetType,
     target_id: text,
@@ -123,6 +131,10 @@ service LibraryService {
     unblock-account: BlockAccountRequest -> Ok / ServiceError,
     list-blocked-accounts: Page -> BlockedAccountsResponse / ServiceError,
     get-cover-art: CoverArtRequest -> CoverArt / ServiceError,
+    get-artwork: ArtworkRequest -> CoverArt / ServiceError,
+    list-artwork-candidates: ArtworkCandidatesRequest -> ArtworkCandidates / ServiceError,
+    get-artwork-candidate: ArtworkCandidateRequest -> CoverArt / ServiceError,
+    set-artwork: SetArtworkRequest -> Ok / ServiceError,
     get-audiobook-progress: AudiobookProgressRequest -> AudiobookProgressResponse / ServiceError,
     update-audiobook-progress: UpdateAudiobookProgressRequest -> AudiobookProgress / ServiceError,
     report-content: ReportContentRequest -> ContentReport / ServiceError

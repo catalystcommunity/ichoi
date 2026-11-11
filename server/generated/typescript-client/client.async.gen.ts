@@ -2,8 +2,8 @@
 // Source: <csil spec>
 // Target: typescript-client
 
-import type { Account, AdminDeleteAccountRequest, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BlockAccountRequest, BlockedAccountsResponse, BrowseRequest, CancelImportRequest, CommandRequest, ContentReport, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, SetShareAccessRequest, Settings, ShareAccessInfo, ShareAccessRequest, ShareResult, SubscribeRequest, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
-import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromBeginImportResultCbor, fromBlockedAccountsResponseCbor, fromContentReportCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromExportChunkCbor, fromExportManifestCbor, fromGroupInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromLibraryResyncStatusCbor, fromListAccountsResponseCbor, fromListContentReportsResponseCbor, fromListGroupsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromListSatelliteTokensResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareAccessInfoCbor, fromShareResultCbor, fromTrustedDomainsCbor, fromTrustedIdentitiesCbor, toAdminDeleteAccountRequestCbor, toAlbumRequestCbor, toArtistRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBeginImportRequestCbor, toBlockAccountRequestCbor, toBrowseRequestCbor, toCancelImportRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateGroupRequestCbor, toCreateNodeTokenRequestCbor, toDeleteAccountRequestCbor, toDeleteGroupRequestCbor, toDeletePlaylistRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toExportChunkRequestCbor, toExportManifestRequestCbor, toFinishImportRequestCbor, toImportChunkRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toReportContentRequestCbor, toRevokeSatelliteTokenRequestCbor, toRevokeTrustedIdentityRequestCbor, toSearchRequestCbor, toSetDeviceAccessRequestCbor, toSetGroupMembersRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toSetShareAccessRequestCbor, toShareAccessRequestCbor, toSubscribeRequestCbor, toTrustDomainRequestCbor, toTrustIdentityRequestCbor, toUpdateAudiobookProgressRequestCbor, toUpdateContentReportStatusRequestCbor } from "./codec.gen.ts";
+import type { Account, AdminDeleteAccountRequest, AlbumDetail, AlbumRequest, AlbumsResponse, ArtistDetail, ArtistRequest, ArtistsResponse, ArtworkCandidateRequest, ArtworkCandidates, ArtworkCandidatesRequest, ArtworkRequest, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BlockAccountRequest, BlockedAccountsResponse, BrowseRequest, CancelImportRequest, CommandRequest, ContentReport, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceInfo, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaControl, MediaEvent, NodeDirective, NodeInfo, NodeReport, NodeTokenResult, Ok, Page, PlayerState, PlaylistDetail, PlaylistRequest, PlaylistsResponse, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetArtworkRequest, SetDeviceAccessRequest, SetGroupMembersRequest, SetLibraryEditorRequest, SetRoleRequest, SetSettingRequest, SetShareAccessRequest, Settings, ShareAccessInfo, ShareAccessRequest, ShareResult, SubscribeRequest, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
+import { fromAccountCbor, fromAlbumDetailCbor, fromAlbumsResponseCbor, fromArtistDetailCbor, fromArtistsResponseCbor, fromArtworkCandidatesCbor, fromAudiobookProgressCbor, fromAudiobookProgressResponseCbor, fromBeginImportResultCbor, fromBlockedAccountsResponseCbor, fromContentReportCbor, fromCoverArtCbor, fromDeviceInfoCbor, fromExportChunkCbor, fromExportManifestCbor, fromGroupInfoCbor, fromImportResultCbor, fromLibrariesResponseCbor, fromLibraryResyncStatusCbor, fromListAccountsResponseCbor, fromListContentReportsResponseCbor, fromListGroupsResponseCbor, fromListNodesResponseCbor, fromListPlayersResponseCbor, fromListSatelliteTokensResponseCbor, fromNodeInfoCbor, fromNodeTokenResultCbor, fromOkCbor, fromPlayerStateCbor, fromPlaylistDetailCbor, fromPlaylistsResponseCbor, fromRegisterNodeResponseCbor, fromSearchResponseCbor, fromSessionInfoCbor, fromSettingsCbor, fromShareAccessInfoCbor, fromShareResultCbor, fromTrustedDomainsCbor, fromTrustedIdentitiesCbor, toAdminDeleteAccountRequestCbor, toAlbumRequestCbor, toArtistRequestCbor, toArtworkCandidateRequestCbor, toArtworkCandidatesRequestCbor, toArtworkRequestCbor, toAudiobookProgressRequestCbor, toAuthRequestCbor, toBeginImportRequestCbor, toBlockAccountRequestCbor, toBrowseRequestCbor, toCancelImportRequestCbor, toCommandRequestCbor, toCoverArtRequestCbor, toCreateGroupRequestCbor, toCreateNodeTokenRequestCbor, toDeleteAccountRequestCbor, toDeleteGroupRequestCbor, toDeletePlaylistRequestCbor, toDisableShareRequestCbor, toEnableShareRequestCbor, toExportChunkRequestCbor, toExportManifestRequestCbor, toFinishImportRequestCbor, toImportChunkRequestCbor, toImportTrackRequestCbor, toListPlayersRequestCbor, toPageCbor, toPlaylistRequestCbor, toRegisterNodeRequestCbor, toRenameDeviceRequestCbor, toRenameNodeRequestCbor, toReportContentRequestCbor, toRevokeSatelliteTokenRequestCbor, toRevokeTrustedIdentityRequestCbor, toSearchRequestCbor, toSetArtworkRequestCbor, toSetDeviceAccessRequestCbor, toSetGroupMembersRequestCbor, toSetLibraryEditorRequestCbor, toSetRoleRequestCbor, toSetSettingRequestCbor, toSetShareAccessRequestCbor, toShareAccessRequestCbor, toSubscribeRequestCbor, toTrustDomainRequestCbor, toTrustIdentityRequestCbor, toUpdateAudiobookProgressRequestCbor, toUpdateContentReportStatusRequestCbor } from "./codec.gen.ts";
 
 export interface AsyncServiceTransport {
   call(service: string, op: string, req: Uint8Array): Promise<Uint8Array>;
@@ -33,6 +33,15 @@ export class AdminAsyncClient {
   async setRole(req: SetRoleRequest): Promise<Account> {
     const csilResp = await this.t.call("AdminService", "set-role", toSetRoleRequestCbor(req));
     return fromAccountCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async setLibraryEditor(req: SetLibraryEditorRequest): Promise<Ok> {
+    const csilResp = await this.t.call("AdminService", "set-library-editor", toSetLibraryEditorRequestCbor(req));
+    return fromOkCbor(csilResp);
   }
 
   /**
@@ -457,6 +466,42 @@ export class LibraryAsyncClient {
   async getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
     const csilResp = await this.t.call("LibraryService", "get-cover-art", toCoverArtRequestCbor(req));
     return fromCoverArtCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async getArtwork(req: ArtworkRequest): Promise<CoverArt> {
+    const csilResp = await this.t.call("LibraryService", "get-artwork", toArtworkRequestCbor(req));
+    return fromCoverArtCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async listArtworkCandidates(req: ArtworkCandidatesRequest): Promise<ArtworkCandidates> {
+    const csilResp = await this.t.call("LibraryService", "list-artwork-candidates", toArtworkCandidatesRequestCbor(req));
+    return fromArtworkCandidatesCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async getArtworkCandidate(req: ArtworkCandidateRequest): Promise<CoverArt> {
+    const csilResp = await this.t.call("LibraryService", "get-artwork-candidate", toArtworkCandidateRequestCbor(req));
+    return fromCoverArtCbor(csilResp);
+  }
+
+  /**
+   * @throws {ServiceError} when the API returns an error response
+   * @throws transport errors (network, timeout) raised by the transport
+   */
+  async setArtwork(req: SetArtworkRequest): Promise<Ok> {
+    const csilResp = await this.t.call("LibraryService", "set-artwork", toSetArtworkRequestCbor(req));
+    return fromOkCbor(csilResp);
   }
 
   /**

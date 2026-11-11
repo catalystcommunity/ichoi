@@ -12,6 +12,7 @@ SessionInfo = {
     ? display_name: text,
     role: Role,
     can_admin: bool .default false,  ;; true for admins and login-less guest instances
+    ? can_edit_library: bool,        ;; explicit artwork permission; admins always have it
     ? token: text                    ;; minted session token, returned once on authenticate
 }
 

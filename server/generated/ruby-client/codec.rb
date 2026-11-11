@@ -598,6 +598,7 @@ class SessionInfo
     csil_map["can_admin"] = can_admin
     csil_map["account_id"] = account_id
     csil_map["display_name"] = display_name unless display_name.nil?
+    csil_map["can_edit_library"] = can_edit_library unless can_edit_library.nil?
     csil_map
   end
 
@@ -618,6 +619,7 @@ else
   raise ArgumentError, "csilgen: unknown inline literal #{(node["role"]).inspect}"
 end),
       can_admin: node["can_admin"],
+      can_edit_library: (node.key?("can_edit_library") ? node["can_edit_library"] : nil),
       token: (node.key?("token") ? node["token"] : nil)
     )
   end
@@ -1623,6 +1625,204 @@ class CoverArt
     new(
       content_type: node["content_type"],
       data: node["data"]
+    )
+  end
+end
+
+# CBOR codec for ArtworkRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ArtworkRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["kind"] = (kind)
+    csil_map["max_size"] = max_size unless max_size.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      kind: (case (node["kind"])
+when "album" then "album"
+when "artist" then "artist"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
+end),
+      id: node["id"],
+      max_size: (node.key?("max_size") ? node["max_size"] : nil)
+    )
+  end
+end
+
+# CBOR codec for SetArtworkRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class SetArtworkRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["data"] = (data).b unless data.nil?
+    csil_map["kind"] = (kind)
+    csil_map["candidate_id"] = candidate_id unless candidate_id.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      kind: (case (node["kind"])
+when "album" then "album"
+when "artist" then "artist"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
+end),
+      id: node["id"],
+      data: (node.key?("data") ? node["data"] : nil),
+      candidate_id: (node.key?("candidate_id") ? node["candidate_id"] : nil)
+    )
+  end
+end
+
+# CBOR codec for ArtworkCandidatesRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ArtworkCandidatesRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["kind"] = (kind)
+    csil_map["limit"] = limit unless limit.nil?
+    csil_map["offset"] = offset unless offset.nil?
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      kind: (case (node["kind"])
+when "album" then "album"
+when "artist" then "artist"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
+end),
+      id: node["id"],
+      offset: (node.key?("offset") ? node["offset"] : nil),
+      limit: (node.key?("limit") ? node["limit"] : nil)
+    )
+  end
+end
+
+# CBOR codec for ArtworkCandidateRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ArtworkCandidateRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["kind"] = (kind)
+    csil_map["max_size"] = max_size unless max_size.nil?
+    csil_map["candidate_id"] = candidate_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      kind: (case (node["kind"])
+when "album" then "album"
+when "artist" then "artist"
+else
+  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
+end),
+      id: node["id"],
+      candidate_id: node["candidate_id"],
+      max_size: (node.key?("max_size") ? node["max_size"] : nil)
+    )
+  end
+end
+
+# CBOR codec for ArtworkCandidate: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ArtworkCandidate
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["id"] = id
+    csil_map["role"] = role
+    csil_map["label"] = label
+    csil_map["width"] = width
+    csil_map["height"] = height
+    csil_map["suggested"] = suggested
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      id: node["id"],
+      label: node["label"],
+      width: node["width"],
+      height: node["height"],
+      role: node["role"],
+      suggested: node["suggested"]
+    )
+  end
+end
+
+# CBOR codec for ArtworkCandidates: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class ArtworkCandidates
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["total"] = total
+    csil_map["candidates"] = (candidates).map { |csil_e| (csil_e).csil_to_tree }
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      candidates: (node["candidates"]).map { |csil_e| ArtworkCandidate.csil_from_tree(csil_e) },
+      total: node["total"]
     )
   end
 end
@@ -3227,6 +3427,7 @@ class Account
     csil_map["handle"] = handle
     csil_map["created_at"] = CsilCbor::Tag.new(0, (created_at).getutc.iso8601)
     csil_map["display_name"] = display_name unless display_name.nil?
+    csil_map["can_edit_library"] = can_edit_library unless can_edit_library.nil?
     csil_map
   end
 
@@ -3246,7 +3447,8 @@ when "guest" then "guest"
 else
   raise ArgumentError, "csilgen: unknown inline literal #{(node["role"]).inspect}"
 end),
-      created_at: Time.iso8601((node["created_at"]).value)
+      created_at: Time.iso8601((node["created_at"]).value),
+      can_edit_library: (node.key?("can_edit_library") ? node["can_edit_library"] : nil)
     )
   end
 end
@@ -3271,6 +3473,32 @@ class ListAccountsResponse
   def self.csil_from_tree(node)
     new(
       accounts: (node["accounts"]).map { |csil_e| Account.csil_from_tree(csil_e) }
+    )
+  end
+end
+
+# CBOR codec for SetLibraryEditorRequest: a map keyed by the verbatim CSIL field names in
+# canonical RFC 8949 order.
+class SetLibraryEditorRequest
+  def to_cbor
+    CsilCbor.encode(csil_to_tree)
+  end
+
+  def csil_to_tree
+    csil_map = {}
+    csil_map["enabled"] = enabled
+    csil_map["account_id"] = account_id
+    csil_map
+  end
+
+  def self.from_cbor(bytes)
+    csil_from_tree(CsilCbor.decode(bytes))
+  end
+
+  def self.csil_from_tree(node)
+    new(
+      account_id: node["account_id"],
+      enabled: node["enabled"]
     )
   end
 end

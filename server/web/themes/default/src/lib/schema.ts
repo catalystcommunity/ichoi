@@ -60,6 +60,7 @@ export interface AuthRequest {
 }
 
 export interface SessionInfo {
+  can_edit_library?: boolean;
   account_id: string;
   handle: string;
   display_name?: string;
@@ -250,6 +251,11 @@ export interface ReportContentRequest {
   reason: ContentReportReason;
   details?: string;
 }
+export type ArtworkKind = "album" | "artist";
+export interface ArtworkRequest { kind: ArtworkKind; id: string; max_size?: number }
+export interface SetArtworkRequest { kind: ArtworkKind; id: string; data?: Uint8Array; candidate_id?: string }
+export interface ArtworkCandidate { id: string; label: string; width: number; height: number; role: string; suggested: boolean }
+export interface ArtworkCandidates { candidates: ArtworkCandidate[]; total: number }
 export interface CoverArtRequest {
   album_id: string;
   max_size?: number;
@@ -468,6 +474,7 @@ export interface NodeReport {
 // --- admin.csil ----------------------------------------------------------
 
 export interface Account {
+  can_edit_library?: boolean;
   id: string;
   handle: string;
   display_name?: string;

@@ -73,6 +73,14 @@ public sealed class LibraryClient(ICsilTransport transport)
         Codec.Decode<BlockedAccountsResponse>(transport.Call("LibraryService", "list-blocked-accounts", Codec.Encode(page)));
     public CoverArt GetCoverArt(CoverArtRequest coverArtRequest) =>
         Codec.Decode<CoverArt>(transport.Call("LibraryService", "get-cover-art", Codec.Encode(coverArtRequest)));
+    public CoverArt GetArtwork(ArtworkRequest artworkRequest) =>
+        Codec.Decode<CoverArt>(transport.Call("LibraryService", "get-artwork", Codec.Encode(artworkRequest)));
+    public ArtworkCandidates ListArtworkCandidates(ArtworkCandidatesRequest artworkCandidatesRequest) =>
+        Codec.Decode<ArtworkCandidates>(transport.Call("LibraryService", "list-artwork-candidates", Codec.Encode(artworkCandidatesRequest)));
+    public CoverArt GetArtworkCandidate(ArtworkCandidateRequest artworkCandidateRequest) =>
+        Codec.Decode<CoverArt>(transport.Call("LibraryService", "get-artwork-candidate", Codec.Encode(artworkCandidateRequest)));
+    public Ok SetArtwork(SetArtworkRequest setArtworkRequest) =>
+        Codec.Decode<Ok>(transport.Call("LibraryService", "set-artwork", Codec.Encode(setArtworkRequest)));
     public AudiobookProgressResponse GetAudiobookProgress(AudiobookProgressRequest audiobookProgressRequest) =>
         Codec.Decode<AudiobookProgressResponse>(transport.Call("LibraryService", "get-audiobook-progress", Codec.Encode(audiobookProgressRequest)));
     public AudiobookProgress UpdateAudiobookProgress(UpdateAudiobookProgressRequest updateAudiobookProgressRequest) =>
@@ -123,6 +131,8 @@ public sealed class AdminClient(ICsilTransport transport)
         Codec.Decode<ListAccountsResponse>(transport.Call("AdminService", "list-accounts", Codec.Encode(page)));
     public Account SetRole(SetRoleRequest setRoleRequest) =>
         Codec.Decode<Account>(transport.Call("AdminService", "set-role", Codec.Encode(setRoleRequest)));
+    public Ok SetLibraryEditor(SetLibraryEditorRequest setLibraryEditorRequest) =>
+        Codec.Decode<Ok>(transport.Call("AdminService", "set-library-editor", Codec.Encode(setLibraryEditorRequest)));
     public Ok DeleteAccount(AdminDeleteAccountRequest adminDeleteAccountRequest) =>
         Codec.Decode<Ok>(transport.Call("AdminService", "delete-account", Codec.Encode(adminDeleteAccountRequest)));
     public TrustedDomains TrustDomain(TrustDomainRequest trustDomainRequest) =>

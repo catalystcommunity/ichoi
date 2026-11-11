@@ -21,7 +21,7 @@ use walkdir::WalkDir;
 use crate::db::{models, store};
 
 const AUDIO_EXTS: &[&str] = &[
-    "mp3", "flac", "m4a", "mp4", "aac", "ogg", "oga", "opus", "wav", "wave", "wma",
+    "mp3", "flac", "m4a", "m4b", "mp4", "aac", "ogg", "oga", "opus", "wav", "wave", "wma",
 ];
 
 #[derive(Debug, Default)]
@@ -56,6 +56,12 @@ struct AlbumSubfolderOptions<'a> {
     words: &'a [String],
 }
 
+#[derive(Default)]
+struct CoverScan {
+    discovery: crate::artwork_discovery::Discovery,
+    albums: HashSet<String>,
+}
+
 /// Index one file that an authorized federation import wrote into a library.
 ///
 /// This uses the same metadata and stable ID rules as a full library scan. It does not run
@@ -76,17 +82,26 @@ pub fn index_imported_file(
     if !AUDIO_EXTS.contains(&ext.as_str()) {
         anyhow::bail!("unsupported audio file extension");
     }
+    let mut covers = CoverScan::default();
     index_file(
         conn,
         library_id,
         root,
         path,
-        &ext,
         resolve_ffprobe().as_deref(),
         AlbumSubfolderOptions {
             flat: album_subfolder_flat,
             words: album_subfolder_words,
         },
+        &mut covers,
+    )?;
+    crate::artwork_discovery::refresh_import(
+        conn,
+        library_id,
+        path,
+        root,
+        album_subfolder_words,
+        &mut covers.discovery,
     )?;
     let relative = relative_path(root, path);
     store::track_by_library_root_path(conn, library_id, &relative)?
@@ -109,6 +124,7 @@ pub fn scan_library(
         words: album_subfolder_words,
     };
     let mut stats = ScanStats::default();
+    let mut covers = CoverScan::default();
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let excluded_root = excluded_root
         .and_then(|path| path.canonicalize().ok())
@@ -140,9 +156,9 @@ pub fn scan_library(
             library_id,
             &root,
             path,
-            &ext,
             ffprobe.as_deref(),
             subfolders,
+            &mut covers,
         ) {
             Ok(()) => stats.tracks += 1,
             Err(e) => {
@@ -181,6 +197,12 @@ pub fn scan_library(
     if let Err(e) = set_folder_album_artists(conn) {
         log::warn!("scan: folder-album artists: {e}");
     }
+    crate::artwork_discovery::refresh_library(
+        conn,
+        library_id,
+        album_subfolder_words,
+        &mut covers.discovery,
+    )?;
     Ok(stats)
 }
 
@@ -539,7 +561,7 @@ fn flattened_subfolder_album(
     })
 }
 
-fn is_disc_subfolder(label: &str, configured_words: &[String]) -> bool {
+pub(crate) fn is_disc_subfolder(label: &str, configured_words: &[String]) -> bool {
     let normalized = normalized_match_text(label);
     let without_digits = collapse_ws(
         &normalized
@@ -627,18 +649,33 @@ fn index_file(
     library_id: &str,
     root: &Path,
     path: &Path,
-    ext: &str,
     ffprobe: Option<&Path>,
     subfolders: AlbumSubfolderOptions<'_>,
+    covers: &mut CoverScan,
 ) -> anyhow::Result<()> {
+    let ext = path
+        .extension()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_ascii_lowercase();
     let rel = relative_path(root, path);
 
     // lofty first; on failure (unsupported format like WMA, or a malformed file) fall back.
-    let m = match lofty::read_from_path(path) {
-        Ok(tagged) => meta_from_lofty(&tagged, path, ext),
-        Err(_) => meta_fallback(path, ext, ffprobe),
+    let mut m = match read_tags(path) {
+        Ok(tagged) => {
+            covers.discovery.record(path, &tagged);
+            meta_from_lofty(&tagged, path, &ext)
+        }
+        Err(_) => meta_fallback(path, &ext, ffprobe),
     };
 
+    if matches!(ext.as_str(), "m4b" | "m4a" | "mp4") {
+        if let Ok(probe) = crate::media::demux::probe(path) {
+            if probe.codec != "unknown" {
+                m.codec = probe.codec;
+            }
+        }
+    }
     let meta = std::fs::metadata(path).ok();
     let size_bytes = meta.as_ref().map(|m| m.len() as i64).unwrap_or(0);
     let mtime = meta
@@ -649,7 +686,7 @@ fn index_file(
 
     let artist_id = id_of(&["artist", &canonical_artist(&m.artist)]);
     let track_id = id_of(&["track", library_id, &rel]);
-    let folder_cover = find_cover(path);
+    let folder_cover: Option<String> = None;
 
     store::upsert_artist(
         conn,
@@ -720,6 +757,19 @@ fn index_file(
             )
         };
 
+    let previous = store::get_album(conn, &album_id)?;
+    let already_seen = !covers.albums.insert(album_id.clone());
+    let folder_cover = folder_cover.or_else(|| {
+        already_seen
+            .then(|| previous.as_ref()?.cover_art_path.clone())
+            .flatten()
+    });
+    let has_cover = folder_cover.is_some()
+        || m.has_embedded_art
+        || (already_seen
+            && previous
+                .as_ref()
+                .is_some_and(|album| album.has_cover_art != 0));
     store::upsert_album(
         conn,
         &models::Album {
@@ -727,9 +777,9 @@ fn index_file(
             title: album_title,
             artist_id: album_artist,
             year: m.year,
-            has_cover_art: i32::from(folder_cover.is_some() || m.has_embedded_art),
+            has_cover_art: i32::from(has_cover),
             cover_art_path: folder_cover,
-            art_checked: 0,
+            art_checked: previous.map_or(0, |album| album.art_checked),
         },
     )?;
     store::upsert_track(
@@ -825,7 +875,7 @@ fn meta_from_lofty(tagged: &TaggedFile, path: &Path, ext: &str) -> FileMeta {
         sample_rate: props.sample_rate().unwrap_or(0) as i32,
         channels: props.channels().unwrap_or(0) as i32,
         bit_depth: props.bit_depth().map(|b| b as i32),
-        has_embedded_art: tag.map(|t| !t.pictures().is_empty()).unwrap_or(false),
+        has_embedded_art: tagged.tags().iter().any(|t| !t.pictures().is_empty()),
         album_tagged,
     }
 }
@@ -966,7 +1016,7 @@ fn codec_from_ext(ext: &str) -> String {
         "ogg" | "oga" => "vorbis",
         "flac" => "flac",
         "wav" | "wave" => "wav",
-        "m4a" | "mp4" | "aac" => "aac",
+        "m4a" | "m4b" | "mp4" | "aac" => "aac",
         "wma" => "wma",
         _ => "mp3",
     }
@@ -1066,19 +1116,10 @@ fn id_of(parts: &[&str]) -> String {
     hex::encode(&hasher.finalize()[..16])
 }
 
-/// Folder image, in the conventional precedence other players use: `folder.*` first, then
-/// `cover.*`, `front.*`, `album.*`, across jpg/jpeg/png/gif.
-fn find_cover(track_path: &Path) -> Option<String> {
-    let dir = track_path.parent()?;
-    for stem in ["folder", "cover", "front", "album"] {
-        for ext in ["jpg", "jpeg", "png", "gif"] {
-            let candidate = dir.join(format!("{stem}.{ext}"));
-            if candidate.exists() {
-                return Some(candidate.to_string_lossy().into_owned());
-            }
-        }
-    }
-    None
+/// Rank local front covers without walking into other albums. Matching is case-insensitive.
+/// Disc folders may use their parent's cover. A library root is never crossed.
+pub fn cover_candidates(track_path: &Path, root: &Path, disc_words: &[String]) -> Vec<PathBuf> {
+    crate::artwork_discovery::file_candidates(track_path, root, disc_words)
 }
 
 /// The single folder shared by all of an album's tracks, if there is one (used to place a
@@ -1093,11 +1134,23 @@ pub fn common_folder(paths: &[PathBuf]) -> Option<PathBuf> {
     }
 }
 
+/// Probe the container as well as its extension, including M4B and uppercase names.
+pub(crate) fn read_tags(path: &Path) -> lofty::error::Result<TaggedFile> {
+    lofty::probe::Probe::open(path)?.guess_file_type()?.read()
+}
+
 /// Extract the first embedded cover-art picture from a track file, as `(mime, bytes)`.
 pub fn extract_embedded_cover(path: &Path) -> Option<(String, Vec<u8>)> {
-    let tagged = lofty::read_from_path(path).ok()?;
-    let tag = tagged.primary_tag().or_else(|| tagged.first_tag())?;
-    let pic = tag.pictures().first()?;
+    let tagged = read_tags(path).ok()?;
+    let pictures: Vec<_> = tagged
+        .tags()
+        .iter()
+        .flat_map(|tag| tag.pictures())
+        .collect();
+    let pic = pictures
+        .iter()
+        .find(|pic| pic.pic_type() == lofty::picture::PictureType::CoverFront)
+        .or_else(|| pictures.first())?;
     let mime = pic
         .mime_type()
         .map(|m| m.as_str().to_string())

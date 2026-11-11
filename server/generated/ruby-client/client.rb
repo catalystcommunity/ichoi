@@ -117,6 +117,26 @@ class LibraryClient
     CoverArt.from_cbor(@transport.call("LibraryService", "get-cover-art", req.to_cbor))
   end
 
+  # get-artwork: -> CoverArt
+  def get_artwork(req)
+    CoverArt.from_cbor(@transport.call("LibraryService", "get-artwork", req.to_cbor))
+  end
+
+  # list-artwork-candidates: -> ArtworkCandidates
+  def list_artwork_candidates(req)
+    ArtworkCandidates.from_cbor(@transport.call("LibraryService", "list-artwork-candidates", req.to_cbor))
+  end
+
+  # get-artwork-candidate: -> CoverArt
+  def get_artwork_candidate(req)
+    CoverArt.from_cbor(@transport.call("LibraryService", "get-artwork-candidate", req.to_cbor))
+  end
+
+  # set-artwork: -> Ok
+  def set_artwork(req)
+    Ok.from_cbor(@transport.call("LibraryService", "set-artwork", req.to_cbor))
+  end
+
   # get-audiobook-progress: -> AudiobookProgressResponse
   def get_audiobook_progress(req)
     AudiobookProgressResponse.from_cbor(@transport.call("LibraryService", "get-audiobook-progress", req.to_cbor))
@@ -214,6 +234,11 @@ class AdminClient
   # set-role: -> Account
   def set_role(req)
     Account.from_cbor(@transport.call("AdminService", "set-role", req.to_cbor))
+  end
+
+  # set-library-editor: -> Ok
+  def set_library_editor(req)
+    Ok.from_cbor(@transport.call("AdminService", "set-library-editor", req.to_cbor))
   end
 
   # delete-account: -> Ok

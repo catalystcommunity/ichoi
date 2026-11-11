@@ -6,6 +6,14 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class ConnectionSecurityTest {
+    @org.junit.Test fun bareDomainDefaultsToHTTPS() {
+        org.junit.Assert.assertEquals("https://ichoi.catalystsquad.com", ConnectionSecurity.normalize(" ichoi.catalystsquad.com "))
+        org.junit.Assert.assertEquals(EndpointDecision.Secure, ConnectionSecurity.check("ichoi.catalystsquad.com"))
+        org.junit.Assert.assertEquals(EndpointDecision.Secure, ConnectionSecurity.check("music.example:8443"))
+        org.junit.Assert.assertTrue(ConnectionSecurity.check("music.example/path") is EndpointDecision.Rejected)
+        org.junit.Assert.assertTrue(ConnectionSecurity.check("user@music.example") is EndpointDecision.Rejected)
+    }
+
     @Test fun httpsIsAccepted() = assertIs<EndpointDecision.Secure>(ConnectionSecurity.check("https://music.example"))
 
     @Test fun publicHttpIsRejected() = assertIs<EndpointDecision.Rejected>(ConnectionSecurity.check("http://203.0.113.10"))

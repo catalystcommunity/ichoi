@@ -12,7 +12,12 @@ and one current 64-bit device.
 3. Tap **Connect to demo server**. Confirm that the library opens with no login. Use a
    server with an expired or self-signed certificate. Confirm that the connection fails.
    Return a redirect from the server. Confirm that the app reports a redirect error and does not follow it.
-4. Sign in. Play a track. Lock the device and switch audio output. Confirm that the
+4. Sign in with LinkKeys. Confirm that the library opens at the top of the screen.
+   Confirm that **Blocked accounts** appears only in Settings. Repeat with a slow
+   server: open Settings, tap **Back to library**, and wait for the account list
+   response. Confirm that the response does not change the library screen.
+   Cancel a sign-in and confirm that the app does not show a successful sign-in.
+   Play a track. Lock the device and switch audio output. Confirm that the
    foreground media notification stays visible and that no media file appears in shared or
    app-private storage.
 5. Open Settings. Confirm the server URL and privacy link. Sign out and confirm that a
@@ -32,3 +37,25 @@ and one current 64-bit device.
 
 Record the device model, Android version, app version, test date, and each result before a
 store submission.
+
+## Playback controls and messages
+
+1. Play a track. Confirm that its title, server, and progress remain visible when
+   you open the library or Settings. Pause, resume, seek, and stop the track.
+2. Use Pause, Resume, and Stop in the notification. Repeat from the lock screen.
+   Confirm that Stop removes the playback notification and releases the player.
+3. Use a slow connection. Tap Stop while the track loads. Confirm that audio does
+   not start later. Start a second track during loading and confirm that only the
+   second track plays.
+4. Let a track finish. Confirm that the controls and notification disappear.
+5. Make a media request fail. Confirm that playback stops and an error message
+   appears. Confirm that Dismiss closes it immediately. Repeat without Dismiss
+   and confirm that the message closes after 10 seconds.
+6. In Settings, change Message duration to 30 seconds. Repeat the failure and
+   confirm that the message stays visible for 30 seconds. Restart the app and
+   confirm that the setting is saved. Restore 10 seconds after the check.
+7. Cause a second error before the first message closes. Confirm that the new
+   message gets the full selected duration. Open another screen and confirm that
+   navigation does not restart the timer.
+8. Make playback fail while the app is in the background. Return to the app.
+   Confirm that the error appears for the selected duration.

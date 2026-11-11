@@ -736,6 +736,20 @@ static inline int csilc_enc_CoverArtRequest(csilc_buf *b, const CoverArtRequest 
 static inline int csilc_dec_CoverArtRequest(const csilc_value *m, CsilCodecArena *a, CoverArtRequest *out);
 static inline int csilc_enc_CoverArt(csilc_buf *b, const CoverArt *v);
 static inline int csilc_dec_CoverArt(const csilc_value *m, CsilCodecArena *a, CoverArt *out);
+static inline int csilc_enc_ArtworkKind(csilc_buf *b, const ArtworkKind *v);
+static inline int csilc_dec_ArtworkKind(const csilc_value *src, CsilCodecArena *a, ArtworkKind *out);
+static inline int csilc_enc_ArtworkRequest(csilc_buf *b, const ArtworkRequest *v);
+static inline int csilc_dec_ArtworkRequest(const csilc_value *m, CsilCodecArena *a, ArtworkRequest *out);
+static inline int csilc_enc_SetArtworkRequest(csilc_buf *b, const SetArtworkRequest *v);
+static inline int csilc_dec_SetArtworkRequest(const csilc_value *m, CsilCodecArena *a, SetArtworkRequest *out);
+static inline int csilc_enc_ArtworkCandidatesRequest(csilc_buf *b, const ArtworkCandidatesRequest *v);
+static inline int csilc_dec_ArtworkCandidatesRequest(const csilc_value *m, CsilCodecArena *a, ArtworkCandidatesRequest *out);
+static inline int csilc_enc_ArtworkCandidateRequest(csilc_buf *b, const ArtworkCandidateRequest *v);
+static inline int csilc_dec_ArtworkCandidateRequest(const csilc_value *m, CsilCodecArena *a, ArtworkCandidateRequest *out);
+static inline int csilc_enc_ArtworkCandidate(csilc_buf *b, const ArtworkCandidate *v);
+static inline int csilc_dec_ArtworkCandidate(const csilc_value *m, CsilCodecArena *a, ArtworkCandidate *out);
+static inline int csilc_enc_ArtworkCandidates(csilc_buf *b, const ArtworkCandidates *v);
+static inline int csilc_dec_ArtworkCandidates(const csilc_value *m, CsilCodecArena *a, ArtworkCandidates *out);
 static inline int csilc_enc_ReportContentRequest(csilc_buf *b, const ReportContentRequest *v);
 static inline int csilc_dec_ReportContentRequest(const csilc_value *m, CsilCodecArena *a, ReportContentRequest *out);
 static inline int csilc_enc_PlayerKind(csilc_buf *b, const PlayerKind *v);
@@ -860,6 +874,8 @@ static inline int csilc_enc_Account(csilc_buf *b, const Account *v);
 static inline int csilc_dec_Account(const csilc_value *m, CsilCodecArena *a, Account *out);
 static inline int csilc_enc_ListAccountsResponse(csilc_buf *b, const ListAccountsResponse *v);
 static inline int csilc_dec_ListAccountsResponse(const csilc_value *m, CsilCodecArena *a, ListAccountsResponse *out);
+static inline int csilc_enc_SetLibraryEditorRequest(csilc_buf *b, const SetLibraryEditorRequest *v);
+static inline int csilc_dec_SetLibraryEditorRequest(const csilc_value *m, CsilCodecArena *a, SetLibraryEditorRequest *out);
 static inline int csilc_enc_SetRoleRequest(csilc_buf *b, const SetRoleRequest *v);
 static inline int csilc_dec_SetRoleRequest(const csilc_value *m, CsilCodecArena *a, SetRoleRequest *out);
 static inline int csilc_enc_AdminDeleteAccountRequest(csilc_buf *b, const AdminDeleteAccountRequest *v);
@@ -1426,6 +1442,7 @@ static inline int csilc_enc_SessionInfo(csilc_buf *b, const SessionInfo *v) {
     size_t csilc_n = 4;
     if (v->token) csilc_n++;
     if (v->display_name) csilc_n++;
+    if (v->can_edit_library) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "role", 4)) return -1;
     if (csilc_enc_Role(b, &(v->role))) return -1;
@@ -1442,6 +1459,10 @@ static inline int csilc_enc_SessionInfo(csilc_buf *b, const SessionInfo *v) {
     if (v->display_name) {
         if (csilc_w_text(b, "display_name", 12)) return -1;
         if (csilc_w_text(b, (v->display_name), (v->display_name) ? strlen(v->display_name) : 0)) return -1;
+    }
+    if (v->can_edit_library) {
+        if (csilc_w_text(b, "can_edit_library", 16)) return -1;
+        if (csilc_w_bool(b, ((*v->can_edit_library)))) return -1;
     }
     return 0;
 }
@@ -1463,6 +1484,14 @@ static inline int csilc_dec_SessionInfo(const csilc_value *m, CsilCodecArena *a,
     if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
     csilc_f = csilc_map_get(m, "display_name");
     out->display_name = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "can_edit_library");
+    out->can_edit_library = NULL;
+    if (csilc_f) {
+        bool *csilc_p = (bool *)csilc_arena_alloc(a, sizeof(bool));
+        if (!csilc_p) return -1;
+        if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
+        out->can_edit_library = csilc_p;
+    }
     return 0;
 }
 
@@ -2751,6 +2780,272 @@ static inline int csilc_dec_CoverArt(const csilc_value *m, CsilCodecArena *a, Co
     if (!csilc_get_bytes(csilc_f, &(out->data).data, &(out->data).len)) return -1;
     csilc_f = csilc_map_get(m, "content_type");
     if (!csilc_get_text(csilc_f, &(out->content_type))) return -1;
+    return 0;
+}
+
+static CSILC_UNUSED const char *const csilc_ArtworkKind_names[] = {
+    "album",
+    "artist",
+};
+/* csilc_enc_ArtworkKind writes the ArtworkKind variant's wire text. */
+static inline int csilc_enc_ArtworkKind(csilc_buf *b, const ArtworkKind *v) {
+    const char *csilc_s = csilc_ArtworkKind_names[(size_t)(*v)];
+    return csilc_w_text(b, csilc_s, strlen(csilc_s));
+}
+
+/* csilc_dec_ArtworkKind matches the wire text back to a ArtworkKind variant. */
+static inline int csilc_dec_ArtworkKind(const csilc_value *src, CsilCodecArena *a, ArtworkKind *out) {
+    (void)a;
+    if (!src || src->kind != CSILC_TEXT) return -1;
+    for (size_t csilc_i = 0; csilc_i < sizeof(csilc_ArtworkKind_names) / sizeof(csilc_ArtworkKind_names[0]); csilc_i++) {
+        if (strlen(csilc_ArtworkKind_names[csilc_i]) == src->as.bytes.len &&
+            memcmp(csilc_ArtworkKind_names[csilc_i], src->as.bytes.ptr, src->as.bytes.len) == 0) {
+            *out = (ArtworkKind)csilc_i;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+/* csilc_enc_ArtworkRequest writes ArtworkRequest as a canonical CBOR map. */
+static inline int csilc_enc_ArtworkRequest(csilc_buf *b, const ArtworkRequest *v) {
+    size_t csilc_n = 2;
+    if (v->max_size) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "id", 2)) return -1;
+    if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
+    if (csilc_w_text(b, "kind", 4)) return -1;
+    if (csilc_enc_ArtworkKind(b, &(v->kind))) return -1;
+    if (v->max_size) {
+        if (csilc_w_text(b, "max_size", 8)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->max_size)))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_ArtworkRequest reads ArtworkRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ArtworkRequest(const csilc_value *m, CsilCodecArena *a, ArtworkRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "id");
+    if (!csilc_get_text(csilc_f, &(out->id))) return -1;
+    csilc_f = csilc_map_get(m, "kind");
+    if (csilc_dec_ArtworkKind(csilc_f, a, &(out->kind))) return -1;
+    csilc_f = csilc_map_get(m, "max_size");
+    out->max_size = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->max_size = csilc_p;
+    }
+    return 0;
+}
+
+/* csilc_enc_SetArtworkRequest writes SetArtworkRequest as a canonical CBOR map. */
+static inline int csilc_enc_SetArtworkRequest(csilc_buf *b, const SetArtworkRequest *v) {
+    size_t csilc_n = 2;
+    if (v->data) csilc_n++;
+    if (v->candidate_id) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "id", 2)) return -1;
+    if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
+    if (v->data) {
+        if (csilc_w_text(b, "data", 4)) return -1;
+        if (csilc_w_bytes(b, ((*v->data)).data, ((*v->data)).len)) return -1;
+    }
+    if (csilc_w_text(b, "kind", 4)) return -1;
+    if (csilc_enc_ArtworkKind(b, &(v->kind))) return -1;
+    if (v->candidate_id) {
+        if (csilc_w_text(b, "candidate_id", 12)) return -1;
+        if (csilc_w_text(b, (v->candidate_id), (v->candidate_id) ? strlen(v->candidate_id) : 0)) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_SetArtworkRequest reads SetArtworkRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_SetArtworkRequest(const csilc_value *m, CsilCodecArena *a, SetArtworkRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "id");
+    if (!csilc_get_text(csilc_f, &(out->id))) return -1;
+    csilc_f = csilc_map_get(m, "data");
+    out->data = NULL;
+    if (csilc_f) {
+        CsilBytes *csilc_p = (CsilBytes *)csilc_arena_alloc(a, sizeof(CsilBytes));
+        if (!csilc_p) return -1;
+        if (!csilc_get_bytes(csilc_f, &((*csilc_p)).data, &((*csilc_p)).len)) return -1;
+        out->data = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "kind");
+    if (csilc_dec_ArtworkKind(csilc_f, a, &(out->kind))) return -1;
+    csilc_f = csilc_map_get(m, "candidate_id");
+    out->candidate_id = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    return 0;
+}
+
+/* csilc_enc_ArtworkCandidatesRequest writes ArtworkCandidatesRequest as a canonical CBOR map. */
+static inline int csilc_enc_ArtworkCandidatesRequest(csilc_buf *b, const ArtworkCandidatesRequest *v) {
+    size_t csilc_n = 2;
+    if (v->limit) csilc_n++;
+    if (v->offset) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "id", 2)) return -1;
+    if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
+    if (csilc_w_text(b, "kind", 4)) return -1;
+    if (csilc_enc_ArtworkKind(b, &(v->kind))) return -1;
+    if (v->limit) {
+        if (csilc_w_text(b, "limit", 5)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->limit)))) return -1;
+    }
+    if (v->offset) {
+        if (csilc_w_text(b, "offset", 6)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->offset)))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_ArtworkCandidatesRequest reads ArtworkCandidatesRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ArtworkCandidatesRequest(const csilc_value *m, CsilCodecArena *a, ArtworkCandidatesRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "id");
+    if (!csilc_get_text(csilc_f, &(out->id))) return -1;
+    csilc_f = csilc_map_get(m, "kind");
+    if (csilc_dec_ArtworkKind(csilc_f, a, &(out->kind))) return -1;
+    csilc_f = csilc_map_get(m, "limit");
+    out->limit = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->limit = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "offset");
+    out->offset = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->offset = csilc_p;
+    }
+    return 0;
+}
+
+/* csilc_enc_ArtworkCandidateRequest writes ArtworkCandidateRequest as a canonical CBOR map. */
+static inline int csilc_enc_ArtworkCandidateRequest(csilc_buf *b, const ArtworkCandidateRequest *v) {
+    size_t csilc_n = 3;
+    if (v->max_size) csilc_n++;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "id", 2)) return -1;
+    if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
+    if (csilc_w_text(b, "kind", 4)) return -1;
+    if (csilc_enc_ArtworkKind(b, &(v->kind))) return -1;
+    if (v->max_size) {
+        if (csilc_w_text(b, "max_size", 8)) return -1;
+        if (csilc_w_uint(b, (uint64_t)((*v->max_size)))) return -1;
+    }
+    if (csilc_w_text(b, "candidate_id", 12)) return -1;
+    if (csilc_w_text(b, (v->candidate_id), (v->candidate_id) ? strlen(v->candidate_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_ArtworkCandidateRequest reads ArtworkCandidateRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ArtworkCandidateRequest(const csilc_value *m, CsilCodecArena *a, ArtworkCandidateRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "id");
+    if (!csilc_get_text(csilc_f, &(out->id))) return -1;
+    csilc_f = csilc_map_get(m, "kind");
+    if (csilc_dec_ArtworkKind(csilc_f, a, &(out->kind))) return -1;
+    csilc_f = csilc_map_get(m, "max_size");
+    out->max_size = NULL;
+    if (csilc_f) {
+        uint64_t *csilc_p = (uint64_t *)csilc_arena_alloc(a, sizeof(uint64_t));
+        if (!csilc_p) return -1;
+        if (!csilc_as_u64(csilc_f, &((*csilc_p)))) return -1;
+        out->max_size = csilc_p;
+    }
+    csilc_f = csilc_map_get(m, "candidate_id");
+    if (!csilc_get_text(csilc_f, &(out->candidate_id))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ArtworkCandidate writes ArtworkCandidate as a canonical CBOR map. */
+static inline int csilc_enc_ArtworkCandidate(csilc_buf *b, const ArtworkCandidate *v) {
+    size_t csilc_n = 6;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "id", 2)) return -1;
+    if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
+    if (csilc_w_text(b, "role", 4)) return -1;
+    if (csilc_w_text(b, (v->role), (v->role) ? strlen(v->role) : 0)) return -1;
+    if (csilc_w_text(b, "label", 5)) return -1;
+    if (csilc_w_text(b, (v->label), (v->label) ? strlen(v->label) : 0)) return -1;
+    if (csilc_w_text(b, "width", 5)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->width))) return -1;
+    if (csilc_w_text(b, "height", 6)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->height))) return -1;
+    if (csilc_w_text(b, "suggested", 9)) return -1;
+    if (csilc_w_bool(b, (v->suggested))) return -1;
+    return 0;
+}
+
+/* csilc_dec_ArtworkCandidate reads ArtworkCandidate from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ArtworkCandidate(const csilc_value *m, CsilCodecArena *a, ArtworkCandidate *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "id");
+    if (!csilc_get_text(csilc_f, &(out->id))) return -1;
+    csilc_f = csilc_map_get(m, "role");
+    if (!csilc_get_text(csilc_f, &(out->role))) return -1;
+    csilc_f = csilc_map_get(m, "label");
+    if (!csilc_get_text(csilc_f, &(out->label))) return -1;
+    csilc_f = csilc_map_get(m, "width");
+    if (!csilc_as_u64(csilc_f, &(out->width))) return -1;
+    csilc_f = csilc_map_get(m, "height");
+    if (!csilc_as_u64(csilc_f, &(out->height))) return -1;
+    csilc_f = csilc_map_get(m, "suggested");
+    if (!csilc_as_bool(csilc_f, &(out->suggested))) return -1;
+    return 0;
+}
+
+/* csilc_enc_ArtworkCandidates writes ArtworkCandidates as a canonical CBOR map. */
+static inline int csilc_enc_ArtworkCandidates(csilc_buf *b, const ArtworkCandidates *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "total", 5)) return -1;
+    if (csilc_w_uint(b, (uint64_t)(v->total))) return -1;
+    if (csilc_w_text(b, "candidates", 10)) return -1;
+    if (csilc_w_array_head(b, v->candidates_count)) return -1;
+    for (size_t csilc_i = 0; csilc_i < v->candidates_count; csilc_i++) {
+        if (csilc_enc_ArtworkCandidate(b, &(v->candidates[csilc_i]))) return -1;
+    }
+    return 0;
+}
+
+/* csilc_dec_ArtworkCandidates reads ArtworkCandidates from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_ArtworkCandidates(const csilc_value *m, CsilCodecArena *a, ArtworkCandidates *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "total");
+    if (!csilc_as_u64(csilc_f, &(out->total))) return -1;
+    csilc_f = csilc_map_get(m, "candidates");
+    if (!csilc_f || csilc_f->kind != CSILC_ARRAY) return -1;
+    out->candidates_count = csilc_f->as.array.count;
+    out->candidates = NULL;
+    if (out->candidates_count) {
+        out->candidates = (ArtworkCandidate *)csilc_arena_alloc(a, out->candidates_count * sizeof(ArtworkCandidate));
+        if (!out->candidates) return -1;
+        for (size_t csilc_i = 0; csilc_i < out->candidates_count; csilc_i++) {
+            if (csilc_dec_ArtworkCandidate(&csilc_f->as.array.items[csilc_i], a, &(out->candidates[csilc_i]))) return -1;
+        }
+    }
     return 0;
 }
 
@@ -5012,6 +5307,7 @@ static inline int csilc_dec_NodeReport(const csilc_value *m, CsilCodecArena *a, 
 static inline int csilc_enc_Account(csilc_buf *b, const Account *v) {
     size_t csilc_n = 4;
     if (v->display_name) csilc_n++;
+    if (v->can_edit_library) csilc_n++;
     if (csilc_w_map_head(b, csilc_n)) return -1;
     if (csilc_w_text(b, "id", 2)) return -1;
     if (csilc_w_text(b, (v->id), (v->id) ? strlen(v->id) : 0)) return -1;
@@ -5025,6 +5321,10 @@ static inline int csilc_enc_Account(csilc_buf *b, const Account *v) {
     if (v->display_name) {
         if (csilc_w_text(b, "display_name", 12)) return -1;
         if (csilc_w_text(b, (v->display_name), (v->display_name) ? strlen(v->display_name) : 0)) return -1;
+    }
+    if (v->can_edit_library) {
+        if (csilc_w_text(b, "can_edit_library", 16)) return -1;
+        if (csilc_w_bool(b, ((*v->can_edit_library)))) return -1;
     }
     return 0;
 }
@@ -5045,6 +5345,14 @@ static inline int csilc_dec_Account(const csilc_value *m, CsilCodecArena *a, Acc
     (out->created_at).epoch_seconds = 0;
     csilc_f = csilc_map_get(m, "display_name");
     out->display_name = (csilc_f && csilc_f->kind == CSILC_TEXT) ? (char *)csilc_f->as.bytes.ptr : NULL;
+    csilc_f = csilc_map_get(m, "can_edit_library");
+    out->can_edit_library = NULL;
+    if (csilc_f) {
+        bool *csilc_p = (bool *)csilc_arena_alloc(a, sizeof(bool));
+        if (!csilc_p) return -1;
+        if (!csilc_as_bool(csilc_f, &((*csilc_p)))) return -1;
+        out->can_edit_library = csilc_p;
+    }
     return 0;
 }
 
@@ -5076,6 +5384,29 @@ static inline int csilc_dec_ListAccountsResponse(const csilc_value *m, CsilCodec
             if (csilc_dec_Account(&csilc_f->as.array.items[csilc_i], a, &(out->accounts[csilc_i]))) return -1;
         }
     }
+    return 0;
+}
+
+/* csilc_enc_SetLibraryEditorRequest writes SetLibraryEditorRequest as a canonical CBOR map. */
+static inline int csilc_enc_SetLibraryEditorRequest(csilc_buf *b, const SetLibraryEditorRequest *v) {
+    size_t csilc_n = 2;
+    if (csilc_w_map_head(b, csilc_n)) return -1;
+    if (csilc_w_text(b, "enabled", 7)) return -1;
+    if (csilc_w_bool(b, (v->enabled))) return -1;
+    if (csilc_w_text(b, "account_id", 10)) return -1;
+    if (csilc_w_text(b, (v->account_id), (v->account_id) ? strlen(v->account_id) : 0)) return -1;
+    return 0;
+}
+
+/* csilc_dec_SetLibraryEditorRequest reads SetLibraryEditorRequest from a decoded CBOR map (arena-borrowed). */
+static inline int csilc_dec_SetLibraryEditorRequest(const csilc_value *m, CsilCodecArena *a, SetLibraryEditorRequest *out) {
+    (void)a;
+    const csilc_value *csilc_f;
+    if (!m || m->kind != CSILC_MAP) return -1;
+    csilc_f = csilc_map_get(m, "enabled");
+    if (!csilc_as_bool(csilc_f, &(out->enabled))) return -1;
+    csilc_f = csilc_map_get(m, "account_id");
+    if (!csilc_get_text(csilc_f, &(out->account_id))) return -1;
     return 0;
 }
 
@@ -7583,6 +7914,167 @@ static inline int csil_decode_CoverArt(const uint8_t *in, size_t len, CoverArt *
     return 0;
 }
 
+/* Encode a ArtworkKind to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ArtworkKind(const ArtworkKind *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ArtworkKind(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ArtworkKind. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ArtworkKind(const uint8_t *in, size_t len, ArtworkKind *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ArtworkKind(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ArtworkRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ArtworkRequest(const ArtworkRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ArtworkRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ArtworkRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ArtworkRequest(const uint8_t *in, size_t len, ArtworkRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ArtworkRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a SetArtworkRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_SetArtworkRequest(const SetArtworkRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_SetArtworkRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a SetArtworkRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_SetArtworkRequest(const uint8_t *in, size_t len, SetArtworkRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_SetArtworkRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ArtworkCandidatesRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ArtworkCandidatesRequest(const ArtworkCandidatesRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ArtworkCandidatesRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ArtworkCandidatesRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ArtworkCandidatesRequest(const uint8_t *in, size_t len, ArtworkCandidatesRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ArtworkCandidatesRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ArtworkCandidateRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ArtworkCandidateRequest(const ArtworkCandidateRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ArtworkCandidateRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ArtworkCandidateRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ArtworkCandidateRequest(const uint8_t *in, size_t len, ArtworkCandidateRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ArtworkCandidateRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ArtworkCandidate to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ArtworkCandidate(const ArtworkCandidate *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ArtworkCandidate(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ArtworkCandidate. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ArtworkCandidate(const uint8_t *in, size_t len, ArtworkCandidate *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ArtworkCandidate(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a ArtworkCandidates to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_ArtworkCandidates(const ArtworkCandidates *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_ArtworkCandidates(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a ArtworkCandidates. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_ArtworkCandidates(const uint8_t *in, size_t len, ArtworkCandidates *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_ArtworkCandidates(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
 /* Encode a ReportContentRequest to CBOR. On success *out is a malloc'd buffer of
  * *out_len bytes the caller frees with free(); returns non-zero on failure. */
 static inline int csil_encode_ReportContentRequest(const ReportContentRequest *v, uint8_t **out, size_t *out_len) {
@@ -9005,6 +9497,29 @@ static inline int csil_decode_ListAccountsResponse(const uint8_t *in, size_t len
     const csilc_value *root;
     if (csilc_decode(in, len, &a, &root)) return -1;
     if (csilc_dec_ListAccountsResponse(root, a, out)) { csil_codec_arena_free(a); return -1; }
+    *owner = a;
+    return 0;
+}
+
+/* Encode a SetLibraryEditorRequest to CBOR. On success *out is a malloc'd buffer of
+ * *out_len bytes the caller frees with free(); returns non-zero on failure. */
+static inline int csil_encode_SetLibraryEditorRequest(const SetLibraryEditorRequest *v, uint8_t **out, size_t *out_len) {
+    csilc_buf b;
+    csilc_buf_init(&b);
+    if (csilc_enc_SetLibraryEditorRequest(&b, v)) { csilc_buf_dispose(&b); return -1; }
+    *out = b.data;
+    *out_len = b.len;
+    return 0;
+}
+
+/* Decode CBOR into a SetLibraryEditorRequest. On success *owner holds the backing
+ * storage (every string/bytes/array inside *out borrows from it); free it
+ * once with csil_codec_arena_free when done. Returns non-zero on failure. */
+static inline int csil_decode_SetLibraryEditorRequest(const uint8_t *in, size_t len, SetLibraryEditorRequest *out, CsilCodecArena **owner) {
+    CsilCodecArena *a;
+    const csilc_value *root;
+    if (csilc_decode(in, len, &a, &root)) return -1;
+    if (csilc_dec_SetLibraryEditorRequest(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
 }

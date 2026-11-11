@@ -1,6 +1,16 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#1565C0</item>
+        <item name="android:colorAccent">@color/ichoi_accent</item>
+        <item name="android:windowBackground">@color/ichoi_bg</item>
+        <item name="android:colorBackground">@color/ichoi_bg</item>
+        <item name="android:textColorPrimary">@color/ichoi_text</item>
+        <item name="android:textColorSecondary">@color/ichoi_muted</item>
+        <item name="android:colorControlNormal">@color/ichoi_muted</item>
+        <item name="android:colorButtonNormal">@color/ichoi_surface</item>
+        <item name="android:statusBarColor">@color/ichoi_bg</item>
+        <item name="android:navigationBarColor">@color/ichoi_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>

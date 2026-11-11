@@ -107,6 +107,7 @@ and encode_session_info (v : session_info) : Cbor.t =
          Some (Cbor.Text "can_admin", (Cbor.Bool v.can_admin));
          Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
          (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
+         (match v.can_edit_library with Some csil_x -> Some (Cbor.Text "can_edit_library", (Cbor.Bool csil_x)) | None -> None);
        ])
 
 and encode_delete_account_request (v : delete_account_request) : Cbor.t =
@@ -454,6 +455,74 @@ and encode_cover_art (v : cover_art) : Cbor.t =
        [
          Some (Cbor.Text "data", (Cbor.Bytes v.data));
          Some (Cbor.Text "content_type", (Cbor.Text v.content_type));
+       ])
+
+and encode_artwork_kind (v : artwork_kind) : Cbor.t =
+  match v with Album -> Cbor.Text "album" | Artist -> Cbor.Text "artist"
+
+and encode_artwork_request (v : artwork_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "kind", (encode_artwork_kind v.kind));
+         (match v.max_size with Some csil_x -> Some (Cbor.Text "max_size", (Cbor.int64 csil_x)) | None -> None);
+       ])
+
+and encode_set_artwork_request (v : set_artwork_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         (match v.data with Some csil_x -> Some (Cbor.Text "data", (Cbor.Bytes csil_x)) | None -> None);
+         Some (Cbor.Text "kind", (encode_artwork_kind v.kind));
+         (match v.candidate_id with Some csil_x -> Some (Cbor.Text "candidate_id", (Cbor.Text csil_x)) | None -> None);
+       ])
+
+and encode_artwork_candidates_request (v : artwork_candidates_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "kind", (encode_artwork_kind v.kind));
+         (match v.limit with Some csil_x -> Some (Cbor.Text "limit", (Cbor.int64 csil_x)) | None -> None);
+         (match v.offset with Some csil_x -> Some (Cbor.Text "offset", (Cbor.int64 csil_x)) | None -> None);
+       ])
+
+and encode_artwork_candidate_request (v : artwork_candidate_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "kind", (encode_artwork_kind v.kind));
+         (match v.max_size with Some csil_x -> Some (Cbor.Text "max_size", (Cbor.int64 csil_x)) | None -> None);
+         Some (Cbor.Text "candidate_id", (Cbor.Text v.candidate_id));
+       ])
+
+and encode_artwork_candidate (v : artwork_candidate) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "id", (Cbor.Text v.id));
+         Some (Cbor.Text "role", (Cbor.Text v.role));
+         Some (Cbor.Text "label", (Cbor.Text v.label));
+         Some (Cbor.Text "width", (Cbor.int64 v.width));
+         Some (Cbor.Text "height", (Cbor.int64 v.height));
+         Some (Cbor.Text "suggested", (Cbor.Bool v.suggested));
+       ])
+
+and encode_artwork_candidates (v : artwork_candidates) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "total", (Cbor.int64 v.total));
+         Some (Cbor.Text "candidates", (Cbor.Array (List.map (fun csil_e -> (encode_artwork_candidate csil_e)) v.candidates)));
        ])
 
 and encode_report_content_request (v : report_content_request) : Cbor.t =
@@ -1023,6 +1092,7 @@ and encode_account (v : account) : Cbor.t =
          Some (Cbor.Text "handle", (Cbor.Text v.handle));
          Some (Cbor.Text "created_at", (Cbor.Tag (0, Cbor.Text v.created_at)));
          (match v.display_name with Some csil_x -> Some (Cbor.Text "display_name", (Cbor.Text csil_x)) | None -> None);
+         (match v.can_edit_library with Some csil_x -> Some (Cbor.Text "can_edit_library", (Cbor.Bool csil_x)) | None -> None);
        ])
 
 and encode_list_accounts_response (v : list_accounts_response) : Cbor.t =
@@ -1031,6 +1101,15 @@ and encode_list_accounts_response (v : list_accounts_response) : Cbor.t =
        (fun x -> x)
        [
          Some (Cbor.Text "accounts", (Cbor.Array (List.map (fun csil_e -> (encode_account csil_e)) v.accounts)));
+       ])
+
+and encode_set_library_editor_request (v : set_library_editor_request) : Cbor.t =
+  Cbor.Map
+    (List.filter_map
+       (fun x -> x)
+       [
+         Some (Cbor.Text "enabled", (Cbor.Bool v.enabled));
+         Some (Cbor.Text "account_id", (Cbor.Text v.account_id));
        ])
 
 and encode_set_role_request (v : set_role_request) : Cbor.t =
@@ -1540,6 +1619,7 @@ and decode_session_info (csil_c : Cbor.t) : session_info =
         can_admin = (Cbor.to_bool (csil_req "can_admin"));
         account_id = (Cbor.to_text (csil_req "account_id"));
         display_name = (match csil_field "display_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        can_edit_library = (match csil_field "can_edit_library" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for session_info"
 
@@ -2064,6 +2144,104 @@ and decode_cover_art (csil_c : Cbor.t) : cover_art =
         content_type = (Cbor.to_text (csil_req "content_type"));
       }
   | _ -> failwith "csilgen: expected map for cover_art"
+
+and decode_artwork_kind (csil_c : Cbor.t) : artwork_kind =
+  match Cbor.to_text csil_c with "album" -> Album | "artist" -> Artist | csil_s -> failwith ("csilgen: unknown enum literal " ^ csil_s)
+
+and decode_artwork_request (csil_c : Cbor.t) : artwork_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        kind = (decode_artwork_kind (csil_req "kind"));
+        max_size = (match csil_field "max_size" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for artwork_request"
+
+and decode_set_artwork_request (csil_c : Cbor.t) : set_artwork_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        data = (match csil_field "data" with Some csil_v -> Some (Cbor.to_bytes csil_v) | None -> None);
+        kind = (decode_artwork_kind (csil_req "kind"));
+        candidate_id = (match csil_field "candidate_id" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for set_artwork_request"
+
+and decode_artwork_candidates_request (csil_c : Cbor.t) : artwork_candidates_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        kind = (decode_artwork_kind (csil_req "kind"));
+        limit = (match csil_field "limit" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        offset = (match csil_field "offset" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+      }
+  | _ -> failwith "csilgen: expected map for artwork_candidates_request"
+
+and decode_artwork_candidate_request (csil_c : Cbor.t) : artwork_candidate_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        kind = (decode_artwork_kind (csil_req "kind"));
+        max_size = (match csil_field "max_size" with Some csil_v -> Some (Cbor.to_i64 csil_v) | None -> None);
+        candidate_id = (Cbor.to_text (csil_req "candidate_id"));
+      }
+  | _ -> failwith "csilgen: expected map for artwork_candidate_request"
+
+and decode_artwork_candidate (csil_c : Cbor.t) : artwork_candidate =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        id = (Cbor.to_text (csil_req "id"));
+        role = (Cbor.to_text (csil_req "role"));
+        label = (Cbor.to_text (csil_req "label"));
+        width = (Cbor.to_i64 (csil_req "width"));
+        height = (Cbor.to_i64 (csil_req "height"));
+        suggested = (Cbor.to_bool (csil_req "suggested"));
+      }
+  | _ -> failwith "csilgen: expected map for artwork_candidate"
+
+and decode_artwork_candidates (csil_c : Cbor.t) : artwork_candidates =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        total = (Cbor.to_i64 (csil_req "total"));
+        candidates = (match (csil_req "candidates") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_artwork_candidate csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
+      }
+  | _ -> failwith "csilgen: expected map for artwork_candidates"
 
 and decode_report_content_request (csil_c : Cbor.t) : report_content_request =
   match csil_c with
@@ -2909,6 +3087,7 @@ and decode_account (csil_c : Cbor.t) : account =
         handle = (Cbor.to_text (csil_req "handle"));
         created_at = (match (csil_req "created_at") with Cbor.Tag (0, Cbor.Text csil_s) -> csil_s | _ -> failwith "csilgen: bad timestamp");
         display_name = (match csil_field "display_name" with Some csil_v -> Some (Cbor.to_text csil_v) | None -> None);
+        can_edit_library = (match csil_field "can_edit_library" with Some csil_v -> Some (Cbor.to_bool csil_v) | None -> None);
       }
   | _ -> failwith "csilgen: expected map for account"
 
@@ -2924,6 +3103,20 @@ and decode_list_accounts_response (csil_c : Cbor.t) : list_accounts_response =
         accounts = (match (csil_req "accounts") with Cbor.Array csil_xs -> List.map (fun csil_e -> (decode_account csil_e)) csil_xs | _ -> failwith "csilgen: expected array");
       }
   | _ -> failwith "csilgen: expected map for list_accounts_response"
+
+and decode_set_library_editor_request (csil_c : Cbor.t) : set_library_editor_request =
+  match csil_c with
+  | Cbor.Map csil_kvs ->
+      let csil_field k = List.assoc_opt (Cbor.Text k) csil_kvs in
+      let csil_req k =
+        match csil_field k with Some v -> v | None -> failwith ("csilgen: missing field " ^ k)
+      in
+      ignore csil_req;
+      {
+        enabled = (Cbor.to_bool (csil_req "enabled"));
+        account_id = (Cbor.to_text (csil_req "account_id"));
+      }
+  | _ -> failwith "csilgen: expected map for set_library_editor_request"
 
 and decode_set_role_request (csil_c : Cbor.t) : set_role_request =
   match csil_c with
@@ -3701,6 +3894,34 @@ let encode_cover_art_bytes (v : cover_art) : bytes = Cbor.encode (encode_cover_a
 let decode_cover_art_bytes (b : bytes) : cover_art =
   match Cbor.decode b with Ok c -> decode_cover_art c | Error e -> failwith e
 
+let encode_artwork_kind_bytes (v : artwork_kind) : bytes = Cbor.encode (encode_artwork_kind v)
+let decode_artwork_kind_bytes (b : bytes) : artwork_kind =
+  match Cbor.decode b with Ok c -> decode_artwork_kind c | Error e -> failwith e
+
+let encode_artwork_request_bytes (v : artwork_request) : bytes = Cbor.encode (encode_artwork_request v)
+let decode_artwork_request_bytes (b : bytes) : artwork_request =
+  match Cbor.decode b with Ok c -> decode_artwork_request c | Error e -> failwith e
+
+let encode_set_artwork_request_bytes (v : set_artwork_request) : bytes = Cbor.encode (encode_set_artwork_request v)
+let decode_set_artwork_request_bytes (b : bytes) : set_artwork_request =
+  match Cbor.decode b with Ok c -> decode_set_artwork_request c | Error e -> failwith e
+
+let encode_artwork_candidates_request_bytes (v : artwork_candidates_request) : bytes = Cbor.encode (encode_artwork_candidates_request v)
+let decode_artwork_candidates_request_bytes (b : bytes) : artwork_candidates_request =
+  match Cbor.decode b with Ok c -> decode_artwork_candidates_request c | Error e -> failwith e
+
+let encode_artwork_candidate_request_bytes (v : artwork_candidate_request) : bytes = Cbor.encode (encode_artwork_candidate_request v)
+let decode_artwork_candidate_request_bytes (b : bytes) : artwork_candidate_request =
+  match Cbor.decode b with Ok c -> decode_artwork_candidate_request c | Error e -> failwith e
+
+let encode_artwork_candidate_bytes (v : artwork_candidate) : bytes = Cbor.encode (encode_artwork_candidate v)
+let decode_artwork_candidate_bytes (b : bytes) : artwork_candidate =
+  match Cbor.decode b with Ok c -> decode_artwork_candidate c | Error e -> failwith e
+
+let encode_artwork_candidates_bytes (v : artwork_candidates) : bytes = Cbor.encode (encode_artwork_candidates v)
+let decode_artwork_candidates_bytes (b : bytes) : artwork_candidates =
+  match Cbor.decode b with Ok c -> decode_artwork_candidates c | Error e -> failwith e
+
 let encode_report_content_request_bytes (v : report_content_request) : bytes = Cbor.encode (encode_report_content_request v)
 let decode_report_content_request_bytes (b : bytes) : report_content_request =
   match Cbor.decode b with Ok c -> decode_report_content_request c | Error e -> failwith e
@@ -3948,6 +4169,10 @@ let decode_account_bytes (b : bytes) : account =
 let encode_list_accounts_response_bytes (v : list_accounts_response) : bytes = Cbor.encode (encode_list_accounts_response v)
 let decode_list_accounts_response_bytes (b : bytes) : list_accounts_response =
   match Cbor.decode b with Ok c -> decode_list_accounts_response c | Error e -> failwith e
+
+let encode_set_library_editor_request_bytes (v : set_library_editor_request) : bytes = Cbor.encode (encode_set_library_editor_request v)
+let decode_set_library_editor_request_bytes (b : bytes) : set_library_editor_request =
+  match Cbor.decode b with Ok c -> decode_set_library_editor_request c | Error e -> failwith e
 
 let encode_set_role_request_bytes (v : set_role_request) : bytes = Cbor.encode (encode_set_role_request v)
 let decode_set_role_request_bytes (b : bytes) : set_role_request =

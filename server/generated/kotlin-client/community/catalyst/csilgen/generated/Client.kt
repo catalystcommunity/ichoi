@@ -88,6 +88,18 @@ class LibraryClient(private val transport: Transport) {
     fun getCoverArt(request: CoverArtRequest): CoverArt {
         return decode<CoverArt>(transport.call("LibraryService", "get-cover-art", encode(request)))
     }
+    fun getArtwork(request: ArtworkRequest): CoverArt {
+        return decode<CoverArt>(transport.call("LibraryService", "get-artwork", encode(request)))
+    }
+    fun listArtworkCandidates(request: ArtworkCandidatesRequest): ArtworkCandidates {
+        return decode<ArtworkCandidates>(transport.call("LibraryService", "list-artwork-candidates", encode(request)))
+    }
+    fun getArtworkCandidate(request: ArtworkCandidateRequest): CoverArt {
+        return decode<CoverArt>(transport.call("LibraryService", "get-artwork-candidate", encode(request)))
+    }
+    fun setArtwork(request: SetArtworkRequest): Ok {
+        return decode<Ok>(transport.call("LibraryService", "set-artwork", encode(request)))
+    }
     fun getAudiobookProgress(request: AudiobookProgressRequest): AudiobookProgressResponse {
         return decode<AudiobookProgressResponse>(transport.call("LibraryService", "get-audiobook-progress", encode(request)))
     }
@@ -149,6 +161,9 @@ class AdminClient(private val transport: Transport) {
     }
     fun setRole(request: SetRoleRequest): Account {
         return decode<Account>(transport.call("AdminService", "set-role", encode(request)))
+    }
+    fun setLibraryEditor(request: SetLibraryEditorRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "set-library-editor", encode(request)))
     }
     fun deleteAccount(request: AdminDeleteAccountRequest): Ok {
         return decode<Ok>(transport.call("AdminService", "delete-account", encode(request)))

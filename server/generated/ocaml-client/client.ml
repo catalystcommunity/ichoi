@@ -110,6 +110,26 @@ module Library_service = struct
     | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
     | Error _ as e -> e
 
+  let get_artwork (c : client) (req : artwork_request) : (cover_art, string) result =
+    match c.call ~service:"LibraryService" ~op:"get-artwork" ~payload:(Codec.encode_artwork_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
+    | Error _ as e -> e
+
+  let list_artwork_candidates (c : client) (req : artwork_candidates_request) : (artwork_candidates, string) result =
+    match c.call ~service:"LibraryService" ~op:"list-artwork-candidates" ~payload:(Codec.encode_artwork_candidates_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_artwork_candidates_bytes payload)
+    | Error _ as e -> e
+
+  let get_artwork_candidate (c : client) (req : artwork_candidate_request) : (cover_art, string) result =
+    match c.call ~service:"LibraryService" ~op:"get-artwork-candidate" ~payload:(Codec.encode_artwork_candidate_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
+    | Error _ as e -> e
+
+  let set_artwork (c : client) (req : set_artwork_request) : (ok, string) result =
+    match c.call ~service:"LibraryService" ~op:"set-artwork" ~payload:(Codec.encode_set_artwork_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
+    | Error _ as e -> e
+
   let get_audiobook_progress (c : client) (req : audiobook_progress_request) : (audiobook_progress_response, string) result =
     match c.call ~service:"LibraryService" ~op:"get-audiobook-progress" ~payload:(Codec.encode_audiobook_progress_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_audiobook_progress_response_bytes payload)
@@ -186,6 +206,11 @@ module Admin_service = struct
   let set_role (c : client) (req : set_role_request) : (account, string) result =
     match c.call ~service:"AdminService" ~op:"set-role" ~payload:(Codec.encode_set_role_request_bytes req) with
     | Ok payload -> Ok (Codec.decode_account_bytes payload)
+    | Error _ as e -> e
+
+  let set_library_editor (c : client) (req : set_library_editor_request) : (ok, string) result =
+    match c.call ~service:"AdminService" ~op:"set-library-editor" ~payload:(Codec.encode_set_library_editor_request_bytes req) with
+    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
     | Error _ as e -> e
 
   let delete_account (c : client) (req : admin_delete_account_request) : (ok, string) result =

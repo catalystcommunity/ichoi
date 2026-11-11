@@ -6,11 +6,14 @@ struct SettingsView: View {
     @State private var showDelete = false
     @State private var handle = ""
     @State private var identity = ""
+    @State private var signingIn = false
     @State private var blockedAccounts: [BlockedAccount] = []
     @State private var blockedAccountError: String?
+    @State private var loadingBlockedAccounts = true
     var body: some View {
         NavigationStack {
             Form {
+                MessageDurationSetting()
                 if let profile = model.profile {
                     Section("Selected server") {
                         Text(profile.url.absoluteString)
@@ -40,7 +43,9 @@ struct SettingsView: View {
                             Text("A block hides public playlists from that account on this selected server.")
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
-                            if blockedAccounts.isEmpty {
+                            if loadingBlockedAccounts {
+                                ProgressView("Loading blocked accounts…")
+                            } else if blockedAccounts.isEmpty && blockedAccountError == nil {
                                 Text("You have not blocked an account on this server.")
                                     .foregroundStyle(.secondary)
                             }
@@ -54,13 +59,32 @@ struct SettingsView: View {
                                     Button("Unblock") { Task { await unblock(account.accountId) } }
                                 }
                             }
-                            if let blockedAccountError { Text(blockedAccountError).foregroundStyle(.red) }
+                            if blockedAccountError != nil {
+                                Button("Retry blocked-account list") { Task { await loadBlockedAccounts() } }
+                            }
                         }
-                    } else { Section("Account") { Text("Sign in with LinkKeys to save progress, report content, or manage an account."); TextField("handle@domain", text: $identity).textInputAutocapitalization(.never).autocorrectionDisabled(); Button("Sign in") { Task { await model.signIn(identity: identity) } } } }
+                    } else {
+                        Section("Account") {
+                            Text("Sign in with LinkKeys to save progress, report content, or manage an account.")
+                            TextField("handle@domain", text: $identity)
+                                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            Button(signingIn ? "Signing in…" : "Sign in") {
+                                signingIn = true
+                                Task {
+                                    let signedIn = await model.signIn(identity: identity)
+                                    signingIn = false
+                                    if signedIn { dismiss() }
+                                }
+                            }.disabled(signingIn)
+                        }
+                    }
                 }
             }.navigationTitle("Settings").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
-        .task(id: model.profile?.id) { await loadBlockedAccounts() }
+        .appControls()
+        .task(id: [model.profile?.id.uuidString, model.sessionManager?.session?.accountId]) {
+            await loadBlockedAccounts()
+        }
         .alert("Delete account", isPresented: $showDelete) {
             TextField("Type your exact handle", text: $handle)
             Button("Delete permanently", role: .destructive) {
@@ -80,7 +104,11 @@ struct SettingsView: View {
     }
 
     private func loadBlockedAccounts() async {
-        guard model.sessionManager?.session != nil, let profileID = model.profile?.id else {
+        blockedAccounts = []
+        blockedAccountError = nil
+        loadingBlockedAccounts = true
+        defer { if !Task.isCancelled { loadingBlockedAccounts = false } }
+        guard let accountID = model.sessionManager?.session?.accountId, let profileID = model.profile?.id else {
             blockedAccounts = []
             return
         }
@@ -92,12 +120,15 @@ struct SettingsView: View {
                 accounts += page.accounts
                 if page.accounts.isEmpty || UInt64(accounts.count) >= page.total { break }
             }
-            guard model.profile?.id == profileID else { return }
+            guard !Task.isCancelled, model.profile?.id == profileID,
+                  model.sessionManager?.session?.accountId == accountID else { return }
             blockedAccounts = accounts
             blockedAccountError = nil
         } catch {
-            guard model.profile?.id == profileID else { return }
+            guard !Task.isCancelled, model.profile?.id == profileID,
+                  model.sessionManager?.session?.accountId == accountID else { return }
             blockedAccountError = "The blocked-account list could not be loaded from this server."
+            model.message = blockedAccountError
         }
     }
 
@@ -118,6 +149,7 @@ struct SettingsView: View {
         } catch {
             guard model.profile?.id == profileID else { return }
             blockedAccountError = "The account was not unblocked on the selected server."
+            model.message = blockedAccountError
         }
     }
 }

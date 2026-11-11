@@ -654,7 +654,7 @@ public final class CsilCbor {
     }
 
     static CborValue encSessionInfo(SessionInfo v) {
-        List<CborEntry> csilEntries = new ArrayList<>(6);
+        List<CborEntry> csilEntries = new ArrayList<>(7);
         csilEntries.add(new CborEntry(new CborText("role"), encRole(v.role())));
         if (v.token() != null) {
             csilEntries.add(new CborEntry(new CborText("token"), new CborText(v.token())));
@@ -664,6 +664,9 @@ public final class CsilCbor {
         csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
         if (v.displayName() != null) {
             csilEntries.add(new CborEntry(new CborText("display_name"), new CborText(v.displayName())));
+        }
+        if (v.canEditLibrary() != null) {
+            csilEntries.add(new CborEntry(new CborText("can_edit_library"), new CborBool(v.canEditLibrary())));
         }
         return new CborMap(csilEntries);
     }
@@ -678,12 +681,17 @@ public final class CsilCbor {
         }
         Role role = decRole(require(csilRoot, "role"));
         boolean canAdmin = asBool(require(csilRoot, "can_admin"));
+        Boolean canEditLibrary;
+        {
+            CborValue csilField = mapGet(csilRoot, "can_edit_library");
+            canEditLibrary = csilField != null ? asBool(csilField) : null;
+        }
         String token;
         {
             CborValue csilField = mapGet(csilRoot, "token");
             token = csilField != null ? asText(csilField) : null;
         }
-        return new SessionInfo(accountId, handle, displayName, role, canAdmin, token);
+        return new SessionInfo(accountId, handle, displayName, role, canAdmin, canEditLibrary, token);
     }
 
     public static byte[] encodeSessionInfo(SessionInfo v) {
@@ -1611,6 +1619,190 @@ public final class CsilCbor {
 
     public static CoverArt decodeCoverArt(byte[] data) {
         return decCoverArt(decode(data));
+    }
+
+    static CborValue encArtworkRequest(ArtworkRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(3);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        csilEntries.add(new CborEntry(new CborText("kind"), encArtworkKind(v.kind())));
+        if (v.maxSize() != null) {
+            csilEntries.add(new CborEntry(new CborText("max_size"), new CborUint(v.maxSize())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static ArtworkRequest decArtworkRequest(CborValue csilRoot) {
+        ArtworkKind kind = decArtworkKind(require(csilRoot, "kind"));
+        String id = asText(require(csilRoot, "id"));
+        Long maxSize;
+        {
+            CborValue csilField = mapGet(csilRoot, "max_size");
+            maxSize = csilField != null ? asU64(csilField) : null;
+        }
+        return new ArtworkRequest(kind, id, maxSize);
+    }
+
+    public static byte[] encodeArtworkRequest(ArtworkRequest v) {
+        return encode(encArtworkRequest(v));
+    }
+
+    public static ArtworkRequest decodeArtworkRequest(byte[] data) {
+        return decArtworkRequest(decode(data));
+    }
+
+    static CborValue encSetArtworkRequest(SetArtworkRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        if (v.data() != null) {
+            csilEntries.add(new CborEntry(new CborText("data"), new CborBytes(v.data())));
+        }
+        csilEntries.add(new CborEntry(new CborText("kind"), encArtworkKind(v.kind())));
+        if (v.candidateId() != null) {
+            csilEntries.add(new CborEntry(new CborText("candidate_id"), new CborText(v.candidateId())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static SetArtworkRequest decSetArtworkRequest(CborValue csilRoot) {
+        ArtworkKind kind = decArtworkKind(require(csilRoot, "kind"));
+        String id = asText(require(csilRoot, "id"));
+        byte[] data;
+        {
+            CborValue csilField = mapGet(csilRoot, "data");
+            data = csilField != null ? asBytes(csilField) : null;
+        }
+        String candidateId;
+        {
+            CborValue csilField = mapGet(csilRoot, "candidate_id");
+            candidateId = csilField != null ? asText(csilField) : null;
+        }
+        return new SetArtworkRequest(kind, id, data, candidateId);
+    }
+
+    public static byte[] encodeSetArtworkRequest(SetArtworkRequest v) {
+        return encode(encSetArtworkRequest(v));
+    }
+
+    public static SetArtworkRequest decodeSetArtworkRequest(byte[] data) {
+        return decSetArtworkRequest(decode(data));
+    }
+
+    static CborValue encArtworkCandidatesRequest(ArtworkCandidatesRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        csilEntries.add(new CborEntry(new CborText("kind"), encArtworkKind(v.kind())));
+        if (v.limit() != null) {
+            csilEntries.add(new CborEntry(new CborText("limit"), new CborUint(v.limit())));
+        }
+        if (v.offset() != null) {
+            csilEntries.add(new CborEntry(new CborText("offset"), new CborUint(v.offset())));
+        }
+        return new CborMap(csilEntries);
+    }
+
+    static ArtworkCandidatesRequest decArtworkCandidatesRequest(CborValue csilRoot) {
+        ArtworkKind kind = decArtworkKind(require(csilRoot, "kind"));
+        String id = asText(require(csilRoot, "id"));
+        Long offset;
+        {
+            CborValue csilField = mapGet(csilRoot, "offset");
+            offset = csilField != null ? asU64(csilField) : null;
+        }
+        Long limit;
+        {
+            CborValue csilField = mapGet(csilRoot, "limit");
+            limit = csilField != null ? asU64(csilField) : null;
+        }
+        return new ArtworkCandidatesRequest(kind, id, offset, limit);
+    }
+
+    public static byte[] encodeArtworkCandidatesRequest(ArtworkCandidatesRequest v) {
+        return encode(encArtworkCandidatesRequest(v));
+    }
+
+    public static ArtworkCandidatesRequest decodeArtworkCandidatesRequest(byte[] data) {
+        return decArtworkCandidatesRequest(decode(data));
+    }
+
+    static CborValue encArtworkCandidateRequest(ArtworkCandidateRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(4);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        csilEntries.add(new CborEntry(new CborText("kind"), encArtworkKind(v.kind())));
+        if (v.maxSize() != null) {
+            csilEntries.add(new CborEntry(new CborText("max_size"), new CborUint(v.maxSize())));
+        }
+        csilEntries.add(new CborEntry(new CborText("candidate_id"), new CborText(v.candidateId())));
+        return new CborMap(csilEntries);
+    }
+
+    static ArtworkCandidateRequest decArtworkCandidateRequest(CborValue csilRoot) {
+        ArtworkKind kind = decArtworkKind(require(csilRoot, "kind"));
+        String id = asText(require(csilRoot, "id"));
+        String candidateId = asText(require(csilRoot, "candidate_id"));
+        Long maxSize;
+        {
+            CborValue csilField = mapGet(csilRoot, "max_size");
+            maxSize = csilField != null ? asU64(csilField) : null;
+        }
+        return new ArtworkCandidateRequest(kind, id, candidateId, maxSize);
+    }
+
+    public static byte[] encodeArtworkCandidateRequest(ArtworkCandidateRequest v) {
+        return encode(encArtworkCandidateRequest(v));
+    }
+
+    public static ArtworkCandidateRequest decodeArtworkCandidateRequest(byte[] data) {
+        return decArtworkCandidateRequest(decode(data));
+    }
+
+    static CborValue encArtworkCandidate(ArtworkCandidate v) {
+        List<CborEntry> csilEntries = new ArrayList<>(6);
+        csilEntries.add(new CborEntry(new CborText("id"), new CborText(v.id())));
+        csilEntries.add(new CborEntry(new CborText("role"), new CborText(v.role())));
+        csilEntries.add(new CborEntry(new CborText("label"), new CborText(v.label())));
+        csilEntries.add(new CborEntry(new CborText("width"), new CborUint(v.width())));
+        csilEntries.add(new CborEntry(new CborText("height"), new CborUint(v.height())));
+        csilEntries.add(new CborEntry(new CborText("suggested"), new CborBool(v.suggested())));
+        return new CborMap(csilEntries);
+    }
+
+    static ArtworkCandidate decArtworkCandidate(CborValue csilRoot) {
+        String id = asText(require(csilRoot, "id"));
+        String label = asText(require(csilRoot, "label"));
+        long width = asU64(require(csilRoot, "width"));
+        long height = asU64(require(csilRoot, "height"));
+        String role = asText(require(csilRoot, "role"));
+        boolean suggested = asBool(require(csilRoot, "suggested"));
+        return new ArtworkCandidate(id, label, width, height, role, suggested);
+    }
+
+    public static byte[] encodeArtworkCandidate(ArtworkCandidate v) {
+        return encode(encArtworkCandidate(v));
+    }
+
+    public static ArtworkCandidate decodeArtworkCandidate(byte[] data) {
+        return decArtworkCandidate(decode(data));
+    }
+
+    static CborValue encArtworkCandidates(ArtworkCandidates v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("total"), new CborUint(v.total())));
+        csilEntries.add(new CborEntry(new CborText("candidates"), encArray(v.candidates(), csilElem0 -> encArtworkCandidate(csilElem0))));
+        return new CborMap(csilEntries);
+    }
+
+    static ArtworkCandidates decArtworkCandidates(CborValue csilRoot) {
+        List<ArtworkCandidate> candidates = decArray(require(csilRoot, "candidates"), csilE0 -> decArtworkCandidate(csilE0));
+        long total = asU64(require(csilRoot, "total"));
+        return new ArtworkCandidates(candidates, total);
+    }
+
+    public static byte[] encodeArtworkCandidates(ArtworkCandidates v) {
+        return encode(encArtworkCandidates(v));
+    }
+
+    public static ArtworkCandidates decodeArtworkCandidates(byte[] data) {
+        return decArtworkCandidates(decode(data));
     }
 
     static CborValue encReportContentRequest(ReportContentRequest v) {
@@ -3055,13 +3247,16 @@ public final class CsilCbor {
     }
 
     static CborValue encAccount(Account v) {
-        List<CborEntry> csilEntries = new ArrayList<>(5);
+        List<CborEntry> csilEntries = new ArrayList<>(6);
         csilEntries.add(new CborEntry(new CborText("id"), new CborText((v.id()).value())));
         csilEntries.add(new CborEntry(new CborText("role"), encRole(v.role())));
         csilEntries.add(new CborEntry(new CborText("handle"), new CborText((v.handle()).value())));
         csilEntries.add(new CborEntry(new CborText("created_at"), encTimestamp(v.createdAt())));
         if (v.displayName() != null) {
             csilEntries.add(new CborEntry(new CborText("display_name"), new CborText(v.displayName())));
+        }
+        if (v.canEditLibrary() != null) {
+            csilEntries.add(new CborEntry(new CborText("can_edit_library"), new CborBool(v.canEditLibrary())));
         }
         return new CborMap(csilEntries);
     }
@@ -3076,7 +3271,12 @@ public final class CsilCbor {
         }
         Role role = decRole(require(csilRoot, "role"));
         Instant createdAt = asTimestamp(require(csilRoot, "created_at"));
-        return new Account(id, handle, displayName, role, createdAt);
+        Boolean canEditLibrary;
+        {
+            CborValue csilField = mapGet(csilRoot, "can_edit_library");
+            canEditLibrary = csilField != null ? asBool(csilField) : null;
+        }
+        return new Account(id, handle, displayName, role, createdAt, canEditLibrary);
     }
 
     public static byte[] encodeAccount(Account v) {
@@ -3104,6 +3304,27 @@ public final class CsilCbor {
 
     public static ListAccountsResponse decodeListAccountsResponse(byte[] data) {
         return decListAccountsResponse(decode(data));
+    }
+
+    static CborValue encSetLibraryEditorRequest(SetLibraryEditorRequest v) {
+        List<CborEntry> csilEntries = new ArrayList<>(2);
+        csilEntries.add(new CborEntry(new CborText("enabled"), new CborBool(v.enabled())));
+        csilEntries.add(new CborEntry(new CborText("account_id"), new CborText((v.accountId()).value())));
+        return new CborMap(csilEntries);
+    }
+
+    static SetLibraryEditorRequest decSetLibraryEditorRequest(CborValue csilRoot) {
+        AccountId accountId = new AccountId(asText(require(csilRoot, "account_id")));
+        boolean enabled = asBool(require(csilRoot, "enabled"));
+        return new SetLibraryEditorRequest(accountId, enabled);
+    }
+
+    public static byte[] encodeSetLibraryEditorRequest(SetLibraryEditorRequest v) {
+        return encode(encSetLibraryEditorRequest(v));
+    }
+
+    public static SetLibraryEditorRequest decodeSetLibraryEditorRequest(byte[] data) {
+        return decSetLibraryEditorRequest(decode(data));
     }
 
     static CborValue encSetRoleRequest(SetRoleRequest v) {
@@ -4123,6 +4344,18 @@ public final class CsilCbor {
             throw new CsilCborException("csil cbor: Library value " + csilVal + " is not a member of the declared enum");
         }
         return new Library(csilVal);
+    }
+
+    static CborValue encArtworkKind(ArtworkKind v) {
+        return new CborText((String) v.value());
+    }
+
+    static ArtworkKind decArtworkKind(CborValue csilRoot) {
+        var csilVal = asText(csilRoot);
+        if (!(Objects.equals(csilVal, "album") || Objects.equals(csilVal, "artist"))) {
+            throw new CsilCborException("csil cbor: ArtworkKind value " + csilVal + " is not a member of the declared enum");
+        }
+        return new ArtworkKind(csilVal);
     }
 
     static CborValue encPlayerKind(PlayerKind v) {

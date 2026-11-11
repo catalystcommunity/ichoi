@@ -612,6 +612,7 @@ public extension SessionInfo {
         csilEntries.append((.text("can_admin"), .bool(self.canAdmin)))
         csilEntries.append((.text("account_id"), .text(self.accountId)))
         if let csilV = self.displayName { csilEntries.append((.text("display_name"), .text(csilV))) }
+        if let csilV = self.canEditLibrary { csilEntries.append((.text("can_edit_library"), .bool(csilV))) }
         return .map(csilEntries)
     }
 
@@ -622,8 +623,9 @@ public extension SessionInfo {
         let displayName: String? = if let csilV = CsilCbor.mapGet(cborValue, "display_name") { try CsilCbor.asText(csilV) } else { nil }
         let role = try Role(cborValue: (try CsilCbor.require(cborValue, "role")))
         let canAdmin = try CsilCbor.asBool((try CsilCbor.require(cborValue, "can_admin")))
+        let canEditLibrary: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "can_edit_library") { try CsilCbor.asBool(csilV) } else { nil }
         let token: String? = if let csilV = CsilCbor.mapGet(cborValue, "token") { try CsilCbor.asText(csilV) } else { nil }
-        self.init(accountId: accountId, handle: handle, displayName: displayName, role: role, canAdmin: canAdmin, token: token)
+        self.init(accountId: accountId, handle: handle, displayName: displayName, role: role, canAdmin: canAdmin, canEditLibrary: canEditLibrary, token: token)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -1513,6 +1515,185 @@ public extension CoverArt {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> CoverArt { try CoverArt(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ArtworkKind {
+    /// The CBOR value tree for this enum: its wire string verbatim.
+    func toCborValue() -> CsilCborValue { .text(self.rawValue) }
+
+    /// Reconstruct this enum from a decoded CBOR value tree, rejecting a wire
+    /// string outside the declared closed set.
+    init(cborValue: CsilCborValue) throws {
+        let csilS = try CsilCbor.asText(cborValue)
+        guard let csilV = ArtworkKind(rawValue: csilS) else { throw CsilCborError.typeMismatch }
+        self = csilV
+    }
+
+    /// Encode this enum to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this enum.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ArtworkKind { try ArtworkKind(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ArtworkRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("id"), .text(self.id)))
+        csilEntries.append((.text("kind"), self.kind.toCborValue()))
+        if let csilV = self.maxSize { csilEntries.append((.text("max_size"), .uint(csilV))) }
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let kind = try ArtworkKind(cborValue: (try CsilCbor.require(cborValue, "kind")))
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let maxSize: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "max_size") { try CsilCbor.asU64(csilV) } else { nil }
+        self.init(kind: kind, id: id, maxSize: maxSize)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ArtworkRequest { try ArtworkRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension SetArtworkRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("id"), .text(self.id)))
+        if let csilV = self.data { csilEntries.append((.text("data"), .bytes(csilV))) }
+        csilEntries.append((.text("kind"), self.kind.toCborValue()))
+        if let csilV = self.candidateId { csilEntries.append((.text("candidate_id"), .text(csilV))) }
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let kind = try ArtworkKind(cborValue: (try CsilCbor.require(cborValue, "kind")))
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let data: [UInt8]? = if let csilV = CsilCbor.mapGet(cborValue, "data") { try CsilCbor.asBytes(csilV) } else { nil }
+        let candidateId: String? = if let csilV = CsilCbor.mapGet(cborValue, "candidate_id") { try CsilCbor.asText(csilV) } else { nil }
+        self.init(kind: kind, id: id, data: data, candidateId: candidateId)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> SetArtworkRequest { try SetArtworkRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ArtworkCandidatesRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("id"), .text(self.id)))
+        csilEntries.append((.text("kind"), self.kind.toCborValue()))
+        if let csilV = self.limit { csilEntries.append((.text("limit"), .uint(csilV))) }
+        if let csilV = self.offset { csilEntries.append((.text("offset"), .uint(csilV))) }
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let kind = try ArtworkKind(cborValue: (try CsilCbor.require(cborValue, "kind")))
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let offset: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "offset") { try CsilCbor.asU64(csilV) } else { nil }
+        let limit: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "limit") { try CsilCbor.asU64(csilV) } else { nil }
+        self.init(kind: kind, id: id, offset: offset, limit: limit)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ArtworkCandidatesRequest { try ArtworkCandidatesRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ArtworkCandidateRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("id"), .text(self.id)))
+        csilEntries.append((.text("kind"), self.kind.toCborValue()))
+        if let csilV = self.maxSize { csilEntries.append((.text("max_size"), .uint(csilV))) }
+        csilEntries.append((.text("candidate_id"), .text(self.candidateId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let kind = try ArtworkKind(cborValue: (try CsilCbor.require(cborValue, "kind")))
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let candidateId = try CsilCbor.asText((try CsilCbor.require(cborValue, "candidate_id")))
+        let maxSize: UInt64? = if let csilV = CsilCbor.mapGet(cborValue, "max_size") { try CsilCbor.asU64(csilV) } else { nil }
+        self.init(kind: kind, id: id, candidateId: candidateId, maxSize: maxSize)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ArtworkCandidateRequest { try ArtworkCandidateRequest(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ArtworkCandidate {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("id"), .text(self.id)))
+        csilEntries.append((.text("role"), .text(self.role)))
+        csilEntries.append((.text("label"), .text(self.label)))
+        csilEntries.append((.text("width"), .uint(self.width)))
+        csilEntries.append((.text("height"), .uint(self.height)))
+        csilEntries.append((.text("suggested"), .bool(self.suggested)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let id = try CsilCbor.asText((try CsilCbor.require(cborValue, "id")))
+        let label = try CsilCbor.asText((try CsilCbor.require(cborValue, "label")))
+        let width = try CsilCbor.asU64((try CsilCbor.require(cborValue, "width")))
+        let height = try CsilCbor.asU64((try CsilCbor.require(cborValue, "height")))
+        let role = try CsilCbor.asText((try CsilCbor.require(cborValue, "role")))
+        let suggested = try CsilCbor.asBool((try CsilCbor.require(cborValue, "suggested")))
+        self.init(id: id, label: label, width: width, height: height, role: role, suggested: suggested)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ArtworkCandidate { try ArtworkCandidate(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension ArtworkCandidates {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("total"), .uint(self.total)))
+        csilEntries.append((.text("candidates"), CsilCborValue.array(self.candidates.map { $0.toCborValue() })))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let candidates = try CsilCbor.asArray((try CsilCbor.require(cborValue, "candidates"))).map { try ArtworkCandidate(cborValue: $0) }
+        let total = try CsilCbor.asU64((try CsilCbor.require(cborValue, "total")))
+        self.init(candidates: candidates, total: total)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> ArtworkCandidates { try ArtworkCandidates(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension ReportContentRequest {
@@ -3124,6 +3305,7 @@ public extension Account {
         csilEntries.append((.text("handle"), .text(self.handle)))
         csilEntries.append((.text("created_at"), .tag(0, .text(self.createdAt))))
         if let csilV = self.displayName { csilEntries.append((.text("display_name"), .text(csilV))) }
+        if let csilV = self.canEditLibrary { csilEntries.append((.text("can_edit_library"), .bool(csilV))) }
         return .map(csilEntries)
     }
 
@@ -3134,7 +3316,8 @@ public extension Account {
         let displayName: String? = if let csilV = CsilCbor.mapGet(cborValue, "display_name") { try CsilCbor.asText(csilV) } else { nil }
         let role = try Role(cborValue: (try CsilCbor.require(cborValue, "role")))
         let createdAt = try CsilCbor.asTaggedText((try CsilCbor.require(cborValue, "created_at")), 0)
-        self.init(id: id, handle: handle, displayName: displayName, role: role, createdAt: createdAt)
+        let canEditLibrary: Bool? = if let csilV = CsilCbor.mapGet(cborValue, "can_edit_library") { try CsilCbor.asBool(csilV) } else { nil }
+        self.init(id: id, handle: handle, displayName: displayName, role: role, createdAt: createdAt, canEditLibrary: canEditLibrary)
     }
 
     /// Encode this record to canonical CSIL CBOR bytes.
@@ -3163,6 +3346,29 @@ public extension ListAccountsResponse {
 
     /// Decode a CSIL CBOR byte payload into this record.
     static func fromCbor(_ bytes: [UInt8]) throws -> ListAccountsResponse { try ListAccountsResponse(cborValue: CsilCbor.decode(bytes)) }
+}
+
+public extension SetLibraryEditorRequest {
+    /// The CBOR value tree for this record (deep, canonical key order).
+    func toCborValue() -> CsilCborValue {
+        var csilEntries: [(CsilCborValue, CsilCborValue)] = []
+        csilEntries.append((.text("enabled"), .bool(self.enabled)))
+        csilEntries.append((.text("account_id"), .text(self.accountId)))
+        return .map(csilEntries)
+    }
+
+    /// Reconstruct this record from a decoded CBOR value tree.
+    init(cborValue: CsilCborValue) throws {
+        let accountId = try CsilCbor.asText((try CsilCbor.require(cborValue, "account_id")))
+        let enabled = try CsilCbor.asBool((try CsilCbor.require(cborValue, "enabled")))
+        self.init(accountId: accountId, enabled: enabled)
+    }
+
+    /// Encode this record to canonical CSIL CBOR bytes.
+    func toCbor() -> [UInt8] { CsilCbor.encode(toCborValue()) }
+
+    /// Decode a CSIL CBOR byte payload into this record.
+    static func fromCbor(_ bytes: [UInt8]) throws -> SetLibraryEditorRequest { try SetLibraryEditorRequest(cborValue: CsilCbor.decode(bytes)) }
 }
 
 public extension SetRoleRequest {

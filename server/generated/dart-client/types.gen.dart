@@ -493,6 +493,7 @@ final class SessionInfo {
   final String? displayName;
   final Role role;
   final bool canAdmin;
+  final bool? canEditLibrary;
   final String? token;
 
   const SessionInfo({
@@ -501,6 +502,7 @@ final class SessionInfo {
     this.displayName,
     required this.role,
     required this.canAdmin,
+    this.canEditLibrary,
     this.token,
   });
 
@@ -511,6 +513,7 @@ final class SessionInfo {
     if (displayName != null) map['display_name'] = displayName;
     map['role'] = role;
     map['can_admin'] = canAdmin;
+    if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary;
     if (token != null) map['token'] = token;
     return map;
   }
@@ -522,6 +525,7 @@ final class SessionInfo {
       displayName: map['display_name'] as String?,
       role: map['role'] as Role,
       canAdmin: map['can_admin'] as bool,
+      canEditLibrary: map['can_edit_library'] as bool?,
       token: map['token'] as String?,
     );
   }
@@ -534,12 +538,20 @@ final class SessionInfo {
         displayName == other.displayName &&
         role == other.role &&
         canAdmin == other.canAdmin &&
+        canEditLibrary == other.canEditLibrary &&
         token == other.token;
   }
 
   @override
-  int get hashCode =>
-      Object.hashAll([accountId, handle, displayName, role, canAdmin, token]);
+  int get hashCode => Object.hashAll([
+    accountId,
+    handle,
+    displayName,
+    role,
+    canAdmin,
+    canEditLibrary,
+    token,
+  ]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
@@ -549,6 +561,7 @@ final class SessionInfo {
     if (displayName != null) map['display_name'] = displayName!;
     map['role'] = role;
     map['can_admin'] = canAdmin;
+    if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary!;
     if (token != null) map['token'] = token!;
     return map;
   }
@@ -568,6 +581,9 @@ final class SessionInfo {
         'guest',
       ]),
       canAdmin: map['can_admin'] as bool,
+      canEditLibrary: map['can_edit_library'] == null
+          ? null
+          : map['can_edit_library'] as bool,
       token: map['token'] == null ? null : map['token'] as String,
     );
   }
@@ -2868,6 +2884,455 @@ final class CoverArt {
   /// Decode a CSIL CBOR byte payload into this record.
   factory CoverArt.fromCbor(List<int> bytes) =>
       CoverArt.fromCborValue(CsilCbor.decode(bytes));
+}
+
+typedef ArtworkKind = String;
+
+final class ArtworkRequest {
+  final ArtworkKind kind;
+  final String id;
+  final int? maxSize;
+
+  const ArtworkRequest({required this.kind, required this.id, this.maxSize});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    if (maxSize != null) map['max_size'] = maxSize;
+    return map;
+  }
+
+  factory ArtworkRequest.fromMap(Map<String, Object?> map) {
+    return ArtworkRequest(
+      kind: map['kind'] as ArtworkKind,
+      id: map['id'] as String,
+      maxSize: map['max_size'] as int?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ArtworkRequest) return false;
+    return kind == other.kind && id == other.id && maxSize == other.maxSize;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([kind, id, maxSize]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    if (maxSize != null) map['max_size'] = maxSize!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ArtworkRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ArtworkRequest(
+      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
+        'album',
+        'artist',
+      ]),
+      id: map['id'] as String,
+      maxSize: map['max_size'] == null ? null : map['max_size'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ArtworkRequest.fromCbor(List<int> bytes) =>
+      ArtworkRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class SetArtworkRequest {
+  final ArtworkKind kind;
+  final String id;
+  final Uint8List? data;
+  final String? candidateId;
+
+  const SetArtworkRequest({
+    required this.kind,
+    required this.id,
+    this.data,
+    this.candidateId,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    if (data != null) map['data'] = data;
+    if (candidateId != null) map['candidate_id'] = candidateId;
+    return map;
+  }
+
+  factory SetArtworkRequest.fromMap(Map<String, Object?> map) {
+    return SetArtworkRequest(
+      kind: map['kind'] as ArtworkKind,
+      id: map['id'] as String,
+      data: map['data'] as Uint8List?,
+      candidateId: map['candidate_id'] as String?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! SetArtworkRequest) return false;
+    return kind == other.kind &&
+        id == other.id &&
+        _bytesEqual(data, other.data) &&
+        candidateId == other.candidateId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    kind,
+    id,
+    data == null ? null : Object.hashAll(data!),
+    candidateId,
+  ]);
+
+  static bool _bytesEqual(Uint8List? a, Uint8List? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    if (data != null) map['data'] = data!;
+    if (candidateId != null) map['candidate_id'] = candidateId!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory SetArtworkRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return SetArtworkRequest(
+      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
+        'album',
+        'artist',
+      ]),
+      id: map['id'] as String,
+      data: map['data'] == null ? null : map['data'] as Uint8List,
+      candidateId: map['candidate_id'] == null
+          ? null
+          : map['candidate_id'] as String,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory SetArtworkRequest.fromCbor(List<int> bytes) =>
+      SetArtworkRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ArtworkCandidatesRequest {
+  final ArtworkKind kind;
+  final String id;
+  final int? offset;
+  final int? limit;
+
+  const ArtworkCandidatesRequest({
+    required this.kind,
+    required this.id,
+    this.offset,
+    this.limit,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    if (offset != null) map['offset'] = offset;
+    if (limit != null) map['limit'] = limit;
+    return map;
+  }
+
+  factory ArtworkCandidatesRequest.fromMap(Map<String, Object?> map) {
+    return ArtworkCandidatesRequest(
+      kind: map['kind'] as ArtworkKind,
+      id: map['id'] as String,
+      offset: map['offset'] as int?,
+      limit: map['limit'] as int?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ArtworkCandidatesRequest) return false;
+    return kind == other.kind &&
+        id == other.id &&
+        offset == other.offset &&
+        limit == other.limit;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([kind, id, offset, limit]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    if (offset != null) map['offset'] = offset!;
+    if (limit != null) map['limit'] = limit!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ArtworkCandidatesRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ArtworkCandidatesRequest(
+      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
+        'album',
+        'artist',
+      ]),
+      id: map['id'] as String,
+      offset: map['offset'] == null ? null : map['offset'] as int,
+      limit: map['limit'] == null ? null : map['limit'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ArtworkCandidatesRequest.fromCbor(List<int> bytes) =>
+      ArtworkCandidatesRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ArtworkCandidateRequest {
+  final ArtworkKind kind;
+  final String id;
+  final String candidateId;
+  final int? maxSize;
+
+  const ArtworkCandidateRequest({
+    required this.kind,
+    required this.id,
+    required this.candidateId,
+    this.maxSize,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    map['candidate_id'] = candidateId;
+    if (maxSize != null) map['max_size'] = maxSize;
+    return map;
+  }
+
+  factory ArtworkCandidateRequest.fromMap(Map<String, Object?> map) {
+    return ArtworkCandidateRequest(
+      kind: map['kind'] as ArtworkKind,
+      id: map['id'] as String,
+      candidateId: map['candidate_id'] as String,
+      maxSize: map['max_size'] as int?,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ArtworkCandidateRequest) return false;
+    return kind == other.kind &&
+        id == other.id &&
+        candidateId == other.candidateId &&
+        maxSize == other.maxSize;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([kind, id, candidateId, maxSize]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['kind'] = kind;
+    map['id'] = id;
+    map['candidate_id'] = candidateId;
+    if (maxSize != null) map['max_size'] = maxSize!;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ArtworkCandidateRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ArtworkCandidateRequest(
+      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
+        'album',
+        'artist',
+      ]),
+      id: map['id'] as String,
+      candidateId: map['candidate_id'] as String,
+      maxSize: map['max_size'] == null ? null : map['max_size'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ArtworkCandidateRequest.fromCbor(List<int> bytes) =>
+      ArtworkCandidateRequest.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ArtworkCandidate {
+  final String id;
+  final String label;
+  final int width;
+  final int height;
+  final String role;
+  final bool suggested;
+
+  const ArtworkCandidate({
+    required this.id,
+    required this.label,
+    required this.width,
+    required this.height,
+    required this.role,
+    required this.suggested,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['id'] = id;
+    map['label'] = label;
+    map['width'] = width;
+    map['height'] = height;
+    map['role'] = role;
+    map['suggested'] = suggested;
+    return map;
+  }
+
+  factory ArtworkCandidate.fromMap(Map<String, Object?> map) {
+    return ArtworkCandidate(
+      id: map['id'] as String,
+      label: map['label'] as String,
+      width: map['width'] as int,
+      height: map['height'] as int,
+      role: map['role'] as String,
+      suggested: map['suggested'] as bool,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ArtworkCandidate) return false;
+    return id == other.id &&
+        label == other.label &&
+        width == other.width &&
+        height == other.height &&
+        role == other.role &&
+        suggested == other.suggested;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hashAll([id, label, width, height, role, suggested]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['id'] = id;
+    map['label'] = label;
+    map['width'] = width;
+    map['height'] = height;
+    map['role'] = role;
+    map['suggested'] = suggested;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ArtworkCandidate.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ArtworkCandidate(
+      id: map['id'] as String,
+      label: map['label'] as String,
+      width: map['width'] as int,
+      height: map['height'] as int,
+      role: map['role'] as String,
+      suggested: map['suggested'] as bool,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ArtworkCandidate.fromCbor(List<int> bytes) =>
+      ArtworkCandidate.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ArtworkCandidates {
+  final List<ArtworkCandidate> candidates;
+  final int total;
+
+  const ArtworkCandidates({required this.candidates, required this.total});
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['candidates'] = candidates;
+    map['total'] = total;
+    return map;
+  }
+
+  factory ArtworkCandidates.fromMap(Map<String, Object?> map) {
+    return ArtworkCandidates(
+      candidates: map['candidates'] as List<ArtworkCandidate>,
+      total: map['total'] as int,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! ArtworkCandidates) return false;
+    return candidates == other.candidates && total == other.total;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([candidates, total]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['candidates'] = candidates.map((csilE) => csilE.toCborValue()).toList();
+    map['total'] = total;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory ArtworkCandidates.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return ArtworkCandidates(
+      candidates: (map['candidates'] as List)
+          .map((csilE) => ArtworkCandidate.fromCborValue(csilE))
+          .cast<ArtworkCandidate>()
+          .toList(),
+      total: map['total'] as int,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory ArtworkCandidates.fromCbor(List<int> bytes) =>
+      ArtworkCandidates.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class ReportContentRequest {
@@ -6765,6 +7230,7 @@ final class Account {
   final String? displayName;
   final Role role;
   final DateTime createdAt;
+  final bool? canEditLibrary;
 
   const Account({
     required this.id,
@@ -6772,6 +7238,7 @@ final class Account {
     this.displayName,
     required this.role,
     required this.createdAt,
+    this.canEditLibrary,
   });
 
   Map<String, Object?> toMap() {
@@ -6781,6 +7248,7 @@ final class Account {
     if (displayName != null) map['display_name'] = displayName;
     map['role'] = role;
     map['created_at'] = createdAt;
+    if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary;
     return map;
   }
 
@@ -6791,6 +7259,7 @@ final class Account {
       displayName: map['display_name'] as String?,
       role: map['role'] as Role,
       createdAt: map['created_at'] as DateTime,
+      canEditLibrary: map['can_edit_library'] as bool?,
     );
   }
 
@@ -6801,12 +7270,19 @@ final class Account {
         handle == other.handle &&
         displayName == other.displayName &&
         role == other.role &&
-        createdAt == other.createdAt;
+        createdAt == other.createdAt &&
+        canEditLibrary == other.canEditLibrary;
   }
 
   @override
-  int get hashCode =>
-      Object.hashAll([id, handle, displayName, role, createdAt]);
+  int get hashCode => Object.hashAll([
+    id,
+    handle,
+    displayName,
+    role,
+    createdAt,
+    canEditLibrary,
+  ]);
 
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
@@ -6816,6 +7292,7 @@ final class Account {
     if (displayName != null) map['display_name'] = displayName!;
     map['role'] = role;
     map['created_at'] = createdAt;
+    if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary!;
     return map;
   }
 
@@ -6834,6 +7311,9 @@ final class Account {
         'guest',
       ]),
       createdAt: map['created_at'] as DateTime,
+      canEditLibrary: map['can_edit_library'] == null
+          ? null
+          : map['can_edit_library'] as bool,
     );
   }
 
@@ -6893,6 +7373,63 @@ final class ListAccountsResponse {
   /// Decode a CSIL CBOR byte payload into this record.
   factory ListAccountsResponse.fromCbor(List<int> bytes) =>
       ListAccountsResponse.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class SetLibraryEditorRequest {
+  final AccountId accountId;
+  final bool enabled;
+
+  const SetLibraryEditorRequest({
+    required this.accountId,
+    required this.enabled,
+  });
+
+  Map<String, Object?> toMap() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['enabled'] = enabled;
+    return map;
+  }
+
+  factory SetLibraryEditorRequest.fromMap(Map<String, Object?> map) {
+    return SetLibraryEditorRequest(
+      accountId: map['account_id'] as AccountId,
+      enabled: map['enabled'] as bool,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! SetLibraryEditorRequest) return false;
+    return accountId == other.accountId && enabled == other.enabled;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([accountId, enabled]);
+
+  /// The CBOR-encodable dynamic tree for this record (deep).
+  Map<String, Object?> toCborValue() {
+    final map = <String, Object?>{};
+    map['account_id'] = accountId;
+    map['enabled'] = enabled;
+    return map;
+  }
+
+  /// Reconstruct this record from a decoded CBOR dynamic tree.
+  factory SetLibraryEditorRequest.fromCborValue(Object? cbor) {
+    final map = cbor as Map;
+    return SetLibraryEditorRequest(
+      accountId: map['account_id'] as String,
+      enabled: map['enabled'] as bool,
+    );
+  }
+
+  /// Encode this record to canonical CSIL CBOR bytes.
+  Uint8List toCbor() => CsilCbor.encodeValue(toCborValue());
+
+  /// Decode a CSIL CBOR byte payload into this record.
+  factory SetLibraryEditorRequest.fromCbor(List<int> bytes) =>
+      SetLibraryEditorRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
 final class SetRoleRequest {

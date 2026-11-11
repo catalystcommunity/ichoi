@@ -61,3 +61,28 @@ test("retries a cover request after a failure", async () => {
 
   assert.equal(calls, 2);
 });
+
+test("a saved cover invalidates only its server and notifies mounted views", async () => {
+  const cache = createCoverArtCache();
+  const one = fakeApi(); const two = fakeApi();
+  let changes = 0;
+  const stop = cache.watch(one.api, () => changes++);
+  const first = await cache(one.api, "same-id", 48);
+  const other = await cache(two.api, "same-id", 48);
+  cache.invalidate(one.api);
+  assert.notStrictEqual(await cache(one.api, "same-id", 48), first);
+  assert.strictEqual(await cache(two.api, "same-id", 48), other);
+  assert.equal(changes, 1);
+  stop(); cache.invalidate(one.api);
+  assert.equal(changes, 1);
+});
+
+test("artist and album IDs do not collide", async () => {
+  const cache = createCoverArtCache();
+  const fake = fakeApi();
+  fake.api.library.getArtwork = async ({ kind, id }) => ({ content_type: "image/png", data: new TextEncoder().encode(`${kind}:${id}`) });
+  const album = await cache(fake.api, "same-id", 48);
+  const artist = await cache(fake.api, "same-id", 48, "artist");
+  assert.notStrictEqual(album, artist);
+  assert.equal(await artist.text(), "artist:same-id");
+});

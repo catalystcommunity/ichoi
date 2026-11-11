@@ -242,14 +242,17 @@ public struct SessionInfo: Equatable, Sendable {
     public let role: Role
     /// wire key: can_admin
     public let canAdmin: Bool
+    /// wire key: can_edit_library
+    public let canEditLibrary: Bool?
     public let token: String?
 
-    public init(accountId: AccountId, handle: Handle, displayName: String? = nil, role: Role, canAdmin: Bool = false, token: String? = nil) {
+    public init(accountId: AccountId, handle: Handle, displayName: String? = nil, role: Role, canAdmin: Bool = false, canEditLibrary: Bool? = nil, token: String? = nil) {
         self.accountId = accountId
         self.handle = handle
         self.displayName = displayName
         self.role = role
         self.canAdmin = canAdmin
+        self.canEditLibrary = canEditLibrary
         self.token = token
     }
 
@@ -260,6 +263,7 @@ public struct SessionInfo: Equatable, Sendable {
         "displayName": "display_name",
         "role": "role",
         "canAdmin": "can_admin",
+        "canEditLibrary": "can_edit_library",
         "token": "token"
     ]
 }
@@ -1005,6 +1009,151 @@ public struct CoverArt: Equatable, Sendable {
     public static let wireKeys: [String: String] = [
         "contentType": "content_type",
         "data": "data"
+    ]
+}
+
+/// ArtworkKind is a generated CSIL string enum (a closed set of wire values).
+public enum ArtworkKind: String, Equatable, Sendable, CaseIterable {
+    case album = "album"
+    case artist = "artist"
+}
+
+/// ArtworkRequest is a generated CSIL record type.
+public struct ArtworkRequest: Equatable, Sendable {
+    public let kind: ArtworkKind
+    public let id: String
+    /// wire key: max_size
+    public let maxSize: UInt64?
+
+    public init(kind: ArtworkKind, id: String, maxSize: UInt64? = nil) {
+        self.kind = kind
+        self.id = id
+        self.maxSize = maxSize
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "kind": "kind",
+        "id": "id",
+        "maxSize": "max_size"
+    ]
+}
+
+/// SetArtworkRequest is a generated CSIL record type.
+public struct SetArtworkRequest: Equatable, Sendable {
+    public let kind: ArtworkKind
+    public let id: String
+    public let data: [UInt8]?
+    /// wire key: candidate_id
+    public let candidateId: String?
+
+    public init(kind: ArtworkKind, id: String, data: [UInt8]? = nil, candidateId: String? = nil) {
+        self.kind = kind
+        self.id = id
+        self.data = data
+        self.candidateId = candidateId
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "kind": "kind",
+        "id": "id",
+        "data": "data",
+        "candidateId": "candidate_id"
+    ]
+}
+
+/// ArtworkCandidatesRequest is a generated CSIL record type.
+public struct ArtworkCandidatesRequest: Equatable, Sendable {
+    public let kind: ArtworkKind
+    public let id: String
+    public let offset: UInt64?
+    public let limit: UInt64?
+
+    public init(kind: ArtworkKind, id: String, offset: UInt64? = nil, limit: UInt64? = nil) {
+        self.kind = kind
+        self.id = id
+        self.offset = offset
+        self.limit = limit
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "kind": "kind",
+        "id": "id",
+        "offset": "offset",
+        "limit": "limit"
+    ]
+}
+
+/// ArtworkCandidateRequest is a generated CSIL record type.
+public struct ArtworkCandidateRequest: Equatable, Sendable {
+    public let kind: ArtworkKind
+    public let id: String
+    /// wire key: candidate_id
+    public let candidateId: String
+    /// wire key: max_size
+    public let maxSize: UInt64?
+
+    public init(kind: ArtworkKind, id: String, candidateId: String, maxSize: UInt64? = nil) {
+        self.kind = kind
+        self.id = id
+        self.candidateId = candidateId
+        self.maxSize = maxSize
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "kind": "kind",
+        "id": "id",
+        "candidateId": "candidate_id",
+        "maxSize": "max_size"
+    ]
+}
+
+/// ArtworkCandidate is a generated CSIL record type.
+public struct ArtworkCandidate: Equatable, Sendable {
+    public let id: String
+    public let label: String
+    public let width: UInt64
+    public let height: UInt64
+    public let role: String
+    public let suggested: Bool
+
+    public init(id: String, label: String, width: UInt64, height: UInt64, role: String, suggested: Bool) {
+        self.id = id
+        self.label = label
+        self.width = width
+        self.height = height
+        self.role = role
+        self.suggested = suggested
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "id": "id",
+        "label": "label",
+        "width": "width",
+        "height": "height",
+        "role": "role",
+        "suggested": "suggested"
+    ]
+}
+
+/// ArtworkCandidates is a generated CSIL record type.
+public struct ArtworkCandidates: Equatable, Sendable {
+    public let candidates: [ArtworkCandidate]
+    public let total: UInt64
+
+    public init(candidates: [ArtworkCandidate], total: UInt64) {
+        self.candidates = candidates
+        self.total = total
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "candidates": "candidates",
+        "total": "total"
     ]
 }
 
@@ -2294,13 +2443,16 @@ public struct Account: Equatable, Sendable {
     public let role: Role
     /// wire key: created_at
     public let createdAt: String
+    /// wire key: can_edit_library
+    public let canEditLibrary: Bool?
 
-    public init(id: AccountId, handle: Handle, displayName: String? = nil, role: Role, createdAt: String) {
+    public init(id: AccountId, handle: Handle, displayName: String? = nil, role: Role, createdAt: String, canEditLibrary: Bool? = nil) {
         self.id = id
         self.handle = handle
         self.displayName = displayName
         self.role = role
         self.createdAt = createdAt
+        self.canEditLibrary = canEditLibrary
     }
 
     /// CBOR wire keys (verbatim) keyed by Swift property name.
@@ -2309,7 +2461,8 @@ public struct Account: Equatable, Sendable {
         "handle": "handle",
         "displayName": "display_name",
         "role": "role",
-        "createdAt": "created_at"
+        "createdAt": "created_at",
+        "canEditLibrary": "can_edit_library"
     ]
 }
 
@@ -2324,6 +2477,24 @@ public struct ListAccountsResponse: Equatable, Sendable {
     /// CBOR wire keys (verbatim) keyed by Swift property name.
     public static let wireKeys: [String: String] = [
         "accounts": "accounts"
+    ]
+}
+
+/// SetLibraryEditorRequest is a generated CSIL record type.
+public struct SetLibraryEditorRequest: Equatable, Sendable {
+    /// wire key: account_id
+    public let accountId: AccountId
+    public let enabled: Bool
+
+    public init(accountId: AccountId, enabled: Bool) {
+        self.accountId = accountId
+        self.enabled = enabled
+    }
+
+    /// CBOR wire keys (verbatim) keyed by Swift property name.
+    public static let wireKeys: [String: String] = [
+        "accountId": "account_id",
+        "enabled": "enabled"
     ]
 }
 

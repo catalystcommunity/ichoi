@@ -9,6 +9,7 @@ public record Account(
     Handle handle /* wire: "handle" */,
     String displayName /* wire: "display_name" */,
     Role role /* wire: "role" */,
-    Instant createdAt /* wire: "created_at" */
+    Instant createdAt /* wire: "created_at" */,
+    Boolean canEditLibrary /* wire: "can_edit_library" */
 ) {
 }

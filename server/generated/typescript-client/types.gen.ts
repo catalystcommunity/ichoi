@@ -84,6 +84,7 @@ export interface SessionInfo {
   displayName?: string;
   role: Role;
   canAdmin: boolean;
+  canEditLibrary?: boolean;
   token?: string;
 }
 
@@ -291,6 +292,49 @@ export interface CoverArtRequest {
 export interface CoverArt {
   contentType: string;
   data: Uint8Array;
+}
+
+export type ArtworkKind = "album" | "artist";
+
+export interface ArtworkRequest {
+  kind: ArtworkKind;
+  id: string;
+  maxSize?: number;
+}
+
+export interface SetArtworkRequest {
+  kind: ArtworkKind;
+  id: string;
+  data?: Uint8Array;
+  candidateId?: string;
+}
+
+export interface ArtworkCandidatesRequest {
+  kind: ArtworkKind;
+  id: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface ArtworkCandidateRequest {
+  kind: ArtworkKind;
+  id: string;
+  candidateId: string;
+  maxSize?: number;
+}
+
+export interface ArtworkCandidate {
+  id: string;
+  label: string;
+  width: number;
+  height: number;
+  role: string;
+  suggested: boolean;
+}
+
+export interface ArtworkCandidates {
+  candidates: ArtworkCandidate[];
+  total: number;
 }
 
 export interface ReportContentRequest {
@@ -637,10 +681,16 @@ export interface Account {
   displayName?: string;
   role: Role;
   createdAt: Date;
+  canEditLibrary?: boolean;
 }
 
 export interface ListAccountsResponse {
   accounts: Account[];
+}
+
+export interface SetLibraryEditorRequest {
+  accountId: AccountId;
+  enabled: boolean;
 }
 
 export interface SetRoleRequest {

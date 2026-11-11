@@ -231,6 +231,12 @@ export function ServersProvider(props: ParentProps): JSX.Element {
     });
     api = new ServerApi(conn);
     dataStore = new ServerDataStore(api);
+    dataStore.changes.on("session", () => {
+      if (live.get(rec.id)?.api !== api) return;
+      void api.session.whoami().then(session => {
+        if (live.get(rec.id)?.api === api) patch(rec.id, { session });
+      }).catch(() => undefined);
+    });
     live.set(rec.id, { conn, api, data: dataStore });
     await conn.connect();
     if (nodeToken) {

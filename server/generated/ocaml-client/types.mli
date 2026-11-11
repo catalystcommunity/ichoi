@@ -59,6 +59,7 @@ and session_info = {
   display_name : string option;
   role : role;
   can_admin : bool;
+  can_edit_library : bool option;
   token : string option;
 }
 
@@ -200,6 +201,45 @@ and blocked_accounts_response = {
 
 and cover_art_request = { album_id : album_id; max_size : int64 option }
 and cover_art = { content_type : string; data : bytes }
+and artwork_kind = Album | Artist
+
+and artwork_request = {
+  kind : artwork_kind;
+  id : string;
+  max_size : int64 option;
+}
+
+and set_artwork_request = {
+  kind : artwork_kind;
+  id : string;
+  data : bytes option;
+  candidate_id : string option;
+}
+
+and artwork_candidates_request = {
+  kind : artwork_kind;
+  id : string;
+  offset : int64 option;
+  limit : int64 option;
+}
+
+and artwork_candidate_request = {
+  kind : artwork_kind;
+  id : string;
+  candidate_id : string;
+  max_size : int64 option;
+}
+
+and artwork_candidate = {
+  id : string;
+  label : string;
+  width : int64;
+  height : int64;
+  role : string;
+  suggested : bool;
+}
+
+and artwork_candidates = { candidates : artwork_candidate list; total : int64 }
 
 and report_content_request = {
   target_type : content_report_target_type;
@@ -480,9 +520,11 @@ and account = {
   role : role;
   (* wire: CBOR tag 0 RFC3339 UTC timestamp text *)
   created_at : string;
+  can_edit_library : bool option;
 }
 
 and list_accounts_response = { accounts : account list }
+and set_library_editor_request = { account_id : account_id; enabled : bool }
 and set_role_request = { account_id : account_id; role : role }
 
 and admin_delete_account_request = {

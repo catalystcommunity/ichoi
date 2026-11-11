@@ -772,7 +772,7 @@ pub fn decode_auth_request(csil_data: &[u8]) -> Result<AuthRequest, CsilCborErro
 
 /// Build the canonical CBOR value tree for a SessionInfo.
 fn csil_enc_session_info(csil_v: &SessionInfo) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(7);
     csil_entries.push((cbor_text("role"), csil_enc_role(&csil_v.role)));
     if let Some(csil_inner) = &csil_v.token {
         csil_entries.push((cbor_text("token"), cbor_text(csil_inner)));
@@ -782,6 +782,9 @@ fn csil_enc_session_info(csil_v: &SessionInfo) -> CsilCborValue {
     csil_entries.push((cbor_text("account_id"), cbor_text(&csil_v.account_id)));
     if let Some(csil_inner) = &csil_v.display_name {
         csil_entries.push((cbor_text("display_name"), cbor_text(csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.can_edit_library {
+        csil_entries.push((cbor_text("can_edit_library"), cbor_bool(*csil_inner)));
     }
     CsilCborValue::Map(csil_entries)
 }
@@ -815,6 +818,13 @@ fn csil_dec_session_info(csil_root: &CsilCborValue) -> Result<SessionInfo, CsilC
         let csil_decode = cbor_as_bool;
         csil_decode(csil_field)?
     };
+    let can_edit_library = match cbor_map_get(csil_root, "can_edit_library") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bool;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     let token = match cbor_map_get(csil_root, "token") {
         Some(csil_field) => {
             let csil_decode = cbor_as_text;
@@ -828,6 +838,7 @@ fn csil_dec_session_info(csil_root: &CsilCborValue) -> Result<SessionInfo, CsilC
         display_name,
         role,
         can_admin,
+        can_edit_library,
         token,
     })
 }
@@ -2485,6 +2496,339 @@ pub fn encode_cover_art(csil_v: &CoverArt) -> Vec<u8> {
 pub fn decode_cover_art(csil_data: &[u8]) -> Result<CoverArt, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_cover_art(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ArtworkRequest.
+fn csil_enc_artwork_request(csil_v: &ArtworkRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(3);
+    csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
+    csil_entries.push((cbor_text("kind"), csil_enc_artwork_kind(&csil_v.kind)));
+    if let Some(csil_inner) = &csil_v.max_size {
+        csil_entries.push((cbor_text("max_size"), cbor_uint(*csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ArtworkRequest from a decoded CBOR value tree.
+fn csil_dec_artwork_request(csil_root: &CsilCborValue) -> Result<ArtworkRequest, CsilCborError> {
+    let kind = {
+        let csil_field = cbor_require(csil_root, "kind")?;
+        let csil_decode = csil_dec_artwork_kind;
+        csil_decode(csil_field)?
+    };
+    let id = {
+        let csil_field = cbor_require(csil_root, "id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let max_size = match cbor_map_get(csil_root, "max_size") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(ArtworkRequest { kind, id, max_size })
+}
+
+/// Encode a ArtworkRequest to canonical CSIL CBOR bytes.
+pub fn encode_artwork_request(csil_v: &ArtworkRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_artwork_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ArtworkRequest.
+pub fn decode_artwork_request(csil_data: &[u8]) -> Result<ArtworkRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_artwork_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a SetArtworkRequest.
+fn csil_enc_set_artwork_request(csil_v: &SetArtworkRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
+    if let Some(csil_inner) = &csil_v.data {
+        csil_entries.push((cbor_text("data"), cbor_bytes(csil_inner)));
+    }
+    csil_entries.push((cbor_text("kind"), csil_enc_artwork_kind(&csil_v.kind)));
+    if let Some(csil_inner) = &csil_v.candidate_id {
+        csil_entries.push((cbor_text("candidate_id"), cbor_text(csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a SetArtworkRequest from a decoded CBOR value tree.
+fn csil_dec_set_artwork_request(
+    csil_root: &CsilCborValue,
+) -> Result<SetArtworkRequest, CsilCborError> {
+    let kind = {
+        let csil_field = cbor_require(csil_root, "kind")?;
+        let csil_decode = csil_dec_artwork_kind;
+        csil_decode(csil_field)?
+    };
+    let id = {
+        let csil_field = cbor_require(csil_root, "id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let data = match cbor_map_get(csil_root, "data") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bytes;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let candidate_id = match cbor_map_get(csil_root, "candidate_id") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_text;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(SetArtworkRequest {
+        kind,
+        id,
+        data,
+        candidate_id,
+    })
+}
+
+/// Encode a SetArtworkRequest to canonical CSIL CBOR bytes.
+pub fn encode_set_artwork_request(csil_v: &SetArtworkRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_set_artwork_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a SetArtworkRequest.
+pub fn decode_set_artwork_request(csil_data: &[u8]) -> Result<SetArtworkRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_set_artwork_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ArtworkCandidatesRequest.
+fn csil_enc_artwork_candidates_request(csil_v: &ArtworkCandidatesRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
+    csil_entries.push((cbor_text("kind"), csil_enc_artwork_kind(&csil_v.kind)));
+    if let Some(csil_inner) = &csil_v.limit {
+        csil_entries.push((cbor_text("limit"), cbor_uint(*csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.offset {
+        csil_entries.push((cbor_text("offset"), cbor_uint(*csil_inner)));
+    }
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ArtworkCandidatesRequest from a decoded CBOR value tree.
+fn csil_dec_artwork_candidates_request(
+    csil_root: &CsilCborValue,
+) -> Result<ArtworkCandidatesRequest, CsilCborError> {
+    let kind = {
+        let csil_field = cbor_require(csil_root, "kind")?;
+        let csil_decode = csil_dec_artwork_kind;
+        csil_decode(csil_field)?
+    };
+    let id = {
+        let csil_field = cbor_require(csil_root, "id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let offset = match cbor_map_get(csil_root, "offset") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    let limit = match cbor_map_get(csil_root, "limit") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(ArtworkCandidatesRequest {
+        kind,
+        id,
+        offset,
+        limit,
+    })
+}
+
+/// Encode a ArtworkCandidatesRequest to canonical CSIL CBOR bytes.
+pub fn encode_artwork_candidates_request(csil_v: &ArtworkCandidatesRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_artwork_candidates_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ArtworkCandidatesRequest.
+pub fn decode_artwork_candidates_request(
+    csil_data: &[u8],
+) -> Result<ArtworkCandidatesRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_artwork_candidates_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ArtworkCandidateRequest.
+fn csil_enc_artwork_candidate_request(csil_v: &ArtworkCandidateRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(4);
+    csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
+    csil_entries.push((cbor_text("kind"), csil_enc_artwork_kind(&csil_v.kind)));
+    if let Some(csil_inner) = &csil_v.max_size {
+        csil_entries.push((cbor_text("max_size"), cbor_uint(*csil_inner)));
+    }
+    csil_entries.push((cbor_text("candidate_id"), cbor_text(&csil_v.candidate_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ArtworkCandidateRequest from a decoded CBOR value tree.
+fn csil_dec_artwork_candidate_request(
+    csil_root: &CsilCborValue,
+) -> Result<ArtworkCandidateRequest, CsilCborError> {
+    let kind = {
+        let csil_field = cbor_require(csil_root, "kind")?;
+        let csil_decode = csil_dec_artwork_kind;
+        csil_decode(csil_field)?
+    };
+    let id = {
+        let csil_field = cbor_require(csil_root, "id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let candidate_id = {
+        let csil_field = cbor_require(csil_root, "candidate_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let max_size = match cbor_map_get(csil_root, "max_size") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_u64;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
+    Ok(ArtworkCandidateRequest {
+        kind,
+        id,
+        candidate_id,
+        max_size,
+    })
+}
+
+/// Encode a ArtworkCandidateRequest to canonical CSIL CBOR bytes.
+pub fn encode_artwork_candidate_request(csil_v: &ArtworkCandidateRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_artwork_candidate_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ArtworkCandidateRequest.
+pub fn decode_artwork_candidate_request(
+    csil_data: &[u8],
+) -> Result<ArtworkCandidateRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_artwork_candidate_request(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ArtworkCandidate.
+fn csil_enc_artwork_candidate(csil_v: &ArtworkCandidate) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);
+    csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
+    csil_entries.push((cbor_text("role"), cbor_text(&csil_v.role)));
+    csil_entries.push((cbor_text("label"), cbor_text(&csil_v.label)));
+    csil_entries.push((cbor_text("width"), cbor_uint(csil_v.width)));
+    csil_entries.push((cbor_text("height"), cbor_uint(csil_v.height)));
+    csil_entries.push((cbor_text("suggested"), cbor_bool(csil_v.suggested)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ArtworkCandidate from a decoded CBOR value tree.
+fn csil_dec_artwork_candidate(
+    csil_root: &CsilCborValue,
+) -> Result<ArtworkCandidate, CsilCborError> {
+    let id = {
+        let csil_field = cbor_require(csil_root, "id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let label = {
+        let csil_field = cbor_require(csil_root, "label")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let width = {
+        let csil_field = cbor_require(csil_root, "width")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let height = {
+        let csil_field = cbor_require(csil_root, "height")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    let role = {
+        let csil_field = cbor_require(csil_root, "role")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let suggested = {
+        let csil_field = cbor_require(csil_root, "suggested")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    Ok(ArtworkCandidate {
+        id,
+        label,
+        width,
+        height,
+        role,
+        suggested,
+    })
+}
+
+/// Encode a ArtworkCandidate to canonical CSIL CBOR bytes.
+pub fn encode_artwork_candidate(csil_v: &ArtworkCandidate) -> Vec<u8> {
+    cbor_encode(&csil_enc_artwork_candidate(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ArtworkCandidate.
+pub fn decode_artwork_candidate(csil_data: &[u8]) -> Result<ArtworkCandidate, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_artwork_candidate(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a ArtworkCandidates.
+fn csil_enc_artwork_candidates(csil_v: &ArtworkCandidates) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("total"), cbor_uint(csil_v.total)));
+    csil_entries.push((
+        cbor_text("candidates"),
+        cbor_enc_array(&csil_v.candidates, csil_enc_artwork_candidate),
+    ));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a ArtworkCandidates from a decoded CBOR value tree.
+fn csil_dec_artwork_candidates(
+    csil_root: &CsilCborValue,
+) -> Result<ArtworkCandidates, CsilCborError> {
+    let candidates = {
+        let csil_field = cbor_require(csil_root, "candidates")?;
+        let csil_decode = |csil_v| cbor_dec_array(csil_v, csil_dec_artwork_candidate);
+        csil_decode(csil_field)?
+    };
+    let total = {
+        let csil_field = cbor_require(csil_root, "total")?;
+        let csil_decode = cbor_as_u64;
+        csil_decode(csil_field)?
+    };
+    Ok(ArtworkCandidates { candidates, total })
+}
+
+/// Encode a ArtworkCandidates to canonical CSIL CBOR bytes.
+pub fn encode_artwork_candidates(csil_v: &ArtworkCandidates) -> Vec<u8> {
+    cbor_encode(&csil_enc_artwork_candidates(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a ArtworkCandidates.
+pub fn decode_artwork_candidates(csil_data: &[u8]) -> Result<ArtworkCandidates, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_artwork_candidates(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a ReportContentRequest.
@@ -5128,7 +5472,7 @@ pub fn decode_node_report(csil_data: &[u8]) -> Result<NodeReport, CsilCborError>
 
 /// Build the canonical CBOR value tree for a Account.
 fn csil_enc_account(csil_v: &Account) -> CsilCborValue {
-    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(5);
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(6);
     csil_entries.push((cbor_text("id"), cbor_text(&csil_v.id)));
     csil_entries.push((cbor_text("role"), csil_enc_role(&csil_v.role)));
     csil_entries.push((cbor_text("handle"), cbor_text(&csil_v.handle)));
@@ -5138,6 +5482,9 @@ fn csil_enc_account(csil_v: &Account) -> CsilCborValue {
     ));
     if let Some(csil_inner) = &csil_v.display_name {
         csil_entries.push((cbor_text("display_name"), cbor_text(csil_inner)));
+    }
+    if let Some(csil_inner) = &csil_v.can_edit_library {
+        csil_entries.push((cbor_text("can_edit_library"), cbor_bool(*csil_inner)));
     }
     CsilCborValue::Map(csil_entries)
 }
@@ -5171,12 +5518,20 @@ fn csil_dec_account(csil_root: &CsilCborValue) -> Result<Account, CsilCborError>
         let csil_decode = csil_as_timestamp;
         csil_decode(csil_field)?
     };
+    let can_edit_library = match cbor_map_get(csil_root, "can_edit_library") {
+        Some(csil_field) => {
+            let csil_decode = cbor_as_bool;
+            Some(csil_decode(csil_field)?)
+        }
+        None => None,
+    };
     Ok(Account {
         id,
         handle,
         display_name,
         role,
         created_at,
+        can_edit_library,
     })
 }
 
@@ -5224,6 +5579,47 @@ pub fn decode_list_accounts_response(
 ) -> Result<ListAccountsResponse, CsilCborError> {
     let csil_root = cbor_decode(csil_data)?;
     csil_dec_list_accounts_response(&csil_root)
+}
+
+/// Build the canonical CBOR value tree for a SetLibraryEditorRequest.
+fn csil_enc_set_library_editor_request(csil_v: &SetLibraryEditorRequest) -> CsilCborValue {
+    let mut csil_entries: Vec<(CsilCborValue, CsilCborValue)> = Vec::with_capacity(2);
+    csil_entries.push((cbor_text("enabled"), cbor_bool(csil_v.enabled)));
+    csil_entries.push((cbor_text("account_id"), cbor_text(&csil_v.account_id)));
+    CsilCborValue::Map(csil_entries)
+}
+
+/// Reconstruct a SetLibraryEditorRequest from a decoded CBOR value tree.
+fn csil_dec_set_library_editor_request(
+    csil_root: &CsilCborValue,
+) -> Result<SetLibraryEditorRequest, CsilCborError> {
+    let account_id = {
+        let csil_field = cbor_require(csil_root, "account_id")?;
+        let csil_decode = cbor_as_text;
+        csil_decode(csil_field)?
+    };
+    let enabled = {
+        let csil_field = cbor_require(csil_root, "enabled")?;
+        let csil_decode = cbor_as_bool;
+        csil_decode(csil_field)?
+    };
+    Ok(SetLibraryEditorRequest {
+        account_id,
+        enabled,
+    })
+}
+
+/// Encode a SetLibraryEditorRequest to canonical CSIL CBOR bytes.
+pub fn encode_set_library_editor_request(csil_v: &SetLibraryEditorRequest) -> Vec<u8> {
+    cbor_encode(&csil_enc_set_library_editor_request(csil_v))
+}
+
+/// Decode canonical CSIL CBOR bytes into a SetLibraryEditorRequest.
+pub fn decode_set_library_editor_request(
+    csil_data: &[u8],
+) -> Result<SetLibraryEditorRequest, CsilCborError> {
+    let csil_root = cbor_decode(csil_data)?;
+    csil_dec_set_library_editor_request(&csil_root)
 }
 
 /// Build the canonical CBOR value tree for a SetRoleRequest.
@@ -7158,6 +7554,26 @@ fn csil_dec_library(csil_v: &CsilCborValue) -> Result<Library, CsilCborError> {
         "audiobook" => Ok(Library::Audiobook),
         csil_other => Err(CsilCborError(format!(
             "csil cbor: unknown Library value {csil_other:?}"
+        ))),
+    }
+}
+
+/// Encode a ArtworkKind enum as its bare literal value.
+fn csil_enc_artwork_kind(csil_v: &ArtworkKind) -> CsilCborValue {
+    match csil_v {
+        ArtworkKind::Album => cbor_text("album"),
+        ArtworkKind::Artist => cbor_text("artist"),
+    }
+}
+
+/// Decode a bare literal value into a ArtworkKind enum.
+fn csil_dec_artwork_kind(csil_v: &CsilCborValue) -> Result<ArtworkKind, CsilCborError> {
+    let csil_val = cbor_as_text(csil_v)?;
+    match csil_val.as_str() {
+        "album" => Ok(ArtworkKind::Album),
+        "artist" => Ok(ArtworkKind::Artist),
+        csil_other => Err(CsilCborError(format!(
+            "csil cbor: unknown ArtworkKind value {csil_other:?}"
         ))),
     }
 }

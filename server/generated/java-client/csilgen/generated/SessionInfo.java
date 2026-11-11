@@ -8,6 +8,7 @@ public record SessionInfo(
     String displayName /* wire: "display_name" */,
     Role role /* wire: "role" */,
     boolean canAdmin /* wire: "can_admin" */,
+    Boolean canEditLibrary /* wire: "can_edit_library" */,
     String token /* wire: "token" */
 ) {
 }

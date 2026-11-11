@@ -122,6 +122,26 @@ public struct LibraryAsyncClient {
         return try CoverArt.fromCbor(csilResp)
     }
 
+    public func getArtwork(_ request: ArtworkRequest) async throws -> CoverArt {
+        let csilResp = try await transport.call(service: "LibraryService", op: "get-artwork", request: request.toCbor())
+        return try CoverArt.fromCbor(csilResp)
+    }
+
+    public func listArtworkCandidates(_ request: ArtworkCandidatesRequest) async throws -> ArtworkCandidates {
+        let csilResp = try await transport.call(service: "LibraryService", op: "list-artwork-candidates", request: request.toCbor())
+        return try ArtworkCandidates.fromCbor(csilResp)
+    }
+
+    public func getArtworkCandidate(_ request: ArtworkCandidateRequest) async throws -> CoverArt {
+        let csilResp = try await transport.call(service: "LibraryService", op: "get-artwork-candidate", request: request.toCbor())
+        return try CoverArt.fromCbor(csilResp)
+    }
+
+    public func setArtwork(_ request: SetArtworkRequest) async throws -> Ok {
+        let csilResp = try await transport.call(service: "LibraryService", op: "set-artwork", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
+    }
+
     public func getAudiobookProgress(_ request: AudiobookProgressRequest) async throws -> AudiobookProgressResponse {
         let csilResp = try await transport.call(service: "LibraryService", op: "get-audiobook-progress", request: request.toCbor())
         return try AudiobookProgressResponse.fromCbor(csilResp)
@@ -228,6 +248,11 @@ public struct AdminAsyncClient {
     public func setRole(_ request: SetRoleRequest) async throws -> Account {
         let csilResp = try await transport.call(service: "AdminService", op: "set-role", request: request.toCbor())
         return try Account.fromCbor(csilResp)
+    }
+
+    public func setLibraryEditor(_ request: SetLibraryEditorRequest) async throws -> Ok {
+        let csilResp = try await transport.call(service: "AdminService", op: "set-library-editor", request: request.toCbor())
+        return try Ok.fromCbor(csilResp)
     }
 
     public func deleteAccount(_ request: AdminDeleteAccountRequest) async throws -> Ok {

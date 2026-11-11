@@ -299,6 +299,60 @@ defmodule Csilgen.Generated.LibraryClient do
     Csilgen.Generated.CoverArt.from_cbor(resp)
   end
 
+  @spec get_artwork(t(), Csilgen.Generated.ArtworkRequest.t()) :: Csilgen.Generated.CoverArt.t()
+  def get_artwork(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "get-artwork",
+        Csilgen.Generated.ArtworkRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.CoverArt.from_cbor(resp)
+  end
+
+  @spec list_artwork_candidates(t(), Csilgen.Generated.ArtworkCandidatesRequest.t()) ::
+          Csilgen.Generated.ArtworkCandidates.t()
+  def list_artwork_candidates(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "list-artwork-candidates",
+        Csilgen.Generated.ArtworkCandidatesRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.ArtworkCandidates.from_cbor(resp)
+  end
+
+  @spec get_artwork_candidate(t(), Csilgen.Generated.ArtworkCandidateRequest.t()) ::
+          Csilgen.Generated.CoverArt.t()
+  def get_artwork_candidate(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "get-artwork-candidate",
+        Csilgen.Generated.ArtworkCandidateRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.CoverArt.from_cbor(resp)
+  end
+
+  @spec set_artwork(t(), Csilgen.Generated.SetArtworkRequest.t()) :: Csilgen.Generated.Ok.t()
+  def set_artwork(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "LibraryService",
+        "set-artwork",
+        Csilgen.Generated.SetArtworkRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
+  end
+
   @spec get_audiobook_progress(t(), Csilgen.Generated.AudiobookProgressRequest.t()) ::
           Csilgen.Generated.AudiobookProgressResponse.t()
   def get_audiobook_progress(%__MODULE__{transport: transport}, req) do
@@ -526,6 +580,20 @@ defmodule Csilgen.Generated.AdminClient do
       )
 
     Csilgen.Generated.Account.from_cbor(resp)
+  end
+
+  @spec set_library_editor(t(), Csilgen.Generated.SetLibraryEditorRequest.t()) ::
+          Csilgen.Generated.Ok.t()
+  def set_library_editor(%__MODULE__{transport: transport}, req) do
+    resp =
+      Csilgen.Generated.Transport.call(
+        transport,
+        "AdminService",
+        "set-library-editor",
+        Csilgen.Generated.SetLibraryEditorRequest.to_cbor(req)
+      )
+
+    Csilgen.Generated.Ok.from_cbor(resp)
   end
 
   @spec delete_account(t(), Csilgen.Generated.AdminDeleteAccountRequest.t()) ::

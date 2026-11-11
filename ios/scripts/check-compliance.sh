@@ -33,7 +33,7 @@ grep -q 'NSPrivacyAccessedAPICategoryUserDefaults' "$privacy_manifest"
 grep -q '<string>CA92.1</string>' "$privacy_manifest"
 grep -q '<key>NSPrivacyTracking</key>' "$privacy_manifest"
 grep -q '<false/>' "$privacy_manifest"
-grep -q 'appendingPathComponent("media")' "$source/ContentView.swift"
+grep -q 'appendingPathComponent("media")' "$source/PlaybackManager.swift"
 grep -q 'forHTTPHeaderField: "Authorization"' "$source/PlaybackManager.swift"
 if grep -R -F '/media/stream' "$source" >/dev/null 2>&1; then
   echo "ERROR: obsolete media endpoint found" >&2
