@@ -234,6 +234,52 @@ impl<T: Transport> LibraryClient<T> {
         decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
+    /// get-artwork (request/response).
+    pub fn get_artwork(&self, req: ArtworkRequest) -> Result<CoverArt, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "get-artwork",
+            &encode_artwork_request(&req),
+        )?;
+        decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// list-artwork-candidates (request/response).
+    pub fn list_artwork_candidates(
+        &self,
+        req: ArtworkCandidatesRequest,
+    ) -> Result<ArtworkCandidates, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "list-artwork-candidates",
+            &encode_artwork_candidates_request(&req),
+        )?;
+        decode_artwork_candidates(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// get-artwork-candidate (request/response).
+    pub fn get_artwork_candidate(
+        &self,
+        req: ArtworkCandidateRequest,
+    ) -> Result<CoverArt, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "get-artwork-candidate",
+            &encode_artwork_candidate_request(&req),
+        )?;
+        decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// set-artwork (request/response).
+    pub fn set_artwork(&self, req: SetArtworkRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "LibraryService",
+            "set-artwork",
+            &encode_set_artwork_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
     /// get-audiobook-progress (request/response).
     pub fn get_audiobook_progress(
         &self,
@@ -426,6 +472,16 @@ impl<T: Transport> AdminClient<T> {
             self.transport
                 .call("AdminService", "set-role", &encode_set_role_request(&req))?;
         decode_account(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+    }
+
+    /// set-library-editor (request/response).
+    pub fn set_library_editor(&self, req: SetLibraryEditorRequest) -> Result<Ok, ClientError> {
+        let csil_resp = self.transport.call(
+            "AdminService",
+            "set-library-editor",
+            &encode_set_library_editor_request(&req),
+        )?;
+        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
     }
 
     /// delete-account (request/response).

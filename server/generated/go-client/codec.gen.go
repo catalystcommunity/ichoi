@@ -969,7 +969,7 @@ func DecodeAuthRequest(csilData []byte) (AuthRequest, error) {
 
 // csilEncSessionInfo builds the canonical CBOR value tree for a SessionInfo.
 func csilEncSessionInfo(csilV SessionInfo) cborValue {
-	csilEntries := make(cborMap, 0, 6)
+	csilEntries := make(cborMap, 0, 7)
 	csilEntries = append(csilEntries, cborEntry{cborText("role"), cborText(csilV.Role)})
 	if csilV.Token != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("token"), cborText((*csilV.Token))})
@@ -979,6 +979,9 @@ func csilEncSessionInfo(csilV SessionInfo) cborValue {
 	csilEntries = append(csilEntries, cborEntry{cborText("account_id"), cborText(csilV.AccountId)})
 	if csilV.DisplayName != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("display_name"), cborText((*csilV.DisplayName))})
+	}
+	if csilV.CanEditLibrary != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("can_edit_library"), cborBool((*csilV.CanEditLibrary))})
 	}
 	return csilEntries
 }
@@ -1056,6 +1059,13 @@ func csilDecSessionInfo(csilRoot cborValue) (SessionInfo, error) {
 			return csilOut, csilErr
 		}
 		csilOut.CanAdmin = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "can_edit_library"); csilOk {
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CanEditLibrary = &csilVal
 	}
 	if csilField, csilOk := cborMapGet(csilRoot, "token"); csilOk {
 		csilVal, csilErr := (cborAsText)(csilField)
@@ -3325,6 +3335,488 @@ func DecodeCoverArt(csilData []byte) (CoverArt, error) {
 		return csilZero, csilErr
 	}
 	return csilDecCoverArt(csilRoot)
+}
+
+// csilEncArtworkRequest builds the canonical CBOR value tree for a ArtworkRequest.
+func csilEncArtworkRequest(csilV ArtworkRequest) cborValue {
+	csilEntries := make(cborMap, 0, 3)
+	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
+	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText(csilV.Kind)})
+	if csilV.MaxSize != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("max_size"), cborUint((*csilV.MaxSize))})
+	}
+	return csilEntries
+}
+
+// csilDecArtworkRequest reconstructs a ArtworkRequest from a decoded CBOR value tree.
+func csilDecArtworkRequest(csilRoot cborValue) (ArtworkRequest, error) {
+	var csilOut ArtworkRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "kind")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ArtworkKind, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "album" || csilInner == "artist") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ArtworkKind(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Id = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "max_size"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.MaxSize = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeArtworkRequest encodes a ArtworkRequest to canonical CSIL CBOR bytes.
+func EncodeArtworkRequest(csilV ArtworkRequest) []byte {
+	return cborEncode(csilEncArtworkRequest(csilV))
+}
+
+// DecodeArtworkRequest decodes canonical CSIL CBOR bytes into a ArtworkRequest.
+func DecodeArtworkRequest(csilData []byte) (ArtworkRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ArtworkRequest
+		return csilZero, csilErr
+	}
+	return csilDecArtworkRequest(csilRoot)
+}
+
+// csilEncSetArtworkRequest builds the canonical CBOR value tree for a SetArtworkRequest.
+func csilEncSetArtworkRequest(csilV SetArtworkRequest) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
+	if csilV.Data != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("data"), cborBytes((*csilV.Data))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText(csilV.Kind)})
+	if csilV.CandidateId != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("candidate_id"), cborText((*csilV.CandidateId))})
+	}
+	return csilEntries
+}
+
+// csilDecSetArtworkRequest reconstructs a SetArtworkRequest from a decoded CBOR value tree.
+func csilDecSetArtworkRequest(csilRoot cborValue) (SetArtworkRequest, error) {
+	var csilOut SetArtworkRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "kind")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ArtworkKind, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "album" || csilInner == "artist") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ArtworkKind(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Id = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "data"); csilOk {
+		csilVal, csilErr := (cborAsBytes)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Data = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "candidate_id"); csilOk {
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CandidateId = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeSetArtworkRequest encodes a SetArtworkRequest to canonical CSIL CBOR bytes.
+func EncodeSetArtworkRequest(csilV SetArtworkRequest) []byte {
+	return cborEncode(csilEncSetArtworkRequest(csilV))
+}
+
+// DecodeSetArtworkRequest decodes canonical CSIL CBOR bytes into a SetArtworkRequest.
+func DecodeSetArtworkRequest(csilData []byte) (SetArtworkRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero SetArtworkRequest
+		return csilZero, csilErr
+	}
+	return csilDecSetArtworkRequest(csilRoot)
+}
+
+// csilEncArtworkCandidatesRequest builds the canonical CBOR value tree for a ArtworkCandidatesRequest.
+func csilEncArtworkCandidatesRequest(csilV ArtworkCandidatesRequest) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
+	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText(csilV.Kind)})
+	if csilV.Limit != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("limit"), cborUint((*csilV.Limit))})
+	}
+	if csilV.Offset != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("offset"), cborUint((*csilV.Offset))})
+	}
+	return csilEntries
+}
+
+// csilDecArtworkCandidatesRequest reconstructs a ArtworkCandidatesRequest from a decoded CBOR value tree.
+func csilDecArtworkCandidatesRequest(csilRoot cborValue) (ArtworkCandidatesRequest, error) {
+	var csilOut ArtworkCandidatesRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "kind")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ArtworkKind, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "album" || csilInner == "artist") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ArtworkKind(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Id = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "offset"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Offset = &csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "limit"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Limit = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeArtworkCandidatesRequest encodes a ArtworkCandidatesRequest to canonical CSIL CBOR bytes.
+func EncodeArtworkCandidatesRequest(csilV ArtworkCandidatesRequest) []byte {
+	return cborEncode(csilEncArtworkCandidatesRequest(csilV))
+}
+
+// DecodeArtworkCandidatesRequest decodes canonical CSIL CBOR bytes into a ArtworkCandidatesRequest.
+func DecodeArtworkCandidatesRequest(csilData []byte) (ArtworkCandidatesRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ArtworkCandidatesRequest
+		return csilZero, csilErr
+	}
+	return csilDecArtworkCandidatesRequest(csilRoot)
+}
+
+// csilEncArtworkCandidateRequest builds the canonical CBOR value tree for a ArtworkCandidateRequest.
+func csilEncArtworkCandidateRequest(csilV ArtworkCandidateRequest) cborValue {
+	csilEntries := make(cborMap, 0, 4)
+	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
+	csilEntries = append(csilEntries, cborEntry{cborText("kind"), cborText(csilV.Kind)})
+	if csilV.MaxSize != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("max_size"), cborUint((*csilV.MaxSize))})
+	}
+	csilEntries = append(csilEntries, cborEntry{cborText("candidate_id"), cborText(csilV.CandidateId)})
+	return csilEntries
+}
+
+// csilDecArtworkCandidateRequest reconstructs a ArtworkCandidateRequest from a decoded CBOR value tree.
+func csilDecArtworkCandidateRequest(csilRoot cborValue) (ArtworkCandidateRequest, error) {
+	var csilOut ArtworkCandidateRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "kind")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (ArtworkKind, error) {
+			csilInner, csilErr := (func(csilV cborValue) (string, error) {
+				csilInner, csilErr := (cborAsText)(csilV)
+				if csilErr != nil {
+					var csilZero string
+					return csilZero, csilErr
+				}
+				if !(csilInner == "album" || csilInner == "artist") {
+					var csilZero string
+					return csilZero, fmt.Errorf("csil cbor: value %v is not a member of the declared enum", csilInner)
+				}
+				return csilInner, nil
+			})(csilV)
+			return ArtworkKind(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Kind = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Id = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "candidate_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CandidateId = csilVal
+	}
+	if csilField, csilOk := cborMapGet(csilRoot, "max_size"); csilOk {
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.MaxSize = &csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeArtworkCandidateRequest encodes a ArtworkCandidateRequest to canonical CSIL CBOR bytes.
+func EncodeArtworkCandidateRequest(csilV ArtworkCandidateRequest) []byte {
+	return cborEncode(csilEncArtworkCandidateRequest(csilV))
+}
+
+// DecodeArtworkCandidateRequest decodes canonical CSIL CBOR bytes into a ArtworkCandidateRequest.
+func DecodeArtworkCandidateRequest(csilData []byte) (ArtworkCandidateRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ArtworkCandidateRequest
+		return csilZero, csilErr
+	}
+	return csilDecArtworkCandidateRequest(csilRoot)
+}
+
+// csilEncArtworkCandidate builds the canonical CBOR value tree for a ArtworkCandidate.
+func csilEncArtworkCandidate(csilV ArtworkCandidate) cborValue {
+	csilEntries := make(cborMap, 0, 6)
+	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
+	csilEntries = append(csilEntries, cborEntry{cborText("role"), cborText(csilV.Role)})
+	csilEntries = append(csilEntries, cborEntry{cborText("label"), cborText(csilV.Label)})
+	csilEntries = append(csilEntries, cborEntry{cborText("width"), cborUint(csilV.Width)})
+	csilEntries = append(csilEntries, cborEntry{cborText("height"), cborUint(csilV.Height)})
+	csilEntries = append(csilEntries, cborEntry{cborText("suggested"), cborBool(csilV.Suggested)})
+	return csilEntries
+}
+
+// csilDecArtworkCandidate reconstructs a ArtworkCandidate from a decoded CBOR value tree.
+func csilDecArtworkCandidate(csilRoot cborValue) (ArtworkCandidate, error) {
+	var csilOut ArtworkCandidate
+	{
+		csilField, csilErr := cborRequire(csilRoot, "id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Id = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "label")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Label = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "width")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Width = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "height")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Height = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "role")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsText)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Role = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "suggested")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Suggested = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeArtworkCandidate encodes a ArtworkCandidate to canonical CSIL CBOR bytes.
+func EncodeArtworkCandidate(csilV ArtworkCandidate) []byte {
+	return cborEncode(csilEncArtworkCandidate(csilV))
+}
+
+// DecodeArtworkCandidate decodes canonical CSIL CBOR bytes into a ArtworkCandidate.
+func DecodeArtworkCandidate(csilData []byte) (ArtworkCandidate, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ArtworkCandidate
+		return csilZero, csilErr
+	}
+	return csilDecArtworkCandidate(csilRoot)
+}
+
+// csilEncArtworkCandidates builds the canonical CBOR value tree for a ArtworkCandidates.
+func csilEncArtworkCandidates(csilV ArtworkCandidates) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("total"), cborUint(csilV.Total)})
+	csilEntries = append(csilEntries, cborEntry{cborText("candidates"), cborEncArray(csilV.Candidates, func(csilElem ArtworkCandidate) cborValue { return csilEncArtworkCandidate(csilElem) })})
+	return csilEntries
+}
+
+// csilDecArtworkCandidates reconstructs a ArtworkCandidates from a decoded CBOR value tree.
+func csilDecArtworkCandidates(csilRoot cborValue) (ArtworkCandidates, error) {
+	var csilOut ArtworkCandidates
+	{
+		csilField, csilErr := cborRequire(csilRoot, "candidates")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) ([]ArtworkCandidate, error) { return cborDecArray(csilV, csilDecArtworkCandidate) })(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Candidates = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "total")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsU64)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Total = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeArtworkCandidates encodes a ArtworkCandidates to canonical CSIL CBOR bytes.
+func EncodeArtworkCandidates(csilV ArtworkCandidates) []byte {
+	return cborEncode(csilEncArtworkCandidates(csilV))
+}
+
+// DecodeArtworkCandidates decodes canonical CSIL CBOR bytes into a ArtworkCandidates.
+func DecodeArtworkCandidates(csilData []byte) (ArtworkCandidates, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero ArtworkCandidates
+		return csilZero, csilErr
+	}
+	return csilDecArtworkCandidates(csilRoot)
 }
 
 // csilEncReportContentRequest builds the canonical CBOR value tree for a ReportContentRequest.
@@ -7173,13 +7665,16 @@ func DecodeNodeReport(csilData []byte) (NodeReport, error) {
 
 // csilEncAccount builds the canonical CBOR value tree for a Account.
 func csilEncAccount(csilV Account) cborValue {
-	csilEntries := make(cborMap, 0, 5)
+	csilEntries := make(cborMap, 0, 6)
 	csilEntries = append(csilEntries, cborEntry{cborText("id"), cborText(csilV.Id)})
 	csilEntries = append(csilEntries, cborEntry{cborText("role"), cborText(csilV.Role)})
 	csilEntries = append(csilEntries, cborEntry{cborText("handle"), cborText(csilV.Handle)})
 	csilEntries = append(csilEntries, cborEntry{cborText("created_at"), csilEncTimestamp(csilV.CreatedAt)})
 	if csilV.DisplayName != nil {
 		csilEntries = append(csilEntries, cborEntry{cborText("display_name"), cborText((*csilV.DisplayName))})
+	}
+	if csilV.CanEditLibrary != nil {
+		csilEntries = append(csilEntries, cborEntry{cborText("can_edit_library"), cborBool((*csilV.CanEditLibrary))})
 	}
 	return csilEntries
 }
@@ -7258,6 +7753,13 @@ func csilDecAccount(csilRoot cborValue) (Account, error) {
 		}
 		csilOut.CreatedAt = csilVal
 	}
+	if csilField, csilOk := cborMapGet(csilRoot, "can_edit_library"); csilOk {
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.CanEditLibrary = &csilVal
+	}
 	return csilOut, nil
 }
 
@@ -7313,6 +7815,60 @@ func DecodeListAccountsResponse(csilData []byte) (ListAccountsResponse, error) {
 		return csilZero, csilErr
 	}
 	return csilDecListAccountsResponse(csilRoot)
+}
+
+// csilEncSetLibraryEditorRequest builds the canonical CBOR value tree for a SetLibraryEditorRequest.
+func csilEncSetLibraryEditorRequest(csilV SetLibraryEditorRequest) cborValue {
+	csilEntries := make(cborMap, 0, 2)
+	csilEntries = append(csilEntries, cborEntry{cborText("enabled"), cborBool(csilV.Enabled)})
+	csilEntries = append(csilEntries, cborEntry{cborText("account_id"), cborText(csilV.AccountId)})
+	return csilEntries
+}
+
+// csilDecSetLibraryEditorRequest reconstructs a SetLibraryEditorRequest from a decoded CBOR value tree.
+func csilDecSetLibraryEditorRequest(csilRoot cborValue) (SetLibraryEditorRequest, error) {
+	var csilOut SetLibraryEditorRequest
+	{
+		csilField, csilErr := cborRequire(csilRoot, "account_id")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (func(csilV cborValue) (AccountId, error) {
+			csilInner, csilErr := (cborAsText)(csilV)
+			return AccountId(csilInner), csilErr
+		})(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.AccountId = csilVal
+	}
+	{
+		csilField, csilErr := cborRequire(csilRoot, "enabled")
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilVal, csilErr := (cborAsBool)(csilField)
+		if csilErr != nil {
+			return csilOut, csilErr
+		}
+		csilOut.Enabled = csilVal
+	}
+	return csilOut, nil
+}
+
+// EncodeSetLibraryEditorRequest encodes a SetLibraryEditorRequest to canonical CSIL CBOR bytes.
+func EncodeSetLibraryEditorRequest(csilV SetLibraryEditorRequest) []byte {
+	return cborEncode(csilEncSetLibraryEditorRequest(csilV))
+}
+
+// DecodeSetLibraryEditorRequest decodes canonical CSIL CBOR bytes into a SetLibraryEditorRequest.
+func DecodeSetLibraryEditorRequest(csilData []byte) (SetLibraryEditorRequest, error) {
+	csilRoot, csilErr := cborDecode(csilData)
+	if csilErr != nil {
+		var csilZero SetLibraryEditorRequest
+		return csilZero, csilErr
+	}
+	return csilDecSetLibraryEditorRequest(csilRoot)
 }
 
 // csilEncSetRoleRequest builds the canonical CBOR value tree for a SetRoleRequest.

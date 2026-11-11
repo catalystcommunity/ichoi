@@ -93,11 +93,12 @@ where
     let (mut read_half, mut write_half) = tokio::io::split(stream);
     let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
     let (node_tx, mut node_rx) = mpsc::unbounded_channel::<Vec<u8>>();
-    let (media_tx, mut media_rx) = mpsc::unbounded_channel::<MediaOutput>();
+    let (media_tx, mut media_rx) = mpsc::channel::<MediaOutput>(8);
     let (in_tx, mut in_rx) = mpsc::unbounded_channel::<anyhow::Result<Vec<u8>>>();
     let conn_id = TCP_CONN_ID.fetch_add(1, Ordering::Relaxed);
     log::info!("binary CSIL session started: connection={conn_id}");
     let mut ident = Identity::Anonymous;
+    let mut media_pauses = HashMap::<String, Arc<AtomicBool>>::new();
     let mut media_cancels = HashMap::<String, Arc<AtomicBool>>::new();
 
     tokio::spawn(async move {
@@ -182,10 +183,15 @@ where
                         open.track_id
                     );
                     let cancel = Arc::new(AtomicBool::new(false));
+                    let paused = Arc::new(AtomicBool::new(false));
+                    media_pauses.insert(stream_id.clone(), paused.clone());
                     if let Some(previous) = media_cancels.insert(stream_id, cancel.clone()) {
                         previous.store(true, Ordering::Relaxed);
                     }
-                    spawn_media_stream(app.clone(), open, cancel, media_tx.clone());
+                    spawn_media_stream(app.clone(), open, cancel, paused, media_tx.clone());
+                }
+                if let Some((stream_id, paused)) = effects.media_pause {
+                    if let Some(flag) = media_pauses.get(&stream_id) { flag.store(paused, Ordering::Relaxed); }
                 }
                 if let Some(stream_id) = effects.media_stop {
                     log::info!(
@@ -218,6 +224,7 @@ where
                     }
                 } else {
                     media_cancels.remove(&stream_id);
+                    media_pauses.remove(&stream_id);
                 }
             }
         }
@@ -266,11 +273,12 @@ fn spawn_media_stream(
     app: App,
     open: MediaOpen,
     cancel: Arc<AtomicBool>,
-    tx: mpsc::UnboundedSender<MediaOutput>,
+    paused: Arc<AtomicBool>,
+    tx: mpsc::Sender<MediaOutput>,
 ) {
     tokio::task::spawn_blocking(move || {
         let stream_id = open.stream_id.clone();
-        if let Err(e) = send_media_stream(app, open, &cancel, &tx) {
+        if let Err(e) = send_media_stream(app, open, &cancel, &paused, &tx) {
             log::warn!("media stream failed: stream={stream_id} error={e}");
             let fail = MediaEvent::Variant3(MediaFail {
                 kind: "error".to_string(),
@@ -281,10 +289,10 @@ fn spawn_media_stream(
                 },
             });
             if !cancel.load(Ordering::Relaxed) {
-                let _ = tx.send((stream_id.clone(), Some(media_frame(&fail))));
+                let _ = tx.blocking_send((stream_id.clone(), Some(media_frame(&fail))));
             }
         }
-        let _ = tx.send((stream_id, None));
+        let _ = tx.blocking_send((stream_id, None));
     });
 }
 
@@ -292,18 +300,17 @@ fn send_media_stream(
     app: App,
     open: MediaOpen,
     cancel: &AtomicBool,
-    tx: &mpsc::UnboundedSender<MediaOutput>,
+    paused: &AtomicBool,
+    tx: &mpsc::Sender<MediaOutput>,
 ) -> anyhow::Result<()> {
     let stream_id = open.stream_id.clone();
     let mut conn = app.pool.get()?;
     let track = store::get_track(&mut conn, &open.track_id)?
         .ok_or_else(|| anyhow::anyhow!("track not found"))?;
-    let root = app
-        .config
-        .music_dir
-        .clone()
-        .ok_or_else(|| anyhow::anyhow!("no music directory configured"))?;
-    let path = root.join(&track.root_relative_path);
+    let library = store::get_library(&mut conn, &track.library_id)?
+        .ok_or_else(|| anyhow::anyhow!("library missing"))?;
+    let path = std::path::Path::new(&library.path).join(&track.root_relative_path);
+    drop(conn);
     let plan = media::plan_stream(&app.config, &track, &open.pref);
     log::info!(
         "media stream opened: stream={stream_id} track={} codec={} transcode={}",
@@ -339,7 +346,7 @@ fn send_media_stream(
         trim_end_samples: 0,
         codec_config: None,
     });
-    tx.send((stream_id.clone(), Some(media_frame(&header))))?;
+    tx.blocking_send((stream_id.clone(), Some(media_frame(&header))))?;
 
     let mut seq = 0u64;
     if let Some(spec) = plan.transcode {
@@ -350,7 +357,7 @@ fn send_media_stream(
             .stdout
             .take()
             .ok_or_else(|| anyhow::anyhow!("ffmpeg stdout unavailable"))?;
-        if send_reader_chunks(&mut stdout, &stream_id, cancel, tx, &mut seq)? {
+        if send_reader_chunks(&mut stdout, &stream_id, cancel, paused, tx, &mut seq)? {
             let _ = child.kill();
             let _ = child.wait();
             log::info!("media stream cancelled: stream={stream_id} chunks={seq}");
@@ -362,7 +369,7 @@ fn send_media_stream(
         }
     } else {
         let mut file = std::fs::File::open(path)?;
-        if send_reader_chunks(&mut file, &stream_id, cancel, tx, &mut seq)? {
+        if send_reader_chunks(&mut file, &stream_id, cancel, paused, tx, &mut seq)? {
             log::info!("media stream cancelled: stream={stream_id} chunks={seq}");
             return Ok(());
         }
@@ -373,7 +380,7 @@ fn send_media_stream(
         stream_id: stream_id.clone(),
         reason: Some(MediaEndReason::Eos),
     });
-    tx.send((stream_id, Some(media_frame(&end))))?;
+    tx.blocking_send((stream_id, Some(media_frame(&end))))?;
     log::info!(
         "media stream completed: stream={} chunks={seq}",
         open.stream_id
@@ -385,13 +392,20 @@ fn send_reader_chunks(
     reader: &mut dyn Read,
     stream_id: &str,
     cancel: &AtomicBool,
-    tx: &mpsc::UnboundedSender<MediaOutput>,
+    paused: &AtomicBool,
+    tx: &mpsc::Sender<MediaOutput>,
     seq: &mut u64,
 ) -> anyhow::Result<bool> {
     let mut buf = [0u8; 16 * 1024];
     loop {
         if cancel.load(Ordering::Relaxed) {
             return Ok(true);
+        }
+        while paused.load(Ordering::Relaxed) {
+            if cancel.load(Ordering::Relaxed) {
+                return Ok(true);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
         let n = reader.read(&mut buf)?;
         if n == 0 {
@@ -404,7 +418,7 @@ fn send_reader_chunks(
             timestamp_ms: None,
             data: buf[..n].to_vec(),
         });
-        tx.send((stream_id.to_string(), Some(media_frame(&chunk))))?;
+        tx.blocking_send((stream_id.to_string(), Some(media_frame(&chunk))))?;
         *seq += 1;
     }
     Ok(false)

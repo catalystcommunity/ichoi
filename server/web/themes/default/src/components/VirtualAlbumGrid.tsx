@@ -1,3 +1,5 @@
+import { savedScroll, rememberScroll } from "../lib/browse-memory.ts";
+import { useServers } from "../stores/servers.tsx";
 import {
   createEffect,
   createMemo,
@@ -34,6 +36,9 @@ export function VirtualAlbumGrid(props: {
   detailPath?: "album" | "audiobook";
 }): JSX.Element {
   const { t } = useI18n();
+  const servers = useServers();
+  const scrollKey = () => (servers.activeId() ?? "") + "|catalog|" +  (props.library ?? "music") + "|albums|" + (props.view ?? "grid");
+  let restorePosition: number | undefined = savedScroll(scrollKey());
   const navigate = useNavigate();
   let host!: HTMLDivElement;
   let scroller: HTMLElement | undefined;
@@ -108,6 +113,10 @@ export function VirtualAlbumGrid(props: {
 
   function updateViewport(): void {
     if (!host || !scroller) return;
+    if (restorePosition !== undefined) {
+      scroller.scrollTop = restorePosition;
+      if (Math.abs(scroller.scrollTop - restorePosition) < 2) restorePosition = undefined;
+    } else rememberScroll(scrollKey(), scroller.scrollTop);
     const hostRect = host.getBoundingClientRect();
     const scrollRect = scroller.getBoundingClientRect();
     setViewportTop(Math.max(0, scrollRect.top - hostRect.top));

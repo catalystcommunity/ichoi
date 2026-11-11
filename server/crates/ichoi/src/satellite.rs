@@ -1,9 +1,11 @@
 //! Outbound satellite runtime. Satellites never listen and never use HTTP; they connect to
 //! the core CSIL/TCP listener and exchange length-prefixed CSIL-Events envelopes.
 
+mod buffer;
+use buffer::Buffer;
 use std::collections::HashMap;
 use std::io::{Read, Seek};
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -13,8 +15,8 @@ use libichoi::csil::codec::{
 };
 use libichoi::csil::types::{
     AudioOutput as WireAudioOutput, Codec, MediaControl, MediaEndReason, MediaEvent, MediaOpen,
-    MediaStop, NodeDirective, NodeEvent, NodeReport, PlayerStatus, RegisterNodeRequest, StreamPref,
-    TranscodeCodec,
+    MediaPause, MediaResume, MediaStop, NodeDirective, NodeEvent, NodeReport, PlayerStatus,
+    RegisterNodeRequest, StreamPref, TranscodeCodec,
 };
 use libichoi::csil_channel::{decode_media_event, decode_node_directive, encode_media_control};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -292,31 +294,13 @@ struct ActiveMedia {
     player_id: String,
     identity: PlaybackIdentity,
     position_ms: u64,
+    track_id: String,
+    stream_id: String,
 }
 
 struct PlaybackReporter {
     player_id: String,
-    identity: PlaybackIdentity,
     out_tx: mpsc::UnboundedSender<Vec<u8>>,
-}
-
-impl PlaybackReporter {
-    fn frame(
-        &self,
-        event: NodeEvent,
-        status: PlayerStatus,
-        position_ms: Option<u64>,
-        error: Option<String>,
-    ) -> Vec<u8> {
-        report_frame(
-            &self.player_id,
-            event,
-            status,
-            position_ms,
-            Some(&self.identity),
-            error,
-        )
-    }
 }
 
 async fn apply_directive(
@@ -335,6 +319,37 @@ async fn apply_directive(
                 load.player_id,
                 load.position_ms
             );
+            let next_identity = PlaybackIdentity {
+                queue_item_id: load.queue_item_id,
+                playback_id: load.playback_id.clone(),
+            };
+            if media.values().any(|m| {
+                m.player_id == load.player_id
+                    && m.track_id == load.track_id
+                    && m.identity.queue_item_id == load.queue_item_id
+            }) {
+                if let Some(task) = playback.get(&load.player_id) {
+                    if !task.finished.load(Ordering::Relaxed)
+                        && task
+                            .buffer
+                            .seek(load.position_ms.unwrap_or(0), next_identity.clone())
+                    {
+                        for active in media.values_mut().filter(|m| m.player_id == load.player_id) {
+                            active.identity = next_identity.clone();
+                        }
+                        states.insert(load.player_id.clone(), PlayerStatus::Playing);
+                        out_tx.send(report_frame(
+                            &load.player_id,
+                            NodeEvent::State,
+                            PlayerStatus::Playing,
+                            load.position_ms,
+                            Some(&next_identity),
+                            None,
+                        ))?;
+                        return Ok(());
+                    }
+                }
+            }
             stop_player(playback, &load.player_id);
             stop_player_media(out_tx, media, &load.player_id)?;
             let player_id = load.player_id.clone();
@@ -349,6 +364,8 @@ async fn apply_directive(
                     player_id: player_id.clone(),
                     identity: identity.clone(),
                     position_ms,
+                    track_id: load.track_id.clone(),
+                    stream_id: load.playback_id.clone(),
                 },
             );
             let open = MediaControl::Variant0(MediaOpen {
@@ -379,9 +396,13 @@ async fn apply_directive(
         }
         NodeDirective::Variant1(pause) => {
             log::info!("satellite pause: player={}", pause.player_id);
-            stop_player(playback, &pause.player_id);
-            let identity =
-                stop_player_media(out_tx, media, &pause.player_id)?.map(|active| active.identity);
+            if let Some(task) = playback.get(&pause.player_id) {
+                task.buffer.pause(true);
+            }
+            let identity = media
+                .values()
+                .find(|m| m.player_id == pause.player_id)
+                .map(|m| m.identity.clone());
             states.insert(pause.player_id.clone(), PlayerStatus::Paused);
             out_tx.send(report_frame(
                 &pause.player_id,
@@ -394,6 +415,9 @@ async fn apply_directive(
         }
         NodeDirective::Variant2(resume) => {
             log::info!("satellite resume: player={}", resume.player_id);
+            if let Some(task) = playback.get(&resume.player_id) {
+                task.buffer.pause(false);
+            }
             states.insert(resume.player_id.clone(), PlayerStatus::Playing);
             out_tx.send(report_frame(
                 &resume.player_id,
@@ -521,6 +545,9 @@ async fn handle_media_event(
 }
 
 struct PlaybackTask {
+    buffer: Arc<Buffer>,
+    flow: Arc<Flow>,
+    finished: Arc<AtomicBool>,
     cancel: Arc<AtomicBool>,
     // The socket reader already receives frames into an unbounded queue. This handoff must also
     // remain non-blocking so a full decoder buffer cannot hold pause, stop, seek, or load
@@ -545,46 +572,62 @@ impl PlaybackTask {
         );
         let cancel = Arc::new(AtomicBool::new(false));
         let cancel2 = cancel.clone();
+        let buffer = Arc::new(Buffer::new(seek_ms, identity.clone()));
+        let decode_buffer = buffer.clone();
+        let render_buffer = buffer.clone();
+        let finished = Arc::new(AtomicBool::new(false));
+        let render_finished = finished.clone();
         let (chunks, rx) = playback_stream_channel();
+        let flow = Arc::new(Flow {
+            transition: Mutex::new(()),
+            queued: AtomicUsize::new(0),
+            paused: AtomicBool::new(false),
+            stream_id: identity.playback_id.clone(),
+            out: out_tx.clone(),
+        });
+        let source_flow = flow.clone();
         let handle = tokio::task::spawn_blocking(move || {
-            let reporter = PlaybackReporter {
-                player_id,
-                identity,
-                out_tx,
-            };
-            let result = decode_stream_to_default_output(
-                StreamingSource::new(rx),
-                codec_extension(&codec),
-                seek_ms,
-                cancel2.clone(),
-                volume,
-                &reporter,
-            );
+            let reporter = PlaybackReporter { player_id, out_tx };
+            let decode_cancel = cancel2.clone();
+            let decode = std::thread::spawn(move || {
+                let result = decode_stream_to_buffer(
+                    StreamingSource::with_flow(rx, source_flow),
+                    codec_extension(&codec),
+                    decode_cancel,
+                    decode_buffer.clone(),
+                );
+                let mut state = decode_buffer.state.lock().unwrap();
+                state.done = true;
+                state.error = result.err().map(|e| e.to_string());
+                decode_buffer.changed.notify_all();
+            });
+            let result = render_buffered(&render_buffer, &cancel2, volume, &reporter);
+            render_finished.store(true, Ordering::Relaxed);
             if !cancel2.load(Ordering::Relaxed) {
-                let report = match result {
-                    Ok(()) => {
-                        log::info!(
-                            "satellite playback completed: player={} playback={} queue_item={}",
-                            reporter.player_id,
-                            reporter.identity.playback_id,
-                            reporter.identity.queue_item_id
-                        );
-                        reporter.frame(NodeEvent::Completed, PlayerStatus::Stopped, None, None)
-                    }
-                    Err(error) => {
-                        log::warn!("satellite playback failed: {error}");
-                        reporter.frame(
-                            NodeEvent::Failed,
-                            PlayerStatus::Stopped,
-                            None,
-                            Some(truncate_error(&error.to_string())),
-                        )
-                    }
+                let state = render_buffer.state.lock().unwrap();
+                let identity = state.identity.clone();
+                let (event, error) = match result {
+                    Ok(()) => (NodeEvent::Completed, None),
+                    Err(e) => (NodeEvent::Failed, Some(truncate_error(&e.to_string()))),
                 };
-                let _ = reporter.out_tx.send(report);
+                let _ = reporter.out_tx.send(report_frame(
+                    &reporter.player_id,
+                    event,
+                    PlayerStatus::Stopped,
+                    None,
+                    Some(&identity),
+                    error,
+                ));
             }
+            cancel2.store(true, Ordering::Relaxed);
+            render_buffer.changed.notify_all();
+            // The source wakes when its sender is dropped or the stream ends.
+            drop(decode);
         });
         PlaybackTask {
+            buffer,
+            flow,
+            finished,
             cancel,
             chunks,
             handle,
@@ -592,6 +635,8 @@ impl PlaybackTask {
     }
 
     fn push(&self, chunk: Vec<u8>) -> anyhow::Result<()> {
+        self.flow.queued.fetch_add(chunk.len(), Ordering::Relaxed);
+        self.flow.update();
         self.chunks
             .send(Some(chunk))
             .map_err(|_| anyhow::anyhow!("playback decoder is not accepting media chunks"))
@@ -605,6 +650,7 @@ impl PlaybackTask {
 impl Drop for PlaybackTask {
     fn drop(&mut self) {
         self.cancel.store(true, Ordering::Relaxed);
+        self.buffer.changed.notify_all();
         self.handle.abort();
     }
 }
@@ -639,7 +685,7 @@ fn stop_player_media(
         );
         let stop = MediaControl::Variant4(MediaStop {
             kind: "stop".to_string(),
-            stream_id: active.identity.playback_id.clone(),
+            stream_id: active.stream_id.clone(),
         });
         out_tx.send(event_frame(
             Some("media"),
@@ -657,7 +703,51 @@ fn truncate_error(value: &str) -> String {
 
 type PlaybackChunk = Option<Vec<u8>>;
 
+struct Flow {
+    transition: Mutex<()>,
+    queued: AtomicUsize,
+    paused: AtomicBool,
+    stream_id: String,
+    out: mpsc::UnboundedSender<Vec<u8>>,
+}
+impl Flow {
+    fn update(&self) {
+        let _transition = self.transition.lock().unwrap();
+        let size = self.queued.load(Ordering::Relaxed);
+        let paused = self.paused.load(Ordering::Relaxed);
+        let next = if paused {
+            size >= 1024 * 1024
+        } else {
+            size >= 2 * 1024 * 1024
+        };
+        if paused != next
+            && self
+                .paused
+                .compare_exchange(paused, next, Ordering::SeqCst, Ordering::Relaxed)
+                .is_ok()
+        {
+            let control = if next {
+                MediaControl::Variant2(MediaPause {
+                    kind: "pause".into(),
+                    stream_id: self.stream_id.clone(),
+                })
+            } else {
+                MediaControl::Variant3(MediaResume {
+                    kind: "resume".into(),
+                    stream_id: self.stream_id.clone(),
+                })
+            };
+            let _ = self.out.send(event_frame(
+                Some("media"),
+                "stream",
+                None,
+                encode_media_control(&control),
+            ));
+        }
+    }
+}
 struct StreamingSource {
+    flow: Option<Arc<Flow>>,
     rx: Mutex<mpsc::UnboundedReceiver<PlaybackChunk>>,
     buf: Vec<u8>,
     pos: usize,
@@ -665,8 +755,14 @@ struct StreamingSource {
 }
 
 impl StreamingSource {
+    fn with_flow(rx: mpsc::UnboundedReceiver<PlaybackChunk>, flow: Arc<Flow>) -> Self {
+        let mut source = Self::new(rx);
+        source.flow = Some(flow);
+        source
+    }
     fn new(rx: mpsc::UnboundedReceiver<PlaybackChunk>) -> StreamingSource {
         StreamingSource {
+            flow: None,
             rx: Mutex::new(rx),
             buf: Vec::new(),
             pos: 0,
@@ -687,6 +783,10 @@ impl Read for StreamingSource {
         while self.pos >= self.buf.len() && !self.done {
             match self.rx.lock().unwrap().blocking_recv() {
                 Some(Some(chunk)) => {
+                    if let Some(flow) = &self.flow {
+                        flow.queued.fetch_sub(chunk.len(), Ordering::Relaxed);
+                        flow.update();
+                    }
                     self.buf = chunk;
                     self.pos = 0;
                 }
@@ -722,13 +822,11 @@ impl symphonia::core::io::MediaSource for StreamingSource {
     }
 }
 
-fn decode_stream_to_default_output(
+fn decode_stream_to_buffer(
     source: StreamingSource,
     extension: &'static str,
-    seek_ms: u64,
     cancel: Arc<AtomicBool>,
-    volume: Arc<AtomicU8>,
-    reporter: &PlaybackReporter,
+    buffer: Arc<Buffer>,
 ) -> anyhow::Result<()> {
     use symphonia::core::audio::RawSampleBuffer;
     use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
@@ -760,13 +858,7 @@ fn decode_stream_to_default_output(
     let track_id = track.id;
     let mut decoder =
         symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
-    let mut sink: Option<crate::audio::PcmSink> = None;
     let mut samples: Option<RawSampleBuffer<i16>> = None;
-    let mut skip_frames: u64 = 0;
-    let mut played_frames: u64 = 0;
-    let mut sample_rate: u32 = 0;
-    let mut last_report_ms = seek_ms;
-    let mut adjusted = Vec::new();
 
     loop {
         if cancel.load(Ordering::Relaxed) {
@@ -795,55 +887,102 @@ fn decode_stream_to_default_output(
             Err(e) => return Err(e.into()),
         };
         let spec = *decoded.spec();
-        if sample_rate == 0 {
-            sample_rate = spec.rate;
-            skip_frames = seek_ms.saturating_mul(u64::from(sample_rate)) / 1000;
-        }
         let channels = spec.channels.count().max(1).min(u16::MAX as usize) as u16;
-        let sink = get_or_try_insert_with(&mut sink, || {
-            crate::audio::PcmSink::open(spec.rate, channels)
-        })?;
         let samples = samples
             .get_or_insert_with(|| RawSampleBuffer::<i16>::new(decoded.capacity() as u64, spec));
         samples.copy_interleaved_ref(decoded);
-        let frame_bytes = usize::from(channels) * 2;
-        let total_frames = (samples.as_bytes().len() / frame_bytes) as u64;
-        let bytes = if skip_frames >= total_frames {
-            skip_frames -= total_frames;
+        let mut state = buffer.state.lock().unwrap();
+        state.configure(spec.rate, channels);
+        while !state.push(samples.as_bytes()) {
+            if cancel.load(Ordering::Relaxed) {
+                return Ok(());
+            }
+            state = buffer
+                .changed
+                .wait_timeout(state, Duration::from_millis(50))
+                .unwrap()
+                .0;
+        }
+        buffer.changed.notify_all();
+    }
+
+    Ok(())
+}
+
+fn render_buffered(
+    buffer: &Buffer,
+    cancel: &AtomicBool,
+    volume: Arc<AtomicU8>,
+    reporter: &PlaybackReporter,
+) -> anyhow::Result<()> {
+    let mut sink = None;
+    let mut revision = u64::MAX;
+    let mut last_report = std::time::Instant::now();
+    let mut adjusted = Vec::new();
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return Ok(());
+        }
+        let mut state = buffer.state.lock().unwrap();
+        if let Some(error) = &state.error {
+            anyhow::bail!("{error}");
+        }
+        if revision != state.revision {
+            sink = None;
+            revision = state.revision;
+        }
+        let bytes = state.read();
+        let Some(bytes) = bytes else {
+            if state.done && state.cursor >= state.end && !state.paused {
+                drop(state);
+                if let Some(sink) = sink.as_mut() {
+                    crate::audio::PcmSink::drain(sink, cancel)?;
+                }
+                let mut state = buffer.state.lock().unwrap();
+                if state.revision == revision && state.cursor >= state.end && !state.paused {
+                    state.terminal = true;
+                    return Ok(());
+                }
+                continue;
+            }
+            drop(
+                buffer
+                    .changed
+                    .wait_timeout(state, Duration::from_millis(20))
+                    .unwrap(),
+            );
             continue;
-        } else if skip_frames > 0 {
-            let byte_offset = (skip_frames as usize) * frame_bytes;
-            skip_frames = 0;
-            &samples.as_bytes()[byte_offset..]
-        } else {
-            samples.as_bytes()
         };
+        let rate = state.rate;
+        let channels = state.channels;
+        let position_ms = state.cursor.saturating_mul(1000) / u64::from(rate);
+        let identity = state.identity.clone();
+        buffer.changed.notify_all();
+        drop(state);
+        let sink =
+            get_or_try_insert_with(&mut sink, || crate::audio::PcmSink::open(rate, channels))?;
         let level = volume.load(Ordering::Relaxed);
-        let bytes = if level < 100 {
-            scale_s16le(bytes, level, &mut adjusted);
+        let output = if level < 100 {
+            scale_s16le(&bytes, level, &mut adjusted);
             adjusted.as_slice()
         } else {
-            bytes
+            &bytes
         };
-        played_frames += sink.write_s16le(bytes)?;
-        if sample_rate > 0 {
-            let position_ms =
-                seek_ms + (played_frames.saturating_mul(1000) / u64::from(sample_rate));
-            if position_ms.saturating_sub(last_report_ms) >= 1000 {
-                let _ = reporter.out_tx.send(reporter.frame(
+        sink.write_s16le(output)?;
+        if last_report.elapsed() >= Duration::from_secs(1) {
+            if buffer.state.lock().unwrap().revision == revision {
+                let _ = reporter.out_tx.send(report_frame(
+                    &reporter.player_id,
                     NodeEvent::State,
                     PlayerStatus::Playing,
                     Some(position_ms),
+                    Some(&identity),
                     None,
                 ));
-                last_report_ms = position_ms;
             }
+            last_report = std::time::Instant::now();
         }
     }
-    if let Some(sink) = sink.as_mut() {
-        sink.drain(&cancel)?;
-    }
-    Ok(())
 }
 
 fn get_or_try_insert_with<T, E>(
@@ -881,6 +1020,7 @@ fn codec_extension(codec: &Codec) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::io::Read;
     use std::time::Duration;
 
@@ -888,6 +1028,85 @@ mod tests {
         advance_reconnect_delay, get_or_try_insert_with, playback_stream_channel, scale_s16le,
         StreamingSource,
     };
+
+    #[tokio::test]
+    async fn cached_seek_reuses_stream_and_updates_playback_identity() {
+        let (out, mut frames) = mpsc::unbounded_channel();
+        let old = PlaybackIdentity {
+            queue_item_id: 7,
+            playback_id: "old-stream".into(),
+        };
+        let buffer = Arc::new(Buffer::new(0, old.clone()));
+        {
+            let mut state = buffer.state.lock().unwrap();
+            state.configure(100, 1);
+            assert!(state.push(&vec![0; 120_000]));
+        }
+        let (chunks, _rx) = playback_stream_channel();
+        let task = PlaybackTask {
+            cancel: Arc::new(AtomicBool::new(false)),
+            chunks,
+            handle: tokio::spawn(async {}),
+            buffer: buffer.clone(),
+            finished: Arc::new(AtomicBool::new(false)),
+            flow: Arc::new(Flow {
+                transition: Mutex::new(()),
+                queued: AtomicUsize::new(0),
+                paused: AtomicBool::new(false),
+                stream_id: "old-stream".into(),
+                out: out.clone(),
+            }),
+        };
+        let mut playback = HashMap::from([("speaker".into(), task)]);
+        let mut media = HashMap::from([(
+            "old-stream".into(),
+            ActiveMedia {
+                player_id: "speaker".into(),
+                identity: old,
+                position_ms: 0,
+                track_id: "track".into(),
+                stream_id: "old-stream".into(),
+            },
+        )]);
+        let directive = NodeDirective::Variant0(libichoi::csil::types::DirLoad {
+            op: "load".into(),
+            player_id: "speaker".into(),
+            track_id: "track".into(),
+            queue_item_id: 7,
+            playback_id: "new-playback".into(),
+            position_ms: Some(300_000),
+            pref: StreamPref {
+                max_bitrate_kbps: None,
+                prefer_original: None,
+                transcode_codec: None,
+            },
+        });
+        apply_directive(
+            &out,
+            &mut HashMap::new(),
+            &mut HashMap::new(),
+            &mut playback,
+            &mut media,
+            directive,
+        )
+        .await
+        .unwrap();
+        let frame = decode_event_envelope(&frames.try_recv().unwrap()).unwrap();
+        assert_eq!(frame.service.as_deref(), Some("node"));
+        assert!(
+            frames.try_recv().is_err(),
+            "cached seek must not reopen media"
+        );
+        assert_eq!(buffer.state.lock().unwrap().cursor, 30_000);
+        assert_eq!(
+            buffer.state.lock().unwrap().identity.playback_id,
+            "new-playback"
+        );
+        stop_player_media(&out, &mut media, "speaker").unwrap();
+        let frame = decode_event_envelope(&frames.try_recv().unwrap()).unwrap();
+        let control = libichoi::csil_channel::decode_media_control(&frame.payload).unwrap();
+        assert!(matches!(control, MediaControl::Variant4(stop) if stop.stream_id == "old-stream"));
+    }
 
     #[test]
     fn media_handoff_does_not_block_after_thirty_two_chunks() {

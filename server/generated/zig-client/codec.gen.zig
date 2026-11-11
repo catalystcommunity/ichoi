@@ -809,6 +809,7 @@ fn enc_SessionInfo(out: *std.ArrayList(u8), v: *const types.SessionInfo) CodecEr
     var csil_n: usize = 4;
     if (v.token != null) csil_n += 1;
     if (v.display_name != null) csil_n += 1;
+    if (v.can_edit_library != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "role");
     try enc_Role(out, &(v.role));
@@ -825,6 +826,10 @@ fn enc_SessionInfo(out: *std.ArrayList(u8), v: *const types.SessionInfo) CodecEr
     if (v.display_name) |csil_x| {
         try w_text(out, "display_name");
         try w_text(out, csil_x);
+    }
+    if (v.can_edit_library) |csil_x| {
+        try w_text(out, "can_edit_library");
+        try w_bool(out, csil_x);
     }
 }
 
@@ -858,6 +863,13 @@ fn dec_SessionInfo(alloc: std.mem.Allocator, m: Value, out: *types.SessionInfo) 
             out.display_name = try as_text(csil_fv);
         } else {
             out.display_name = null;
+        }
+    }
+    {
+        if (mget(m, "can_edit_library")) |csil_fv| {
+            out.can_edit_library = try as_bool(csil_fv);
+        } else {
+            out.can_edit_library = null;
         }
     }
 }
@@ -2015,6 +2027,258 @@ fn dec_CoverArt(alloc: std.mem.Allocator, m: Value, out: *types.CoverArt) CodecE
     {
         const csil_fv = try req(m, "content_type");
         out.content_type = try as_text(csil_fv);
+    }
+}
+
+fn enc_ArtworkKind(out: *std.ArrayList(u8), v: *const types.ArtworkKind) CodecError!void {
+    try w_text(out, v.wire_name());
+}
+
+fn dec_ArtworkKind(alloc: std.mem.Allocator, src: Value, out: *types.ArtworkKind) CodecError!void {
+    _ = alloc;
+    const csil_s = try as_text(src);
+    if (std.mem.eql(u8, csil_s, "album")) {
+        out.* = .album;
+        return;
+    }
+    if (std.mem.eql(u8, csil_s, "artist")) {
+        out.* = .artist;
+        return;
+    }
+    return error.WrongType;
+}
+
+fn enc_ArtworkRequest(out: *std.ArrayList(u8), v: *const types.ArtworkRequest) CodecError!void {
+    var csil_n: usize = 2;
+    if (v.max_size != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "kind");
+    try enc_ArtworkKind(out, &(v.kind));
+    if (v.max_size) |csil_x| {
+        try w_text(out, "max_size");
+        try w_uint(out, csil_x);
+    }
+}
+
+fn dec_ArtworkRequest(alloc: std.mem.Allocator, m: Value, out: *types.ArtworkRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "kind");
+        try dec_ArtworkKind(alloc, csil_fv, &(out.kind));
+    }
+    {
+        if (mget(m, "max_size")) |csil_fv| {
+            out.max_size = try as_u64(csil_fv);
+        } else {
+            out.max_size = null;
+        }
+    }
+}
+
+fn enc_SetArtworkRequest(out: *std.ArrayList(u8), v: *const types.SetArtworkRequest) CodecError!void {
+    var csil_n: usize = 2;
+    if (v.data != null) csil_n += 1;
+    if (v.candidate_id != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    if (v.data) |csil_x| {
+        try w_text(out, "data");
+        try w_bytes(out, csil_x);
+    }
+    try w_text(out, "kind");
+    try enc_ArtworkKind(out, &(v.kind));
+    if (v.candidate_id) |csil_x| {
+        try w_text(out, "candidate_id");
+        try w_text(out, csil_x);
+    }
+}
+
+fn dec_SetArtworkRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetArtworkRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        if (mget(m, "data")) |csil_fv| {
+            out.data = try as_bytes(csil_fv);
+        } else {
+            out.data = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "kind");
+        try dec_ArtworkKind(alloc, csil_fv, &(out.kind));
+    }
+    {
+        if (mget(m, "candidate_id")) |csil_fv| {
+            out.candidate_id = try as_text(csil_fv);
+        } else {
+            out.candidate_id = null;
+        }
+    }
+}
+
+fn enc_ArtworkCandidatesRequest(out: *std.ArrayList(u8), v: *const types.ArtworkCandidatesRequest) CodecError!void {
+    var csil_n: usize = 2;
+    if (v.limit != null) csil_n += 1;
+    if (v.offset != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "kind");
+    try enc_ArtworkKind(out, &(v.kind));
+    if (v.limit) |csil_x| {
+        try w_text(out, "limit");
+        try w_uint(out, csil_x);
+    }
+    if (v.offset) |csil_x| {
+        try w_text(out, "offset");
+        try w_uint(out, csil_x);
+    }
+}
+
+fn dec_ArtworkCandidatesRequest(alloc: std.mem.Allocator, m: Value, out: *types.ArtworkCandidatesRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "kind");
+        try dec_ArtworkKind(alloc, csil_fv, &(out.kind));
+    }
+    {
+        if (mget(m, "limit")) |csil_fv| {
+            out.limit = try as_u64(csil_fv);
+        } else {
+            out.limit = null;
+        }
+    }
+    {
+        if (mget(m, "offset")) |csil_fv| {
+            out.offset = try as_u64(csil_fv);
+        } else {
+            out.offset = null;
+        }
+    }
+}
+
+fn enc_ArtworkCandidateRequest(out: *std.ArrayList(u8), v: *const types.ArtworkCandidateRequest) CodecError!void {
+    var csil_n: usize = 3;
+    if (v.max_size != null) csil_n += 1;
+    try w_map_head(out, csil_n);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "kind");
+    try enc_ArtworkKind(out, &(v.kind));
+    if (v.max_size) |csil_x| {
+        try w_text(out, "max_size");
+        try w_uint(out, csil_x);
+    }
+    try w_text(out, "candidate_id");
+    try w_text(out, v.candidate_id);
+}
+
+fn dec_ArtworkCandidateRequest(alloc: std.mem.Allocator, m: Value, out: *types.ArtworkCandidateRequest) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "kind");
+        try dec_ArtworkKind(alloc, csil_fv, &(out.kind));
+    }
+    {
+        if (mget(m, "max_size")) |csil_fv| {
+            out.max_size = try as_u64(csil_fv);
+        } else {
+            out.max_size = null;
+        }
+    }
+    {
+        const csil_fv = try req(m, "candidate_id");
+        out.candidate_id = try as_text(csil_fv);
+    }
+}
+
+fn enc_ArtworkCandidate(out: *std.ArrayList(u8), v: *const types.ArtworkCandidate) CodecError!void {
+    try w_map_head(out, 6);
+    try w_text(out, "id");
+    try w_text(out, v.id);
+    try w_text(out, "role");
+    try w_text(out, v.role);
+    try w_text(out, "label");
+    try w_text(out, v.label);
+    try w_text(out, "width");
+    try w_uint(out, v.width);
+    try w_text(out, "height");
+    try w_uint(out, v.height);
+    try w_text(out, "suggested");
+    try w_bool(out, v.suggested);
+}
+
+fn dec_ArtworkCandidate(alloc: std.mem.Allocator, m: Value, out: *types.ArtworkCandidate) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "id");
+        out.id = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "role");
+        out.role = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "label");
+        out.label = try as_text(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "width");
+        out.width = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "height");
+        out.height = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "suggested");
+        out.suggested = try as_bool(csil_fv);
+    }
+}
+
+fn enc_ArtworkCandidates(out: *std.ArrayList(u8), v: *const types.ArtworkCandidates) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "total");
+    try w_uint(out, v.total);
+    try w_text(out, "candidates");
+    try w_array_head(out, v.candidates.len);
+    for (v.candidates) |csil_it| {
+        try enc_ArtworkCandidate(out, &(csil_it));
+    }
+}
+
+fn dec_ArtworkCandidates(alloc: std.mem.Allocator, m: Value, out: *types.ArtworkCandidates) CodecError!void {
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "total");
+        out.total = try as_u64(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "candidates");
+        if (csil_fv != .array) return error.WrongType;
+        out.candidates = try alloc.alloc(types.ArtworkCandidate, csil_fv.array.len);
+        for (csil_fv.array, 0..) |csil_it, csil_i| {
+            try dec_ArtworkCandidate(alloc, csil_it, &(out.candidates[csil_i]));
+        }
     }
 }
 
@@ -4322,6 +4586,7 @@ fn dec_NodeReport(alloc: std.mem.Allocator, m: Value, out: *types.NodeReport) Co
 fn enc_Account(out: *std.ArrayList(u8), v: *const types.Account) CodecError!void {
     var csil_n: usize = 4;
     if (v.display_name != null) csil_n += 1;
+    if (v.can_edit_library != null) csil_n += 1;
     try w_map_head(out, csil_n);
     try w_text(out, "id");
     try w_text(out, v.id);
@@ -4335,6 +4600,10 @@ fn enc_Account(out: *std.ArrayList(u8), v: *const types.Account) CodecError!void
     if (v.display_name) |csil_x| {
         try w_text(out, "display_name");
         try w_text(out, csil_x);
+    }
+    if (v.can_edit_library) |csil_x| {
+        try w_text(out, "can_edit_library");
+        try w_bool(out, csil_x);
     }
 }
 
@@ -4363,6 +4632,13 @@ fn dec_Account(alloc: std.mem.Allocator, m: Value, out: *types.Account) CodecErr
             out.display_name = null;
         }
     }
+    {
+        if (mget(m, "can_edit_library")) |csil_fv| {
+            out.can_edit_library = try as_bool(csil_fv);
+        } else {
+            out.can_edit_library = null;
+        }
+    }
 }
 
 fn enc_ListAccountsResponse(out: *std.ArrayList(u8), v: *const types.ListAccountsResponse) CodecError!void {
@@ -4383,6 +4659,27 @@ fn dec_ListAccountsResponse(alloc: std.mem.Allocator, m: Value, out: *types.List
         for (csil_fv.array, 0..) |csil_it, csil_i| {
             try dec_Account(alloc, csil_it, &(out.accounts[csil_i]));
         }
+    }
+}
+
+fn enc_SetLibraryEditorRequest(out: *std.ArrayList(u8), v: *const types.SetLibraryEditorRequest) CodecError!void {
+    try w_map_head(out, 2);
+    try w_text(out, "enabled");
+    try w_bool(out, v.enabled);
+    try w_text(out, "account_id");
+    try w_text(out, v.account_id);
+}
+
+fn dec_SetLibraryEditorRequest(alloc: std.mem.Allocator, m: Value, out: *types.SetLibraryEditorRequest) CodecError!void {
+    _ = alloc;
+    if (m != .map) return error.WrongType;
+    {
+        const csil_fv = try req(m, "enabled");
+        out.enabled = try as_bool(csil_fv);
+    }
+    {
+        const csil_fv = try req(m, "account_id");
+        out.account_id = try as_text(csil_fv);
     }
 }
 
@@ -6383,6 +6680,118 @@ pub fn decode_CoverArt(alloc: std.mem.Allocator, bytes: []const u8, out: *types.
     try dec_CoverArt(alloc, root, out);
 }
 
+/// Encode a ArtworkKind to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ArtworkKind(alloc: std.mem.Allocator, v: *const types.ArtworkKind) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ArtworkKind(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ArtworkKind. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ArtworkKind(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ArtworkKind) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ArtworkKind(alloc, root, out);
+}
+
+/// Encode a ArtworkRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ArtworkRequest(alloc: std.mem.Allocator, v: *const types.ArtworkRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ArtworkRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ArtworkRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ArtworkRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ArtworkRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ArtworkRequest(alloc, root, out);
+}
+
+/// Encode a SetArtworkRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_SetArtworkRequest(alloc: std.mem.Allocator, v: *const types.SetArtworkRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_SetArtworkRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a SetArtworkRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_SetArtworkRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SetArtworkRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_SetArtworkRequest(alloc, root, out);
+}
+
+/// Encode a ArtworkCandidatesRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ArtworkCandidatesRequest(alloc: std.mem.Allocator, v: *const types.ArtworkCandidatesRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ArtworkCandidatesRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ArtworkCandidatesRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ArtworkCandidatesRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ArtworkCandidatesRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ArtworkCandidatesRequest(alloc, root, out);
+}
+
+/// Encode a ArtworkCandidateRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ArtworkCandidateRequest(alloc: std.mem.Allocator, v: *const types.ArtworkCandidateRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ArtworkCandidateRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ArtworkCandidateRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ArtworkCandidateRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ArtworkCandidateRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ArtworkCandidateRequest(alloc, root, out);
+}
+
+/// Encode a ArtworkCandidate to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ArtworkCandidate(alloc: std.mem.Allocator, v: *const types.ArtworkCandidate) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ArtworkCandidate(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ArtworkCandidate. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ArtworkCandidate(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ArtworkCandidate) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ArtworkCandidate(alloc, root, out);
+}
+
+/// Encode a ArtworkCandidates to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_ArtworkCandidates(alloc: std.mem.Allocator, v: *const types.ArtworkCandidates) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_ArtworkCandidates(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a ArtworkCandidates. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_ArtworkCandidates(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ArtworkCandidates) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_ArtworkCandidates(alloc, root, out);
+}
+
 /// Encode a ReportContentRequest to CBOR. The returned slice is owned by the caller
 /// (free it with alloc.free).
 pub fn encode_ReportContentRequest(alloc: std.mem.Allocator, v: *const types.ReportContentRequest) CodecError![]u8 {
@@ -7373,6 +7782,22 @@ pub fn encode_ListAccountsResponse(alloc: std.mem.Allocator, v: *const types.Lis
 pub fn decode_ListAccountsResponse(alloc: std.mem.Allocator, bytes: []const u8, out: *types.ListAccountsResponse) CodecError!void {
     const root = try decode(alloc, bytes);
     try dec_ListAccountsResponse(alloc, root, out);
+}
+
+/// Encode a SetLibraryEditorRequest to CBOR. The returned slice is owned by the caller
+/// (free it with alloc.free).
+pub fn encode_SetLibraryEditorRequest(alloc: std.mem.Allocator, v: *const types.SetLibraryEditorRequest) CodecError![]u8 {
+    var out = std.ArrayList(u8).init(alloc);
+    errdefer out.deinit();
+    try enc_SetLibraryEditorRequest(&out, v);
+    return out.toOwnedSlice();
+}
+
+/// Decode CBOR into a SetLibraryEditorRequest. Every string/slice/map inside `out` is
+/// allocated from `alloc`; pass an arena and free it all at once.
+pub fn decode_SetLibraryEditorRequest(alloc: std.mem.Allocator, bytes: []const u8, out: *types.SetLibraryEditorRequest) CodecError!void {
+    const root = try decode(alloc, bytes);
+    try dec_SetLibraryEditorRequest(alloc, root, out);
 }
 
 /// Encode a SetRoleRequest to CBOR. The returned slice is owned by the caller

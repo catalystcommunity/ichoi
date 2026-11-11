@@ -198,6 +198,42 @@ final class LibraryClient {
     return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
   }
 
+  CoverArt getArtwork(ArtworkRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'get-artwork',
+      request.toCbor(),
+    );
+    return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  ArtworkCandidates listArtworkCandidates(ArtworkCandidatesRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'list-artwork-candidates',
+      request.toCbor(),
+    );
+    return ArtworkCandidates.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  CoverArt getArtworkCandidate(ArtworkCandidateRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'get-artwork-candidate',
+      request.toCbor(),
+    );
+    return CoverArt.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok setArtwork(SetArtworkRequest request) {
+    final csilResp = transport.call(
+      'LibraryService',
+      'set-artwork',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
   AudiobookProgressResponse getAudiobookProgress(
     AudiobookProgressRequest request,
   ) {
@@ -350,6 +386,15 @@ final class AdminClient {
       request.toCbor(),
     );
     return Account.fromCborValue(CsilCbor.decode(csilResp));
+  }
+
+  Ok setLibraryEditor(SetLibraryEditorRequest request) {
+    final csilResp = transport.call(
+      'AdminService',
+      'set-library-editor',
+      request.toCbor(),
+    );
+    return Ok.fromCborValue(CsilCbor.decode(csilResp));
   }
 
   Ok deleteAccount(AdminDeleteAccountRequest request) {

@@ -7,7 +7,6 @@ struct ReportView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var reason: ContentReportReason = .objectionableContent
     @State private var details = ""
-    @State private var error: String?
     var body: some View {
         NavigationStack {
             Form {
@@ -16,18 +15,18 @@ struct ReportView: View {
                 Text("Optional details: \(details.unicodeScalars.count)/2000").font(.footnote)
                 Button("Send report") { Task { await submit() } }.disabled(details.unicodeScalars.count > 2_000)
             }.navigationTitle("Report \(targetType == .playlist ? "playlist" : "user")")
-        }.alert("Report", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("OK", role: .cancel) {} } message: { Text(error ?? "") }
+        }.appControls()
     }
     private func submit() async {
-        guard let profile = model.profile, let sessionManager = model.sessionManager, sessionManager.session != nil else { error = "Sign in before you report content."; return }
+        guard let profile = model.profile, let sessionManager = model.sessionManager, sessionManager.session != nil else { model.message = "Sign in before you report content."; return }
         do {
             let clean = try ComplianceValidation.details(details)
             let token = try KeychainTokenStore().token(for: profile.id)
             let transport = try CSILHTTPTransport(profile: profile, token: token)
             _ = try await LibraryAsyncClient(transport: transport).reportContent(ReportContentRequest(targetType: targetType, targetId: targetID, reason: reason, details: clean))
             dismiss()
-        } catch ComplianceValidationError.detailsTooLong { self.error = "Details must be 2,000 Unicode characters or fewer." }
-        catch { self.error = "The report was not sent. Contact the administrator of \(profile.url.absoluteString)." }
+        } catch ComplianceValidationError.detailsTooLong { model.message = "Details must be 2,000 Unicode characters or fewer." }
+        catch { model.message = "The report was not sent. Contact the administrator of \(profile.url.absoluteString)." }
     }
 }
 

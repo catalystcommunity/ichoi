@@ -3,6 +3,8 @@
 
 pub mod app;
 pub mod art;
+pub mod artwork;
+pub mod artwork_discovery;
 pub mod audio;
 pub mod auth;
 pub mod autosignin;

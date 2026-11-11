@@ -59,6 +59,14 @@ export function AccountAccessAdmin(): JSX.Element {
     }
   }
 
+  async function setLibraryEditor(accountId: string, enabled: boolean): Promise<void> {
+    const api = servers.api();
+    if (!api) return;
+    setMessage(undefined);
+    try { await api.admin.setLibraryEditor({ account_id: accountId, enabled }); await refetch(); }
+    catch (error) { setMessage(String(error)); await refetch(); }
+  }
+
   return (
     <section class="panel" aria-labelledby="account-access-title">
       <h2 id="account-access-title">Accounts and LinkKeys access</h2>
@@ -117,6 +125,12 @@ export function AccountAccessAdmin(): JSX.Element {
                 <span class="hint">{account.id}</span>
               </span>
               <div class="row" style={{ gap: "8px" }}>
+                <label class="row">
+                  <input type="checkbox" checked={account.can_edit_library ?? account.role === "admin"}
+                    disabled={account.role !== "member"}
+                    onChange={event => void setLibraryEditor(account.id, event.currentTarget.checked)} />
+                  Edit library artwork
+                </label>
                 <button
                   class="btn btn-ghost"
                   type="button"

@@ -240,6 +240,50 @@ pub const LibraryClient = struct {
         try codec.decode_CoverArt(alloc, csil_respb, out);
     }
 
+    /// Invoke LibraryService/get-artwork with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn get_artwork(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.ArtworkRequest, out: *types.CoverArt) anyerror!void {
+        const csil_reqb = try codec.encode_ArtworkRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "get-artwork", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_CoverArt(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/list-artwork-candidates with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn list_artwork_candidates(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.ArtworkCandidatesRequest, out: *types.ArtworkCandidates) anyerror!void {
+        const csil_reqb = try codec.encode_ArtworkCandidatesRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "list-artwork-candidates", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_ArtworkCandidates(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/get-artwork-candidate with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn get_artwork_candidate(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.ArtworkCandidateRequest, out: *types.CoverArt) anyerror!void {
+        const csil_reqb = try codec.encode_ArtworkCandidateRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "get-artwork-candidate", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_CoverArt(alloc, csil_respb, out);
+    }
+
+    /// Invoke LibraryService/set-artwork with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn set_artwork(self: LibraryClient, alloc: std.mem.Allocator, req: *const types.SetArtworkRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_SetArtworkRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "LibraryService", "set-artwork", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
+    }
+
     /// Invoke LibraryService/get-audiobook-progress with a typed request, returning the decoded
     /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
     /// and free it once when done.
@@ -423,6 +467,17 @@ pub const AdminClient = struct {
         const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "set-role", csil_reqb);
         defer alloc.free(csil_respb);
         try codec.decode_Account(alloc, csil_respb, out);
+    }
+
+    /// Invoke AdminService/set-library-editor with a typed request, returning the decoded
+    /// typed response. Everything in `out` is allocated from `alloc`; pass an arena
+    /// and free it once when done.
+    pub fn set_library_editor(self: AdminClient, alloc: std.mem.Allocator, req: *const types.SetLibraryEditorRequest, out: *types.Ok) anyerror!void {
+        const csil_reqb = try codec.encode_SetLibraryEditorRequest(alloc, req);
+        defer alloc.free(csil_reqb);
+        const csil_respb = try self.transport.call(self.transport.ptr, alloc, "AdminService", "set-library-editor", csil_reqb);
+        defer alloc.free(csil_respb);
+        try codec.decode_Ok(alloc, csil_respb, out);
     }
 
     /// Invoke AdminService/delete-account with a typed request, returning the decoded

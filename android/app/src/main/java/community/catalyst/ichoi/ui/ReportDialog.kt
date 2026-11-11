@@ -37,10 +37,7 @@ object ReportDialog {
                 if (text.codePointCount(0, text.length) <= MAX_DETAILS) {
                     onSubmit(ContentReportReason.values()[reason.selectedItemPosition], text.takeIf { it.isNotBlank() })
                 } else {
-                    AlertDialog.Builder(context)
-                        .setMessage("Details are limited to 2,000 Unicode scalar values")
-                        .setPositiveButton("OK", null)
-                        .show()
+                    AppMessages.show("Details are limited to 2,000 Unicode scalar values")
                 }
             }.show()
     }

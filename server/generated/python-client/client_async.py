@@ -113,6 +113,22 @@ class LibraryAsyncClient:
         """get-cover-art"""
         return CoverArt.from_cbor(await self._transport.call("LibraryService", "get-cover-art", req.to_cbor()))
 
+    async def get_artwork(self, req: ArtworkRequest) -> CoverArt:
+        """get-artwork"""
+        return CoverArt.from_cbor(await self._transport.call("LibraryService", "get-artwork", req.to_cbor()))
+
+    async def list_artwork_candidates(self, req: ArtworkCandidatesRequest) -> ArtworkCandidates:
+        """list-artwork-candidates"""
+        return ArtworkCandidates.from_cbor(await self._transport.call("LibraryService", "list-artwork-candidates", req.to_cbor()))
+
+    async def get_artwork_candidate(self, req: ArtworkCandidateRequest) -> CoverArt:
+        """get-artwork-candidate"""
+        return CoverArt.from_cbor(await self._transport.call("LibraryService", "get-artwork-candidate", req.to_cbor()))
+
+    async def set_artwork(self, req: SetArtworkRequest) -> Ok:
+        """set-artwork"""
+        return Ok.from_cbor(await self._transport.call("LibraryService", "set-artwork", req.to_cbor()))
+
     async def get_audiobook_progress(self, req: AudiobookProgressRequest) -> AudiobookProgressResponse:
         """get-audiobook-progress"""
         return AudiobookProgressResponse.from_cbor(await self._transport.call("LibraryService", "get-audiobook-progress", req.to_cbor()))
@@ -190,6 +206,10 @@ class AdminAsyncClient:
     async def set_role(self, req: SetRoleRequest) -> Account:
         """set-role"""
         return Account.from_cbor(await self._transport.call("AdminService", "set-role", req.to_cbor()))
+
+    async def set_library_editor(self, req: SetLibraryEditorRequest) -> Ok:
+        """set-library-editor"""
+        return Ok.from_cbor(await self._transport.call("AdminService", "set-library-editor", req.to_cbor()))
 
     async def delete_account(self, req: AdminDeleteAccountRequest) -> Ok:
         """delete-account"""

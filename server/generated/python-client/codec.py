@@ -551,6 +551,9 @@ def _encode_session_info_value(v: "SessionInfo") -> Dict[Any, Any]:
     csil_x = v.display_name
     if csil_x is not None:
         csil_m["display_name"] = csil_x
+    csil_x = v.can_edit_library
+    if csil_x is not None:
+        csil_m["can_edit_library"] = csil_x
     return csil_m
 
 def _decode_session_info_value(tree: Any) -> "SessionInfo":
@@ -561,6 +564,7 @@ def _decode_session_info_value(tree: Any) -> "SessionInfo":
         display_name=(None if tree.get("display_name") is None else _csil_expect_text(tree["display_name"])),
         role=_decode_role_value(tree["role"]),
         can_admin=_csil_expect_bool(tree["can_admin"]),
+        can_edit_library=(None if tree.get("can_edit_library") is None else _csil_expect_bool(tree["can_edit_library"])),
         token=(None if tree.get("token") is None else _csil_expect_text(tree["token"])),
     )
 
@@ -1550,6 +1554,190 @@ def _cover_art_from_cbor(data: bytes) -> "CoverArt":
 
 CoverArt.to_cbor = _cover_art_to_cbor
 CoverArt.from_cbor = staticmethod(_cover_art_from_cbor)
+
+def _encode_artwork_request_value(v: "ArtworkRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["kind"] = v.kind
+    csil_x = v.max_size
+    if csil_x is not None:
+        csil_m["max_size"] = csil_x
+    return csil_m
+
+def _decode_artwork_request_value(tree: Any) -> "ArtworkRequest":
+    tree = _csil_expect_map(tree)
+    return ArtworkRequest(
+        kind=_decode_artwork_kind_value(tree["kind"]),
+        id=_csil_expect_text(tree["id"]),
+        max_size=(None if tree.get("max_size") is None else _csil_expect_uint(tree["max_size"])),
+    )
+
+
+def _artwork_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_artwork_request_value(self))
+
+
+def _artwork_request_from_cbor(data: bytes) -> "ArtworkRequest":
+    return _decode_artwork_request_value(cbor_decode(data))
+
+
+ArtworkRequest.to_cbor = _artwork_request_to_cbor
+ArtworkRequest.from_cbor = staticmethod(_artwork_request_from_cbor)
+
+def _encode_set_artwork_request_value(v: "SetArtworkRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_x = v.data
+    if csil_x is not None:
+        csil_m["data"] = csil_x
+    csil_m["kind"] = v.kind
+    csil_x = v.candidate_id
+    if csil_x is not None:
+        csil_m["candidate_id"] = csil_x
+    return csil_m
+
+def _decode_set_artwork_request_value(tree: Any) -> "SetArtworkRequest":
+    tree = _csil_expect_map(tree)
+    return SetArtworkRequest(
+        kind=_decode_artwork_kind_value(tree["kind"]),
+        id=_csil_expect_text(tree["id"]),
+        data=(None if tree.get("data") is None else _csil_expect_bytes(tree["data"])),
+        candidate_id=(None if tree.get("candidate_id") is None else _csil_expect_text(tree["candidate_id"])),
+    )
+
+
+def _set_artwork_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_set_artwork_request_value(self))
+
+
+def _set_artwork_request_from_cbor(data: bytes) -> "SetArtworkRequest":
+    return _decode_set_artwork_request_value(cbor_decode(data))
+
+
+SetArtworkRequest.to_cbor = _set_artwork_request_to_cbor
+SetArtworkRequest.from_cbor = staticmethod(_set_artwork_request_from_cbor)
+
+def _encode_artwork_candidates_request_value(v: "ArtworkCandidatesRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["kind"] = v.kind
+    csil_x = v.limit
+    if csil_x is not None:
+        csil_m["limit"] = csil_x
+    csil_x = v.offset
+    if csil_x is not None:
+        csil_m["offset"] = csil_x
+    return csil_m
+
+def _decode_artwork_candidates_request_value(tree: Any) -> "ArtworkCandidatesRequest":
+    tree = _csil_expect_map(tree)
+    return ArtworkCandidatesRequest(
+        kind=_decode_artwork_kind_value(tree["kind"]),
+        id=_csil_expect_text(tree["id"]),
+        offset=(None if tree.get("offset") is None else _csil_expect_uint(tree["offset"])),
+        limit=(None if tree.get("limit") is None else _csil_expect_uint(tree["limit"])),
+    )
+
+
+def _artwork_candidates_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_artwork_candidates_request_value(self))
+
+
+def _artwork_candidates_request_from_cbor(data: bytes) -> "ArtworkCandidatesRequest":
+    return _decode_artwork_candidates_request_value(cbor_decode(data))
+
+
+ArtworkCandidatesRequest.to_cbor = _artwork_candidates_request_to_cbor
+ArtworkCandidatesRequest.from_cbor = staticmethod(_artwork_candidates_request_from_cbor)
+
+def _encode_artwork_candidate_request_value(v: "ArtworkCandidateRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["kind"] = v.kind
+    csil_x = v.max_size
+    if csil_x is not None:
+        csil_m["max_size"] = csil_x
+    csil_m["candidate_id"] = v.candidate_id
+    return csil_m
+
+def _decode_artwork_candidate_request_value(tree: Any) -> "ArtworkCandidateRequest":
+    tree = _csil_expect_map(tree)
+    return ArtworkCandidateRequest(
+        kind=_decode_artwork_kind_value(tree["kind"]),
+        id=_csil_expect_text(tree["id"]),
+        candidate_id=_csil_expect_text(tree["candidate_id"]),
+        max_size=(None if tree.get("max_size") is None else _csil_expect_uint(tree["max_size"])),
+    )
+
+
+def _artwork_candidate_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_artwork_candidate_request_value(self))
+
+
+def _artwork_candidate_request_from_cbor(data: bytes) -> "ArtworkCandidateRequest":
+    return _decode_artwork_candidate_request_value(cbor_decode(data))
+
+
+ArtworkCandidateRequest.to_cbor = _artwork_candidate_request_to_cbor
+ArtworkCandidateRequest.from_cbor = staticmethod(_artwork_candidate_request_from_cbor)
+
+def _encode_artwork_candidate_value(v: "ArtworkCandidate") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["id"] = v.id
+    csil_m["role"] = v.role
+    csil_m["label"] = v.label
+    csil_m["width"] = v.width
+    csil_m["height"] = v.height
+    csil_m["suggested"] = v.suggested
+    return csil_m
+
+def _decode_artwork_candidate_value(tree: Any) -> "ArtworkCandidate":
+    tree = _csil_expect_map(tree)
+    return ArtworkCandidate(
+        id=_csil_expect_text(tree["id"]),
+        label=_csil_expect_text(tree["label"]),
+        width=_csil_expect_uint(tree["width"]),
+        height=_csil_expect_uint(tree["height"]),
+        role=_csil_expect_text(tree["role"]),
+        suggested=_csil_expect_bool(tree["suggested"]),
+    )
+
+
+def _artwork_candidate_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_artwork_candidate_value(self))
+
+
+def _artwork_candidate_from_cbor(data: bytes) -> "ArtworkCandidate":
+    return _decode_artwork_candidate_value(cbor_decode(data))
+
+
+ArtworkCandidate.to_cbor = _artwork_candidate_to_cbor
+ArtworkCandidate.from_cbor = staticmethod(_artwork_candidate_from_cbor)
+
+def _encode_artwork_candidates_value(v: "ArtworkCandidates") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["total"] = v.total
+    csil_m["candidates"] = [_encode_artwork_candidate_value(csil_e) for csil_e in v.candidates]
+    return csil_m
+
+def _decode_artwork_candidates_value(tree: Any) -> "ArtworkCandidates":
+    tree = _csil_expect_map(tree)
+    return ArtworkCandidates(
+        candidates=[_decode_artwork_candidate_value(csil_e) for csil_e in _csil_expect_array(tree["candidates"])],
+        total=_csil_expect_uint(tree["total"]),
+    )
+
+
+def _artwork_candidates_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_artwork_candidates_value(self))
+
+
+def _artwork_candidates_from_cbor(data: bytes) -> "ArtworkCandidates":
+    return _decode_artwork_candidates_value(cbor_decode(data))
+
+
+ArtworkCandidates.to_cbor = _artwork_candidates_to_cbor
+ArtworkCandidates.from_cbor = staticmethod(_artwork_candidates_from_cbor)
 
 def _encode_report_content_request_value(v: "ReportContentRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -3073,6 +3261,9 @@ def _encode_account_value(v: "Account") -> Dict[Any, Any]:
     csil_x = v.display_name
     if csil_x is not None:
         csil_m["display_name"] = csil_x
+    csil_x = v.can_edit_library
+    if csil_x is not None:
+        csil_m["can_edit_library"] = csil_x
     return csil_m
 
 def _decode_account_value(tree: Any) -> "Account":
@@ -3083,6 +3274,7 @@ def _decode_account_value(tree: Any) -> "Account":
         display_name=(None if tree.get("display_name") is None else _csil_expect_text(tree["display_name"])),
         role=_decode_role_value(tree["role"]),
         created_at=_csil_ts_from_tree(tree["created_at"]),
+        can_edit_library=(None if tree.get("can_edit_library") is None else _csil_expect_bool(tree["can_edit_library"])),
     )
 
 
@@ -3119,6 +3311,31 @@ def _list_accounts_response_from_cbor(data: bytes) -> "ListAccountsResponse":
 
 ListAccountsResponse.to_cbor = _list_accounts_response_to_cbor
 ListAccountsResponse.from_cbor = staticmethod(_list_accounts_response_from_cbor)
+
+def _encode_set_library_editor_request_value(v: "SetLibraryEditorRequest") -> Dict[Any, Any]:
+    csil_m: Dict[Any, Any] = {}
+    csil_m["enabled"] = v.enabled
+    csil_m["account_id"] = v.account_id
+    return csil_m
+
+def _decode_set_library_editor_request_value(tree: Any) -> "SetLibraryEditorRequest":
+    tree = _csil_expect_map(tree)
+    return SetLibraryEditorRequest(
+        account_id=_csil_expect_text(tree["account_id"]),
+        enabled=_csil_expect_bool(tree["enabled"]),
+    )
+
+
+def _set_library_editor_request_to_cbor(self) -> bytes:
+    return cbor_encode(_encode_set_library_editor_request_value(self))
+
+
+def _set_library_editor_request_from_cbor(data: bytes) -> "SetLibraryEditorRequest":
+    return _decode_set_library_editor_request_value(cbor_decode(data))
+
+
+SetLibraryEditorRequest.to_cbor = _set_library_editor_request_to_cbor
+SetLibraryEditorRequest.from_cbor = staticmethod(_set_library_editor_request_from_cbor)
 
 def _encode_set_role_request_value(v: "SetRoleRequest") -> Dict[Any, Any]:
     csil_m: Dict[Any, Any] = {}
@@ -4390,6 +4607,13 @@ def _decode_library_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("music", "audiobook"):
         raise CsilDecodeError(f"csil cbor: unknown library value {csil_v!r}")
+    return csil_v
+
+
+def _decode_artwork_kind_value(csil_v):
+    csil_v = _csil_expect_text(csil_v)
+    if csil_v not in ("album", "artist"):
+        raise CsilDecodeError(f"csil cbor: unknown artwork_kind value {csil_v!r}")
     return csil_v
 
 

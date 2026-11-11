@@ -2,7 +2,7 @@
 // Source: <csil spec>
 // Target: typescript-codec
 
-import type { Account, AccountId, AdminDeleteAccountRequest, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BlockAccountRequest, BlockedAccount, BlockedAccountsResponse, BrowseRequest, CancelImportRequest, ChangeTopic, CmdClear, CmdEnqueue, CmdEnqueueNext, CmdMoveItem, CmdNext, CmdPause, CmdPlay, CmdPlaybackCompleted, CmdPlaybackFailed, CmdPlaybackState, CmdPrevious, CmdRemove, CmdRemoveItem, CmdReorder, CmdReplaceAndPlay, CmdSeek, CmdSetRepeat, CmdSetShuffle, CmdUndo, CmdVolume, Codec, CommandRequest, ContentReport, ContentReportId, ContentReportReason, ContentReportStatus, ContentReportTargetType, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeEvent, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RepeatMode, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetDeviceAccessRequest, SetGroupMembersRequest, SetRoleRequest, SetSettingRequest, SetShareAccessRequest, Settings, ShareAccess, ShareAccessInfo, ShareAccessRequest, ShareCandidate, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
+import type { Account, AccountId, AdminDeleteAccountRequest, Album, AlbumDetail, AlbumId, AlbumRequest, AlbumsResponse, Artist, ArtistDetail, ArtistId, ArtistRequest, ArtistsResponse, ArtworkCandidate, ArtworkCandidateRequest, ArtworkCandidates, ArtworkCandidatesRequest, ArtworkKind, ArtworkRequest, AudioOutput, AudioOutputsState, AudiobookProgress, AudiobookProgressRequest, AudiobookProgressResponse, AuthRequest, BeginImportRequest, BeginImportResult, BlockAccountRequest, BlockedAccount, BlockedAccountsResponse, BrowseRequest, CancelImportRequest, ChangeTopic, CmdClear, CmdEnqueue, CmdEnqueueNext, CmdMoveItem, CmdNext, CmdPause, CmdPlay, CmdPlaybackCompleted, CmdPlaybackFailed, CmdPlaybackState, CmdPrevious, CmdRemove, CmdRemoveItem, CmdReorder, CmdReplaceAndPlay, CmdSeek, CmdSetRepeat, CmdSetShuffle, CmdUndo, CmdVolume, Codec, CommandRequest, ContentReport, ContentReportId, ContentReportReason, ContentReportStatus, ContentReportTargetType, CoverArt, CoverArtRequest, CreateGroupRequest, CreateNodeTokenRequest, DataChange, DeleteAccountRequest, DeleteGroupRequest, DeletePlaylistRequest, DeviceId, DeviceInfo, DirLoad, DirPause, DirResume, DirStop, DirVolume, DisableShareRequest, EnableShareRequest, ExportChunk, ExportChunkRequest, ExportManifest, ExportManifestRequest, FinishImportRequest, GroupInfo, Handle, ImportChunkRequest, ImportResult, ImportTrackRequest, LibrariesResponse, Library, LibraryInfo, LibraryResyncStatus, ListAccountsResponse, ListContentReportsResponse, ListGroupsResponse, ListNodesResponse, ListPlayersRequest, ListPlayersResponse, ListSatelliteTokensResponse, MediaChunk, MediaControl, MediaEnd, MediaEndReason, MediaEvent, MediaFail, MediaHeader, MediaOpen, MediaPause, MediaResume, MediaSeek, MediaStop, MissingChunk, NodeDirective, NodeEvent, NodeId, NodeInfo, NodeKind, NodeReport, NodeTokenResult, Ok, Page, Player, PlayerCommand, PlayerId, PlayerKind, PlayerState, PlayerStatus, Playlist, PlaylistDetail, PlaylistId, PlaylistRequest, PlaylistsResponse, QueueItem, RegisterNodeRequest, RegisterNodeResponse, RenameDeviceRequest, RenameNodeRequest, RepeatMode, ReportContentRequest, RevokeSatelliteTokenRequest, RevokeTrustedIdentityRequest, Role, SatelliteTokenInfo, SearchRequest, SearchResponse, ServiceError, SessionInfo, SetArtworkRequest, SetDeviceAccessRequest, SetGroupMembersRequest, SetLibraryEditorRequest, SetRoleRequest, SetSettingRequest, SetShareAccessRequest, Settings, ShareAccess, ShareAccessInfo, ShareAccessRequest, ShareCandidate, ShareResult, StreamPref, SubscribeRequest, Track, TrackId, TranscodeCodec, TransferChunk, TransferFile, TrustDomainRequest, TrustIdentityRequest, TrustedDomains, TrustedIdentities, TrustedIdentity, UpdateAudiobookProgressRequest, UpdateContentReportStatusRequest, WatchChangesRequest } from "./types.gen.ts";
 
 /** A CBOR semantic tag wrapping an inner value (e.g. tag 0 timestamp, tag 4 decimal). */
 export type CborTag = { readonly tag: number; readonly value: CborValue };
@@ -496,6 +496,7 @@ export function toSessionInfoCborValue(v: SessionInfo): CborValue {
   csilMap.set("can_admin", v.canAdmin);
   csilMap.set("account_id", v.accountId);
   if (v.displayName !== undefined) csilMap.set("display_name", v.displayName);
+  if (v.canEditLibrary !== undefined) csilMap.set("can_edit_library", v.canEditLibrary);
   return csilMap;
 }
 
@@ -506,6 +507,7 @@ export function fromSessionInfoCborValue(value: CborValue): SessionInfo {
     displayName: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "display_name")),
     role: (asEnumMember(asString(requireKey(value, "role")), ["admin", "member", "guest"]) as "admin" | "member" | "guest"),
     canAdmin: asBool(requireKey(value, "can_admin")),
+    canEditLibrary: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBool(csilV))(mapGet(value, "can_edit_library")),
     token: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "token")),
   };
 }
@@ -1344,6 +1346,160 @@ export function toCoverArtCbor(v: CoverArt): Uint8Array {
 
 export function fromCoverArtCbor(bytes: Uint8Array): CoverArt {
   return fromCoverArtCborValue(decode(bytes));
+}
+
+export function toArtworkRequestCborValue(v: ArtworkRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  csilMap.set("kind", v.kind);
+  if (v.maxSize !== undefined) csilMap.set("max_size", v.maxSize);
+  return csilMap;
+}
+
+export function fromArtworkRequestCborValue(value: CborValue): ArtworkRequest {
+  return {
+    kind: (asEnumMember(asString(requireKey(value, "kind")), ["album", "artist"]) as "album" | "artist"),
+    id: asString(requireKey(value, "id")),
+    maxSize: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "max_size")),
+  };
+}
+
+export function toArtworkRequestCbor(v: ArtworkRequest): Uint8Array {
+  return encodeValue(toArtworkRequestCborValue(v));
+}
+
+export function fromArtworkRequestCbor(bytes: Uint8Array): ArtworkRequest {
+  return fromArtworkRequestCborValue(decode(bytes));
+}
+
+export function toSetArtworkRequestCborValue(v: SetArtworkRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  if (v.data !== undefined) csilMap.set("data", v.data);
+  csilMap.set("kind", v.kind);
+  if (v.candidateId !== undefined) csilMap.set("candidate_id", v.candidateId);
+  return csilMap;
+}
+
+export function fromSetArtworkRequestCborValue(value: CborValue): SetArtworkRequest {
+  return {
+    kind: (asEnumMember(asString(requireKey(value, "kind")), ["album", "artist"]) as "album" | "artist"),
+    id: asString(requireKey(value, "id")),
+    data: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBytes(csilV))(mapGet(value, "data")),
+    candidateId: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "candidate_id")),
+  };
+}
+
+export function toSetArtworkRequestCbor(v: SetArtworkRequest): Uint8Array {
+  return encodeValue(toSetArtworkRequestCborValue(v));
+}
+
+export function fromSetArtworkRequestCbor(bytes: Uint8Array): SetArtworkRequest {
+  return fromSetArtworkRequestCborValue(decode(bytes));
+}
+
+export function toArtworkCandidatesRequestCborValue(v: ArtworkCandidatesRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  csilMap.set("kind", v.kind);
+  if (v.limit !== undefined) csilMap.set("limit", v.limit);
+  if (v.offset !== undefined) csilMap.set("offset", v.offset);
+  return csilMap;
+}
+
+export function fromArtworkCandidatesRequestCborValue(value: CborValue): ArtworkCandidatesRequest {
+  return {
+    kind: (asEnumMember(asString(requireKey(value, "kind")), ["album", "artist"]) as "album" | "artist"),
+    id: asString(requireKey(value, "id")),
+    offset: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "offset")),
+    limit: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "limit")),
+  };
+}
+
+export function toArtworkCandidatesRequestCbor(v: ArtworkCandidatesRequest): Uint8Array {
+  return encodeValue(toArtworkCandidatesRequestCborValue(v));
+}
+
+export function fromArtworkCandidatesRequestCbor(bytes: Uint8Array): ArtworkCandidatesRequest {
+  return fromArtworkCandidatesRequestCborValue(decode(bytes));
+}
+
+export function toArtworkCandidateRequestCborValue(v: ArtworkCandidateRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  csilMap.set("kind", v.kind);
+  if (v.maxSize !== undefined) csilMap.set("max_size", v.maxSize);
+  csilMap.set("candidate_id", v.candidateId);
+  return csilMap;
+}
+
+export function fromArtworkCandidateRequestCborValue(value: CborValue): ArtworkCandidateRequest {
+  return {
+    kind: (asEnumMember(asString(requireKey(value, "kind")), ["album", "artist"]) as "album" | "artist"),
+    id: asString(requireKey(value, "id")),
+    candidateId: asString(requireKey(value, "candidate_id")),
+    maxSize: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asNumber(csilV))(mapGet(value, "max_size")),
+  };
+}
+
+export function toArtworkCandidateRequestCbor(v: ArtworkCandidateRequest): Uint8Array {
+  return encodeValue(toArtworkCandidateRequestCborValue(v));
+}
+
+export function fromArtworkCandidateRequestCbor(bytes: Uint8Array): ArtworkCandidateRequest {
+  return fromArtworkCandidateRequestCborValue(decode(bytes));
+}
+
+export function toArtworkCandidateCborValue(v: ArtworkCandidate): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("id", v.id);
+  csilMap.set("role", v.role);
+  csilMap.set("label", v.label);
+  csilMap.set("width", v.width);
+  csilMap.set("height", v.height);
+  csilMap.set("suggested", v.suggested);
+  return csilMap;
+}
+
+export function fromArtworkCandidateCborValue(value: CborValue): ArtworkCandidate {
+  return {
+    id: asString(requireKey(value, "id")),
+    label: asString(requireKey(value, "label")),
+    width: asNumber(requireKey(value, "width")),
+    height: asNumber(requireKey(value, "height")),
+    role: asString(requireKey(value, "role")),
+    suggested: asBool(requireKey(value, "suggested")),
+  };
+}
+
+export function toArtworkCandidateCbor(v: ArtworkCandidate): Uint8Array {
+  return encodeValue(toArtworkCandidateCborValue(v));
+}
+
+export function fromArtworkCandidateCbor(bytes: Uint8Array): ArtworkCandidate {
+  return fromArtworkCandidateCborValue(decode(bytes));
+}
+
+export function toArtworkCandidatesCborValue(v: ArtworkCandidates): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("total", v.total);
+  csilMap.set("candidates", v.candidates.map((csilE): CborValue => toArtworkCandidateCborValue(csilE)));
+  return csilMap;
+}
+
+export function fromArtworkCandidatesCborValue(value: CborValue): ArtworkCandidates {
+  return {
+    candidates: asArray(requireKey(value, "candidates")).map((csilE) => fromArtworkCandidateCborValue(csilE)),
+    total: asNumber(requireKey(value, "total")),
+  };
+}
+
+export function toArtworkCandidatesCbor(v: ArtworkCandidates): Uint8Array {
+  return encodeValue(toArtworkCandidatesCborValue(v));
+}
+
+export function fromArtworkCandidatesCbor(bytes: Uint8Array): ArtworkCandidates {
+  return fromArtworkCandidatesCborValue(decode(bytes));
 }
 
 export function toReportContentRequestCborValue(v: ReportContentRequest): CborValue {
@@ -2789,6 +2945,7 @@ export function toAccountCborValue(v: Account): CborValue {
   csilMap.set("handle", v.handle);
   csilMap.set("created_at", { tag: 0, value: csilTsToText(v.createdAt) });
   if (v.displayName !== undefined) csilMap.set("display_name", v.displayName);
+  if (v.canEditLibrary !== undefined) csilMap.set("can_edit_library", v.canEditLibrary);
   return csilMap;
 }
 
@@ -2799,6 +2956,7 @@ export function fromAccountCborValue(value: CborValue): Account {
     displayName: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asString(csilV))(mapGet(value, "display_name")),
     role: (asEnumMember(asString(requireKey(value, "role")), ["admin", "member", "guest"]) as "admin" | "member" | "guest"),
     createdAt: asTimestamp(requireKey(value, "created_at")),
+    canEditLibrary: ((csilV: CborValue | undefined) => csilV === undefined ? undefined : asBool(csilV))(mapGet(value, "can_edit_library")),
   };
 }
 
@@ -2828,6 +2986,28 @@ export function toListAccountsResponseCbor(v: ListAccountsResponse): Uint8Array 
 
 export function fromListAccountsResponseCbor(bytes: Uint8Array): ListAccountsResponse {
   return fromListAccountsResponseCborValue(decode(bytes));
+}
+
+export function toSetLibraryEditorRequestCborValue(v: SetLibraryEditorRequest): CborValue {
+  const csilMap = new Map<CborValue, CborValue>();
+  csilMap.set("enabled", v.enabled);
+  csilMap.set("account_id", v.accountId);
+  return csilMap;
+}
+
+export function fromSetLibraryEditorRequestCborValue(value: CborValue): SetLibraryEditorRequest {
+  return {
+    accountId: asString(requireKey(value, "account_id")),
+    enabled: asBool(requireKey(value, "enabled")),
+  };
+}
+
+export function toSetLibraryEditorRequestCbor(v: SetLibraryEditorRequest): Uint8Array {
+  return encodeValue(toSetLibraryEditorRequestCborValue(v));
+}
+
+export function fromSetLibraryEditorRequestCbor(bytes: Uint8Array): SetLibraryEditorRequest {
+  return fromSetLibraryEditorRequestCborValue(decode(bytes));
 }
 
 export function toSetRoleRequestCborValue(v: SetRoleRequest): CborValue {

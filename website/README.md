@@ -3,6 +3,13 @@
 This directory contains the Ichoi static website. Edit files in `site-src/`.
 Pysocha writes the deployable output to `site/`. Do not edit `site/` by hand.
 
+In a repository checkout, the build copies approved logos, favicons, the touch icon, and the social preview
+from `../assets/brand/` into `site-src/content/extra_files/assets/`. Do not edit
+those copies. To copy the assets without a build, run
+`python3 ../scripts/install-brand-assets.py --target website` from this directory.
+The header selects the approved light or dark mark for the system appearance.
+The Docker build uses `website/` as its context and uses the checked-in copies.
+
 ## Build
 
 The build uses Pysocha at commit `18b2d6e704ba63e80f82d287b5831c1151c388a4`:

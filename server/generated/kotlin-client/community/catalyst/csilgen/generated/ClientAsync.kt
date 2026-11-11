@@ -78,6 +78,18 @@ class LibraryAsyncClient(private val transport: AsyncTransport) {
     suspend fun getCoverArt(request: CoverArtRequest): CoverArt {
         return decode<CoverArt>(transport.call("LibraryService", "get-cover-art", encode(request)))
     }
+    suspend fun getArtwork(request: ArtworkRequest): CoverArt {
+        return decode<CoverArt>(transport.call("LibraryService", "get-artwork", encode(request)))
+    }
+    suspend fun listArtworkCandidates(request: ArtworkCandidatesRequest): ArtworkCandidates {
+        return decode<ArtworkCandidates>(transport.call("LibraryService", "list-artwork-candidates", encode(request)))
+    }
+    suspend fun getArtworkCandidate(request: ArtworkCandidateRequest): CoverArt {
+        return decode<CoverArt>(transport.call("LibraryService", "get-artwork-candidate", encode(request)))
+    }
+    suspend fun setArtwork(request: SetArtworkRequest): Ok {
+        return decode<Ok>(transport.call("LibraryService", "set-artwork", encode(request)))
+    }
     suspend fun getAudiobookProgress(request: AudiobookProgressRequest): AudiobookProgressResponse {
         return decode<AudiobookProgressResponse>(transport.call("LibraryService", "get-audiobook-progress", encode(request)))
     }
@@ -139,6 +151,9 @@ class AdminAsyncClient(private val transport: AsyncTransport) {
     }
     suspend fun setRole(request: SetRoleRequest): Account {
         return decode<Account>(transport.call("AdminService", "set-role", encode(request)))
+    }
+    suspend fun setLibraryEditor(request: SetLibraryEditorRequest): Ok {
+        return decode<Ok>(transport.call("AdminService", "set-library-editor", encode(request)))
     }
     suspend fun deleteAccount(request: AdminDeleteAccountRequest): Ok {
         return decode<Ok>(transport.call("AdminService", "delete-account", encode(request)))

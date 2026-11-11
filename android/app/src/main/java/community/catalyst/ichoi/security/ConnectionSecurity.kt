@@ -11,8 +11,13 @@ sealed class EndpointDecision {
 }
 
 object ConnectionSecurity {
+    fun normalize(raw: String): String {
+        val value = raw.trim()
+        if (value.isEmpty() || value.contains("://")) return value
+        return "https://$value"
+    }
     fun check(rawUrl: String, allowPrivateHttp: Boolean = false): EndpointDecision {
-        val uri = runCatching { URI(rawUrl.trim()) }.getOrElse { return EndpointDecision.Rejected("Invalid server URL") }
+        val uri = runCatching { URI(normalize(rawUrl)) }.getOrElse { return EndpointDecision.Rejected("Invalid server URL") }
         if (uri.userInfo != null || uri.host.isNullOrBlank() || uri.rawQuery != null || uri.rawFragment != null ||
             (uri.path.isNotEmpty() && uri.path != "/")) {
             return EndpointDecision.Rejected("Use only the server origin without credentials, a path, a query, or a fragment")

@@ -15,6 +15,7 @@ use axum::response::{IntoResponse, Response};
 use libichoi::csil::types::{StreamPref, TranscodeCodec};
 use serde::Deserialize;
 use std::net::SocketAddr;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tokio_util::io::ReaderStream;
 
 use crate::db::store;
@@ -136,49 +137,72 @@ fn content_type(codec: &str) -> &'static str {
 
 /// Serve the original file, honoring a single `Range` request for seeking.
 async fn serve_direct(path: PathBuf, codec: &str, headers: &HeaderMap) -> Response {
-    let data = match tokio::fs::read(&path).await {
-        Ok(d) => d,
-        Err(e) => return (StatusCode::NOT_FOUND, e.to_string()).into_response(),
+    let mut file = match tokio::fs::File::open(&path).await {
+        Ok(file) => file,
+        Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
-    let len = data.len() as u64;
-    let ct = content_type(codec);
-
-    if let Some(range) = headers.get(header::RANGE).and_then(|v| v.to_str().ok()) {
-        if let Some((start, end)) = parse_range(range, len) {
-            let slice = data[start as usize..=(end as usize)].to_vec();
-            return Response::builder()
-                .status(StatusCode::PARTIAL_CONTENT)
-                .header(header::CONTENT_TYPE, ct)
-                .header(header::ACCEPT_RANGES, "bytes")
-                .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/{len}"))
-                .header(header::CONTENT_LENGTH, (end - start + 1).to_string())
-                .body(Body::from(slice))
-                .unwrap();
-        }
-    }
-
-    Response::builder()
-        .status(StatusCode::OK)
+    let len = match file.metadata().await {
+        Ok(meta) => meta.len(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let ct = if matches!(extension.as_str(), "m4a" | "m4b" | "mp4") {
+        "audio/mp4"
+    } else {
+        content_type(codec)
+    };
+    let mut response = Response::builder()
         .header(header::CONTENT_TYPE, ct)
-        .header(header::ACCEPT_RANGES, "bytes")
-        .header(header::CONTENT_LENGTH, len.to_string())
-        .body(Body::from(data))
+        .header(header::ACCEPT_RANGES, "bytes");
+    let size = if let Some(range) = headers.get(header::RANGE) {
+        let Some((start, end)) = range
+            .to_str()
+            .ok()
+            .and_then(|range| parse_range(range, len))
+        else {
+            return Response::builder()
+                .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                .header(header::CONTENT_RANGE, format!("bytes */{len}"))
+                .body(Body::empty())
+                .unwrap();
+        };
+        if file.seek(std::io::SeekFrom::Start(start)).await.is_err() {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+        response = response
+            .status(StatusCode::PARTIAL_CONTENT)
+            .header(header::CONTENT_RANGE, format!("bytes {start}-{end}/{len}"));
+        end - start + 1
+    } else {
+        len
+    };
+    // Large M4B files must not be read into RAM for each seek request.
+    response
+        .header(header::CONTENT_LENGTH, size)
+        .body(Body::from_stream(ReaderStream::new(file.take(size))))
         .unwrap()
 }
 
 fn parse_range(range: &str, len: u64) -> Option<(u64, u64)> {
-    let spec = range.strip_prefix("bytes=")?;
-    let (a, b) = spec.split_once('-')?;
-    let start: u64 = a.parse().ok()?;
-    let end: u64 = if b.is_empty() {
-        len - 1
-    } else {
-        b.parse().ok()?
-    };
-    if start > end || end >= len {
+    if len == 0 {
         return None;
     }
-    Some((start, end))
+    let (start, end) = range.strip_prefix("bytes=")?.split_once('-')?;
+    if start.is_empty() {
+        let suffix: u64 = end.parse().ok()?;
+        return (suffix > 0).then_some((len.saturating_sub(suffix), len - 1));
+    }
+    let start: u64 = start.parse().ok()?;
+    let end = if end.is_empty() {
+        len - 1
+    } else {
+        end.parse::<u64>().ok()?.min(len - 1)
+    };
+    (start <= end && start < len).then_some((start, end))
 }
 
 /// Pipe an ffmpeg transcode straight to the response body (chunked, no Content-Length).

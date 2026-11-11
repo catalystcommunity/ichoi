@@ -1,3 +1,4 @@
+import { CoverArt } from "../components/CoverArt.tsx";
 import { createResource, For, Show, type JSX } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
@@ -44,6 +45,7 @@ export function ArtistPage(): JSX.Element {
             <>
               <header class="page-head" style={{ "margin-top": "18px" }}>
                 <div class="eyebrow">{t("library.artists")}</div>
+                <CoverArt album={{ id: d().artist.id, title: d().artist.name }} kind="artist" class="album-hero-cover" serverId={params.serverId} />
                 <h1 class="page-title">{d().artist.name}</h1>
                 <p class="page-sub">{t("library.albumsCount", { count: d().artist.album_count })}</p>
               </header>

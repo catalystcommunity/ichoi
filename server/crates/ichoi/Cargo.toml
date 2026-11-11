@@ -47,6 +47,7 @@ tokio-util = { workspace = true }
 
 symphonia = { workspace = true, features = ["mp3", "aac", "alac", "isomp4", "ogg", "vorbis", "flac", "pcm", "wav"] }
 lofty = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp"] }
 walkdir = { workspace = true }
 libloading = { workspace = true }
 reqwest = { workspace = true }

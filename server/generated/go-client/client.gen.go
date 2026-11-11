@@ -224,6 +224,42 @@ func (c *LibraryClient) GetCoverArt(ctx context.Context, req CoverArtRequest) (C
 	return DecodeCoverArt(csilResp)
 }
 
+func (c *LibraryClient) GetArtwork(ctx context.Context, req ArtworkRequest) (CoverArt, error) {
+	var csilZero CoverArt
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "get-artwork", EncodeArtworkRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeCoverArt(csilResp)
+}
+
+func (c *LibraryClient) ListArtworkCandidates(ctx context.Context, req ArtworkCandidatesRequest) (ArtworkCandidates, error) {
+	var csilZero ArtworkCandidates
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "list-artwork-candidates", EncodeArtworkCandidatesRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeArtworkCandidates(csilResp)
+}
+
+func (c *LibraryClient) GetArtworkCandidate(ctx context.Context, req ArtworkCandidateRequest) (CoverArt, error) {
+	var csilZero CoverArt
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "get-artwork-candidate", EncodeArtworkCandidateRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeCoverArt(csilResp)
+}
+
+func (c *LibraryClient) SetArtwork(ctx context.Context, req SetArtworkRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "set-artwork", EncodeSetArtworkRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
+}
+
 func (c *LibraryClient) GetAudiobookProgress(ctx context.Context, req AudiobookProgressRequest) (AudiobookProgressResponse, error) {
 	var csilZero AudiobookProgressResponse
 	csilResp, csilErr := c.transport.Call(ctx, "LibraryService", "get-audiobook-progress", EncodeAudiobookProgressRequest(req))
@@ -385,6 +421,15 @@ func (c *AdminClient) SetRole(ctx context.Context, req SetRoleRequest) (Account,
 		return csilZero, csilErr
 	}
 	return DecodeAccount(csilResp)
+}
+
+func (c *AdminClient) SetLibraryEditor(ctx context.Context, req SetLibraryEditorRequest) (Ok, error) {
+	var csilZero Ok
+	csilResp, csilErr := c.transport.Call(ctx, "AdminService", "set-library-editor", EncodeSetLibraryEditorRequest(req))
+	if csilErr != nil {
+		return csilZero, csilErr
+	}
+	return DecodeOk(csilResp)
 }
 
 func (c *AdminClient) DeleteAccount(ctx context.Context, req AdminDeleteAccountRequest) (Ok, error) {

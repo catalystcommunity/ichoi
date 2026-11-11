@@ -31,6 +31,10 @@ check_deploy() {
 
 case "${1:-}" in
     build)
+        # The standalone Docker context uses the checked-in asset copies.
+        if [[ -f "$SCRIPT_DIR/../scripts/install-brand-assets.py" ]]; then
+            python3 "$SCRIPT_DIR/../scripts/install-brand-assets.py" --target website
+        fi
         pysocha build
         ;;
     preview)

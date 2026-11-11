@@ -245,6 +245,7 @@ class SessionInfo:
     role: Role
     display_name: Optional[str] = None
     can_admin: bool = False
+    can_edit_library: Optional[bool] = None
     token: Optional[str] = None
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -259,6 +260,8 @@ class SessionInfo:
             result['role'] = self.role
         if hasattr(self, 'can_admin') and self.can_admin is not None:
             result['can_admin'] = self.can_admin
+        if hasattr(self, 'can_edit_library') and self.can_edit_library is not None:
+            result['can_edit_library'] = self.can_edit_library
         if hasattr(self, 'token') and self.token is not None:
             result['token'] = self.token
         return result
@@ -266,7 +269,7 @@ class SessionInfo:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SessionInfo':
         """Create instance from dictionary."""
-        return cls(account_id=data.get('account_id'), handle=data.get('handle'), display_name=data.get('display_name'), role=data.get('role'), can_admin=data.get('can_admin'), token=data.get('token'))
+        return cls(account_id=data.get('account_id'), handle=data.get('handle'), display_name=data.get('display_name'), role=data.get('role'), can_admin=data.get('can_admin'), can_edit_library=data.get('can_edit_library'), token=data.get('token'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1355,6 +1358,209 @@ class CoverArt:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'CoverArt':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+ArtworkKind = Union[str, str]
+
+@dataclass
+class ArtworkRequest:
+    kind: ArtworkKind
+    id: str
+    max_size: Optional[int] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'kind') and self.kind is not None:
+            result['kind'] = self.kind
+        if hasattr(self, 'id') and self.id is not None:
+            result['id'] = self.id
+        if hasattr(self, 'max_size') and self.max_size is not None:
+            result['max_size'] = self.max_size
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkRequest':
+        """Create instance from dictionary."""
+        return cls(kind=data.get('kind'), id=data.get('id'), max_size=data.get('max_size'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ArtworkRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class SetArtworkRequest:
+    kind: ArtworkKind
+    id: str
+    data: Optional[bytes] = None
+    candidate_id: Optional[str] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'kind') and self.kind is not None:
+            result['kind'] = self.kind
+        if hasattr(self, 'id') and self.id is not None:
+            result['id'] = self.id
+        if hasattr(self, 'data') and self.data is not None:
+            result['data'] = self.data
+        if hasattr(self, 'candidate_id') and self.candidate_id is not None:
+            result['candidate_id'] = self.candidate_id
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SetArtworkRequest':
+        """Create instance from dictionary."""
+        return cls(kind=data.get('kind'), id=data.get('id'), data=data.get('data'), candidate_id=data.get('candidate_id'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'SetArtworkRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ArtworkCandidatesRequest:
+    kind: ArtworkKind
+    id: str
+    offset: Optional[int] = None
+    limit: Optional[int] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'kind') and self.kind is not None:
+            result['kind'] = self.kind
+        if hasattr(self, 'id') and self.id is not None:
+            result['id'] = self.id
+        if hasattr(self, 'offset') and self.offset is not None:
+            result['offset'] = self.offset
+        if hasattr(self, 'limit') and self.limit is not None:
+            result['limit'] = self.limit
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkCandidatesRequest':
+        """Create instance from dictionary."""
+        return cls(kind=data.get('kind'), id=data.get('id'), offset=data.get('offset'), limit=data.get('limit'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ArtworkCandidatesRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ArtworkCandidateRequest:
+    kind: ArtworkKind
+    id: str
+    candidate_id: str
+    max_size: Optional[int] = None
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'kind') and self.kind is not None:
+            result['kind'] = self.kind
+        if hasattr(self, 'id') and self.id is not None:
+            result['id'] = self.id
+        if hasattr(self, 'candidate_id') and self.candidate_id is not None:
+            result['candidate_id'] = self.candidate_id
+        if hasattr(self, 'max_size') and self.max_size is not None:
+            result['max_size'] = self.max_size
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkCandidateRequest':
+        """Create instance from dictionary."""
+        return cls(kind=data.get('kind'), id=data.get('id'), candidate_id=data.get('candidate_id'), max_size=data.get('max_size'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ArtworkCandidateRequest':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ArtworkCandidate:
+    id: str
+    label: str
+    width: int
+    height: int
+    role: str
+    suggested: bool
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'id') and self.id is not None:
+            result['id'] = self.id
+        if hasattr(self, 'label') and self.label is not None:
+            result['label'] = self.label
+        if hasattr(self, 'width') and self.width is not None:
+            result['width'] = self.width
+        if hasattr(self, 'height') and self.height is not None:
+            result['height'] = self.height
+        if hasattr(self, 'role') and self.role is not None:
+            result['role'] = self.role
+        if hasattr(self, 'suggested') and self.suggested is not None:
+            result['suggested'] = self.suggested
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkCandidate':
+        """Create instance from dictionary."""
+        return cls(id=data.get('id'), label=data.get('label'), width=data.get('width'), height=data.get('height'), role=data.get('role'), suggested=data.get('suggested'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ArtworkCandidate':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class ArtworkCandidates:
+    candidates: List[ArtworkCandidate]
+    total: int
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'candidates') and self.candidates is not None:
+            result['candidates'] = self.candidates
+        if hasattr(self, 'total') and self.total is not None:
+            result['total'] = self.total
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkCandidates':
+        """Create instance from dictionary."""
+        return cls(candidates=data.get('candidates'), total=data.get('total'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'ArtworkCandidates':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
@@ -3107,6 +3313,7 @@ class Account:
     role: Role
     created_at: datetime
     display_name: Optional[str] = None
+    can_edit_library: Optional[bool] = None
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -3120,12 +3327,14 @@ class Account:
             result['role'] = self.role
         if hasattr(self, 'created_at') and self.created_at is not None:
             result['created_at'] = self.created_at
+        if hasattr(self, 'can_edit_library') and self.can_edit_library is not None:
+            result['can_edit_library'] = self.can_edit_library
         return result
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Account':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), handle=data.get('handle'), display_name=data.get('display_name'), role=data.get('role'), created_at=data.get('created_at'))
+        return cls(id=data.get('id'), handle=data.get('handle'), display_name=data.get('display_name'), role=data.get('role'), created_at=data.get('created_at'), can_edit_library=data.get('can_edit_library'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -3158,6 +3367,34 @@ class ListAccountsResponse:
 
     @classmethod
     def from_json(cls, json_str: str) -> 'ListAccountsResponse':
+        """Create instance from JSON string."""
+        return cls.from_dict(json.loads(json_str))
+
+
+@dataclass
+class SetLibraryEditorRequest:
+    account_id: AccountId
+    enabled: bool
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        result = {}
+        if hasattr(self, 'account_id') and self.account_id is not None:
+            result['account_id'] = self.account_id
+        if hasattr(self, 'enabled') and self.enabled is not None:
+            result['enabled'] = self.enabled
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'SetLibraryEditorRequest':
+        """Create instance from dictionary."""
+        return cls(account_id=data.get('account_id'), enabled=data.get('enabled'))
+
+    def to_json(self) -> str:
+        """Convert to JSON string."""
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'SetLibraryEditorRequest':
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 

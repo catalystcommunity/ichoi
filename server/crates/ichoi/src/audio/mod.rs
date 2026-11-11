@@ -146,8 +146,8 @@ mod native {
     const DRAIN_TIMEOUT: Duration = Duration::from_secs(5);
 
     /// Device buffer length. The WASAPI default is one engine period (about 10 ms), which a
-    /// busy low-power CPU misses often enough to be heard. A satellite does not need low latency.
-    const DEVICE_BUFFER_MS: u32 = 200;
+    /// busy low-power CPU misses often enough to be heard. Keep 50 ms for responsive seeks.
+    const DEVICE_BUFFER_MS: u32 = 50;
 
     pub fn enumerate() -> Vec<AudioOutput> {
         let host = cpal::default_host();
@@ -669,7 +669,7 @@ mod linux {
                     channels as c_uint,
                     sample_rate as c_uint,
                     1,
-                    500_000,
+                    50_000,
                 );
                 if rc < 0 {
                     let _ = close(pcm);

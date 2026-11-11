@@ -13,6 +13,7 @@ class IchoiApi(profile: ServerProfile, token: String?) {
     suspend fun whoAmI(): SessionInfo = session.whoami(Page())
     suspend fun signOut(): Ok = session.logout(Page())
     suspend fun deleteAccount(handle: String): Ok = session.deleteAccount(DeleteAccountRequest(handle))
+    suspend fun search(query: String, kind: Library): SearchResponse = library.search(SearchRequest(query = query, library = kind))
     suspend fun libraries(): LibrariesResponse = library.listLibraries(Page())
     suspend fun albums(libraryKind: Library, offset: ULong = 0uL): AlbumsResponse =
         library.listAlbums(BrowseRequest(libraryKind, offset, 100uL))
@@ -42,7 +43,17 @@ class IchoiApi(profile: ServerProfile, token: String?) {
             }
         }
     }
-    suspend fun coverArt(id: String): CoverArt = library.getCoverArt(CoverArtRequest(id))
+    suspend fun coverArt(id: String): CoverArt = library.getCoverArt(CoverArtRequest(id, 256uL))
+    suspend fun artwork(kind: ArtworkKind, id: String): CoverArt =
+        if (kind == ArtworkKind.Album) coverArt(id) else library.getArtwork(ArtworkRequest(kind, id, 256uL))
+    suspend fun setArtwork(kind: ArtworkKind, id: String, data: ByteArray?, candidateId: String? = null): Ok =
+        library.setArtwork(SetArtworkRequest(kind, id, data, candidateId))
+    suspend fun artworkCandidates(kind: ArtworkKind, id: String, offset: ULong = 0uL): ArtworkCandidates =
+        library.listArtworkCandidates(ArtworkCandidatesRequest(kind, id, offset, 12uL))
+    suspend fun artworkCandidate(kind: ArtworkKind, id: String, candidateId: String): CoverArt =
+        library.getArtworkCandidate(ArtworkCandidateRequest(kind, id, candidateId, 160uL))
+    suspend fun artists(libraryKind: Library, offset: ULong = 0uL): ArtistsResponse = library.listArtists(BrowseRequest(libraryKind, offset, 100uL))
+    suspend fun artist(id: String, libraryKind: Library): ArtistDetail = library.getArtist(ArtistRequest(id, libraryKind))
     suspend fun report(targetType: ContentReportTargetType, targetId: String, reason: ContentReportReason, details: String?): ContentReport {
         val clean = ReportValidation.validate(targetId, details)
         return library.reportContent(ReportContentRequest(targetType, targetId, reason, clean))

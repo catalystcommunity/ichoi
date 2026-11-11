@@ -462,7 +462,14 @@ pub fn upsert_album(conn: &mut SqliteConnection, row: &Album) -> QueryResult<()>
         .values(row)
         .on_conflict(albums::id)
         .do_update()
-        .set(row)
+        .set((
+            albums::title.eq(&row.title),
+            albums::artist_id.eq(&row.artist_id),
+            albums::year.eq(row.year),
+            albums::has_cover_art.eq(row.has_cover_art),
+            albums::cover_art_path.eq(&row.cover_art_path),
+            albums::art_checked.eq(row.art_checked),
+        ))
         .execute(conn)?;
     Ok(())
 }

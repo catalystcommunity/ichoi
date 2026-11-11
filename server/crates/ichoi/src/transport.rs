@@ -136,6 +136,14 @@ pub fn dispatch(
         ("session", "authenticate") => rr!(decode_auth_request, authenticate, encode_session_info),
         ("session", "whoami") => rr!(decode_page, whoami, encode_session_info),
         ("session", "logout") => rr!(decode_page, logout, encode_ok),
+        ("session", "delete-account") => {
+            let input = decode_delete_account_request(payload).map_err(bad)?;
+            Ok(encode_ok(&SessionService::delete_account(app, ctx, input)?))
+        }
+        ("admin", "delete-account") => {
+            let input = decode_admin_delete_account_request(payload).map_err(bad)?;
+            Ok(encode_ok(&AdminService::delete_account(app, ctx, input)?))
+        }
 
         // LibraryService
         ("library", "list-libraries") => {
@@ -188,6 +196,18 @@ pub fn dispatch(
             list_blocked_accounts,
             encode_blocked_accounts_response
         ),
+        ("library", "list-artwork-candidates") => rr!(
+            decode_artwork_candidates_request,
+            list_artwork_candidates,
+            encode_artwork_candidates
+        ),
+        ("library", "get-artwork-candidate") => rr!(
+            decode_artwork_candidate_request,
+            get_artwork_candidate,
+            encode_cover_art
+        ),
+        ("library", "get-artwork") => rr!(decode_artwork_request, get_artwork, encode_cover_art),
+        ("library", "set-artwork") => rr!(decode_set_artwork_request, set_artwork, encode_ok),
         ("library", "get-cover-art") => {
             rr!(decode_cover_art_request, get_cover_art, encode_cover_art)
         }
@@ -257,6 +277,11 @@ pub fn dispatch(
         ("admin", "list-accounts") => {
             rr!(decode_page, list_accounts, encode_list_accounts_response)
         }
+        ("admin", "set-library-editor") => rr!(
+            decode_set_library_editor_request,
+            set_library_editor,
+            encode_ok
+        ),
         ("admin", "set-role") => rr!(decode_set_role_request, set_role, encode_account),
         ("admin", "trust-domain") => {
             rr!(
@@ -353,6 +378,16 @@ pub fn dispatch(
         ("admin", "cancel-import") => {
             rr!(decode_cancel_import_request, cancel_import, encode_ok)
         }
+        ("admin", "list-content-reports") => rr!(
+            decode_page,
+            list_content_reports,
+            encode_list_content_reports_response
+        ),
+        ("admin", "update-content-report-status") => rr!(
+            decode_update_content_report_status_request,
+            update_content_report_status,
+            encode_content_report
+        ),
         ("admin", "get-settings") => rr!(decode_page, get_settings, encode_settings),
         ("admin", "set-setting") => rr!(decode_set_setting_request, set_setting, encode_settings),
         ("admin", "resync-library") => {
@@ -492,6 +527,7 @@ pub struct FrameEffects {
     pub media_open: Option<MediaOpen>,
     /// A `media.Stream` stop request: cancel this connection's matching media producer.
     pub media_stop: Option<String>,
+    pub media_pause: Option<(String, bool)>,
     /// A `change.Watch`: add or remove this connection's invalidation subscription.
     pub watch_changes: Option<bool>,
 }
@@ -589,6 +625,7 @@ pub fn handle_events_frame(
                 node_session: None,
                 media_open: None,
                 media_stop: None,
+                media_pause: None,
                 watch_changes: None,
             },
         );
@@ -631,6 +668,7 @@ pub fn handle_events_frame(
                     node_session: None,
                     media_open: None,
                     media_stop: None,
+                    media_pause: None,
                     watch_changes: None,
                 },
             );
@@ -655,6 +693,7 @@ pub fn handle_events_frame(
                     node_session: Some(player_id),
                     media_open: None,
                     media_stop: None,
+                    media_pause: None,
                     watch_changes: None,
                 },
             );
@@ -665,12 +704,17 @@ pub fn handle_events_frame(
             return (ident, None, FrameEffects::default());
         }
         if let Ok(control) = decode_media_control(&env.payload) {
+            let media_pause = match &control {
+                MediaControl::Variant2(pause) => Some((pause.stream_id.clone(), true)),
+                MediaControl::Variant3(resume) => Some((resume.stream_id.clone(), false)),
+                _ => None,
+            };
             let (media_open, media_stop) = match control {
                 MediaControl::Variant0(open) => (Some(open), None),
                 MediaControl::Variant4(stop) => (None, Some(stop.stream_id)),
                 _ => (None, None),
             };
-            if media_open.is_some() || media_stop.is_some() {
+            if media_open.is_some() || media_stop.is_some() || media_pause.is_some() {
                 if let Some(open) = media_open.as_ref() {
                     log::info!(
                         "media stream requested: stream={} track={}",
@@ -690,6 +734,7 @@ pub fn handle_events_frame(
                         node_session: None,
                         media_open,
                         media_stop,
+                        media_pause,
                         watch_changes: None,
                     },
                 );
@@ -744,6 +789,7 @@ fn change_topics_for_operation(service: &str, event: &str) -> Vec<ChangeTopic> {
     match (service, event) {
         ("session", "authenticate" | "logout") => vec![ChangeTopic::Session],
         ("library", "delete-playlist") => vec![ChangeTopic::Playlists],
+        ("library", "set-artwork") => vec![ChangeTopic::Libraries],
         ("library", "block-account" | "unblock-account") => {
             vec![
                 ChangeTopic::Accounts,
@@ -753,7 +799,9 @@ fn change_topics_for_operation(service: &str, event: &str) -> Vec<ChangeTopic> {
         }
         ("library", "update-audiobook-progress") => vec![ChangeTopic::Progress],
         ("player", "disable-share" | "set-share-access") => vec![ChangeTopic::Players],
-        ("admin", "set-role") => vec![ChangeTopic::Accounts],
+        ("admin", "set-role" | "set-library-editor") => {
+            vec![ChangeTopic::Accounts, ChangeTopic::Session]
+        }
         ("admin", "trust-domain" | "trust-identity" | "revoke-trusted-identity") => {
             vec![ChangeTopic::Trust]
         }

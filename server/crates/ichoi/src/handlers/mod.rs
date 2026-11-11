@@ -588,14 +588,18 @@ fn parse_dt(s: &str) -> DateTime<Utc> {
 
 // ------------------------------------------------------------------ model mapping
 
-fn map_account(a: models::Account) -> Account {
-    Account {
+fn map_account(
+    conn: &mut diesel::SqliteConnection,
+    a: models::Account,
+) -> Result<Account, ServiceError> {
+    Ok(Account {
+        can_edit_library: Some(db(crate::artwork::can_edit(conn, &a.id))?),
         id: a.id,
         handle: a.handle,
         display_name: a.display_name,
         role: to_role(&a.role),
         created_at: parse_dt(&a.created_at),
-    }
+    })
 }
 
 fn content_report_target_type_str(value: &ContentReportTargetType) -> &'static str {
@@ -746,11 +750,24 @@ fn map_album(
     };
     Ok(Album {
         id: a.id.clone(),
-        title: a.title.clone(),
+        title: if a.title.chars().any(char::is_alphanumeric) && a.title != "Unknown Album" {
+            a.title.clone()
+        } else {
+            library_tracks
+                .first()
+                .and_then(|track| {
+                    std::path::Path::new(&track.root_relative_path)
+                        .parent()?
+                        .file_name()
+                })
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "Untitled album".into())
+        },
         artist_id: a.artist_id.clone(),
         artist_name,
         year: a.year.map(|y| y as u64),
-        has_cover_art: a.has_cover_art != 0,
+        has_cover_art: a.has_cover_art != 0
+            || db(crate::artwork::has_stored(conn, "album", &a.id))?,
         track_count: track_count.max(0) as u64,
     })
 }
@@ -861,6 +878,7 @@ impl SessionService for App {
                 let a = db(store::get_account(&mut conn, account_id))?
                     .ok_or_else(|| err(404, "account not found"))?;
                 Ok(SessionInfo {
+                    can_edit_library: Some(db(crate::artwork::can_edit(&mut conn, &a.id))?),
                     account_id: a.id,
                     handle: a.handle,
                     display_name: a.display_name,
@@ -880,6 +898,7 @@ impl SessionService for App {
                         display_name: None,
                         role: Role::Guest,
                         can_admin: true,
+                        can_edit_library: Some(false),
                         token: None,
                     })
                 } else {
@@ -896,6 +915,7 @@ impl SessionService for App {
                     display_name: Some(satellite.name),
                     role: Role::Member,
                     can_admin: false,
+                    can_edit_library: Some(false),
                     token: None,
                 })
             }
@@ -950,6 +970,7 @@ impl App {
             &expires,
         ))?;
         Ok(SessionInfo {
+            can_edit_library: Some(db(crate::artwork::can_edit(conn, &acct.id))?),
             account_id: acct.id,
             handle: acct.handle,
             display_name: acct.display_name,
@@ -1320,39 +1341,143 @@ impl LibraryService for App {
         })
     }
 
-    fn get_cover_art(&self, _ctx: &Ctx, input: CoverArtRequest) -> Result<CoverArt, ServiceError> {
-        let mut conn = self.conn()?;
-        let a = db(store::get_album(&mut conn, &input.album_id))?
-            .ok_or_else(|| err(404, "album not found"))?;
+    fn get_cover_art(&self, ctx: &Ctx, input: CoverArtRequest) -> Result<CoverArt, ServiceError> {
+        self.get_artwork(
+            ctx,
+            ArtworkRequest {
+                kind: ArtworkKind::Album,
+                id: input.album_id,
+                max_size: input.max_size,
+            },
+        )
+    }
 
-        // Prefer a folder cover file; otherwise pull embedded art from a track (§ cover art).
-        if let Some(path) = a.cover_art_path {
-            if let std::result::Result::Ok(data) = std::fs::read(&path) {
-                let content_type = if path.ends_with(".png") {
-                    "image/png"
-                } else {
-                    "image/jpeg"
-                };
-                return std::result::Result::Ok(CoverArt {
-                    content_type: content_type.to_string(),
-                    data,
-                });
-            }
+    fn get_artwork(&self, _ctx: &Ctx, input: ArtworkRequest) -> Result<CoverArt, ServiceError> {
+        let mut conn = self.conn()?;
+        if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
+            return Err(err(404, "album or artist not found"));
         }
-        for track in db(store::tracks_for_album(&mut conn, &input.album_id))? {
-            if let std::result::Result::Ok(Some(lib)) =
-                store::get_library(&mut conn, &track.library_id)
-            {
-                let file = std::path::Path::new(&lib.path).join(&track.root_relative_path);
-                if let Some((mime, data)) = crate::scan::extract_embedded_cover(&file) {
-                    return std::result::Result::Ok(CoverArt {
-                        content_type: mime,
-                        data,
-                    });
-                }
-            }
+        crate::artwork::resolve(
+            &mut conn,
+            &input.kind,
+            &input.id,
+            input.max_size.unwrap_or(512),
+        )
+        .map_err(|error| err(500, format!("could not load artwork: {error}")))?
+        .ok_or_else(|| err(404, "no cover art"))
+    }
+
+    fn list_artwork_candidates(
+        &self,
+        _ctx: &Ctx,
+        input: ArtworkCandidatesRequest,
+    ) -> Result<ArtworkCandidates, ServiceError> {
+        let mut conn = self.conn()?;
+        if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
+            return Err(err(404, "album or artist not found"));
         }
-        Err(err(404, "no cover art"))
+        let candidates =
+            crate::artwork_discovery::list(&mut conn, &input.kind, &input.id).map_err(internal)?;
+        let total = candidates.len() as u64;
+        let (offset, limit) = page(input.offset, input.limit);
+        Ok(ArtworkCandidates {
+            total,
+            candidates: candidates
+                .into_iter()
+                .skip(offset as usize)
+                .take(limit.min(100) as usize)
+                .map(|(candidate, suggested)| ArtworkCandidate {
+                    id: candidate.id,
+                    label: candidate.label,
+                    width: candidate.width.into(),
+                    height: candidate.height.into(),
+                    role: candidate.role,
+                    suggested,
+                })
+                .collect(),
+        })
+    }
+
+    fn get_artwork_candidate(
+        &self,
+        _ctx: &Ctx,
+        input: ArtworkCandidateRequest,
+    ) -> Result<CoverArt, ServiceError> {
+        let mut conn = self.conn()?;
+        crate::artwork_discovery::candidate(
+            &mut conn,
+            &input.kind,
+            &input.id,
+            &input.candidate_id,
+            input.max_size.unwrap_or(256),
+        )
+        .map_err(internal)?
+        .ok_or_else(|| {
+            err(
+                404,
+                "This image changed or is no longer available. Rescan the library.",
+            )
+        })
+    }
+
+    fn set_artwork(&self, ctx: &Ctx, input: SetArtworkRequest) -> Result<Ok, ServiceError> {
+        let account = match &ctx.identity {
+            Identity::User { account_id, .. } => account_id,
+            Identity::Anonymous => return Err(err(401, "sign in to choose cover art")),
+            _ => return Err(err(403, "a member account is required to choose cover art")),
+        };
+        let mut conn = self.conn()?;
+        if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
+            return Err(err(404, "album or artist not found"));
+        }
+        if !db(crate::artwork::can_edit(&mut conn, account))? {
+            return Err(err(403, "Edit library artwork permission is required."));
+        }
+        let kind = crate::artwork::kind_name(&input.kind);
+        if input.data.is_some() && input.candidate_id.is_some() {
+            return Err(err(400, "Choose an image or upload a file, not both."));
+        }
+        if let Some(candidate_id) = input.candidate_id {
+            let art = crate::artwork_discovery::candidate(
+                &mut conn,
+                &input.kind,
+                &input.id,
+                &candidate_id,
+                1600,
+            )
+            .map_err(internal)?
+            .ok_or_else(|| {
+                err(
+                    404,
+                    "This image changed or is no longer available. Rescan the library.",
+                )
+            })?;
+            db(crate::artwork::save(
+                &mut conn,
+                kind,
+                &input.id,
+                "manual",
+                &art,
+                Some(account),
+            ))?;
+            return Ok(Ok { ok: true });
+        }
+        match input.data {
+            Some(bytes) => {
+                let art = crate::artwork::normalize(&bytes, 1600)
+                    .map_err(|_| err(400, "Choose a valid JPEG, PNG, GIF, or WebP image, up to 8 MB and 8192 pixels per side."))?;
+                db(crate::artwork::save(
+                    &mut conn,
+                    kind,
+                    &input.id,
+                    "manual",
+                    &art,
+                    Some(account),
+                ))?;
+            }
+            None => db(crate::artwork::reset(&mut conn, kind, &input.id))?,
+        }
+        Ok(Ok { ok: true })
     }
 
     fn get_audiobook_progress(
@@ -2988,9 +3113,39 @@ impl AdminService for App {
         let (off, lim) = page(input.offset, input.limit);
         let accounts = db(store::list_accounts(&mut conn, off, lim))?
             .into_iter()
-            .map(map_account)
-            .collect();
+            .map(|account| map_account(&mut conn, account))
+            .collect::<Result<Vec<_>, _>>()?;
         std::result::Result::Ok(ListAccountsResponse { accounts })
+    }
+
+    fn set_library_editor(
+        &self,
+        ctx: &Ctx,
+        input: SetLibraryEditorRequest,
+    ) -> Result<Ok, ServiceError> {
+        let mut conn = self.conn()?;
+        let Identity::User { account_id, .. } = &ctx.identity else {
+            return Err(err(401, "admin authentication required"));
+        };
+        if !db(store::get_account(&mut conn, account_id))?
+            .is_some_and(|account| account.role == "admin")
+        {
+            return Err(err(403, "admin authentication required"));
+        }
+        let target = db(store::get_account(&mut conn, &input.account_id))?
+            .ok_or_else(|| err(404, "account not found"))?;
+        if target.role != "member" {
+            return Err(err(
+                400,
+                "Only members need this permission. Administrators already have it.",
+            ));
+        }
+        db(crate::artwork::set_editor(
+            &mut conn,
+            &input.account_id,
+            input.enabled,
+        ))?;
+        Ok(Ok { ok: true })
     }
 
     fn set_role(&self, ctx: &Ctx, input: SetRoleRequest) -> Result<Account, ServiceError> {
@@ -3003,7 +3158,7 @@ impl AdminService for App {
         ))?;
         let a = db(store::get_account(&mut conn, &input.account_id))?
             .ok_or_else(|| err(404, "account not found"))?;
-        std::result::Result::Ok(map_account(a))
+        map_account(&mut conn, a)
     }
 
     fn delete_account(

@@ -1,3 +1,5 @@
+import { savedQuery, rememberQuery, resetBrowsing } from "../lib/browse-memory.ts";
+import { CoverArt } from "../components/CoverArt.tsx";
 import { createResource, createSignal, For, onCleanup, Show, type JSX } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { useI18n } from "../lib/i18n.tsx";
@@ -21,7 +23,7 @@ export function SearchPage(): JSX.Element {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = typeof searchParams.q === "string" ? searchParams.q : "";
+  const initialQuery = typeof searchParams.q === "string" ? searchParams.q : savedQuery(servers.activeId() ?? "");
   const [query, setQuery] = createSignal(initialQuery);
   const [debounced, setDebounced] = createSignal(initialQuery.trim());
   const [busy, setBusy] = createSignal<string>();
@@ -30,6 +32,8 @@ export function SearchPage(): JSX.Element {
 
   const onInput = (value: string) => {
     setQuery(value);
+    if (!value) resetBrowsing(servers.activeId() ?? "");
+    rememberQuery(servers.activeId() ?? "", value);
     clearTimeout(timer);
     timer = setTimeout(() => {
       const next = value.trim();
@@ -144,7 +148,7 @@ export function SearchPage(): JSX.Element {
                                 artist.id,
                               ))}
                             >
-                              <span class="cover"><span class="cover-fallback">{artist.name[0]?.toUpperCase()}</span></span>
+                              <CoverArt album={{ id: artist.id, title: artist.name }} kind="artist" serverId={result.server.id} />
                               <span class="tile-title">{artist.name}</span>
                               <span class="tile-sub">{t("search.viewArtist")}</span>
                             </button>
@@ -168,7 +172,7 @@ export function SearchPage(): JSX.Element {
                                 album.id,
                               ))}
                             >
-                              <span class="cover"><span class="cover-fallback">{album.title[0]?.toUpperCase()}</span></span>
+                              <CoverArt album={album} serverId={result.server.id} />
                               <span class="tile-title">{album.title}</span>
                               <Show when={album.artist_name}><span class="tile-sub">{album.artist_name}</span></Show>
                               <span class="tile-sub">{t("search.viewAlbum")}</span>

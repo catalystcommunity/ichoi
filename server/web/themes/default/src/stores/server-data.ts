@@ -1,3 +1,4 @@
+import { cachedCover } from "../lib/cover-art-cache.ts";
 import { EventRouter, EventScope, type SubscriptionOptions } from "../lib/events.ts";
 import type { ServerApi } from "../lib/services.ts";
 import type {
@@ -244,6 +245,7 @@ export class ServerDataStore {
     this.playerCatalog = new PlayerCatalogStore(api);
     this.playerStates = new PlayerStateStore(api);
     const off = api.changes.onChange((change) => {
+      if (change.topic === "libraries") cachedCover.invalidate(api);
       this.changes.emit(change.topic, change);
     });
     this.scope.signal.addEventListener("abort", off, { once: true });

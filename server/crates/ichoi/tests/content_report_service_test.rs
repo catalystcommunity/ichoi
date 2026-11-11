@@ -122,3 +122,92 @@ fn rejects_anonymous_missing_targets_and_long_details() {
         .report_content(&common::ctx_user("reporter@example.com"), exact_limit)
         .is_ok());
 }
+
+#[test]
+fn moderation_operations_are_reachable_through_the_wire_dispatcher() {
+    use ichoi::transport::dispatch;
+    use libichoi::csil::codec::*;
+    let (app, pool) = common::test_app();
+    {
+        let mut conn = pool.get().unwrap();
+        seed_targets(&mut conn);
+        seed_account(&mut conn, "admin@example.com");
+        store::set_role(&mut conn, "admin@example.com", "admin").unwrap();
+    }
+    let report = app
+        .report_content(
+            &common::ctx_user("reporter@example.com"),
+            ReportContentRequest {
+                target_type: ContentReportTargetType::Playlist,
+                target_id: "playlist:one".into(),
+                reason: ContentReportReason::Spam,
+                details: None,
+            },
+        )
+        .unwrap();
+    let admin = common::ctx_admin("admin@example.com");
+    let page = encode_page(&Page {
+        offset: None,
+        limit: None,
+    });
+    let bytes = dispatch(&app, &admin, "admin", "list-content-reports", &page).unwrap();
+    assert_eq!(
+        decode_list_content_reports_response(&bytes)
+            .unwrap()
+            .reports
+            .len(),
+        1
+    );
+    let update = UpdateContentReportStatusRequest {
+        report_id: report.id,
+        status: ContentReportStatus::Resolved,
+    };
+    let bytes = dispatch(
+        &app,
+        &admin,
+        "admin",
+        "update-content-report-status",
+        &encode_update_content_report_status_request(&update),
+    )
+    .unwrap();
+    assert!(matches!(
+        decode_content_report(&bytes).unwrap().status,
+        ContentReportStatus::Resolved
+    ));
+    assert_eq!(
+        dispatch(
+            &app,
+            &common::ctx_user("reporter@example.com"),
+            "admin",
+            "list-content-reports",
+            &page
+        )
+        .unwrap_err()
+        .code,
+        403
+    );
+    // These Settings operations also need explicit dispatch because both traits use delete_account.
+    let deletion = dispatch(
+        &app,
+        &common::ctx_anon(),
+        "session",
+        "delete-account",
+        &encode_delete_account_request(&DeleteAccountRequest {
+            confirmation_handle: "target".into(),
+        }),
+    )
+    .unwrap_err();
+    assert_eq!(deletion.code, 401);
+    let deletion = dispatch(
+        &app,
+        &common::ctx_user("reporter@example.com"),
+        "admin",
+        "delete-account",
+        &encode_admin_delete_account_request(&AdminDeleteAccountRequest {
+            account_id: "target@example.com".into(),
+            confirmation_handle: "target".into(),
+        }),
+    )
+    .unwrap_err();
+    assert_eq!(deletion.code, 403);
+}
