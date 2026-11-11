@@ -40,10 +40,15 @@ pub struct RpcBackend {
     fingerprints: Vec<String>,
     api_key: String,
     rp_domain: String,
+    application_id: String,
 }
 
 impl RpcBackend {
     pub fn from_config(config: &Config) -> anyhow::Result<RpcBackend> {
+        anyhow::ensure!(
+            liblinkkeys::application_keys::is_valid_identifier(&config.linkkeys_rp_application_id),
+            "ICHOI_LINKKEYS_RP_APPLICATION_ID must contain 1-128 ASCII letters, digits, '-', '_' or '.'"
+        );
         Ok(RpcBackend {
             addr: required(&config.linkkeys_rp_addr, "ICHOI_LINKKEYS_RP_ADDR")?.to_string(),
             fingerprints: config.linkkeys_rp_fingerprints.clone(),
@@ -51,6 +56,18 @@ impl RpcBackend {
                 .to_string(),
             rp_domain: required(&config.linkkeys_rp_domain, "ICHOI_LINKKEYS_RP_DOMAIN")?
                 .to_string(),
+            application_id: config.linkkeys_rp_application_id.clone(),
+        })
+    }
+
+    fn sign_request(&self, callback_url: &str, nonce: &str) -> Vec<u8> {
+        generated::encode_rp_sign_request(&lk::RpSignRequest {
+            callback_url: callback_url.to_string(),
+            nonce: nonce.to_string(),
+            application_id: Some(self.application_id.clone()),
+            requested_claims: Some(login_claims()),
+            flow_context: None,
+            authentication_requirements: None,
         })
     }
 
@@ -80,16 +97,7 @@ impl Backend for RpcBackend {
     ) -> anyhow::Result<(String, String)> {
         let api_base = resolve_api_base(domain);
         let nonce = crate::auth::mint_token().token;
-        let response = self.call(
-            "sign-request",
-            generated::encode_rp_sign_request(&lk::RpSignRequest {
-                callback_url: callback_url.to_string(),
-                nonce: nonce.clone(),
-                requested_claims: Some(login_claims()),
-                flow_context: None,
-                authentication_requirements: None,
-            }),
-        )?;
+        let response = self.call("sign-request", self.sign_request(callback_url, &nonce))?;
         let signed = generated::decode_rp_sign_response(&response)?;
         let redirect_url = format!(
             "{}/auth/authorize?callback_url={}&nonce={}&username={}&relying_party={}&signed_request={}",
@@ -246,5 +254,41 @@ mod tests {
         let claims = login_claims();
         assert_eq!(claims.required.len(), 1);
         assert_eq!(claims.required[0].claim_type, "handle");
+    }
+
+    #[test]
+    fn signed_login_request_names_the_application_and_preserves_claim_requirements() {
+        let backend = RpcBackend {
+            addr: "rp.example:4987".into(),
+            fingerprints: vec![],
+            api_key: "test-key".into(),
+            rp_domain: "rp.example".into(),
+            application_id: "ichoi.family-1".into(),
+        };
+        // A different callback host must not become the application or RP identity.
+        let callback = "https://music.example/auth/linkkeys/callback?attempt=one";
+        let wire = backend.sign_request(callback, "nonce-one");
+        let value: ciborium::Value = ciborium::from_reader(wire.as_slice()).unwrap();
+        let fields = value.as_map().unwrap();
+        assert_eq!(
+            fields
+                .iter()
+                .find(|(k, _)| k.as_text() == Some("application_id"))
+                .unwrap()
+                .1
+                .as_text(),
+            Some("ichoi.family-1")
+        );
+        assert!(!fields
+            .iter()
+            .any(|(k, _)| k.as_text() == Some("subject_user_id")));
+        let request = generated::decode_rp_sign_request(&wire).unwrap();
+        assert_eq!(request.callback_url, callback);
+        assert_eq!(request.nonce, "nonce-one");
+        let claims = request.requested_claims.unwrap();
+        assert_eq!(claims.required.len(), 1);
+        assert_eq!(claims.required[0].claim_type, "handle");
+        assert_eq!(claims.optional.len(), 1);
+        assert_eq!(claims.optional[0].claim_type, "display_name");
     }
 }

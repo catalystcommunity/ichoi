@@ -264,11 +264,13 @@ pub fn validate_runtime_config(config: &Config) -> anyhow::Result<()> {
             .map_err(|e| anyhow::anyhow!("invalid ICHOI_PUBLIC_URL: {e}"))?;
         if parsed.scheme() != "https"
             || parsed.host_str().is_none()
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
             || parsed.query().is_some()
             || parsed.fragment().is_some()
             || parsed.path() != "/"
         {
-            anyhow::bail!("ICHOI_PUBLIC_URL must be an HTTPS origin without a path");
+            anyhow::bail!("ICHOI_PUBLIC_URL must be an HTTPS origin without credentials or a path");
         }
     }
 

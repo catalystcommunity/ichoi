@@ -741,7 +741,7 @@ dependencies = [
 [[package]]
 name = "csilgen-transport"
 version = "0.1.0"
-source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=64828330a2c7826ab91628ee7a8eaf14fe369958#64828330a2c7826ab91628ee7a8eaf14fe369958"
+source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=3227a58c78a795a876b86258793375df291d3dcd#3227a58c78a795a876b86258793375df291d3dcd"
 dependencies = [
  "ciborium",
  "ciborium-io",
@@ -1965,7 +1965,7 @@ dependencies = [
 [[package]]
 name = "liblinkkeys"
 version = "0.1.0"
-source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=64828330a2c7826ab91628ee7a8eaf14fe369958#64828330a2c7826ab91628ee7a8eaf14fe369958"
+source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=3227a58c78a795a876b86258793375df291d3dcd#3227a58c78a795a876b86258793375df291d3dcd"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2015,8 +2015,9 @@ checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
 [[package]]
 name = "linkkeys-local-rp"
 version = "0.1.0"
-source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=64828330a2c7826ab91628ee7a8eaf14fe369958#64828330a2c7826ab91628ee7a8eaf14fe369958"
+source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=3227a58c78a795a876b86258793375df291d3dcd#3227a58c78a795a876b86258793375df291d3dcd"
 dependencies = [
+ "base64ct",
  "chrono",
  "csilgen-transport",
  "hickory-resolver 0.26.2",
@@ -2026,12 +2027,13 @@ dependencies = [
  "rustls",
  "serde",
  "tokio",
+ "url",
 ]
 
 [[package]]
 name = "linkkeys-rpc-client"
 version = "0.1.0"
-source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=64828330a2c7826ab91628ee7a8eaf14fe369958#64828330a2c7826ab91628ee7a8eaf14fe369958"
+source = "git+https://github.com/catalystcommunity/linkkeys.git?rev=3227a58c78a795a876b86258793375df291d3dcd#3227a58c78a795a876b86258793375df291d3dcd"
 dependencies = [
  "ciborium",
  "csilgen-transport",

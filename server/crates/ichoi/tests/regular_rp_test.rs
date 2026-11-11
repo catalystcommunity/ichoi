@@ -58,7 +58,7 @@ fn enabled_app() -> App {
     config.linkkeys_rp_addr = Some("rp.example:4987".to_string());
     config.linkkeys_rp_fingerprints = vec!["a".repeat(64)];
     config.linkkeys_rp_api_key = Some("test-api-key".to_string());
-    config.linkkeys_rp_domain = Some("ichoi.example".to_string());
+    config.linkkeys_rp_domain = Some("rp.example".to_string());
     config.public_url = Some("https://ichoi.example".to_string());
     config.linkkeys_trusted_user_ids = vec!["regular-user-uuid@family.example".to_string()];
     let pool = ichoi::db::test_pool();
@@ -84,6 +84,42 @@ fn regular_rp_requires_complete_configuration_with_optional_initial_trust() {
 
     config.public_url = Some("https://ichoi.example".to_string());
     assert!(ichoi::app::validate_runtime_config(&config).is_ok());
+
+    // LinkKeys v0.16.7 permits HTTPS callbacks outside the RP domain.
+    config.public_url = Some("https://music.other.example:8443".to_string());
+    assert!(ichoi::app::validate_runtime_config(&config).is_ok());
+    for origin in [
+        "https://user:secret@music.other.example",
+        "https://user@music.other.example",
+    ] {
+        config.public_url = Some(origin.into());
+        assert!(ichoi::app::validate_runtime_config(&config)
+            .unwrap_err()
+            .to_string()
+            .contains("credentials"));
+    }
+    config.public_url = Some("https://ichoi.example".to_string());
+    for invalid in [
+        "".to_string(),
+        "with space".into(),
+        "a/b".into(),
+        "café".into(),
+        "a".repeat(129),
+    ] {
+        config.linkkeys_rp_application_id = invalid;
+        assert!(ichoi::app::validate_runtime_config(&config)
+            .unwrap_err()
+            .to_string()
+            .contains("ICHOI_LINKKEYS_RP_APPLICATION_ID"));
+    }
+    for valid in [
+        "ichoi".to_string(),
+        "Ichoi.family_1-2".into(),
+        "a".repeat(128),
+    ] {
+        config.linkkeys_rp_application_id = valid;
+        assert!(ichoi::app::validate_runtime_config(&config).is_ok());
+    }
 
     config.linkkeys_local_rp = true;
     assert!(ichoi::app::validate_runtime_config(&config)
@@ -138,6 +174,7 @@ async fn regular_rp_browser_flow_is_mocked_single_use_and_mints_session() {
     let redirect = response["redirect_url"].as_str().unwrap();
     assert!(redirect.contains("username=alice"));
     let callback = redirect.split("callback_url=").nth(1).unwrap();
+    assert!(callback.starts_with("https://ichoi.example/auth/linkkeys/callback?"));
     let attempt = callback.split("attempt=").nth(1).unwrap();
 
     let callback_uri =

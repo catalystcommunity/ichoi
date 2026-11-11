@@ -49,6 +49,7 @@ pub fn test_config() -> Config {
         linkkeys_rp_fingerprints: vec![],
         linkkeys_rp_api_key: None,
         linkkeys_rp_domain: None,
+        linkkeys_rp_application_id: "ichoi".to_string(),
         public_url: None,
         linkkeys_trusted_identities: vec![],
         linkkeys_trusted_user_ids: vec![],

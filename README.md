@@ -85,6 +85,7 @@ settings:
 | RP TLS fingerprints | `ICHOI_LINKKEYS_RP_FINGERPRINTS` | unset |
 | RP API key | `ICHOI_LINKKEYS_RP_API_KEY` or `ICHOI_LINKKEYS_RP_API_KEY_FILE` | unset |
 | RP domain | `ICHOI_LINKKEYS_RP_DOMAIN` | unset |
+| RP application ID | `ICHOI_LINKKEYS_RP_APPLICATION_ID` | `ichoi` |
 | Public HTTPS origin | `ICHOI_PUBLIC_URL` | unset |
 | Trusted LinkKeys identities | `ICHOI_LINKKEYS_TRUSTED_IDENTITIES` | unset |
 | Trusted stable LinkKeys user IDs | `ICHOI_LINKKEYS_TRUSTED_USER_IDS` | unset |
@@ -207,6 +208,7 @@ ICHOI_LINKKEYS_RP_ADDR="linkkeys.example.com:4987"
 ICHOI_LINKKEYS_RP_FINGERPRINTS="fingerprint1,fingerprint2"
 ICHOI_LINKKEYS_RP_API_KEY_FILE="/run/secrets/linkkeys_rp_api_key"
 ICHOI_LINKKEYS_RP_DOMAIN="ichoi.example.com"
+ICHOI_LINKKEYS_RP_APPLICATION_ID="ichoi"
 ICHOI_PUBLIC_URL="https://ichoi.example.com"
 ICHOI_LINKKEYS_TRUSTED_IDENTITIES="family.example,alice@friends.example"
 ```
@@ -225,6 +227,29 @@ out of Compose interpolation and the container environment. Ichoi pins the RP
 server's TLS certificate to the configured fingerprints, requests and verifies
 the `handle` claim, and applies the same domain/handle admission selectors used
 by DNS-less mode.
+
+Ichoi uses LinkKeys v0.16.7. Regular-RP requests include a stable application ID.
+Set `ICHOI_LINKKEYS_RP_APPLICATION_ID`, or `linkkeys_rp_application_id` in TOML,
+to override `ichoi`. Use 1 to 128 ASCII letters, digits, `-`, `_`, or `.`. Keep
+this value stable. Use different IDs for applications that share an API-key
+account but need separate consent. Give the RP service account a display name
+that users can recognize. LinkKeys shows that name on its consent screen.
+
+LinkKeys now records consent for the API-key account, RP domain, and application
+ID. Old domain-only grants do not cover the new application. Users must approve
+the claims once more after the upgrade. Ichoi still requires `handle` and asks
+for `display_name` as an optional claim. If an existing application already has
+consent under the RP account username, set the application ID to that username
+to keep the same application identity. If act-as grants are added, use the same
+application ID that those grants use.
+
+`ICHOI_PUBLIC_URL` can use a host outside `ICHOI_LINKKEYS_RP_DOMAIN`. It must be
+an HTTPS origin with no credentials, path, query, or fragment. Both the RP
+service and the user's IDP must support v0.16.7 for this callback behavior.
+An older IDP can reject it with `callback_off_domain`. DNS-less local-RP login
+continues to use its stored key identity. It now requests only `handle` and
+`display_name`; it no longer inherits the SDK's unused email request. The mobile
+callback and exchange-code flow do not change.
 
 ## Native satellite installation
 
