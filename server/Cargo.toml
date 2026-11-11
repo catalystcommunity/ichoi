@@ -51,11 +51,11 @@ tokio-rustls = { version = "0.26", default-features = false, features = ["ring",
 rcgen = { version = "0.13", default-features = false, features = ["crypto", "pem", "ring"] }
 x509-parser = "0.16"
 
-# DNS-less LinkKeys relying-party SDK. Pin the repository revision so releases
+# LinkKeys v0.16.7 relying-party dependencies. Pin the revision so releases
 # remain reproducible even before the SDK has an independently versioned crate.
-linkkeys-local-rp = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "64828330a2c7826ab91628ee7a8eaf14fe369958" }
-liblinkkeys = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "64828330a2c7826ab91628ee7a8eaf14fe369958" }
-linkkeys-rpc-client = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "64828330a2c7826ab91628ee7a8eaf14fe369958" }
+linkkeys-local-rp = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "3227a58c78a795a876b86258793375df291d3dcd" }
+liblinkkeys = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "3227a58c78a795a876b86258793375df291d3dcd" }
+linkkeys-rpc-client = { git = "https://github.com/catalystcommunity/linkkeys.git", rev = "3227a58c78a795a876b86258793375df291d3dcd" }
 hickory-resolver = "0.24"
 
 [profile.release]

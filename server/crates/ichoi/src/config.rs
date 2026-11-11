@@ -68,6 +68,7 @@ struct FileConfig {
     linkkeys_rp_fingerprints: Option<Vec<String>>,
     linkkeys_rp_api_key: Option<String>,
     linkkeys_rp_domain: Option<String>,
+    linkkeys_rp_application_id: Option<String>,
     public_url: Option<String>,
     linkkeys_trusted_identities: Option<Vec<String>>,
     linkkeys_trusted_user_ids: Option<Vec<String>>,
@@ -128,6 +129,8 @@ pub struct Config {
     pub linkkeys_rp_api_key: Option<String>,
     /// DNS identity held by the external RP service.
     pub linkkeys_rp_domain: Option<String>,
+    /// Stable application ID under the RP API-key account. Defaults to `ichoi`.
+    pub linkkeys_rp_application_id: String,
     /// Browser-visible HTTPS origin used for the regular-RP callback.
     pub public_url: Option<String>,
     /// Admission selectors: either `domain` or `handle@domain`.
@@ -350,6 +353,11 @@ impl Config {
                 .or(linkkeys_rp_api_key_file)
                 .or(file.linkkeys_rp_api_key),
             linkkeys_rp_domain: pick_opt("ICHOI_LINKKEYS_RP_DOMAIN", file.linkkeys_rp_domain),
+            linkkeys_rp_application_id: pick_opt(
+                "ICHOI_LINKKEYS_RP_APPLICATION_ID",
+                file.linkkeys_rp_application_id,
+            )
+            .unwrap_or_else(|| "ichoi".to_string()),
             public_url: pick_opt("ICHOI_PUBLIC_URL", file.public_url),
             linkkeys_trusted_identities: pick_opt(
                 "ICHOI_LINKKEYS_TRUSTED_IDENTITIES",
@@ -562,6 +570,7 @@ linkkeys_rp_addr = "linkkeys.example:4987"
 linkkeys_rp_fingerprints = ["aaaa", "bbbb"]
 linkkeys_rp_api_key = "secret"
 linkkeys_rp_domain = "ichoi.example"
+linkkeys_rp_application_id = "ichoi.family-1"
 public_url = "https://ichoi.example:4042"
 linkkeys_trusted_identities = ["alice@example.com"]
 linkkeys_trusted_user_ids = ["019d6ac9-58bf-7303-8a5a-e60fba633239@example.com"]
@@ -578,6 +587,10 @@ zero_account_guest_access = false
         assert_eq!(parsed.linkkeys_rp_fingerprints.unwrap().len(), 2);
         assert_eq!(parsed.linkkeys_rp_api_key.as_deref(), Some("secret"));
         assert_eq!(parsed.linkkeys_rp_domain.as_deref(), Some("ichoi.example"));
+        assert_eq!(
+            parsed.linkkeys_rp_application_id.as_deref(),
+            Some("ichoi.family-1")
+        );
         assert_eq!(
             parsed.public_url.as_deref(),
             Some("https://ichoi.example:4042")

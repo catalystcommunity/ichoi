@@ -97,6 +97,15 @@ impl SdkBackend {
             identity: local_rp_identity_from_bytes(&stored.identity_bundle)?,
         })
     }
+
+    fn login_config(&self, domain: &str, callback_url: &str) -> BeginLocalLoginConfig<'_> {
+        let mut config =
+            BeginLocalLoginConfig::new(&self.identity, callback_url, domain, Utc::now());
+        // Do not inherit extra profile claims from the SDK defaults.
+        config.requested_claims = Some(vec!["handle".into(), "display_name".into()]);
+        config.required_claims = Some(vec!["handle".into()]);
+        config
+    }
 }
 
 impl Backend for SdkBackend {
@@ -105,12 +114,7 @@ impl Backend for SdkBackend {
     }
 
     fn begin(&self, domain: &str, callback_url: &str) -> anyhow::Result<(String, String)> {
-        let (redirect, pending) = begin_local_login(BeginLocalLoginConfig::new(
-            &self.identity,
-            callback_url,
-            domain,
-            Utc::now(),
-        ))?;
+        let (redirect, pending) = begin_local_login(self.login_config(domain, callback_url))?;
         Ok((redirect.redirect_url, serde_json::to_string(&pending)?))
     }
 
@@ -224,6 +228,43 @@ pub fn is_expired(expires_at: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn local_login_requests_only_used_claims_and_keeps_handle_required() {
+        struct NoDns;
+        impl linkkeys_local_rp::DnsResolver for NoDns {
+            fn txt_lookup(
+                &self,
+                _: &str,
+            ) -> Result<Vec<String>, linkkeys_local_rp::dns::DnsLookupError> {
+                Ok(vec![])
+            }
+        }
+        let backend = SdkBackend {
+            identity: generate_local_rp_identity(GenerateLocalRpIdentityConfig::new(
+                "Ichoi",
+                Utc::now(),
+            ))
+            .unwrap(),
+        };
+        let mut config = backend.login_config("family.example", "http://localhost:4042/callback");
+        config.dns = Some(&NoDns);
+        let (redirect, pending) = begin_local_login(config).unwrap();
+        let url = reqwest::Url::parse(&redirect.redirect_url).unwrap();
+        let (_, encoded) = url
+            .query_pairs()
+            .find(|(k, _)| k == "signed_request")
+            .unwrap();
+        let signed =
+            liblinkkeys::encoding::signed_local_rp_login_request_from_url_param(&encoded).unwrap();
+        let request =
+            liblinkkeys::generated::decode_local_rp_login_request(&signed.request).unwrap();
+        assert_eq!(request.requested_claims, vec!["handle", "display_name"]);
+        assert_eq!(request.required_claims, vec!["handle"]);
+        assert_eq!(pending.required_claims, vec!["handle"]);
+        assert_eq!(pending.user_domain, "family.example");
+        assert_eq!(pending.callback_url, "http://localhost:4042/callback");
+    }
 
     #[test]
     fn parses_domain_and_optional_handle() {
