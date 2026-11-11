@@ -69,6 +69,7 @@ settings:
 | Flatten disc subfolders into parent albums | `ICHOI_ALBUM_SUBFOLDER_FLAT` | `true` |
 | Disc-subfolder matching words | `ICHOI_ALBUM_SUBFOLDER_WORDS` | `cd,disc,disk,bonus disc` |
 | Database directory | `ICHOI_DB_DIR` | music dir |
+| Artwork cache size in MB | `ICHOI_ARTWORK_CACHE_MB` | `200` (`0` disables caching) |
 | HTTP listen | `ICHOI_HTTP_ADDR` | `:4042` |
 | CSIL listen | `ICHOI_CSIL_ADDR` | `:4043` |
 | Core address (satellite) | `ICHOI_CORE_ADDR` | *(required for a satellite)* |
@@ -342,6 +343,16 @@ The [`server/Dockerfile`](server/Dockerfile) produces a minimal **scratch** imag
 `linux/amd64` + `linux/arm64`) containing the `ichoi` binary, a bundled static **LGPL**
 ffmpeg, and the web UI. The static core build does not load audio libraries. It reports
 `audio_outputs: none`.
+
+SQLite needs a writable temporary directory for large sorts and grouping queries.
+The image provides `/tmp` with mode `1777`, including access for a non-root UID.
+If the container root filesystem is read only, mount a writable directory or
+tmpfs at `/tmp`. Without it, SQLite can report `disk I/O error` with extended
+code `6410` (`SQLITE_IOERR_GETTEMPPATH`), even when the database passes its
+integrity check.
+The core Compose examples mount a 256 MiB tmpfs at `/tmp`. Increase this limit
+if queries need more temporary storage. The mount is created again each time
+the container is created.
 
 ```sh
 docker buildx build --platform linux/amd64,linux/arm64 -t ichoi:dev server

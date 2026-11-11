@@ -1,101 +1,94 @@
-# Ichoi web UIs
+# Ichoi web UI
 
-This directory holds the **browser UIs** for Ichoi. Per DESIGN §11, the web UI
-files are the only distributable that is *not* inside the Ichoi binary (the other
-bundled file is ffmpeg, §5.3), so they live here as plain static assets the server
-serves.
+The default theme uses Zest web components, Vite, and TypeScript. It has no
+SolidJS dependency. The server serves the static files from
+`themes/default/dist`. Clients use CSIL-Events over `/ws`.
 
-```
-web/
-  README.md            ← you are here
-  themes/
-    default/           ← the official theme (SolidJS SPA), documented below
-    <your-theme>/      ← drop-in alternative UIs
-```
+## Build and check
 
-## How the server serves a theme
-
-The Ichoi core's HTTP listener (`:4042`) does exactly two things (DESIGN §4.1):
-
-1. serve static UI files (`ServeDir` over a theme directory), and
-2. accept the WebSocket upgrade at **`/ws`**, which carries **CSIL-Events** — the
-   one API surface every client uses.
-
-Multiple themes under `web/themes/<name>/` can be served concurrently, optionally
-path-scoped, with a redirect at login (§11). Theme *settings* (e.g. default light
-/ dark) live in the server database, so any theme honors them — this theme reads
-them via `AdminService.get-settings` and applies `theme` if present.
-
-A theme is served from its **build output** (`themes/<name>/dist/`), not its
-source. The app is built with a **relative base** (`vite.config.ts` `base: "./"`),
-so it works whether it is mounted at the site root or under a path like
-`/themes/default/`. The WebSocket URL defaults to the serving origin's `/ws`, so a
-browser served by the core connects straight back to it with no configuration.
-
-## Build the default theme
-
-Node 26 is the toolchain (`catalyst-tools` provides it):
+Run these commands from `server/web/themes/default` with Node 26:
 
 ```sh
-cd web/themes/default
 npm install
-npm run build      # tsc --noEmit && vite build  →  dist/
-npm run dev        # local dev server on :5173, proxies /ws → localhost:4042
+npm test
+npm run build
+npm run dev
 ```
 
-`npm run build` emits `dist/` (hashed JS/CSS chunks, `index.html`, and the
-`ichoi-worklet.js` audio worklet copied from `public/`). Point the server's static
-handler at that `dist/` directory.
+The development server uses port 5173. It forwards `/ws`, `/api`, and `/media` to port 4042. Do not run
+`npm ci` while a browser check uses the development server.
 
-### The audio decoder (`ichoi-decoder`)
+Open `http://localhost:5173/tests/browser/reliability.html` in a separate browser
+profile. The fixture uses simulated replies. It restores local storage when it
+ends. It checks request failures, retry, partial catalog results, queue edits,
+search retention, and device selection.
 
-Local (private-player) playback decodes with a **Symphonia → WASM** module named
-`ichoi-decoder` (DESIGN §5.5). That module is built separately and is **optional**
-here: if it is absent, the UI degrades gracefully — browsing, search, playlists,
-queueing, and **jukebox / shared-target control all keep working**; only local
-decode-to-speakers is disabled, with a clear message. To enable it, drop the
-wasm-bindgen glue `ichoi-decoder.js` + `ichoi-decoder_bg.wasm` next to the built
-`index.html` (or inject `window.ichoiDecoder`); `src/lib/audio/decoder.ts` finds
-it automatically.
+## Components and state
 
-## Bundle your own UI
+`src/app.ts` owns the router, navigation, player, and queue panel. The queue stays
+outside the browse view. Opening it does not replace search input or results.
+`src/ui` contains the library, details, settings, device, and playback views.
 
-A theme is just a directory of static files that talk CSIL-Events over `/ws`. To
-build your own:
+Zest supplies the component lifecycle, router, controls, dialogs, notices,
+virtual track list, and virtual range calculation. Ichoi supplies a responsive
+cover grid with sparse pages. The published Zest versions match the sibling
+`zest` repository at this change. Component requests are in that repository's
+`component-bugs.md`.
 
-1. Create `web/themes/<your-name>/` and produce static assets (any framework, or
-   none). Use a **relative asset base** so it can be path-mounted.
-2. Speak the wire: open a WebSocket to `/ws`, complete the CSIL-Events
-   `$hello` / `$hello-ack` handshake (verbose profile), then send/receive typed
-   events. You can copy this theme's transport layer wholesale — it is
-   self-contained and has no framework ties:
-   - `src/lib/cbor.ts` — canonical CBOR (byte-exact with `csilgen-transport`),
-   - `src/lib/csil.ts` — the CSIL-Events envelope, handshake, correlation, and
-     channel dispatch (the wire seam is `encodeEnvelope` / `decodeEnvelope`),
-   - `src/lib/services.ts` + `src/lib/schema.ts` — typed clients and record types
-     mirroring `schema/*.csil`.
-   - `public/ichoi-worklet.js` + `src/lib/audio/*` — the postMessage-fed playback
-     pipeline.
-3. Honor i18n and a11y from the start (§11) — see `ACCESSIBILITY.md`.
+The server and playback stores use explicit state cells from Zest's data service.
+Subscriptions have cleanup functions. Network replies check the active request
+before they change a view. The existing audio and queue engines remain in use.
 
-The transport layer is verified against csilgen's published conformance vectors,
-so a UI built on it is on the same wire as native clients and satellites.
+The interface has album and artist browsing, audiobook progress, federated
+search, playlists, account controls, reports, and administration. The persistent
+player has a device selector and a queue button. Queue rows have Play, Move up,
+Move down, and Remove controls. Undo restores queue edits. The More button gives
+narrow screens access to volume, shuffle, repeat, and the previous track.
 
-## What this theme implements
+The interface is currently English. The domain message translator remains in
+`src/lib/i18n.ts`. See `themes/default/ACCESSIBILITY.md` for access checks and gaps.
 
-`themes/default/` is a complete SolidJS + Vite + TypeScript SPA:
+## Request failures
 
-- **Library** browse (albums / artists), **album** and **artist** detail, **search**.
-- **Playlists** (m3u-backed, §7) with resolved-track playback.
-- **Jukebox**: shared targets as live console channel strips with transport +
-  volume, this client's private players, and "share this device" (§6.4).
-- **Now Playing** with the local queue.
-- **Settings**: appearance (theme / language), playback prefs (transcode codec,
-  prefer-original, bitrate cap — the per-stream `StreamPref`, §5.1), and
-  admin-gated server settings.
-- **Multi-server** switcher (§7): one session per server, browse each, switch the
-  active one; LinkKeys sign-in is stubbed with a clear TODO, login-less = guest.
+The connection handshake has a 15-second deadline. Each request has a 15-second
+limit that includes the handshake. An expired request is not sent later. The
+client does not automatically repeat a request that can change server data.
 
-See `themes/default/ACCESSIBILITY.md` for the a11y approach, and the header comment
-in `themes/default/src/lib/csil.ts` for the wire-protocol assumptions the Rust side
-must honor.
+Failed reads show an error, technical details, and Retry. Settings panels load
+separately. Reports do not wait for the account list. Account data is requested
+when an administrator deletes a reported account. A failed page keeps navigation
+and playback controls available.
+
+Cover grids request pages near the visible area. List view loads all pages for
+sorting. A page failure retains successful pages. Retry requests failed pages.
+
+## Artwork
+
+Visible covers request images of up to 256 pixels. Two artwork connections per
+server keep these reads separate from library and playback requests. At most two
+cover requests run at once per server. A browser memory cache retains up to 512
+results. Missing covers remain cached until an artwork change. Other failures
+can be retried. An artwork change clears that server's cover cache.
+
+A dedicated server thread handles artwork reads and owns a thumbnail cache.
+The cache defaults to 200 MB. Set `ICHOI_ARTWORK_CACHE_MB` or the TOML key
+`artwork_cache_mb` to change it. Set zero to disable caching. Restart the server
+to apply a change. The least recently used images are removed to meet the byte
+limit. There is no fixed entry limit. See `docs/cover-art.md` for details. File keys
+include path, picture index, size, modification time, image hash, and requested
+thumbnail size. Uploaded image keys include the data hash and requested size.
+No thumbnail files are written to disk.
+
+## Alternative themes
+
+A theme is a directory of static files. Use the handwritten files in `src/lib`
+for examples of CBOR, the CSIL handshake, typed service calls, and audio playback.
+The `public/ichoi-worklet.js` file supports browser audio. Local decode also needs
+`ichoi-decoder.js` and `ichoi-decoder_bg.wasm`, or an injected decoder module.
+Shared-device control does not need that decoder.
+
+## Next Actions
+
+Before release, run the checks above and the native app checks. After deployment,
+check Settings, Audiobooks, cover loading, and shared playback on the target
+instance. The working-tree changes do not update a running instance.

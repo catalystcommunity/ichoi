@@ -195,6 +195,7 @@ mod tests {
             zero_account_guest_access: true,
             trusted_proxy_cidrs: vec![],
             session_lifetime_hours: 720,
+            artwork_cache_mb: 200,
         };
         let pref = StreamPref {
             max_bitrate_kbps: None,

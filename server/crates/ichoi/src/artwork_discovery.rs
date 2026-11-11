@@ -47,6 +47,26 @@ impl Candidate {
         // A replaced file requires a new scan; never apply a different image under an old ID.
         (digest(&data) == self.fingerprint).then_some(data)
     }
+
+    fn thumbnail(&self, size: u64) -> Option<CoverArt> {
+        // Check the source before using a thumbnail. A replaced file must not reuse old art.
+        let metadata = std::fs::metadata(&self.source).ok()?;
+        let key = format!(
+            "file:{:?}:{:?}:{}:{:?}:{}:{}",
+            self.source,
+            self.picture,
+            metadata.len(),
+            metadata.modified().ok()?,
+            self.fingerprint,
+            size.clamp(32, 1600)
+        );
+        if let Some(art) = artwork::cached_thumbnail(&key) {
+            return Some(art);
+        }
+        let art = artwork::normalize(&self.bytes()?, size).ok()?;
+        artwork::cache_thumbnail(key, &art);
+        Some(art)
+    }
 }
 
 #[derive(Clone)]
@@ -607,9 +627,7 @@ pub fn selected(
 ) -> anyhow::Result<Option<CoverArt>> {
     for (candidate, selected) in list(conn, &ArtworkKind::Album, id)? {
         if selected {
-            return Ok(candidate
-                .bytes()
-                .and_then(|data| artwork::normalize(&data, size).ok()));
+            return Ok(candidate.thumbnail(size));
         }
     }
     Ok(None)
@@ -624,8 +642,7 @@ pub fn candidate(
     Ok(list(conn, kind, id)?
         .into_iter()
         .find(|(c, _)| c.id == candidate_id)
-        .and_then(|(c, _)| c.bytes())
-        .and_then(|data| artwork::normalize(&data, size).ok()))
+        .and_then(|(c, _)| c.thumbnail(size)))
 }
 
 /// File-only discovery for callers without an indexed album. Full scans also compare embedded art.

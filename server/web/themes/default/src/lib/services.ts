@@ -135,7 +135,9 @@ export class SessionService {
 }
 
 export class LibraryService {
-  constructor(private readonly conn: CsilConnection) {}
+  constructor(private readonly conn: CsilConnection, private readonly artworkConnections: CsilConnection[] = [conn]) {}
+  private artworkIndex = 0;
+  private artworkConnection(): CsilConnection { return this.artworkConnections[this.artworkIndex++ % this.artworkConnections.length]!; }
 
   listLibraries(page: Page = {}): Promise<LibrariesResponse> {
     return this.conn.call(
@@ -221,19 +223,19 @@ export class LibraryService {
     return this.conn.call(LIBRARY, "report-content", encodeRecord(req), decodeRecord<ContentReport>);
   }
   getArtwork(req: ArtworkRequest): Promise<CoverArt> {
-    return this.conn.call(LIBRARY, "get-artwork", encodeRecord(req), decodeRecord<CoverArt>);
+    return this.artworkConnection().call(LIBRARY, "get-artwork", encodeRecord(req), decodeRecord<CoverArt>);
   }
   listArtworkCandidates(req: ArtworkRequest & { offset?: number; limit?: number }): Promise<ArtworkCandidates> {
     return this.conn.call(LIBRARY, "list-artwork-candidates", encodeRecord(req), decodeRecord<ArtworkCandidates>);
   }
   getArtworkCandidate(req: ArtworkRequest & { candidate_id: string }): Promise<CoverArt> {
-    return this.conn.call(LIBRARY, "get-artwork-candidate", encodeRecord(req), decodeRecord<CoverArt>);
+    return this.artworkConnection().call(LIBRARY, "get-artwork-candidate", encodeRecord(req), decodeRecord<CoverArt>);
   }
   setArtwork(req: SetArtworkRequest): Promise<Ok> {
     return this.conn.call(LIBRARY, "set-artwork", encodeRecord(req), decodeRecord<Ok>);
   }
   getCoverArt(req: CoverArtRequest): Promise<CoverArt> {
-    return this.conn.call(LIBRARY, "get-cover-art", encodeRecord(req), decodeRecord<CoverArt>);
+    return this.artworkConnection().call(LIBRARY, "get-cover-art", encodeRecord(req), decodeRecord<CoverArt>);
   }
   getAudiobookProgress(req: AudiobookProgressRequest): Promise<AudiobookProgressResponse> {
     return this.conn.call(
@@ -497,9 +499,9 @@ export class ServerApi {
   readonly node: NodeService;
   readonly changes: ChangeService;
 
-  constructor(readonly conn: CsilConnection) {
+  constructor(readonly conn: CsilConnection, artworkConnections: CsilConnection[] = [conn]) {
     this.session = new SessionService(conn);
-    this.library = new LibraryService(conn);
+    this.library = new LibraryService(conn, artworkConnections);
     this.player = new PlayerService(conn);
     this.admin = new AdminService(conn);
     this.node = new NodeService(conn);

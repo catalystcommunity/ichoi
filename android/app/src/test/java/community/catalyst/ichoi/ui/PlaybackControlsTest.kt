@@ -46,12 +46,14 @@ class PlaybackControlsTest {
         button("App settings").performClick()
         assertSame(controls, views().filterIsInstance<PlaybackControls>().single())
         PlaybackStatus.update(PlaybackStatus.current.copy(phase = PlaybackStatus.Phase.PAUSED))
-        button("Resume").performClick()
+        button("Play").performClick()
         assertEquals(PlaybackService.ACTION_RESUME, shadowOf(activity).nextStartedService.action)
         button("Stop").performClick()
         assertEquals(PlaybackService.ACTION_STOP, shadowOf(activity).nextStartedService.action)
         PlaybackStatus.update(PlaybackStatus.State())
-        assertEquals(View.GONE, controls.visibility)
+        assertEquals(View.VISIBLE, controls.visibility)
+        assertNotNull(button("Playing on · This phone ▾"))
+        assertNotNull(button("Queue"))
     }
 
     @Test fun screenNavigationDoesNotRestartTheMessageTimer() {

@@ -6,6 +6,7 @@ import Combine
 @MainActor
 struct IchoiApp: App {
     @StateObject private var model: AppModel
+    @StateObject private var remote = RemotePlayback()
     @StateObject private var playback: PlaybackManager
 
     init() {
@@ -15,7 +16,7 @@ struct IchoiApp: App {
     }
 
     var body: some Scene {
-        WindowGroup { ContentView().environmentObject(model).environmentObject(playback).environmentObject(model.messages) }
+        WindowGroup { ContentView().environmentObject(model).environmentObject(playback).environmentObject(remote).environmentObject(model.messages) }
     }
 }
 

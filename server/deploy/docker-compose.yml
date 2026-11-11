@@ -13,9 +13,15 @@ services:
   ichoi:
     image: containers.catalystsquad.com/public/catalystcommunity/ichoi:latest
     restart: unless-stopped
+    # SQLite uses temporary files for large sorts and grouping queries.
+    # Mode 1777 permits a non-root UID. Increase the size for larger queries.
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,mode=1777,size=256m
     environment:
       # Core is the default role (DESIGN Sec.9); shown for clarity.
       ICHOI_ROLE: core
+      # Artwork cache in MB. Restart to apply a change. Zero disables caching.
+      ICHOI_ARTWORK_CACHE_MB: ${ICHOI_ARTWORK_CACHE_MB:-200}
       # Required for a core: where the library (and, by default, the SQLite DB)
       # lives inside the container.
       ICHOI_MUSIC_DIR: /music

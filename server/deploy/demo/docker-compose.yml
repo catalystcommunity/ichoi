@@ -4,8 +4,13 @@ services:
   ichoi:
     image: containers.catalystsquad.com/public/catalystcommunity/ichoi:latest
     restart: unless-stopped
+    # SQLite uses temporary files for large sorts and grouping queries.
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,mode=1777,size=256m
     environment:
       ICHOI_ROLE: core
+      # Artwork cache in MB. Restart to apply a change. Zero disables caching.
+      ICHOI_ARTWORK_CACHE_MB: ${ICHOI_ARTWORK_CACHE_MB:-200}
       ICHOI_MUSIC_DIR: /music
       ICHOI_DB_DIR: /data
       ICHOI_REQUIRE_MUSIC: "1"

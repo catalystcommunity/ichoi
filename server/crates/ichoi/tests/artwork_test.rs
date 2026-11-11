@@ -26,6 +26,19 @@ fn png(color: [u8; 3]) -> Vec<u8> {
     image.write_to(&mut bytes, image::ImageFormat::Png).unwrap();
     bytes.into_inner()
 }
+
+#[test]
+fn cached_thumbnails_keep_size_and_image_content_separate() {
+    let red = png([240, 10, 10]);
+    let blue = png([10, 10, 240]);
+    let small = artwork::normalize(&red, 32).unwrap();
+    let large = artwork::normalize(&red, 64).unwrap();
+    let changed = artwork::normalize(&blue, 32).unwrap();
+    assert_eq!(image::load_from_memory(&small.data).unwrap().height(), 32);
+    assert_eq!(image::load_from_memory(&large.data).unwrap().height(), 64);
+    assert_ne!(small.data, changed.data);
+    assert_eq!(small.data, artwork::normalize(&red, 32).unwrap().data);
+}
 fn account(conn: &mut diesel::SqliteConnection, id: &str, role: &str) {
     store::upsert_account(
         conn,
@@ -493,4 +506,40 @@ fn music_regrouping_keeps_the_manual_cover_when_temporary_album_rows_are_rebuilt
             .unwrap()
             .data
     );
+}
+
+#[test]
+fn library_requests_do_not_wait_for_the_artwork_worker() {
+    let (app, _) = common::test_app();
+    let worker = app.artwork_worker.clone();
+    let (started, ready) = std::sync::mpsc::channel();
+    let (release, gate) = std::sync::mpsc::channel();
+    let busy = std::thread::spawn(move || {
+        worker.run(move || {
+            started.send(()).unwrap();
+            let _ = gate.recv_timeout(std::time::Duration::from_secs(5));
+            Ok(())
+        })
+    });
+    ready
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .unwrap();
+    let (reply, response) = std::sync::mpsc::channel();
+    let request = std::thread::spawn(move || {
+        let _ = reply.send(dispatch(
+            &app,
+            &common::ctx_anon(),
+            "LibraryService",
+            "list-libraries",
+            &encode_page(&Page {
+                offset: None,
+                limit: None,
+            }),
+        ));
+    });
+    let result = response.recv_timeout(std::time::Duration::from_secs(2));
+    release.send(()).unwrap();
+    busy.join().unwrap().unwrap();
+    request.join().unwrap();
+    assert!(result.unwrap().is_ok());
 }

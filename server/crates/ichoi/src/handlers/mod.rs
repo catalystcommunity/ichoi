@@ -302,6 +302,7 @@ pub struct App {
     pub output_health: OutputHealth,
     pub scan_running: Arc<AtomicBool>,
     pub imports: crate::federation::ImportHub,
+    pub artwork_worker: Arc<crate::artwork::ArtworkWorker>,
     pub local_rp: Option<crate::auth::local_rp::DynBackend>,
     pub regular_rp: Option<crate::auth::regular_rp::DynBackend>,
 }
@@ -325,6 +326,9 @@ impl App {
             None
         };
         App {
+            artwork_worker: Arc::new(crate::artwork::ArtworkWorker::new(
+                config.artwork_cache_mb * 1_000_000,
+            )),
             pool,
             config,
             subs: SubHub::new(),
@@ -1353,18 +1357,21 @@ impl LibraryService for App {
     }
 
     fn get_artwork(&self, _ctx: &Ctx, input: ArtworkRequest) -> Result<CoverArt, ServiceError> {
-        let mut conn = self.conn()?;
-        if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
-            return Err(err(404, "album or artist not found"));
-        }
-        crate::artwork::resolve(
-            &mut conn,
-            &input.kind,
-            &input.id,
-            input.max_size.unwrap_or(512),
-        )
-        .map_err(|error| err(500, format!("could not load artwork: {error}")))?
-        .ok_or_else(|| err(404, "no cover art"))
+        let app = self.clone();
+        self.artwork_worker.run(move || {
+            let mut conn = app.conn()?;
+            if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
+                return Err(err(404, "album or artist not found"));
+            }
+            crate::artwork::resolve(
+                &mut conn,
+                &input.kind,
+                &input.id,
+                input.max_size.unwrap_or(512),
+            )
+            .map_err(|error| err(500, format!("could not load artwork: {error}")))?
+            .ok_or_else(|| err(404, "no cover art"))
+        })
     }
 
     fn list_artwork_candidates(
@@ -1372,29 +1379,32 @@ impl LibraryService for App {
         _ctx: &Ctx,
         input: ArtworkCandidatesRequest,
     ) -> Result<ArtworkCandidates, ServiceError> {
-        let mut conn = self.conn()?;
-        if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
-            return Err(err(404, "album or artist not found"));
-        }
-        let candidates =
-            crate::artwork_discovery::list(&mut conn, &input.kind, &input.id).map_err(internal)?;
-        let total = candidates.len() as u64;
-        let (offset, limit) = page(input.offset, input.limit);
-        Ok(ArtworkCandidates {
-            total,
-            candidates: candidates
-                .into_iter()
-                .skip(offset as usize)
-                .take(limit.min(100) as usize)
-                .map(|(candidate, suggested)| ArtworkCandidate {
-                    id: candidate.id,
-                    label: candidate.label,
-                    width: candidate.width.into(),
-                    height: candidate.height.into(),
-                    role: candidate.role,
-                    suggested,
-                })
-                .collect(),
+        let app = self.clone();
+        self.artwork_worker.run(move || {
+            let mut conn = app.conn()?;
+            if !db(crate::artwork::exists(&mut conn, &input.kind, &input.id))? {
+                return Err(err(404, "album or artist not found"));
+            }
+            let candidates = crate::artwork_discovery::list(&mut conn, &input.kind, &input.id)
+                .map_err(internal)?;
+            let total = candidates.len() as u64;
+            let (offset, limit) = page(input.offset, input.limit);
+            Ok(ArtworkCandidates {
+                total,
+                candidates: candidates
+                    .into_iter()
+                    .skip(offset as usize)
+                    .take(limit.min(100) as usize)
+                    .map(|(candidate, suggested)| ArtworkCandidate {
+                        id: candidate.id,
+                        label: candidate.label,
+                        width: candidate.width.into(),
+                        height: candidate.height.into(),
+                        role: candidate.role,
+                        suggested,
+                    })
+                    .collect(),
+            })
         })
     }
 
@@ -1403,20 +1413,23 @@ impl LibraryService for App {
         _ctx: &Ctx,
         input: ArtworkCandidateRequest,
     ) -> Result<CoverArt, ServiceError> {
-        let mut conn = self.conn()?;
-        crate::artwork_discovery::candidate(
-            &mut conn,
-            &input.kind,
-            &input.id,
-            &input.candidate_id,
-            input.max_size.unwrap_or(256),
-        )
-        .map_err(internal)?
-        .ok_or_else(|| {
-            err(
-                404,
-                "This image changed or is no longer available. Rescan the library.",
+        let app = self.clone();
+        self.artwork_worker.run(move || {
+            let mut conn = app.conn()?;
+            crate::artwork_discovery::candidate(
+                &mut conn,
+                &input.kind,
+                &input.id,
+                &input.candidate_id,
+                input.max_size.unwrap_or(256),
             )
+            .map_err(internal)?
+            .ok_or_else(|| {
+                err(
+                    404,
+                    "This image changed or is no longer available. Rescan the library.",
+                )
+            })
         })
     }
 

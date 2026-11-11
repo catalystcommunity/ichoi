@@ -86,3 +86,24 @@ test("artist and album IDs do not collide", async () => {
   assert.notStrictEqual(album, artist);
   assert.equal(await artist.text(), "artist:same-id");
 });
+
+test("limits artwork work and lets missing covers stay cached until invalidation", async () => {
+  const cache = createCoverArtCache();
+  let active = 0, peak = 0, calls = 0;
+  const releases = [];
+  const api = { library: { getCoverArt() {
+    calls++; active++; peak = Math.max(peak, active);
+    return new Promise((resolve, reject) => releases.push(() => { active--; reject(Object.assign(new Error("no cover art"), { code: 404 })); }));
+  } } };
+  const requests = Array.from({ length: 6 }, (_, i) => cache(api, `missing-${i}`, 256).catch(() => undefined));
+  for (let i = 0; i < 6; i++) { await new Promise(resolve => setTimeout(resolve, 0)); releases.shift()(); }
+  await Promise.all(requests);
+  assert.equal(peak, 2);
+  await assert.rejects(cache(api, "missing-0", 256), /no cover art/);
+  assert.equal(calls, 6);
+  cache.invalidate(api);
+  const retried = cache(api, "missing-0", 256);
+  releases.shift()();
+  await assert.rejects(retried, /no cover art/);
+  assert.equal(calls, 7);
+});
