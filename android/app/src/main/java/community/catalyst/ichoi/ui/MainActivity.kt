@@ -42,24 +42,14 @@ class MainActivity : Activity() {
     private lateinit var screenHost: FrameLayout
     private lateinit var messageBanner: MessageBanner
     private lateinit var playbackControls: PlaybackControls
-    private lateinit var updates: PlayUpdates
-    private lateinit var updateNotice: Button
-    private var updateDetails: TextView? = null
     private lateinit var browseNavigation: LinearLayout
     private var queueScreen: LinearLayout? = null
-    private lateinit var backControl: android.widget.ImageButton
-    private lateinit var bottomNavigation: LinearLayout
-    private val navItems = mutableMapOf<String, LinearLayout>()
-    private var activeTab = "Library"
-    private data class BrowseTab(val content: LinearLayout, val scroll: ScrollView, val history: List<Pair<LinearLayout, ScrollView>>)
-    private val browseTabs = mutableMapOf<String, BrowseTab>()
-    private var queueEditing = false
-    private var queueGeneration = 0
-    private data class QueueDrag(val index: Int, val generation: Int)
 
     private data class CoverChoice(val api: IchoiApi, val kind: ArtworkKind, val id: String, val title: String,
         val profileId: String, val screen: LinearLayout, val row: ArtworkRow)
     private var coverChoice: CoverChoice? = null
+    private val pendingCovers = ArrayDeque<CoverChoice>()
+    private var activeCovers = 0
     private val history = ArrayDeque<Pair<LinearLayout, ScrollView>>()
     private fun backToBrowse() {
         if (history.isEmpty()) { profile?.let { connect(it) } ?: showWelcome(); return }
@@ -67,7 +57,6 @@ class MainActivity : Activity() {
         content = previous.first
         screenHost.removeAllViews()
         screenHost.addView(previous.second)
-        updateNavigation()
     }
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() { if (history.isNotEmpty()) backToBrowse() else super.onBackPressed() }
@@ -79,47 +68,19 @@ class MainActivity : Activity() {
         sessions = ProfileSessions(SessionTokenStore(this))
         screenHost = FrameLayout(this)
         messageBanner = MessageBanner(this)
-        playbackControls = PlaybackControls(this).apply {
-            openQueue = { openTab("Queue") }; chooseTarget = { showDevicePicker() }
-            artwork = { id, result -> val selected = profile; if (selected != null && id != null) MusicArtwork.load(IchoiApi(selected,sessions.token(selected.id)), artworkScope(), ArtworkKind.Album,id,result) else result(null) }
-        }
-        backControl = iconButton(this, MusicIcon.BACK, "Back") { backToBrowse() }
+        playbackControls = PlaybackControls(this).apply { openQueue = { showQueue() }; chooseTarget = { showDevicePicker() } }
         browseNavigation = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(dp(8),dp(4),dp(8),dp(4))
-            addView(backControl,LinearLayout.LayoutParams(dp(48),dp(48)))
-            addView(musicText(this@MainActivity,"ichoi",25f).apply { setTypeface(typeface,android.graphics.Typeface.BOLD);setPadding(dp(12),0,0,0) },LinearLayout.LayoutParams(0,-2,1f))
-            addView(iconButton(this@MainActivity,MusicIcon.MENU,"Menu") { showNavigationMenu(getChildAt(childCount-1)) },LinearLayout.LayoutParams(dp(48),dp(48)))
-        }
-        bottomNavigation=LinearLayout(this).apply {
-            gravity=android.view.Gravity.CENTER;setPadding(dp(8),dp(4),dp(8),dp(4))
-            for((name,icon) in listOf("Library" to MusicIcon.LIBRARY,"Search" to MusicIcon.SEARCH,"Queue" to MusicIcon.QUEUE)) {
-                val item=LinearLayout(this@MainActivity).apply {
-                    orientation=LinearLayout.VERTICAL;gravity=android.view.Gravity.CENTER;isFocusable=true;contentDescription=name
-                    background=touchSurface();minimumHeight=dp(58)
-                    addView(ImageView(this@MainActivity).apply { setImageDrawable(MusicGlyph(icon,getColor(R.color.ichoi_text)));tag=icon },LinearLayout.LayoutParams(dp(23),dp(23)))
-                    addView(musicText(this@MainActivity,name,11f).apply { gravity=android.view.Gravity.CENTER;setPadding(0,dp(4),0,0) })
-                    setOnClickListener { openTab(name) }
-                }
-                navItems[name]=item;addView(item,LinearLayout.LayoutParams(0,dp(58),1f))
-            }
-        }
-        updateNotice = appButton(this, "Update available", primary = true) { handleUpdateAction() }.apply { visibility = android.view.View.GONE }
-        updates = PlayUpdates(this) { state ->
-            updateDetails?.text = updateMessage(state)
-            updateNotice.visibility = if (state == PlayUpdates.State.AVAILABLE || state == PlayUpdates.State.READY || state == PlayUpdates.State.DOWNLOADING) android.view.View.VISIBLE else android.view.View.GONE
-            updateNotice.text = updateMessage(state)
-            updateNotice.isEnabled = state != PlayUpdates.State.DOWNLOADING
+            orientation = LinearLayout.HORIZONTAL
+            addView(button("Library") { profile?.let { connect(it) } }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(button("Search") { profile?.let { showSearch(IchoiApi(it, sessions.token(it.id))) } }, LinearLayout.LayoutParams(0, -2, 1f))
         }
         setContentView(LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             fitsSystemWindows = true
-            addView(browseNavigation)
             addView(messageBanner)
-            addView(updateNotice)
             addView(screenHost, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(browseNavigation)
             addView(playbackControls)
-            addView(bottomNavigation)
         })
         showWelcome()
         handleLoginCallback(intent)
@@ -132,8 +93,8 @@ class MainActivity : Activity() {
     }
 
     private fun showWelcome() {
-        browseTabs.clear(); activeTab="Library"
         beginScreen(reset = true)
+        browseNavigation.visibility = android.view.View.GONE
         content.addView(ImageView(this).apply { setImageResource(R.mipmap.ic_launcher); contentDescription = "Ichoi" }, LinearLayout.LayoutParams(dp(80), dp(80)))
         text("Ichoi", 30f)
         text("Ichoi is a native client for an Ichoi server. Your selected server operator controls the library and account data.")
@@ -189,7 +150,6 @@ class MainActivity : Activity() {
     }
 
     private fun connect(selected: ServerProfile) {
-        browseTabs.clear(); activeTab="Library"
         if (profile?.id != selected.id) sessionInfo = null
         profile = selected
         beginScreen(reset = true)
@@ -240,39 +200,59 @@ class MainActivity : Activity() {
 
     private fun showLibrary(api: IchoiApi, libraries: LibrariesResponse) {
         beginScreen(reset = true)
-        text("Your Ichoi library", 28f)
-        val screen=content
-        val chips=LinearLayout(this).apply { gravity=android.view.Gravity.CENTER_VERTICAL;setPadding(0,dp(12),0,dp(20)) }
-        fun openAlbums(kind:Library) { execute({ api.albums(kind) }, { result,error -> if(content===screen) { if(error!=null) showError(error.message?:"Could not load albums") else showAlbums(api,result!!,kind) } }) }
-        chips.addView(musicChip(this,"Music",true) { openAlbums(Library.Music) })
-        chips.addView(musicChip(this,"Audiobooks") { openAlbums(Library.Audiobook) })
-        chips.addView(musicChip(this,"Playlists") { execute({ api.playlists() }, { result,error -> if(content===screen) { if(error!=null) showError(error.message?:"Could not load playlists") else showPlaylists(api,result!!) } }) })
-        content.addView(android.widget.HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled=false;addView(chips) })
+        text("Your Ichoi library", 24f)
+        val screen = content
+        val search = button("Search artists, albums, and tracks") { showSearch(api) }
+        content.addView(search)
+        val categories = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        libraries.libraries.forEach { info -> categories.addView(button(if (info.kind == Library.Music) "Music" else "Audiobooks") {
+            execute({ api.albums(info.kind) }, { result, error ->
+                if (content !== screen) return@execute
+                if (error != null) showError(error.message ?: "Could not load albums") else showAlbums(api, result!!, info.kind)
+            })
+        }, LinearLayout.LayoutParams(0, -2, 1f)) }
+        content.addView(categories)
+        val sections = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        sections.addView(button("Artists") {
+            val kinds = libraries.libraries.map { it.kind }
+            fun open(kind: Library) { execute({ api.artists(kind) }, { result, error ->
+                if (content !== screen) return@execute
+                if (error != null) showError(error.message ?: "Could not load artists") else showArtists(api, result!!, kind)
+            }) }
+            if (kinds.size > 1) AlertDialog.Builder(this).setTitle("Browse artists").setItems(kinds.map { it.name }.toTypedArray()) { _, index -> open(kinds[index]) }.show()
+            else kinds.firstOrNull()?.let { open(it) }
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        sections.addView(button("Playlists") {
+            execute({ api.playlists() }, { result, error ->
+                if (content !== screen) return@execute
+                if (error != null) showError(error.message ?: "Could not load playlists") else showPlaylists(api, result!!)
+            })
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        sections.addView(button("Settings") { showSettings(api) }, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(sections)
         val kind = libraries.libraries.firstOrNull()?.kind
         if (kind != null) {
+            text("In your library", 22f)
             val covers = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             content.addView(covers)
             val loading = TextView(this).apply { text = "Loading covers…" }; covers.addView(loading)
             fun load() {
                 execute({ api.albums(kind) }, { result, error ->
-                    if (!retainsScreen(screen)) return@execute
-                    val visibleScreen = content
-                    content = screen
+                    if (content !== screen) return@execute
                     covers.removeAllViews()
                     if (error != null) {
                         covers.addView(TextView(this).apply { text = "Could not load albums." })
                         covers.addView(button("Retry") { load() })
                     } else {
-                        result!!.albums.take(24).chunked(2).forEach { pair ->
+                        result!!.albums.take(12).chunked(2).forEach { pair ->
                             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }; covers.addView(row)
                             pair.forEach { album -> addArtworkRow(api, ArtworkKind.Album, album.id, album.title, album.artistName ?: "", row, true) {
-                                execute({ api.album(album.id) }, { detail, failure -> if (content === screen) { if (failure != null) showError(failure.message ?: "Could not load album") else showTracks(detail!!.tracks, detail.album) } })
+                                execute({ api.album(album.id) }, { detail, failure -> if (content === screen) { if (failure != null) showError(failure.message ?: "Could not load album") else showTracks(detail!!.tracks) } })
                             } }
                             if (pair.size == 1) row.addView(android.view.View(this), LinearLayout.LayoutParams(0, 1, 1f))
                         }
                         covers.addView(button("Browse all albums") { showAlbums(api, result, kind) })
                     }
-                    content = visibleScreen
                 })
             }
             load()
@@ -283,6 +263,7 @@ class MainActivity : Activity() {
         beginScreen()
         text(if (libraryKind == Library.Audiobook) "Audiobooks" else "Albums", 24f)
         val screen = content
+        content.addView(button("Search this library") { showSearch(api) })
         albums.albums.chunked(2).forEach { pair ->
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.TOP }
             content.addView(row)
@@ -290,7 +271,7 @@ class MainActivity : Activity() {
                 addArtworkRow(api, ArtworkKind.Album, album.id, album.title, album.artistName ?: "", row, true) {
                     execute({ api.album(album.id) }, { detail, error ->
                         if (content !== screen) return@execute
-                        if (error != null) showError(error.message ?: "Could not load album") else showTracks(detail!!.tracks, detail.album)
+                        if (error != null) showError(error.message ?: "Could not load album") else showTracks(detail!!.tracks)
                     })
                 }
             }
@@ -303,6 +284,7 @@ class MainActivity : Activity() {
                 else showAlbums(api, AlbumsResponse(albums.albums + more!!.albums, more.total), libraryKind)
             })
         })
+        content.addView(button("Back") { backToBrowse() })
     }
 
     private fun showArtists(api: IchoiApi, artists: ArtistsResponse, libraryKind: Library) {
@@ -325,6 +307,7 @@ class MainActivity : Activity() {
                 else showArtists(api, ArtistsResponse(artists.artists + more!!.artists, more.total), libraryKind)
             })
         })
+        content.addView(button("Back") { backToBrowse() })
     }
 
     private fun addArtworkRow(api: IchoiApi, kind: ArtworkKind, id: String, title: String, subtitle: String, container: LinearLayout = content, tile: Boolean = false, open: () -> Unit) {
@@ -361,7 +344,7 @@ class MainActivity : Activity() {
 
     private fun showLibraryImages(choice: CoverChoice, offset: ULong = 0uL) {
         execute({ choice.api.artworkCandidates(choice.kind, choice.id, offset) }, { page, error ->
-            if (profile?.id != choice.profileId || !choice.row.isAttachedToWindow) return@execute
+            if (profile?.id != choice.profileId || content !== choice.screen) return@execute
             if (error != null) { showError(error.message ?: "Could not load library images"); return@execute }
             val rows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(20, 12, 20, 12) }
             val dialog = AlertDialog.Builder(this).setTitle("Images in this library")
@@ -390,28 +373,39 @@ class MainActivity : Activity() {
         })
     }
 
-    private fun artworkScope() = "${profile?.id}:${sessions.token(profile?.id ?: "")}"
     private fun loadCover(choice: CoverChoice) {
-        MusicArtwork.load(choice.api,artworkScope(),choice.kind,choice.id) { bitmap ->
-            if(!isDestroyed && profile?.id==choice.profileId) choice.row.showCover(bitmap)
+        pendingCovers.addLast(choice)
+        drainCovers()
+    }
+
+    private fun drainCovers() {
+        while (activeCovers < 2 && pendingCovers.isNotEmpty()) {
+            val choice = pendingCovers.removeFirst()
+            if (isDestroyed || profile?.id != choice.profileId) continue
+            if (!choice.screen.isAttachedToWindow) {
+                choice.row.whenVisible { loadCover(choice) }
+                continue
+            }
+            activeCovers++
+            execute({ ArtworkImages.decode(choice.api.artwork(choice.kind, choice.id).data) }, { bitmap, _ ->
+                activeCovers--
+                if (!isDestroyed && profile?.id == choice.profileId) choice.row.showCover(bitmap)
+                else bitmap?.recycle()
+                drainCovers()
+            })
         }
     }
-    private fun trackCover(id:String?, title:String): MusicCover = MusicCover(this,48).apply {
-        contentDescription="Cover art for $title"
-        val selected=profile
-        if(id!=null && selected!=null) MusicArtwork.load(IchoiApi(selected,sessions.token(selected.id)),artworkScope(),ArtworkKind.Album,id) { bitmap -> if(!isDestroyed && profile?.id==selected.id) show(bitmap) }
-    }
+
     private fun saveCover(choice: CoverChoice, data: ByteArray?, candidateId: String? = null) {
         execute({ choice.api.setArtwork(choice.kind, choice.id, data, candidateId) }, { _, error ->
-            if (profile?.id != choice.profileId || !choice.row.isAttachedToWindow) return@execute
-            if (error != null) showError(error.message ?: "Cover art could not be saved") else { MusicArtwork.clear(); loadCover(choice) }
+            if (profile?.id != choice.profileId || content !== choice.screen) return@execute
+            if (error != null) showError(error.message ?: "Cover art could not be saved") else loadCover(choice)
         })
     }
 
     @Deprecated("Uses the platform document picker without storage permissions")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PlayUpdates.REQUEST_CODE) { updates.result(resultCode); return }
         if (requestCode != PICK_COVER) return
         val choice = coverChoice ?: return
         coverChoice = null
@@ -431,7 +425,7 @@ class MainActivity : Activity() {
             } ?: error("This image could not be opened.")
             ArtworkImages.upload(bytes)
         }, { bytes, error ->
-            if (profile?.id != choice.profileId || !choice.row.isAttachedToWindow) return@execute
+            if (profile?.id != choice.profileId || content !== choice.screen) return@execute
             if (error != null) showError(error.message ?: "This image could not be read") else saveCover(choice, bytes!!)
         })
     }
@@ -471,120 +465,66 @@ class MainActivity : Activity() {
                 }
             }
         }
+        content.addView(button("Back") { backToBrowse() })
     }
 
-    private fun playTrack(track: Track) {
-        val selected=profile?:return
-        if(RemotePlayback.target!=null) RemotePlayback.play(track)
-        else { PlaybackQueue.enqueue(track,selected,sessions.token(selected.id));PlaybackQueue.play(this,PlaybackQueue.entries.lastIndex) }
-    }
-    private fun enqueueTrack(track: Track) {
-        val selected=profile?:return
-        if(RemotePlayback.target!=null) RemotePlayback.enqueue(track) else PlaybackQueue.enqueue(track,selected,sessions.token(selected.id))
-        playbackControls.refresh();AppMessages.show("Added ${track.title} to queue")
-    }
     private fun addTrack(track: Track) {
-        val row=LinearLayout(this).apply { gravity=android.view.Gravity.CENTER_VERTICAL;minimumHeight=dp(72);background=touchSurface();setPadding(0,dp(8),0,dp(8));isFocusable=true;contentDescription="Play ${track.title}";setOnClickListener { playTrack(track) } }
-        row.addView(trackCover(track.albumId,track.title))
-        row.addView(LinearLayout(this).apply {
-            orientation=LinearLayout.VERTICAL;setPadding(dp(12),0,dp(4),0)
-            addView(musicText(this@MainActivity,track.title,15f).apply { setTypeface(typeface,android.graphics.Typeface.BOLD) })
-            addView(musicText(this@MainActivity,listOfNotNull(track.artistName,formatTrackTime(track.durationMs)).joinToString(" · "),12f,true))
-        },LinearLayout.LayoutParams(0,-2,1f))
-        row.addView(iconButton(this,MusicIcon.PLUS,"Add ${track.title} to queue") { enqueueTrack(track) },LinearLayout.LayoutParams(dp(44),dp(48)))
-        val more=iconButton(this,MusicIcon.MORE,"More for ${track.title}") {}
-        more.setOnClickListener {
-            android.widget.PopupMenu(this,more).apply {
-                menu.add("Play now").setOnMenuItemClickListener { playTrack(track);true }
-                menu.add("Add to queue").setOnMenuItemClickListener { enqueueTrack(track);true }
-                show()
-            }
-        }
-        row.addView(more,LinearLayout.LayoutParams(dp(44),dp(48)));content.addView(row)
+        text(track.title, 18f)
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        actions.addView(button("Play") {
+            val selected = profile ?: return@button
+            if (RemotePlayback.target != null) RemotePlayback.play(track)
+            else { PlaybackQueue.enqueue(track, selected, sessions.token(selected.id)); PlaybackQueue.play(this, PlaybackQueue.entries.lastIndex) }
+        }.apply { contentDescription = "Play ${track.title}" }, LinearLayout.LayoutParams(0, -2, 1f))
+        actions.addView(button("Add to queue") {
+            val selected = profile ?: return@button
+            if (RemotePlayback.target != null) RemotePlayback.enqueue(track)
+            else PlaybackQueue.enqueue(track, selected, sessions.token(selected.id))
+        }.apply { contentDescription = "Add ${track.title} to queue" }, LinearLayout.LayoutParams(0, -2, 1f))
+        content.addView(actions)
     }
-    private fun formatTrackTime(ms:ULong)="${ms/60000uL}:${(ms/1000uL%60uL).toString().padStart(2,'0')}"
-    private fun showTracks(items: List<Track>, album: Album? = null) {
-        val tracks = if (album == null) items else items.map { it.copy(albumTitle = it.albumTitle ?: album.title,
-            artistName = it.artistName ?: album.artistName, albumId = it.albumId ?: album.id) }
+    private fun showTracks(tracks: List<Track>) {
         beginScreen()
-        val first=tracks.firstOrNull()
-        if(first?.albumId!=null) {
-            val art=trackCover(first.albumId,first.albumTitle?:"Album")
-            content.addView(art,LinearLayout.LayoutParams(dp(190),dp(190)).apply { gravity=android.view.Gravity.CENTER_HORIZONTAL;topMargin=dp(12);bottomMargin=dp(24) })
-        }
-        text(first?.albumTitle?:"Tracks",28f)
-        if(!first?.artistName.isNullOrBlank()) text(first!!.artistName!!,15f)
-        val heading=LinearLayout(this).apply { gravity=android.view.Gravity.CENTER_VERTICAL;setPadding(0,dp(8),0,dp(16)) }
-        heading.addView(musicText(this,"${tracks.size} tracks",13f,true),LinearLayout.LayoutParams(0,-2,1f))
-        heading.addView(iconButton(this,MusicIcon.PLAY,"Play album",true) {
-            val selected=profile?:return@iconButton
-            if(RemotePlayback.target!=null) { tracks.firstOrNull()?.let { RemotePlayback.play(it) };tracks.drop(1).forEach { RemotePlayback.enqueue(it) } }
-            else { val start=PlaybackQueue.entries.size;tracks.forEach { PlaybackQueue.enqueue(it,selected,sessions.token(selected.id)) };if(tracks.isNotEmpty()) PlaybackQueue.play(this,start) }
-        },LinearLayout.LayoutParams(dp(56),dp(56)))
-        content.addView(heading);tracks.forEach { addTrack(it) }
+        text("Tracks", 24f)
+        content.addView(button("Back") { backToBrowse() })
+        content.addView(button("Now playing queue") { showQueue() })
+        tracks.forEach { addTrack(it) }
     }
     private fun showQueue(refresh: Boolean = false) {
-        if(!refresh && content===queueScreen) return
-        val scroll=screenHost.getChildAt(0) as? ScrollView
-        val offset=if(refresh) scroll?.scrollY?:0 else 0
-        if(!refresh) beginScreen() else content.removeAllViews()
-        queueScreen=content;queueGeneration++
-        content.addView(LinearLayout(this).apply {
-            gravity=android.view.Gravity.CENTER_VERTICAL
-            addView(musicText(this@MainActivity,"Your queue",28f).apply { setTypeface(typeface,android.graphics.Typeface.BOLD) },LinearLayout.LayoutParams(0,-2,1f))
-            addView(musicChip(this@MainActivity,if(queueEditing) "Done" else "Edit",queueEditing) { queueEditing=!queueEditing;showQueue(true) })
-        })
-        val count=if(RemotePlayback.target!=null) RemotePlayback.state?.queue?.size?:0 else PlaybackQueue.entries.size
-        content.addView(LinearLayout(this).apply {
-            gravity=android.view.Gravity.CENTER_VERTICAL;setPadding(0,dp(4),0,dp(16))
-            addView(musicText(this@MainActivity,"$count tracks · ${RemotePlayback.target?.name?:"This phone"}",13f,true),LinearLayout.LayoutParams(0,-2,1f))
-            addView(musicText(this@MainActivity,"Undo",14f).apply { minHeight=dp(48);gravity=android.view.Gravity.CENTER;setPadding(dp(12),0,dp(12),0);setTextColor(getColor(R.color.ichoi_accent));background=touchSurface();isFocusable=true;setOnClickListener { if(RemotePlayback.target!=null) RemotePlayback.undo() else { PlaybackQueue.undo();showQueue(true) };playbackControls.refresh() } })
-        })
-        if(RemotePlayback.target!=null) {
-            RemotePlayback.error?.let { text(it);content.addView(button("Retry") { RemotePlayback.refresh() }) }
-            val entries=RemotePlayback.state?.queue.orEmpty()
-            if(entries.isEmpty()) text(if(RemotePlayback.state==null) "Loading device queue…" else "This device’s queue is empty.")
-            entries.forEachIndexed { index,item -> queueRow(item.title?:item.trackId,item.artist?:"",null,index,entries.size,
-                { RemotePlayback.playItem(item) },{ RemotePlayback.move(index,index-1) },{ RemotePlayback.move(index,index+1) },{ RemotePlayback.remove(item) }) }
+        if (!refresh && content === queueScreen) return
+        if (!refresh) beginScreen() else content.removeAllViews()
+        queueScreen = content
+        text("Now playing", 24f)
+        content.addView(button("Back to browsing") { backToBrowse() })
+        if (RemotePlayback.target != null) {
+            text("Playing on ${RemotePlayback.target!!.name}", 14f)
+            content.addView(button("Undo queue change") { RemotePlayback.undo() }.apply { isEnabled = RemotePlayback.state?.canUndo == true })
+            RemotePlayback.error?.let { text(it); content.addView(button("Retry") { RemotePlayback.refresh() }) }
+            val entries = RemotePlayback.state?.queue.orEmpty()
+            if (entries.isEmpty()) text(if (RemotePlayback.state == null) "Loading device queue…" else "This device’s queue is empty.")
+            entries.forEachIndexed { index, item ->
+                queueRow(item.title ?: item.trackId, index, entries.size,
+                    { RemotePlayback.playItem(item) }, { RemotePlayback.move(index, index - 1) },
+                    { RemotePlayback.move(index, index + 1) }, { RemotePlayback.remove(item) })
+            }
         } else {
-            if(PlaybackQueue.entries.isEmpty()) text("Add music or an audiobook to start your queue.")
-            PlaybackQueue.entries.forEachIndexed { index,entry -> queueRow(entry.track.title,entry.track.artistName?:formatTrackTime(entry.track.durationMs),entry.track.albumId,index,PlaybackQueue.entries.size,
-                { PlaybackQueue.play(this,index);showQueue(true) },{ PlaybackQueue.move(index,index-1);showQueue(true) },{ PlaybackQueue.move(index,index+1);showQueue(true) },{ PlaybackQueue.remove(index);showQueue(true);playbackControls.refresh() }) }
-        }
-        if(refresh) content.post { scroll?.scrollTo(0,offset) }
-    }
-    private fun queueRow(title:String,subtitle:String,album:String?,index:Int,count:Int,play:()->Unit,up:()->Unit,down:()->Unit,remove:()->Unit) {
-        val row=LinearLayout(this).apply { gravity=android.view.Gravity.CENTER_VERTICAL;minimumHeight=dp(72);setPadding(0,dp(8),0,dp(8));background=touchSurface();isFocusable=true;contentDescription="Play $title";setOnClickListener { play() } }
-        if(!queueEditing) row.addView(trackCover(album,title))
-        row.addView(LinearLayout(this).apply { orientation=LinearLayout.VERTICAL;setPadding(dp(12),0,dp(6),0);addView(musicText(this@MainActivity,title,15f).apply { setTypeface(typeface,android.graphics.Typeface.BOLD) });addView(musicText(this@MainActivity,subtitle,12f,true)) },LinearLayout.LayoutParams(0,-2,1f))
-        if(queueEditing) {
-            row.addView(iconButton(this,MusicIcon.UP,"Move $title up",action=up).apply { isEnabled=index>0;alpha=if(isEnabled) 1f else .3f },LinearLayout.LayoutParams(dp(44),dp(48)))
-            row.addView(iconButton(this,MusicIcon.DOWN,"Move $title down",action=down).apply { isEnabled=index+1<count;alpha=if(isEnabled) 1f else .3f },LinearLayout.LayoutParams(dp(44),dp(48)))
-            row.addView(iconButton(this,MusicIcon.REMOVE,"Remove $title",action=remove),LinearLayout.LayoutParams(dp(44),dp(48)))
-        } else {
-            val more=iconButton(this,MusicIcon.MORE,"More for $title") {}
-            more.setOnClickListener { android.widget.PopupMenu(this,more).apply {
-                menu.add("Move up").apply { isEnabled=index>0;setOnMenuItemClickListener { up();true } }
-                menu.add("Move down").apply { isEnabled=index+1<count;setOnMenuItemClickListener { down();true } }
-                menu.add("Remove from queue").setOnMenuItemClickListener { remove();true };show()
-            } }
-            row.addView(more,LinearLayout.LayoutParams(dp(44),dp(48)))
-            val grip=iconButton(this,MusicIcon.GRIP,"Hold and drag $title to reorder") {}
-            grip.setOnLongClickListener { row.startDragAndDrop(android.content.ClipData.newPlainText("queue",index.toString()),android.view.View.DragShadowBuilder(row),QueueDrag(index,queueGeneration),0) }
-            row.addView(grip,LinearLayout.LayoutParams(dp(44),dp(48)))
-        }
-        val generation=queueGeneration
-        row.setOnDragListener { view,event ->
-            val drag=event.localState as? QueueDrag
-            if(drag==null || drag.generation!=generation) false else {
-                when(event.action) {
-                    android.view.DragEvent.ACTION_DRAG_ENTERED -> view.alpha=.55f
-                    android.view.DragEvent.ACTION_DRAG_EXITED,android.view.DragEvent.ACTION_DRAG_ENDED -> view.alpha=1f
-                    android.view.DragEvent.ACTION_DROP -> { view.alpha=1f;if(RemotePlayback.target!=null) RemotePlayback.move(drag.index,index) else { PlaybackQueue.move(drag.index,index);showQueue(true) } }
-                };true
+            content.addView(button("Undo queue change") { PlaybackQueue.undo(); showQueue(true) })
+            if (PlaybackQueue.entries.isEmpty()) text("Your queue is empty. Add music or an audiobook from the library.")
+            PlaybackQueue.entries.forEachIndexed { index, entry ->
+                queueRow((if (entry.id == PlaybackQueue.currentId) "Playing · " else "") + entry.track.title, index, PlaybackQueue.entries.size,
+                    { PlaybackQueue.play(this, index); showQueue(true) }, { PlaybackQueue.move(index, index - 1); showQueue(true) },
+                    { PlaybackQueue.move(index, index + 1); showQueue(true) }, { PlaybackQueue.remove(index); showQueue(true) })
             }
         }
-        content.addView(row)
+    }
+    private fun queueRow(title: String, index: Int, count: Int, play: () -> Unit, up: () -> Unit, down: () -> Unit, remove: () -> Unit) {
+        text(title, 17f)
+        content.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            listOf(button("Play", play), button("↑", up).apply { contentDescription = "Move $title up"; isEnabled = index > 0 },
+                button("↓", down).apply { contentDescription = "Move $title down"; isEnabled = index + 1 < count },
+                button("Remove", remove).apply { contentDescription = "Remove $title" }).forEach { addView(it, LinearLayout.LayoutParams(0, -2, 1f)) }
+        })
     }
     private var lastRemoteQueue = ""
     private val remoteChanged: () -> Unit = {
@@ -617,12 +557,9 @@ class MainActivity : Activity() {
         beginScreen()
         val screen = content
         text("Search", 24f)
-        val input = EditText(this).apply {
-            hint="Artists, albums, and tracks";inputType=android.text.InputType.TYPE_CLASS_TEXT;isSingleLine=true;textSize=16f
-            background=surface();setPadding(dp(16),dp(12),dp(16),dp(12));minHeight=dp(52)
-            layoutParams=LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(12);bottomMargin=dp(18) }
-            setCompoundDrawablesWithIntrinsicBounds(null,null,null,null)
-        }
+        content.addView(button("Back") { backToBrowse() })
+        content.addView(button("Now playing queue") { showQueue() })
+        val input = EditText(this).apply { hint = "Albums, artists, tracks, and books"; inputType = android.text.InputType.TYPE_CLASS_TEXT }
         content.addView(input)
         val results = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         content.addView(results)
@@ -634,32 +571,21 @@ class MainActivity : Activity() {
                 val query = s.toString().trim(); val version = ++revision
                 results.removeAllViews()
                 if (query.isEmpty()) return
-                results.addView(musicText(this@MainActivity, "Searching…", 14f, true))
                 handler.postDelayed({
                     if (version != revision) return@postDelayed
                     execute({ listOf(api.search(query, Library.Music), api.search(query, Library.Audiobook)) }, { pages, error ->
-                        if (version != revision || !retainsScreen(screen)) return@execute
+                        if (version != revision || (content !== screen && history.none { it.first === screen })) return@execute
+                        if (error != null) { showError("Search failed. Try again."); return@execute }
                         results.removeAllViews()
-                        if (error != null) {
-                            results.addView(musicText(this@MainActivity, "Search failed. Try again.", 14f, true))
-                            results.addView(button("Retry search") { input.setText(query); input.setSelection(query.length) })
-                            return@execute
-                        }
-                        if (pages!!.all { it.albums.isEmpty() && it.artists.isEmpty() && it.tracks.isEmpty() }) {
-                            results.addView(musicText(this@MainActivity, "No results. Try another search.", 14f, true))
-                        }
                         val original = content; content = results
                         pages!!.forEachIndexed { pageIndex, page ->
                             val kind = if (pageIndex == 0) Library.Music else Library.Audiobook
-                            if(page.albums.isNotEmpty()) text(if(kind==Library.Music) "Albums" else "Audiobooks",20f)
                             page.albums.forEach { album -> addArtworkRow(api, ArtworkKind.Album, album.id, album.title, album.artistName ?: "") {
-                                execute({ api.album(album.id) }, { detail, failure -> if (content === screen && failure == null) showTracks(detail!!.tracks, detail.album) })
+                                execute({ api.album(album.id) }, { detail, failure -> if (content === screen && failure == null) showTracks(detail!!.tracks) })
                             } }
-                            if(page.artists.isNotEmpty()) text("Artists",20f)
-                            page.artists.forEach { artist -> content.addView(musicChip(this@MainActivity,artist.name) {
+                            page.artists.forEach { artist -> content.addView(button(artist.name) {
                                 execute({ api.artist(artist.id, kind) }, { detail, failure -> if (content === screen && failure == null) showAlbums(api, AlbumsResponse(detail!!.albums, detail.albums.size.toULong()), kind) })
                             }) }
-                            if(page.tracks.isNotEmpty()) text("Songs",20f)
                             page.tracks.forEach { addTrack(it) }
                         }
                         content = original
@@ -820,50 +746,17 @@ class MainActivity : Activity() {
         }) }
     }
 
-    private fun updateNavigation() {
-        if(::backControl.isInitialized) backControl.visibility=if(history.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-        if(::bottomNavigation.isInitialized) bottomNavigation.visibility=if(profile==null) android.view.View.GONE else android.view.View.VISIBLE
-        for((name,item) in navItems) {
-            val color=getColor(if(name==activeTab) R.color.ichoi_accent else R.color.ichoi_muted)
-            (item.getChildAt(0) as ImageView).setImageDrawable(MusicGlyph(item.getChildAt(0).tag as MusicIcon,color))
-            (item.getChildAt(1) as TextView).setTextColor(color);item.isSelected=name==activeTab
-        }
-    }
-    private fun retainsScreen(screen: LinearLayout) = content === screen ||
-        history.any { it.first === screen } ||
-        browseTabs.values.any { it.content === screen || it.history.any { entry -> entry.first === screen } }
-
-    private fun openTab(name:String) {
-        val selected=profile?:return
-        if(activeTab==name && name!="Queue" && screenHost.childCount>0) {
-            if(history.isNotEmpty()) {
-                val first=history.first();history.clear();content=first.first;screenHost.removeAllViews();screenHost.addView(first.second);updateNavigation()
-            }
-            return
-        }
-        if(::content.isInitialized && screenHost.childCount>0) browseTabs[activeTab]=BrowseTab(content,screenHost.getChildAt(0) as ScrollView,history.toList())
-        activeTab=name
-        val saved=browseTabs[name]
-        if(saved!=null) {
-            content=saved.content;history.clear();history.addAll(saved.history);screenHost.removeAllViews();screenHost.addView(saved.scroll)
-            if(name=="Queue") showQueue(true)
-        } else {
-            history.clear();screenHost.removeAllViews()
-            when(name) { "Library" -> connect(selected); "Search" -> showSearch(IchoiApi(selected,sessions.token(selected.id))); "Queue" -> showQueue() }
-        }
-        updateNavigation()
-    }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun beginScreen(reset: Boolean = false) {
+        browseNavigation.visibility = if (profile == null) android.view.View.GONE else android.view.View.VISIBLE
         if (reset) history.clear()
         else if (::content.isInitialized && screenHost.childCount > 0) {
             history.addLast(content to (screenHost.getChildAt(0) as ScrollView))
             while (history.size > 12) history.removeFirst()
         }
-        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(12), dp(20), dp(20)) }
+        content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(24), dp(20), dp(24)) }
         screenHost.removeAllViews()
         screenHost.addView(ScrollView(this).apply { isFillViewport = true; addView(content) })
-        updateNavigation()
     }
     private fun text(value: String, size: Float = 16f) {
         content.addView(TextView(this).apply {
@@ -871,38 +764,12 @@ class MainActivity : Activity() {
             if (size >= 24f) setTypeface(typeface, android.graphics.Typeface.BOLD)
         })
     }
-    private fun button(label: String, action: () -> Unit) = appButton(this, label, action = action)
-
-    private fun showNavigationMenu(anchor: android.view.View) {
-        val popup = android.widget.PopupMenu(this, anchor)
-        fun item(label: String, action: () -> Unit) { popup.menu.add(label).setOnMenuItemClickListener { action(); true } }
-        profile?.let { selected ->
-            val api = IchoiApi(selected, sessions.token(selected.id))
-            item("Library") { openTab("Library") }
-            item("Search") { openTab("Search") }
-            fun albums(kind: Library) { execute({ api.albums(kind) }, { result, error ->
-                if (profile?.id != selected.id) return@execute
-                if (error != null) showError(error.message ?: "Could not load albums") else showAlbums(api, result!!, kind)
-            }) }
-            item("Music") { albums(Library.Music) }
-            item("Audiobooks") { albums(Library.Audiobook) }
-            fun artists(kind: Library) { execute({ api.artists(kind) }, { result, error ->
-                if (profile?.id != selected.id) return@execute
-                if (error != null) showError(error.message ?: "Could not load artists") else showArtists(api, result!!, kind)
-            }) }
-            item("Artists") { artists(Library.Music) }
-            item("Authors") { artists(Library.Audiobook) }
-            item("Playlists") { execute({ api.playlists() }, { result, error ->
-                if (profile?.id != selected.id) return@execute
-                if (error != null) showError(error.message ?: "Could not load playlists") else showPlaylists(api, result!!)
-            }) }
-            item("Playback devices") { showDevicePicker() }
-            item("Queue") { openTab("Queue") }
-            item("Settings") { showSettings(api) }
-        }
-        item("Servers") { showWelcome() }
-        item("App and updates") { showAppUpdates() }
-        popup.show()
+    private fun button(label: String, action: () -> Unit) = Button(this).apply {
+        text = label; isAllCaps = false; minHeight = dp(48); gravity = android.view.Gravity.CENTER_VERTICAL
+        setPadding(dp(16), dp(10), dp(16), dp(10))
+        backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ichoi_surface))
+        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(4) }
+        setOnClickListener { action() }
     }
     private fun link(label: String, url: String) {
         content.addView(button(label) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) })
@@ -911,54 +778,9 @@ class MainActivity : Activity() {
         AppMessages.show(message)
     }
 
-    @Suppress("DEPRECATION")
-    private fun installerName(): String? = packageManager.getInstallerPackageName(packageName)
-
-    private fun updateMessage(state: PlayUpdates.State): String = when (state) {
-        PlayUpdates.State.IDLE -> "Check for updates in Google Play."
-        PlayUpdates.State.CHECKING -> "Checking Google Play…"
-        PlayUpdates.State.CURRENT -> "Google Play has no update for this account and device."
-        PlayUpdates.State.AVAILABLE -> "Update available · Download"
-        PlayUpdates.State.DOWNLOADING -> "Google Play is preparing the update…"
-        PlayUpdates.State.READY -> "Update ready · Restart to install"
-        PlayUpdates.State.FAILED -> "Could not update. Try again or open Google Play."
-        PlayUpdates.State.UNAVAILABLE -> "Open Google Play to check this installation."
-    }
-    private fun handleUpdateAction() {
-        if (updates.state == PlayUpdates.State.READY) {
-            AlertDialog.Builder(this).setTitle("Restart to install?")
-                .setMessage("This closes Ichoi and interrupts playback on this phone. You can install later.")
-                .setNegativeButton("Later", null).setPositiveButton("Restart") { _, _ -> updates.install() }.show()
-        } else if (installerName() == "com.android.vending") updates.check(requestInstall = true)
-        else openPlayStore()
-    }
-    private fun openPlayStore() {
-        try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=com.catalystsquad.ichoi"))) }
-        catch (_: android.content.ActivityNotFoundException) { showError("Open Google Play and select Ichoi to check for updates.") }
-    }
-    private fun showAppUpdates() {
-        beginScreen()
-        text("App and updates", 24f)
-        text("Ichoi ${community.catalyst.ichoi.BuildConfig.VERSION_NAME} (${community.catalyst.ichoi.BuildConfig.VERSION_CODE})")
-        text("Application: $packageName")
-        text("Installed by: ${installerName() ?: "Unknown or direct install"}")
-        @Suppress("DEPRECATION")
-        val info = packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES)
-        val fingerprint = info.signingInfo?.apkContentsSigners?.firstOrNull()?.toByteArray()?.let {
-            java.security.MessageDigest.getInstance("SHA-256").digest(it).joinToString(":") { byte -> "%02X".format(byte) }
-        }
-        if (fingerprint != null) text("Signing certificate (SHA-256):\n$fingerprint", 12f)
-        updateDetails = TextView(this).apply { text = updateMessage(updates.state); setPadding(dp(4), dp(12), dp(4), dp(12)) }
-        content.addView(updateDetails)
-        content.addView(button("Check for updates") { handleUpdateAction() })
-        content.addView(button("Open Google Play") { openPlayStore() })
-        text("Join the test once with your Play account. Keep automatic updates enabled for Ichoi in Google Play. Later releases use the same store listing.")
-        text("If an update fails, keep the error message and the version details above. An app cannot repair a signing or test-track mismatch.")
-    }
-
     private fun messageDurationSetting() {
         val preferences = MessagePreferences(this)
-        val setting = button("Message duration") {}
+        val setting = Button(this)
         fun updateLabel() { setting.text = "Message duration: ${preferences.durationSeconds} seconds" }
         updateLabel()
         setting.setOnClickListener {
@@ -984,20 +806,18 @@ class MainActivity : Activity() {
     override fun onStart() {
         super.onStart()
         messageBanner.start()
-        if (installerName() == "com.android.vending") updates.start() else updates.unavailable()
         playbackControls.start()
         RemotePlayback.observe(remoteChanged); RemotePlayback.start()
     }
 
     override fun onStop() {
         messageBanner.stop()
-        updates.stop()
         playbackControls.stop()
         RemotePlayback.removeObserver(remoteChanged); RemotePlayback.stop()
         super.onStop()
     }
 
-    override fun onDestroy() { updates.close(); messageBanner.stop(); playbackControls.stop(); worker.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() { messageBanner.stop(); playbackControls.stop(); worker.shutdownNow(); super.onDestroy() }
 
     companion object {
         private const val PICK_COVER = 101

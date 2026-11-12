@@ -39,14 +39,3 @@ upload key from the local Reactorcide store and deletes its temporary copy on ex
 job can set `ICHOI_UPLOAD_KEYSTORE_B64` and the `ICHOI_UPLOAD_*` password variables instead.
 The version code is major × 10000 + minor × 100 + patch. `bundleRelease` fails without the
 upload key.
-
-## Navigation and updates
-
-Menu gives access to the library, search, music, audiobooks, playlists, devices,
-queue, settings, servers, and app updates. Playback controls have separate
-buttons with visible borders. The device selector has its own row.
-
-The Google Play update integration uses flexible downloads. An update never
-restarts the app without confirmation. Menu > App and updates shows version
-and installation details. See [mobile updates](../docs/mobile-updates.md) for
-test-track setup and installation failure checks.

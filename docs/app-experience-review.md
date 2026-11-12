@@ -151,96 +151,11 @@ The Zest component request file records a nested-button keyboard defect and a
 request for a responsive virtual cover grid. The app has a local workaround for
 the keyboard defect. No Zest component source was changed.
 
-## Sidebar and native control revision (2026-11-11)
-
-The web uses a left sidebar again. At widths up to 900 pixels, Menu opens a
-modal drawer. Close, Escape, outside taps, and navigation close the drawer.
-The drawer scrolls on short screens. Its heading stays visible. The queue
-opens from the right and keeps the browse view mounted. Its own playback and
-device controls remain accessible when the mobile dialog is open. Track titles
-and editing buttons use separate rows in narrow lists.
-
-Android has a visible Menu button on each screen. The library shows covers
-before secondary shortcuts. Header Search replaces the duplicate search row.
-Buttons have borders, clear
-spacing, and touch targets of at least 48 dp. The primary playback action uses
-the accent color. Device selection has a separate row. Queue and Stop are
-separate buttons. The iOS source has the same control structure, a labeled Menu,
-and buttons with at least 44-point targets. After source-transfer approval, the
-iOS simulator build, 14 core tests, and static compliance checks passed. The
-simulator review corrected the primary button color and the visible Menu label.
-
-The web fixture passes 28 checks on mobile, including navigation, focus return,
-queue edits, search retention, and an invalid artwork fallback. Chromium checks
-cover 320, 390, and 768-pixel widths. Desktop and short landscape layouts were
-also inspected. Firefox was not checked because its test browser is absent.
-Android passes 51 tests, lint, and compliance checks. Google Play update tests
-cover consent, background download, explicit restart, cancellation, and retry.
-The signed Android bundle is version 0.1.3 (103). Nothing was uploaded.
-
-See [mobile updates](mobile-updates.md) for the release procedure. The reported
-Play installation failure reported only "update failed". Compare installation
-version and signing details if the failure occurs again.
-
-## Native music player revision (2026-11-11)
-
-This revision replaces the native control layout described above. Android and
-iOS use the web theme colors. Library, Search, and Queue are bottom navigation
-items. The small player stays above navigation. Tap its title or cover to open
-Now playing. Device selection remains available in both player views.
-
-The library uses cover tiles. Search uses album rows and compact song rows.
-Each song has separate Add and More controls. Album details show the cover,
-title, artist, and a Play control. The queue has an Edit mode, reorder controls,
-Remove, and Undo. Android also supports a drag from the row handle. iOS uses
-native move and delete actions. Queue sheets retain playback controls.
-
-Android keeps the search view when the user changes tabs. A library request can
-finish while another tab is open. Search shows loading, empty, and retry states.
-A decoder error caused valid Android covers to stay as placeholders. The sample
-size now starts at one. A regression test decodes a real PNG. Repeated Android
-cover requests share a bounded memory cache and two background workers.
-
-The Android debug build, 56 tests, lint, and compliance checks pass. These tests
-cover search retention, background library loading, queue move/remove/undo,
-and the small player height with native font rendering. The signed Android
-bundle is version 0.1.4 (104). Both debug and release variants pass all 56 tests. This bundle replaces the earlier 0.1.3 artifact.
-Nothing was uploaded. The unsigned iOS simulator build, 14 core tests, and
-static compliance checks pass. The iPhone simulator shows the library and
-loaded covers. Android demo playback advanced in the muted emulator. The full
-player showed the position, duration, and Pause control. Physical device checks
-remain necessary for audio, accessibility, and store updates.
-
-## Interactive playback progress (2026-11-11)
-
-The small player and Now playing view now have an interactive progress line on
-Android and iOS. Tap a position or drag the thumb. The time label shows the
-selected position during the drag. Release sends one seek immediately. Playback
-updates do not reset the drag position. A pending position returns to the
-reported position after three seconds if the player does not confirm it.
-
-A cancelled drag does not seek. A track change during a drag prevents the seek
-from changing the new track. Android accessibility adjustments use the same
-seek action. Playback with no known duration disables the control. Each small
-player has elapsed and total time labels and a 48 dp Android or 44 point iOS
-seek area. The iOS background prevents library text from showing below the line.
-
-The signed Android bundle was rebuilt as 0.1.4 (104) with user approval because
-the previous bundle was not uploaded. Both build variants pass 60 tests. Lint
-and compliance checks pass. The iOS simulator build and 14 core tests pass.
-The existing range-cache test confirms that a cached read needs no new request.
-A real Android emulator check kept one track paused. A tap moved playback to
-51 seconds, and a drag moved it to 306 seconds. Media-session reports confirmed
-both positions and the paused state. The screenshot is
-`/tmp/ichoi-android-progress.png`. A seek outside cached data can still require
-a network read. Physical audio latency has not been measured.
-
 ## Next Actions
 
-1. Check a Play update from the previous release on a physical phone.
-2. Test cached seeks on the physical Linux and Windows satellites. Measure the
+1. Test cached seeks on the physical Linux and Windows satellites. Measure the
    command-to-audio delay and check for underruns with the shorter output buffer.
-3. Check long M4B playback, network loss, and system controls on physical phones.
-4. Release matching server, web, mobile, and satellite builds. Rescan the library
+2. Check long M4B playback, network loss, and system controls on physical phones.
+3. Release matching server, web, mobile, and satellite builds. Rescan the library
    to apply the artwork changes from the preceding task.
-5. Include a website version change in the release to publish its brand changes.
+4. Include a website version change in the release to publish its brand changes.

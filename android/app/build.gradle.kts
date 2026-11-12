@@ -97,7 +97,6 @@ tasks.named("check") { dependsOn("androidCompliance") }
 dependencies {
     implementation(kotlin("stdlib"))
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.android.play:app-update:2.1.0")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.11.0")

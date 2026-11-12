@@ -6,21 +6,15 @@ struct ContentView: View {
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var remote: RemotePlayback
     @Environment(\.scenePhase) private var scenePhase
-    @State private var destination = 0
     var body: some View {
         Group {
-            if !model.hasAcceptedTerms { TermsView().appControls() }
-            else if model.profile == nil { ServerConnectionView().appControls() }
-            else {
-                TabView(selection: $destination) {
-                    LibraryView(onSearch: { destination = 1 }).appControls().tabItem { Label("Library", systemImage: "square.stack.fill") }.tag(0)
-                    LibraryView(searchOnly: true).appControls().tabItem { Label("Search", systemImage: "magnifyingglass") }.tag(1)
-                    PlaybackQueueView(embedded: true).appControls().tabItem { Label("Queue", systemImage: "list.bullet") }.tag(2)
-                }
-            }
+            if !model.hasAcceptedTerms { TermsView() }
+            else if model.profile == nil { ServerConnectionView() }
+            else { LibraryView() }
         }
         .tint(Color("AccentColor"))
         .background(Color("BrandBackground"))
+        .appControls()
         .onChange(of: scenePhase) { model.messages.setActive($0 == .active); remote.setActive($0 == .active) }
         .task(id: [model.profile?.id.uuidString, model.sessionManager?.session?.accountId]) { remote.configure(profile: model.profile, token: model.token()) }
         .task { await model.restoreSession() }
@@ -64,9 +58,6 @@ struct ServerConnectionView: View {
 }
 
 struct LibraryView: View {
-    var searchOnly = false
-    var onSearch: () -> Void = {}
-    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var model: AppModel
     @State private var browse = "Albums"
     @State private var loadGeneration = UUID()
@@ -74,13 +65,8 @@ struct LibraryView: View {
     @State private var searchResults: SearchResponse?
     @State private var searchLoading = false
     @State private var showQueue = false
-    @State private var showDevices = false
-    @State private var showUpdates = false
     @State private var showTracks = false
     @State private var detailAlbums: [Album] = []
-    @State private var detailAlbum: Album?
-    @EnvironmentObject private var playback: PlaybackManager
-    @EnvironmentObject private var remote: RemotePlayback
     @State private var albums: [Album] = []
     @State private var playlists: [Playlist] = []
     @State private var artists: [Artist] = []
@@ -109,23 +95,20 @@ struct LibraryView: View {
                     }
                 }
                 if libraryLoading { ProgressView("Loading your library…") }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        libraryChip("Music", selected: library == .music && browse == "Albums") { library = .music; browse = "Albums" }
-                        libraryChip("Audiobooks", selected: library == .audiobook && browse == "Albums") { library = .audiobook; browse = "Albums" }
-                        if !searchOnly {
-                            libraryChip("Artists", selected: browse == "Artists") { browse = "Artists" }
-                            libraryChip("Playlists", selected: browse == "Playlists") { browse = "Playlists" }
-                        }
-                    }.padding(.vertical, 4)
-                }.listRowBackground(Color.clear).listRowSeparator(.hidden)
+                Picker("Library", selection: $library) {
+                    Text("Music").tag(Library.music)
+                    Text("Audiobooks").tag(Library.audiobook)
+                }.pickerStyle(.segmented)
+                Picker("Browse", selection: $browse) { Text("Albums").tag("Albums"); Text("Artists").tag("Artists"); Text("Playlists").tag("Playlists") }.pickerStyle(.segmented)
                 if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Section("Search results") {
                         if searchLoading { ProgressView("Searching…") }
                         if let result = searchResults {
-                            ForEach(result.albums, id: \.id) { album in
-                                ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "") { Task { await openAlbum(album.id) } }
-                            }
+                            LazyVGrid(columns: [GridItem(.flexible(), alignment: .top), GridItem(.flexible(), alignment: .top)], alignment: .leading, spacing: 22) {
+                                ForEach(result.albums, id: \.id) { album in
+                                    ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "", tile: true) { Task { await openAlbum(album.id) } }
+                                }
+                            }.listRowBackground(Color.clear).listRowSeparator(.hidden)
                             ForEach(result.artists, id: \.id) { artist in
                                 Button(artist.name) { Task { await openArtist(artist.id) } }
                             }
@@ -133,8 +116,6 @@ struct LibraryView: View {
                             if result.albums.isEmpty && result.artists.isEmpty && result.tracks.isEmpty { Text("No results. Try another search.") }
                         }
                     }
-                } else if searchOnly {
-                    Text("Find your next listen").font(.title2.weight(.semibold)).padding(.top, 30).listRowBackground(Color.clear).listRowSeparator(.hidden)
                 } else {
                 if browse == "Albums" {
                 Section(library == .music ? "Albums" : "Audiobooks") {
@@ -187,75 +168,44 @@ struct LibraryView: View {
                 }
                 }
             }
-            .listStyle(.plain)
-            .modifier(MusicSearch(enabled: searchOnly, query: $query))
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search artists, albums, and tracks")
             .task(id: query) { await search() }
             .onChange(of: library) { _ in query = ""; searchResults = nil }
             .scrollContentBackground(.hidden)
             .background(Color("BrandBackground"))
             .refreshable { await load() }
-            .navigationTitle(searchOnly ? "Search" : "Your library")
+            .navigationTitle("Your library")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarLeading) { Button("Queue", systemImage: "list.bullet") { showQueue = true } }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
-                        Button("Music", systemImage: "music.note.list") { library = .music; browse = "Albums"; query = "" }
-                        Button("Audiobooks", systemImage: "books.vertical") { library = .audiobook; browse = "Albums"; query = "" }
-                        Button("Artists", systemImage: "person.2") { browse = "Artists"; query = "" }
-                        Button("Playlists", systemImage: "music.note.list") { browse = "Playlists"; query = "" }
-                        Divider()
-                        Button("Queue", systemImage: "list.bullet") { showQueue = true }
-                        Button("Playback devices", systemImage: "hifispeaker") { showDevices = true }
-                        Button("Settings and servers", systemImage: "gear") { showSettings = true }
-                        Button("App and updates", systemImage: "arrow.down.circle") { showUpdates = true }
-                    } label: { HStack(spacing: 6) { Image(systemName: "line.3.horizontal"); Text("Menu") } }
+                        Button("Now playing queue", systemImage: "list.bullet") { showQueue = true }
+                        Button("Settings", systemImage: "gear") { showSettings = true }
+                    } label: { Image(systemName: "ellipsis.circle") }
                 }
-                if !searchOnly { ToolbarItem(placement: .navigationBarTrailing) { Button("Search", systemImage: "magnifyingglass", action: onSearch) } }
             }
             .task(id: [model.profile?.id.uuidString, model.sessionManager?.session?.accountId, library.rawValue]) {
                 albums = []
                 playlists = []
                 artists = []
                 tracks = []
-                if !searchOnly { await load() }
+                await load()
             }
-            .sheet(isPresented: $showQueue) { PlaybackQueueView().appControls() }
-            .sheet(isPresented: $showDevices) { DevicePicker() }
-            .sheet(isPresented: $showUpdates) { AppUpdatesView() }
+            .sheet(isPresented: $showQueue) { PlaybackQueueView() }
             .sheet(isPresented: $showTracks) {
                 NavigationStack {
                     List {
-                        if let album = detailAlbum {
-                            VStack(alignment: .leading, spacing: 12) {
-                                PlayerArtwork(albumID: album.id, size: 210).frame(maxWidth: .infinity).padding(.bottom, 12)
-                                Text(album.title).font(.title.bold()).foregroundStyle(Color("BrandText"))
-                                Text(album.artistName ?? "").font(.subheadline).foregroundStyle(Color("BrandMuted"))
-                                HStack {
-                                    Text("\(tracks.count) tracks").font(.caption).foregroundStyle(Color("BrandMuted"))
-                                    Spacer()
-                                    Button { playAlbum() } label: { Image(systemName: "play.fill").frame(width: 56, height: 56) }
-                                        .buttonStyle(MusicTransportStyle(primary: true)).accessibilityLabel("Play album")
-                                }
-                            }.padding(.vertical, 12).listRowBackground(Color.clear).listRowSeparator(.hidden)
-                        }
                         ForEach(detailAlbums, id: \.id) { album in
                             ArtworkRow(kind: .album, id: album.id, title: album.title, subtitle: album.artistName ?? "") { Task { await openAlbum(album.id) } }
                         }
                         ForEach(tracks, id: \.id) { track in TrackRow(track: track, profile: model.profile, bearerToken: model.token()) }
                     }
-                    .listStyle(.plain).scrollContentBackground(.hidden).background(Color("BrandBackground"))
-                    .navigationTitle(detailAlbum == nil ? "Tracks" : "Album").navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close album", systemImage: "chevron.down") { showTracks = false }.labelStyle(.iconOnly) } }
+                    .navigationTitle("Tracks").toolbar { ToolbarItem(placement: .cancellationAction) { Button("Back to browsing") { showTracks = false } } }
                 }.appControls()
             }
             .sheet(isPresented: $showSettings, onDismiss: { Task { await load() } }) { SettingsView() }
             .sheet(isPresented: $showReport) { ReportView(targetType: reportTarget, targetID: reportID) }
         }
-    }
-    private func libraryChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(title, action: action).font(.subheadline.weight(.medium)).padding(.horizontal, 18).frame(minHeight: 44)
-            .background(selected ? Color("AccentColor") : Color("BrandSurface"), in: Capsule())
-            .foregroundStyle(selected ? (colorScheme == .dark ? Color.black : Color.white) : Color("BrandText"))
-            .buttonStyle(.plain)
     }
     private func search() async {
         let text = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -343,7 +293,6 @@ struct LibraryView: View {
         do {
             let detail = try await client().getArtist(ArtistRequest(artistId: id, library: selectedLibrary))
             guard model.profile?.id == profileID, library == selectedLibrary else { return }
-            detailAlbum = nil
             detailAlbums = detail.albums
             tracks = []
             showTracks = true
@@ -365,34 +314,16 @@ struct LibraryView: View {
             let profileID = model.profile?.id
             let result = try await client().getAlbum(AlbumRequest(albumId: id))
             guard model.profile?.id == profileID else { return }
-            tracks = result.tracks.map { track in
-                Track(id: track.id, library: track.library, title: track.title,
-                    artistId: track.artistId ?? result.album.artistId, artistName: track.artistName ?? result.album.artistName,
-                    albumId: track.albumId ?? result.album.id, albumTitle: track.albumTitle ?? result.album.title,
-                    trackNo: track.trackNo, discNo: track.discNo, durationMs: track.durationMs, codec: track.codec,
-                    bitrateKbps: track.bitrateKbps, sampleRate: track.sampleRate, channels: track.channels,
-                    bitDepth: track.bitDepth, rootRelativePath: track.rootRelativePath, contentHash: track.contentHash)
-            }; detailAlbum = result.album; detailAlbums = []; showTracks = true
+            tracks = result.tracks; detailAlbums = []; showTracks = true
         }
         catch { model.message = "The album could not be loaded from the selected server." }
-    }
-    private func playAlbum() {
-        guard let first = tracks.first, let profile = model.profile else { return }
-        if remote.target != nil {
-            remote.play(first)
-            for track in tracks.dropFirst() { remote.enqueue(track) }
-        } else {
-            let start = playback.queue.count
-            for track in tracks { playback.enqueue(track, profile: profile, token: model.token()) }
-            playback.playQueued(playback.queue[start])
-        }
     }
     private func openPlaylist(_ id: String) async {
         do {
             let profileID = model.profile?.id
             let result = try await client().getPlaylist(PlaylistRequest(playlistId: id))
             guard model.profile?.id == profileID else { return }
-            tracks = result.tracks; detailAlbum = nil; detailAlbums = []; showTracks = true
+            tracks = result.tracks; detailAlbums = []; showTracks = true
         }
         catch { model.message = "The playlist could not be loaded from the selected server." }
     }
@@ -419,15 +350,6 @@ struct LibraryView: View {
     }
 }
 
-struct MusicSearch: ViewModifier {
-    let enabled: Bool
-    @Binding var query: String
-    @ViewBuilder func body(content: Content) -> some View {
-        if enabled { content.searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Artists, albums, and tracks") }
-        else { content }
-    }
-}
-
 struct TrackRow: View {
     let track: Track
     let profile: ServerProfile?
@@ -435,31 +357,18 @@ struct TrackRow: View {
     @EnvironmentObject private var playback: PlaybackManager
     @EnvironmentObject private var remote: RemotePlayback
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: play) {
-                HStack(spacing: 12) {
-                    PlayerArtwork(albumID: track.albumId, size: 48)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(track.title).font(.subheadline.weight(.semibold)).lineLimit(1).foregroundStyle(Color("BrandText"))
-                        Text(track.artistName ?? track.albumTitle ?? "").font(.caption).lineLimit(1).foregroundStyle(Color("BrandMuted"))
-                    }.frame(maxWidth: .infinity, alignment: .leading)
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityLabel("Play \(track.title)")
-            Button("Add \(track.title) to queue", systemImage: "plus.circle", action: enqueue).labelStyle(.iconOnly).buttonStyle(MusicTransportStyle())
-            Menu {
-                Button("Play now", systemImage: "play.fill", action: play)
-                Button("Add to queue", systemImage: "text.badge.plus", action: enqueue)
-            } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }.accessibilityLabel("More for \(track.title)")
-        }.padding(.vertical, 4).listRowBackground(Color.clear).listRowSeparator(.hidden)
-    }
-    private func play() {
-        guard let profile else { return }
-        if remote.target != nil { remote.play(track) }
-        else { playback.enqueue(track, profile: profile, token: bearerToken); if let entry = playback.queue.last { playback.playQueued(entry) } }
-    }
-    private func enqueue() {
-        guard let profile else { return }
-        if remote.target != nil { remote.enqueue(track) } else { playback.enqueue(track, profile: profile, token: bearerToken) }
+        HStack {
+            Image(systemName: "music.note"); Text(track.title); Spacer()
+            Button("Play") {
+                guard let profile else { return }
+                if remote.target != nil { remote.play(track) }
+                else { playback.enqueue(track, profile: profile, token: bearerToken); if let entry = playback.queue.last { playback.playQueued(entry) } }
+            }.foregroundStyle(.tint)
+            Button("Add to queue", systemImage: "text.badge.plus") {
+                guard let profile else { return }
+                if remote.target != nil { remote.enqueue(track) } else { playback.enqueue(track, profile: profile, token: bearerToken) }
+            }.labelStyle(.iconOnly)
+        }.buttonStyle(.borderless).accessibilityElement(children: .contain)
     }
 }
 
@@ -503,7 +412,7 @@ struct ArtworkRow: View {
             }
         }
         .buttonStyle(.plain)
-        .listRowBackground(Color.clear)
+        .listRowBackground(Color("BrandSurface"))
         .contextMenu {
             Button("Choose library image", systemImage: "photo.on.rectangle") { libraryPickerOpen = true }.disabled(busy)
             Button("Upload cover image", systemImage: "photo") { Task { await beginPicker() } }.disabled(busy)

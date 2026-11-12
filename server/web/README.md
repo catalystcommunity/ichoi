@@ -21,20 +21,12 @@ The development server uses port 5173. It forwards `/ws`, `/api`, and `/media` t
 Open `http://localhost:5173/tests/browser/reliability.html` in a separate browser
 profile. The fixture uses simulated replies. It restores local storage when it
 ends. It checks request failures, retry, partial catalog results, queue edits,
-search retention, device selection, and mobile navigation. Use viewport widths
-of 320, 390, 768, and 1280 pixels. Add `?keep` to retain the simulated library for
-a visual check. Use a separate browser profile; this mode does not restore its
-local storage.
+search retention, and device selection.
 
 ## Components and state
 
 `src/app.ts` owns the router, navigation, player, and queue panel. The queue stays
 outside the browse view. Opening it does not replace search input or results.
-The left sidebar is always visible above 900 pixels. On narrower screens, Menu
-opens a native modal drawer. Close, Escape, an outside tap, or navigation closes
-it. The drawer scrolls when the screen is short. The queue opens from the right
-and has its own playback and device controls. Narrow track rows put actions
-below the title.
 `src/ui` contains the library, details, settings, device, and playback views.
 
 Zest supplies the component lifecycle, router, controls, dialogs, notices,

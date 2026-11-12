@@ -106,7 +106,6 @@ object ArtworkImages {
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         require(bounds.outWidth in 1..8192 && bounds.outHeight in 1..8192) { "Choose a valid image no larger than 8192 pixels per side." }
         val options = BitmapFactory.Options().apply {
-            inSampleSize = 1
             while (maxOf(bounds.outWidth, bounds.outHeight) / inSampleSize > 1600) inSampleSize *= 2
         }
         return requireNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)) { "This image could not be read." }

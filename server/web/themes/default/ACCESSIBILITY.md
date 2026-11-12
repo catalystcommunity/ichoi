@@ -9,10 +9,7 @@ an alert role and include a Retry control.
 
 Links, native inputs, and Zest controls support keyboard use. The active route
 has `aria-current="page"`. Sliders have labels. Ctrl+K or Command+K opens search.
-Escape closes the queue or mobile navigation drawer. The drawer uses a native
-modal dialog with contained keyboard focus. Close and Escape return focus to
-Menu. A navigation link closes the drawer and focuses the main content. Zest
-dialogs manage focus while open.
+Escape closes the queue. Zest dialogs manage focus while open.
 
 Track rows use the Zest ListView. Queue actions have labels that include the
 track name. Move up, Move down, Remove, and Undo do not need a drag operation.
@@ -35,8 +32,7 @@ The responsive layout keeps the player below the main scroll area.
 
 The interface is English. A complete screen-reader audit and an automated
 contrast audit have not been completed for the new theme. Browser checks cover
-320-pixel and 390-pixel mobile layouts, catalog errors, retry, search retention,
-and queue edits.
+390-pixel mobile layout, catalog errors, retry, search retention, and queue edits.
 These checks are not a WCAG certification.
 
 ## Next Actions

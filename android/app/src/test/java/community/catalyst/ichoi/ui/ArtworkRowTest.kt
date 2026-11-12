@@ -36,16 +36,6 @@ class ArtworkRowTest {
         assertTrue(descendants(row).filterIsInstance<TextView>().any { it.visibility == View.VISIBLE && it.text == "Night Music" })
     }
 
-    @Test @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
-    fun validArtworkDecodesWithoutAZeroSamplingDivisor() {
-        val source = Bitmap.createBitmap(64,64,Bitmap.Config.ARGB_8888)
-        val bytes = java.io.ByteArrayOutputStream().use { output -> source.compress(Bitmap.CompressFormat.PNG,100,output);output.toByteArray() }
-        val decoded = ArtworkImages.decode(bytes)
-        assertEquals(64,decoded.width)
-        assertEquals(64,decoded.height)
-        source.recycle();decoded.recycle()
-    }
-
     @Test fun oversizedImagesAreRejectedBeforeDecode() {
         val result = runCatching { ArtworkImages.upload(ByteArray(ArtworkImages.MAX_BYTES + 1)) }
         assertTrue(result.exceptionOrNull() is IllegalArgumentException)

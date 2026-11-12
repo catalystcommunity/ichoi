@@ -17,12 +17,7 @@ export class IchoiApp extends BaseComponent {
   private servers = select("Active server", [], "", value => useServers().setActive(value));
   private status = h("div", { class: "connection-status", role: "status" });
   private player = new PlayerBar();
-  private queueHost = h("dialog", { class: "queue-host", "aria-label": "Playback queue" });
-  private sidebar = h("aside", { class: "sidebar", "aria-label": "Library navigation" });
-  private sidebarSlot = h("div", { class: "sidebar-slot" });
-  private menu = h("dialog", { id: "navigation-drawer", class: "navigation-drawer", "aria-label": "Navigation" });
-  private menuButton = h("button", { type: "button", class: "shell-button", "aria-controls": "navigation-drawer", "aria-expanded": "false", onclick: () => this.openMenu() }, "☰ Menu");
-  private narrow = matchMedia("(max-width: 900px)");
+  private queueHost = h("aside", { class: "queue-host", "aria-label": "Playback queue", hidden: true });
   private router = new SimpleRouter();
   private queueOpen = false;
   private opener?: HTMLElement;
@@ -33,21 +28,9 @@ export class IchoiApp extends BaseComponent {
     if (satelliteToken()) this.nav.append(link("Satellite", "/satellite"));
     const queue = new QueuePanel(); queue.close = () => this.toggleQueue(false); this.queueHost.append(queue);
     this.player.openQueue = () => this.toggleQueue(!this.queueOpen);
-    const brand = () => h("a", { href: "/", class: "brand", "aria-label": "Ichoi library" }, h("img", { src: "/brand/ichoi-mark.svg", alt: "" }), h("span", {}, "ichoi"));
-    this.sidebar.replaceChildren(h("div", { class: "sidebar-heading" }, brand(), h("button", { type: "button", class: "shell-button menu-close", onclick: () => this.closeMenu() }, "Close")), this.nav,
-      h("label", { class: "sidebar-server" }, h("span", { class: "eyebrow" }, "Your server"), this.servers));
-    this.sidebarSlot.append(this.sidebar);
     this.replaceChildren(link("Skip to content", "#main-content", "skip-link"),
-      h("header", { class: "app-header" }, this.menuButton, brand()), this.sidebarSlot,
-      this.status, h("div", { class: "workspace" }, this.main, this.queueHost), this.player, this.menu);
-    this.listen(this.menu, "cancel", (event: Event) => { event.preventDefault(); this.closeMenu(); });
-    this.listen(this.menu, "click", (event: MouseEvent) => { if (event.target === this.menu) this.closeMenu(); });
-    this.listen(this.queueHost, "cancel", (event: Event) => { event.preventDefault(); this.toggleQueue(false); });
-    this.listen(this.queueHost, "click", (event: MouseEvent) => { if (event.target === this.queueHost) this.toggleQueue(false); });
-    this.listen(this.narrow, "change", () => {
-      this.closeMenu();
-      if (this.queueOpen) { this.queueHost.close(); this.showQueue(); }
-    });
+      h("header", { class: "app-header" }, h("a", { href: "/", class: "brand", "aria-label": "Ichoi library" }, h("img", { src: "/brand/ichoi-mark.svg", alt: "" }), h("span", {}, "ichoi")), this.nav, this.servers),
+      this.status, h("div", { class: "workspace" }, this.main, this.queueHost), this.player);
     const route = () => { if (this.initialized) this.route(); };
     for (const path of ["/", "/audiobooks", "/search", "/album", "/artist", "/audiobook", "/source", "/playlists", "/jukebox", "/settings", "/satellite", "/now-playing"]) this.router.registerRoute(path, route, [], path === "/");
     this.listen(this, "click", (event: MouseEvent) => {
@@ -55,42 +38,23 @@ export class IchoiApp extends BaseComponent {
       if (!anchor || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || anchor.target || anchor.hasAttribute("download")) return;
       const url = new URL(anchor.href);
       if (url.origin !== location.origin || anchor.getAttribute("href")?.startsWith("#")) return;
-      event.preventDefault(); const fromMenu = this.menu.open; this.closeMenu(); this.router.changePage(url.pathname + url.search + url.hash); if (fromMenu) this.main.focus();
+      event.preventDefault(); this.router.changePage(url.pathname + url.search + url.hash);
     });
     this.listen(document, "keydown", (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.defaultPrevented && !document.querySelector("dialog:modal") && this.queueOpen) this.toggleQueue(false);
-      if ((event.ctrlKey || event.metaKey) && event.key === "k") { event.preventDefault(); this.closeMenu(); this.toggleQueue(false); this.router.changePage("/search"); this.main.querySelector<HTMLInputElement>("input[type=search]")?.focus(); }
+      if (event.key === "Escape" && this.queueOpen) this.toggleQueue(false);
+      if ((event.ctrlKey || event.metaKey) && event.key === "k") { event.preventDefault(); this.router.changePage("/search"); this.main.querySelector<HTMLInputElement>("input[type=search]")?.focus(); }
     });
     this.own(useServers().subscribe(() => this.invalidate()));
     this.own(observe([useServers()], () => [useServers().api(), useServers().activeId(), useServers().active()?.session?.account_id, useServers().active()?.session?.can_admin], () => this.route()));
     this.own(() => this.router.cleanup());
-    this.listen(window, "popstate", () => { this.closeMenu(); this.toggleQueue(false); });
     this.listen(window, "ichoi:update-reloading", () => { this.status.replaceChildren(loading("Updating Ichoi…")); this.status.hidden = false; });
     this.initialized = true; this.route(); this.invalidate();
   }
-  private openMenu(): void {
-    if (!this.narrow.matches || this.menu.open) return;
-    this.toggleQueue(false);
-    this.menu.append(this.sidebar);
-    this.menu.showModal();
-    this.menuButton.setAttribute("aria-expanded", "true");
-  }
-  private closeMenu(): void {
-    if (!this.menu.open) return;
-    this.menu.close();
-    this.sidebarSlot.append(this.sidebar);
-    this.menuButton.setAttribute("aria-expanded", "false");
-    if (this.narrow.matches) this.menuButton.focus();
-  }
-  private showQueue(): void {
-    if (this.narrow.matches) this.queueHost.showModal(); else this.queueHost.show();
-  }
   private toggleQueue(open: boolean): void {
     if (open === this.queueOpen) return;
-    if (open) this.closeMenu();
-    this.queueOpen = open; this.classList.toggle("queue-open", open);
-    if (open) { this.opener = document.activeElement as HTMLElement; this.showQueue(); this.queueHost.querySelector<HTMLElement>("button")?.focus(); }
-    else { this.queueHost.close(); if (this.opener?.isConnected) this.opener.focus(); }
+    this.queueOpen = open; this.queueHost.hidden = !open; this.classList.toggle("queue-open", open);
+    if (open) { this.opener = document.activeElement as HTMLElement; this.queueHost.querySelector<HTMLElement>("push-button")?.focus(); }
+    else this.opener?.focus();
   }
   private route(): void {
     if (!this.isActive()) return;
