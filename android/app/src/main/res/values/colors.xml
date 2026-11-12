@@ -1,5 +1,6 @@
 <resources>
-    <color name="ichoi_bg">#EFEAE0</color><color name="ichoi_surface">#F7F3EA</color>
-    <color name="ichoi_text">#211C14</color><color name="ichoi_muted">#5F5747</color>
-    <color name="ichoi_accent">#B96A06</color><color name="ichoi_signal">#0C8F86</color>
+    <color name="ichoi_bg">#F7F5EF</color><color name="ichoi_surface">#EEEBE3</color>
+    <color name="ichoi_text">#29271F</color><color name="ichoi_muted">#686355</color>
+    <color name="ichoi_accent">#86551B</color><color name="ichoi_signal">#0C8F86</color>
+    <color name="ichoi_border">#9D9382</color><color name="ichoi_on_accent">#FFFFFF</color>
 </resources>

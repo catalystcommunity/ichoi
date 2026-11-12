@@ -29,7 +29,14 @@ export class Cover extends BaseComponent {
       if (!this.isActive() || generation !== this.generation) return;
       if (this.url) URL.revokeObjectURL(this.url);
       this.url = URL.createObjectURL(blob);
-      this.replaceChildren(h("img", { src: this.url, alt: `Cover art for ${this.title}`, loading: "lazy" }));
+      const image = h("img", { src: this.url, alt: `Cover art for ${this.title}`, loading: "lazy" });
+      image.addEventListener("error", () => {
+        if (!this.isActive() || generation !== this.generation) return;
+        if (this.url) URL.revokeObjectURL(this.url);
+        this.url = undefined;
+        this.replaceChildren(h("span", { class: "cover-symbol", "aria-hidden": "true" }, this.kind === "artist" ? "♪" : "♫"), h("span", { class: "cover-title" }, this.title));
+      }, { once: true });
+      this.replaceChildren(image);
     } catch { /* Keep the title when artwork is absent. */ }
   }
 }
