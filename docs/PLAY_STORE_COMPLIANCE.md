@@ -99,7 +99,7 @@ These decisions are fixed. Do not change them without a review of this document.
 | Account creation implies account deletion | **SERVER** | A LinkKeys login auto-creates a member account. Add a server API operation and expose it in the Android, iOS, and browser clients. Decision 2 defines the deletion behavior. |
 | Web URL for deletion requests | **LISTING** | Use the project account-deletion help page. It must direct the user to the selected server's browser deletion path or administrator. It must state that the server operator controls the account. |
 | Prominent disclosure and consent | **N/A** | The app does not collect data outside the user's reasonable expectation. If satellite mode is added, show a one-time in-app notice that other users can start playback on this device. |
-| Third-party SDKs | **CLIENT** | Use none that send data off-device. Decision 4. |
+| Third-party SDKs | **CLIENT** | No tracking SDKs. Google Play app-update 2.1.0 is used only for store-managed updates, as requested by the owner. |
 
 ### 2.3 Privacy: Permissions
 
@@ -116,7 +116,7 @@ These decisions are fixed. Do not change them without a review of this document.
 
 | Item | Status | Notes |
 |---|---|---|
-| No self-update outside Google Play | **CLIENT** | Do not add an in-app updater. |
+| No self-update outside Google Play | **CLIENT** | Google Play owns update consent, download, and installation. Do not fetch or install APK files. See [mobile updates](mobile-updates.md). |
 | No download of executable code | **CLIENT** | The native clients use the generated Kotlin and Swift bindings and download no code. |
 | No proxy or VPN function | **OK** | Ichoi has none. |
 
