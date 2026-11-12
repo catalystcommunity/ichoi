@@ -26,6 +26,12 @@ export class TrackRows extends BaseComponent {
     super.connectedCallback();
     this.view.label = this.queueMode ? "Playback queue" : "Tracks";
     this.view.emptyText = this.queueMode ? "Your queue is empty. Add tracks from the library." : "No tracks";
+    const resize = new ResizeObserver(() => {
+      const compact = this.clientWidth < 520;
+      this.classList.toggle("compact-tracks", compact);
+      this.view.rowHeight = compact ? 116 : 76;
+    });
+    resize.observe(this); this.own(() => resize.disconnect());
     this.view.rowHeight = 76;
     // Queue duplicates have separate positions. The server owns queue item identities.
     this.view.keyOf = (track, index) => this.queueMode ? index : track.id;
@@ -39,21 +45,21 @@ export class TrackRows extends BaseComponent {
       const play = button("Play", async () => {
         if (this.queueMode) await pb.playIndex(index);
         else await pb.playNow(await localTracks([track], this.serverId));
-      }, "flat");
+      });
       play.setAttribute("aria-label", `Play ${track.title}`);
       actions.append(play);
       if (this.queueMode) {
-        const up = button("↑", () => this.move(index, index - 1), "flat");
+        const up = button("↑", () => this.move(index, index - 1));
         up.setAttribute("aria-label", `Move ${track.title} up`); up.disabled = index === 0;
-        const down = button("↓", () => this.move(index, index + 1), "flat");
+        const down = button("↓", () => this.move(index, index + 1));
         down.setAttribute("aria-label", `Move ${track.title} down`); down.disabled = index === this.tracks.length - 1;
-        const remove = button("×", () => { pb.removeAt(index); this.restoreFocus(index); }, "flat");
+        const remove = button("×", () => { pb.removeAt(index); this.restoreFocus(index); });
         remove.setAttribute("aria-label", `Remove ${track.title}`);
         actions.append(up, down, remove);
       } else {
-        const next = button("Next", async () => pb.playNext((await localTracks([track], this.serverId))[0]!), "flat");
+        const next = button("Next", async () => pb.playNext((await localTracks([track], this.serverId))[0]!));
         next.setAttribute("aria-label", `Play ${track.title} next`);
-        const add = button("+", async () => pb.enqueue(await localTracks([track], this.serverId)), "flat");
+        const add = button("+", async () => pb.enqueue(await localTracks([track], this.serverId)));
         add.setAttribute("aria-label", `Add ${track.title} to queue`);
         actions.append(next, add);
       }

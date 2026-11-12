@@ -187,12 +187,61 @@ class SettingsNavigationTest {
         before.scrollTo(0, 120)
         val position = before.scrollY
         invoke("showQueue", arrayOf(Boolean::class.javaPrimitiveType!!), false)
-        assertTrue(labels().contains("Now playing"))
+        assertTrue(labels().contains("Your queue"))
         invoke("backToBrowse", emptyArray())
         val restored = views().filterIsInstance<ScrollView>().single()
         assertSame(before, restored)
         assertEquals("restored search", views().filterIsInstance<android.widget.EditText>().single().text.toString())
         assertEquals(position, restored.scrollY)
+    }
+
+    @Test fun bottomTabsKeepTheSearchQueryAndView() {
+        openLibrary()
+        invoke("openTab", arrayOf(String::class.java), "Search")
+        val before = views().filterIsInstance<ScrollView>().single()
+        views().filterIsInstance<android.widget.EditText>().single().setText("restored search")
+        invoke("openTab", arrayOf(String::class.java), "Queue")
+        assertTrue(labels().contains("Your queue"))
+        invoke("openTab", arrayOf(String::class.java), "Search")
+        assertSame(before, views().filterIsInstance<ScrollView>().single())
+        assertEquals("restored search", views().filterIsInstance<android.widget.EditText>().single().text.toString())
+        invoke("openTab", arrayOf(String::class.java), "Library")
+        assertTrue(labels().contains("Your Ichoi library"))
+    }
+
+    @Test fun queueEditMovesRemovesAndUndoesWithoutStartingPlayback() {
+        val queue = community.catalyst.ichoi.playback.PlaybackQueue
+        queue.entries.clear()
+        val profile = ServerProfile("queue-test", "https://example.com", false)
+        try {
+            for (name in listOf("First", "Second", "Third")) queue.enqueue(Track(id=name, library=Library.Music,
+                title=name, durationMs=60_000uL, codec=Codec.Mp3, sampleRate=44_100uL, channels=2uL,
+                rootRelativePath="$name.mp3"), profile, null)
+            invoke("showQueue", arrayOf(Boolean::class.javaPrimitiveType!!), false)
+            views().filterIsInstance<TextView>().first { it.text.toString() == "Edit" }.performClick()
+            views().first { it.contentDescription == "Move First down" }.performClick()
+            assertEquals(listOf("Second", "First", "Third"), queue.entries.map { it.track.title })
+            views().first { it.contentDescription == "Remove Third" }.performClick()
+            assertEquals(listOf("Second", "First"), queue.entries.map { it.track.title })
+            views().filterIsInstance<TextView>().first { it.text.toString() == "Undo" }.performClick()
+            assertEquals(listOf("Second", "First", "Third"), queue.entries.map { it.track.title })
+            assertNull(shadowOf(activity).nextStartedService)
+        } finally { queue.entries.clear() }
+    }
+
+    @Test fun libraryLoadingFinishesWhileAnotherTabIsOpen() {
+        enqueueResponse("list-albums", AlbumsResponse(emptyList(), 0uL).toCbor(), delayed = true)
+        invoke("showLibrary", arrayOf(IchoiApi::class.java, LibrariesResponse::class.java), api,
+            LibrariesResponse(listOf(LibraryInfo(Library.Music))))
+        shadowOf(Looper.getMainLooper()).idle()
+        val reply = replies.poll(5, TimeUnit.SECONDS) ?: error("No album request")
+        invoke("openTab", arrayOf(String::class.java), "Search")
+        reply()
+        drainReply()
+        assertTrue(labels().contains("Search"))
+        invoke("openTab", arrayOf(String::class.java), "Library")
+        assertFalse(labels().contains("Loading covers…"))
+        assertTrue(labels().contains("Browse all albums"))
     }
 
     private fun openSettings(accounts: List<BlockedAccount> = emptyList(), invalidResponse: Boolean = false) {

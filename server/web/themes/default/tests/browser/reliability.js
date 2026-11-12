@@ -11,7 +11,10 @@ const { useServers } = await import("../../src/stores/servers.ts");
 import { CsilConnection } from "../../src/lib/csil.ts";
 import { decode } from "../../src/lib/cbor.ts";
 
+const keep = new URLSearchParams(location.search).has("keep");
 const root = document.getElementById("root");
+let artworkFailures = 0;
+root.addEventListener("error", event => { if (event.target instanceof HTMLImageElement) artworkFailures++; }, true);
 const failures = new Map();
 const responses = new Map();
 const calls = [];
@@ -128,6 +131,8 @@ try {
   calls.length = 0;
   go("/audiobooks");
   await until(() => text().includes("Book 0"));
+  await until(() => artworkFailures > 0 && root.querySelector('.cover-title'));
+  check(!!root.querySelector('.cover-title'), "Invalid artwork retains a readable cover placeholder");
   check(calls.filter((call) => call.operation === "list-albums").every((call) => call.request.offset === 0),
     "Grid view does not fetch the full catalog on entry");
   const scroller = root.querySelector(".catalog-viewport");
@@ -182,7 +187,7 @@ try {
   pb.enqueue([track, { ...track, id: "two", title: "Two" }]);
   await until(() => text().includes("Queue · 2"));
   [...root.querySelectorAll("button")].find(button => button.textContent === "Queue · 2").click();
-  await until(() => root.querySelector('.queue-host:not([hidden])'));
+  await until(() => root.querySelector('.queue-host[open]'));
   check(root.querySelector('input[type="search"]') === search && search.value === "kept query", "Queue opening preserves the search field and query");
   await until(() => root.querySelector('button[aria-label="Move Two up"]'));
   root.querySelector('button[aria-label="Move Two up"]').click();
@@ -193,17 +198,39 @@ try {
   await until(() => pb.queue.length === 1);
   await pb.undoQueue();
   check(pb.queue.length === 2, "Queue removal can be undone");
-  check(!!root.querySelector('select[aria-label="Playback device"]'), "Device selection remains available with the queue open");
+  check(!!root.querySelector('select[aria-label="Queue playback device"]'), "Device selection remains available with the queue open");
   pb.clearQueue();
   pb.enqueue([track, { ...track, id: "two", title: "Two" }]);
   pb.removeAt(0);
   check(pb.snapshot().status === "idle" && pb.current()?.id === "two", "Removing an idle current track does not start playback");
+  root.querySelector('.queue-head button').click();
+  check(!root.querySelector('.queue-host').open, "Queue close restores the browse view");
+  if (matchMedia("(max-width: 900px)").matches) {
+    const menuButton = root.querySelector('.app-header button');
+    menuButton.click();
+    const drawer = root.querySelector('.navigation-drawer');
+    check(drawer.matches(':modal') && menuButton.getAttribute('aria-expanded') === 'true', "Mobile Menu opens a modal navigation drawer");
+    check(drawer.querySelectorAll('nav a').length === 6, "Mobile drawer contains every navigation destination");
+    const settings = drawer.querySelector('a[href="/settings"]');
+    settings.scrollIntoView();
+    const bounds = settings.getBoundingClientRect();
+    check(bounds.left >= 0 && bounds.right <= innerWidth && bounds.top >= 0 && bounds.bottom <= innerHeight, "Settings remains reachable on a small screen");
+    settings.click();
+    check(!drawer.open && location.pathname === '/settings' && document.activeElement === root.querySelector('main'), "Navigation closes the drawer and focuses the destination");
+    menuButton.click();
+    drawer.querySelector('.menu-close').click();
+    check(!drawer.open && document.activeElement === menuButton, "Closing navigation restores focus to Menu");
+  }
+  check(document.documentElement.scrollWidth <= innerWidth, "The application does not overflow the viewport horizontally");
   window.reliabilityStatus = "passed";
+  if (keep) { go('/audiobooks'); await until(() => text().includes('Book 0')); }
+
 } catch (error) {
   window.reliabilityStatus = "failed";
   results.push(String(error));
   console.error(error);
 } finally {
+  if (!keep) {
   dispose?.();
   usePlayback().dispose(); useServers().dispose();
   window.fetch = originalFetch;
@@ -212,4 +239,5 @@ try {
   const output = document.createElement("pre");
   output.textContent = `${window.reliabilityStatus.toUpperCase()}\n${results.join("\n")}`;
   root.replaceChildren(output);
+  }
 }

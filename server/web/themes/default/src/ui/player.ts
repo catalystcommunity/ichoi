@@ -9,6 +9,16 @@ import { ServerApi } from "../lib/services.ts";
 import { satelliteOutput, setSatelliteOutput, enterSatelliteMode, leaveSatelliteMode, satelliteToken } from "../lib/satellite-mode.ts";
 import { acceptTerms, hasAcceptedTerms, TERMS_URL } from "../lib/compliance.ts";
 
+function syncTargets(input: HTMLSelectElement): void {
+  const pb = usePlayback(), targets = pb.sharedTargets();
+  const key = JSON.stringify([pb.target(), targets.map(target => [target.id, target.name, target.audio_blocked])]);
+  if (input.dataset.targets === key) return;
+  input.dataset.targets = key;
+  const options = satelliteToken() ? [] : [h("option", { value: "local" }, "This browser")];
+  for (const target of targets) options.push(h("option", { value: target.id }, `${target.name}${target.audio_blocked ? " · Enable audio on device" : ""}`));
+  input.replaceChildren(...options); input.value = pb.target();
+}
+
 export class PlayerBar extends BaseComponent {
   openQueue: () => void = () => undefined;
   private titleNode = h("strong");
@@ -25,16 +35,15 @@ export class PlayerBar extends BaseComponent {
   private shuffle = button("Shuffle", () => usePlayback().toggleShuffle(), "flat");
   private error = h("div", { class: "player-error", role: "status" });
   private coverKey = "";
-  private targetKey = "";
   connectedCallback(): void {
     super.connectedCallback(); this.className = "player-bar";
     this.setAttribute("aria-label", "Playback controls");
     this.shuffle.toggle = true;
     this.replaceChildren(this.error, h("div", { class: "player-main" },
       h("div", { class: "player-track" }, this.artwork, h("div", { class: "track-copy" }, this.titleNode, this.subtitle)),
-      h("div", { class: "player-controls" }, button("Previous", () => usePlayback().previous(), "flat"), this.play, button("Next", () => usePlayback().next(), "flat")),
+      h("div", { class: "player-controls" }, button("Previous", () => usePlayback().previous(), "flat"), this.play, button("Next", () => usePlayback().next())),
       h("div", { class: "player-destination" }, h("label", {}, h("span", { class: "eyebrow" }, "Playing on"), this.target), this.queueButton,
-        button("More", () => this.moreControls(), "flat"))),
+        button("More", () => this.moreControls()))),
       h("div", { class: "player-progress" }, this.elapsed, this.seek, this.duration, this.shuffle, this.repeat, this.volume));
     this.listen(this.seek, "change", () => usePlayback().seek(Number(this.seek.value)));
     this.listen(this.volume, "input", () => usePlayback().setVolume(Number(this.volume.value)));
@@ -61,14 +70,8 @@ export class PlayerBar extends BaseComponent {
     this.seek.disabled = !track;
     if (document.activeElement !== this.volume) this.volume.value = String(pb.volume());
     this.repeat.label = `Repeat ${pb.repeatMode()}`; this.shuffle.pressed = pb.shuffle();
+    syncTargets(this.target);
     const targets = pb.sharedTargets();
-    const targetKey = JSON.stringify([pb.target(), targets.map(p => [p.id, p.name, p.audio_blocked])]);
-    if (targetKey !== this.targetKey) {
-      this.targetKey = targetKey;
-      const options = satelliteToken() ? [] : [h("option", { value: "local" }, "This browser")];
-      for (const target of targets) options.push(h("option", { value: target.id }, `${target.name}${target.audio_blocked ? " · Tap device to enable audio" : ""}`));
-      this.target.replaceChildren(...options); this.target.value = pb.target();
-    }
     const blocked = targets.find(target => target.id === pb.target())?.audio_blocked;
     this.error.textContent = snap.error ? `Playback failed: ${snap.error}` : blocked ? "Enable audio on the selected device to hear playback." : "";
     this.error.hidden = !this.error.textContent;
@@ -86,10 +89,13 @@ export class QueuePanel extends BaseComponent {
   private count = h("p", { class: "muted" });
   private undo = button("Undo", () => usePlayback().undoQueue());
   private rows = new TrackRows();
+  private target = select("Queue playback device", [], "local", value => usePlayback().setTarget(value));
+  private play = button("Play", () => usePlayback().togglePlay(), "primary");
   connectedCallback(): void {
     super.connectedCallback(); this.className = "queue-panel";
     this.rows.queueMode = true;
-    this.replaceChildren(h("header", { class: "queue-head" }, h("div", {}, h("h2", {}, "Your queue"), this.count), button("Close queue", this.close, "flat")),
+    this.replaceChildren(h("header", { class: "queue-head" }, h("div", {}, h("h2", {}, "Your queue"), this.count), button("Close queue", this.close)),
+      h("div", { class: "queue-playback" }, this.target, this.play),
       h("div", { class: "queue-toolbar" }, this.undo,
         button("Save playlist", async () => {
           if (!hasAcceptedTerms()) {
@@ -100,12 +106,15 @@ export class QueuePanel extends BaseComponent {
           if (name) await usePlayback().saveQueueAsPlaylist(name);
         }), button("Clear", async () => {
           if (await askConfirm({ title: "Clear queue?", text: "Remove all tracks from this device’s queue? You can undo this change.", okLabel: "Clear queue" })) usePlayback().clearQueue();
-        }, "flat")), this.rows);
+        })), this.rows);
     this.own(usePlayback().subscribe(() => this.invalidate())); this.invalidate();
   }
   render(): void {
     const pb = usePlayback(); this.count.textContent = `${pb.queue.length} tracks · ${pb.target() === "local" ? "This browser" : pb.sharedTargets().find(p => p.id === pb.target())?.name ?? "Selected device"}`;
     this.undo.disabled = !pb.canUndoQueue();
+    syncTargets(this.target);
+    this.play.label = pb.snapshot().status === "playing" ? "Pause" : "Play";
+    this.play.disabled = !pb.current() && !pb.queue.length;
   }
 }
 customElements.define("ichoi-queue", QueuePanel);
