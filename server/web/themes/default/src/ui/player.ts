@@ -1,4 +1,6 @@
-import { BaseComponent, h, button, select, askText, askConfirm, field, note, modal } from "./dom.ts";
+import { BaseComponent, h, button, select, askText, askConfirm, field, note, modal, IconButton } from "./dom.ts";
+import { icon, type IconName } from "./icons.ts";
+import type { RepeatMode } from "../lib/schema.ts";
 import { usePlayback } from "../stores/playback.ts";
 import { useServers } from "../stores/servers.ts";
 import { formatDuration } from "../lib/format.ts";
@@ -19,66 +21,112 @@ function syncTargets(input: HTMLSelectElement): void {
   input.replaceChildren(...options); input.value = pb.target();
 }
 
+const REPEAT_UI: Record<RepeatMode, { icon: IconName; label: string }> = {
+  off: { icon: "playThrough", label: "Play the queue once. Select to repeat the queue." },
+  all: { icon: "repeat", label: "Repeat the queue. Select to repeat one track." },
+  one: { icon: "repeatOne", label: "Repeat one track. Select to play the queue once." },
+};
+
+function volumeIcon(volume: number): IconName { return volume <= 0 ? "muted" : volume < 50 ? "volumeLow" : "volume"; }
+
 export class PlayerBar extends BaseComponent {
   openQueue: () => void = () => undefined;
-  private titleNode = h("strong");
-  private subtitle = h("span", { class: "muted" });
+  private titleNode = h("strong", { class: "player-title" });
+  private subtitle = h("span", { class: "muted player-subtitle" });
+  private targetName = h("span", { class: "player-target-name" });
   private artwork = h("div", { class: "player-art" });
-  private play = button("Play", () => usePlayback().togglePlay(), "primary");
+  private play = new IconButton("play", "Play", () => usePlayback().togglePlay(), "play-button");
+  private stop = new IconButton("stop", "Stop", () => usePlayback().stop(), "stop-button");
+  private previous = new IconButton("previous", "Previous track", () => usePlayback().previous());
+  private next = new IconButton("next", "Next track", () => usePlayback().next());
+  private shuffle = new IconButton("shuffle", "Shuffle", () => usePlayback().toggleShuffle(), "mode-button");
+  private repeat = new IconButton("playThrough", REPEAT_UI.off.label, () => usePlayback().cycleRepeatMode(), "mode-button");
+  private queueButton = new IconButton("queue", "Show queue", () => this.openQueue(), "queue-button");
+  private queueCount = h("span", { class: "badge", "aria-hidden": "true" });
+  private mute = new IconButton("volume", "Mute", () => this.toggleMute(), "mute-button");
+  private more = new IconButton("more", "More playback options", () => this.moreControls(), "more-button");
   private target = select("Playback device", [], "local", value => usePlayback().setTarget(value));
-  private seek = h("input", { type: "range", min: 0, max: 0, value: "0", "aria-label": "Playback position" });
-  private volume = h("input", { type: "range", min: 0, max: 100, value: "100", "aria-label": "Volume" });
+  private seek = h("input", { type: "range", min: 0, max: 0, value: "0", class: "seek", "aria-label": "Playback position" });
+  private volume = h("input", { type: "range", min: 0, max: 100, value: "100", class: "volume", "aria-label": "Volume" });
   private elapsed = h("span", { class: "time" });
   private duration = h("span", { class: "time" });
-  private queueButton = button("Queue", () => this.openQueue());
-  private repeat = button("Repeat off", () => usePlayback().cycleRepeatMode(), "flat");
-  private shuffle = button("Shuffle", () => usePlayback().toggleShuffle(), "flat");
   private error = h("div", { class: "player-error", role: "status" });
   private coverKey = "";
+  private unmutedVolume = 100;
+  private queueShown = false;
+  /** The application tells the bar when the queue panel opens or closes. */
+  set queueOpen(open: boolean) { this.queueShown = open; this.invalidate(); }
   connectedCallback(): void {
     super.connectedCallback(); this.className = "player-bar";
     this.setAttribute("aria-label", "Playback controls");
-    this.shuffle.toggle = true;
+    this.queueButton.element.append(this.queueCount);
+    const device = h("label", { class: "device-picker" }, icon("speaker"), h("span", { class: "visually-hidden" }, "Playing on"), this.target);
     this.replaceChildren(this.error, h("div", { class: "player-main" },
-      h("div", { class: "player-track" }, this.artwork, h("div", { class: "track-copy" }, this.titleNode, this.subtitle)),
-      h("div", { class: "player-controls" }, button("Previous", () => usePlayback().previous(), "flat"), this.play, button("Next", () => usePlayback().next())),
-      h("div", { class: "player-destination" }, h("label", {}, h("span", { class: "eyebrow" }, "Playing on"), this.target), this.queueButton,
-        button("More", () => this.moreControls()))),
-      h("div", { class: "player-progress" }, this.elapsed, this.seek, this.duration, this.shuffle, this.repeat, this.volume));
+      h("div", { class: "player-track" }, this.artwork, h("div", { class: "track-copy" }, this.titleNode, this.subtitle, this.targetName)),
+      h("div", { class: "transport", role: "group", "aria-label": "Transport" },
+        h("div", { class: "transport-side start" }, this.shuffle.element, this.stop.element, this.previous.element),
+        this.play.element,
+        h("div", { class: "transport-side end" }, this.next.element, this.repeat.element, this.more.element)),
+      h("div", { class: "player-progress" }, this.elapsed, this.seek, this.duration),
+      h("div", { class: "player-aside" }, device, this.queueButton.element,
+        h("div", { class: "volume-control" }, this.mute.element, this.volume))));
+    this.listen(this.seek, "input", () => this.paintRange(this.seek));
     this.listen(this.seek, "change", () => usePlayback().seek(Number(this.seek.value)));
-    this.listen(this.volume, "input", () => usePlayback().setVolume(Number(this.volume.value)));
+    this.listen(this.volume, "input", () => { usePlayback().setVolume(Number(this.volume.value)); this.paintRange(this.volume); });
     this.own(usePlayback().subscribe(() => this.invalidate())); this.own(useServers().subscribe(() => this.invalidate())); this.invalidate();
   }
+  private toggleMute(): void {
+    const pb = usePlayback(), current = pb.volume();
+    if (current > 0) { this.unmutedVolume = current; pb.setVolume(0); } else pb.setVolume(this.unmutedVolume || 50);
+  }
+  private paintRange(input: HTMLInputElement): void {
+    const max = Number(input.max) || 0;
+    input.style.setProperty("--fill", `${max ? Math.min(100, (Number(input.value) / max) * 100) : 0}%`);
+  }
+  /** Phones show the less frequent controls here. */
   private moreControls(): void {
     const pb = usePlayback();
-    const volume = h("input", { type: "range", min: 0, max: 100, value: String(pb.volume()), "aria-label": "Device volume" });
-    volume.addEventListener("input", () => pb.setVolume(Number(volume.value)));
-    const shuffle = button("Shuffle", () => pb.toggleShuffle()); shuffle.toggle = true; shuffle.pressed = pb.shuffle();
-    const repeat = button(`Repeat ${pb.repeatMode()}`, () => { pb.cycleRepeatMode(); repeat.label = `Repeat ${pb.repeatMode()}`; });
-    modal("Playback options", h("div", { class: "stack" },
-      button("Previous track", () => pb.previous()), h("div", { class: "actions" }, shuffle, repeat), h("label", {}, "Volume", volume)));
+    const volume = h("input", { type: "range", min: 0, max: 100, value: String(pb.volume()), class: "volume", "aria-label": "Device volume" });
+    volume.addEventListener("input", () => { pb.setVolume(Number(volume.value)); this.paintRange(volume); });
+    this.paintRange(volume);
+    const stop = new IconButton("stop", "Stop", () => pb.stop());
+    modal("Playback options", h("div", { class: "stack player-options" },
+      h("div", { class: "option-row" }, stop.element, h("span", {}, "Stop and return to the start of the track")),
+      h("label", { class: "option-row" }, icon("volume"), h("span", { class: "visually-hidden" }, "Volume"), volume)));
   }
   render(): void {
     const pb = usePlayback(), servers = useServers(), track = pb.current(), snap = pb.snapshot();
-    this.titleNode.textContent = track?.title || "Ready when you are";
-    this.subtitle.textContent = track?.artist_name || (track ? servers.active()?.name ?? "" : "Find a track and press Play");
-    this.play.label = snap.status === "playing" ? "Pause" : "Play"; this.play.disabled = !track && !pb.queue.length;
-    this.queueButton.label = `Queue${pb.queue.length ? ` · ${pb.queue.length}` : ""}`;
-    this.elapsed.textContent = formatDuration(snap.positionMs); this.duration.textContent = formatDuration(snap.durationMs ?? track?.duration_ms ?? 0);
-    this.seek.max = String(snap.durationMs ?? track?.duration_ms ?? 0);
+    const hasMedia = !!track || pb.queue.length > 0, playing = snap.status === "playing";
+    this.titleNode.textContent = track?.title || "Nothing playing";
+    this.subtitle.textContent = track ? [track.artist_name, track.album_title].filter(Boolean).join(" · ") || (servers.active()?.name ?? "") : "Choose a track to start";
+    this.play.icon = playing ? "pause" : "play"; this.play.label = playing ? "Pause" : "Play";
+    for (const control of [this.play, this.stop, this.previous, this.next]) control.disabled = !hasMedia;
+    this.shuffle.pressed = pb.shuffle();
+    const repeat = REPEAT_UI[pb.repeatMode()];
+    this.repeat.icon = repeat.icon; this.repeat.label = repeat.label;
+    this.repeat.element.classList.toggle("is-active", pb.repeatMode() !== "off");
+    const count = pb.queue.length;
+    this.queueCount.textContent = count ? String(count > 999 ? "999+" : count) : ""; this.queueCount.hidden = !count;
+    this.queueButton.label = this.queueShown ? "Hide queue" : `Show queue (${count} ${count === 1 ? "track" : "tracks"})`;
+    this.queueButton.pressed = this.queueShown;
+    const durationMs = snap.durationMs ?? track?.duration_ms ?? 0;
+    this.elapsed.textContent = formatDuration(snap.positionMs); this.duration.textContent = formatDuration(durationMs);
+    this.seek.max = String(durationMs);
     if (document.activeElement !== this.seek) this.seek.value = String(snap.positionMs);
-    this.seek.disabled = !track;
+    this.seek.disabled = !track; this.paintRange(this.seek);
     if (document.activeElement !== this.volume) this.volume.value = String(pb.volume());
-    this.repeat.label = `Repeat ${pb.repeatMode()}`; this.shuffle.pressed = pb.shuffle();
+    this.paintRange(this.volume);
+    this.mute.icon = volumeIcon(pb.volume()); this.mute.label = pb.volume() > 0 ? "Mute" : "Unmute";
     syncTargets(this.target);
-    const targets = pb.sharedTargets();
-    const blocked = targets.find(target => target.id === pb.target())?.audio_blocked;
-    this.error.textContent = snap.error ? `Playback failed: ${snap.error}` : blocked ? "Enable audio on the selected device to hear playback." : "";
+    const targets = pb.sharedTargets(), selected = targets.find(target => target.id === pb.target());
+    this.targetName.textContent = selected ? `Playing on ${selected.name}` : ""; this.targetName.hidden = !selected;
+    this.classList.toggle("is-remote", !!selected);
+    this.error.textContent = snap.error ? `Playback failed: ${snap.error}` : selected?.audio_blocked ? "Enable audio on the selected device to hear playback." : "";
     this.error.hidden = !this.error.textContent;
     const coverKey = `${servers.activeId()}|${track?.album_id}`;
     if (coverKey !== this.coverKey) {
       this.coverKey = coverKey; const api = servers.api();
-      this.artwork.replaceChildren(api && track?.album_id ? cover(api, track.album_id, track.album_title ?? track.title) : h("span", { "aria-hidden": "true" }, "♫"));
+      this.artwork.replaceChildren(api && track?.album_id ? cover(api, track.album_id, track.album_title ?? track.title) : h("span", { class: "player-art-empty", "aria-hidden": "true" }, "♫"));
     }
   }
 }
@@ -90,12 +138,12 @@ export class QueuePanel extends BaseComponent {
   private undo = button("Undo", () => usePlayback().undoQueue());
   private rows = new TrackRows();
   private target = select("Queue playback device", [], "local", value => usePlayback().setTarget(value));
-  private play = button("Play", () => usePlayback().togglePlay(), "primary");
+  private play = new IconButton("play", "Play", () => usePlayback().togglePlay(), "play-button");
   connectedCallback(): void {
     super.connectedCallback(); this.className = "queue-panel";
     this.rows.queueMode = true;
-    this.replaceChildren(h("header", { class: "queue-head" }, h("div", {}, h("h2", {}, "Your queue"), this.count), button("Close queue", this.close)),
-      h("div", { class: "queue-playback" }, this.target, this.play),
+    this.replaceChildren(h("header", { class: "queue-head" }, h("div", {}, h("h2", {}, "Your queue"), this.count), new IconButton("close", "Close queue", () => this.close()).element),
+      h("div", { class: "queue-playback" }, this.target, this.play.element),
       h("div", { class: "queue-toolbar" }, this.undo,
         button("Save playlist", async () => {
           if (!hasAcceptedTerms()) {
@@ -113,7 +161,8 @@ export class QueuePanel extends BaseComponent {
     const pb = usePlayback(); this.count.textContent = `${pb.queue.length} tracks · ${pb.target() === "local" ? "This browser" : pb.sharedTargets().find(p => p.id === pb.target())?.name ?? "Selected device"}`;
     this.undo.disabled = !pb.canUndoQueue();
     syncTargets(this.target);
-    this.play.label = pb.snapshot().status === "playing" ? "Pause" : "Play";
+    const playing = pb.snapshot().status === "playing";
+    this.play.icon = playing ? "pause" : "play"; this.play.label = playing ? "Pause" : "Play";
     this.play.disabled = !pb.current() && !pb.queue.length;
   }
 }

@@ -9,7 +9,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
-use diesel::Connection;
 use libichoi::csil::services::*;
 use libichoi::csil::types::*;
 use rand::Rng;
@@ -1741,12 +1740,11 @@ impl App {
                 let previous_revision = self
                     .load_player_state(&mut conn, &report.player_id)?
                     .revision;
-                let result = conn
-                    .transaction(|conn| {
-                        apply_player_command(self, conn, &report.player_id, &command, None)
-                            .map_err(PlayerTxnError::Service)
-                    })
-                    .map_err(player_txn_error)?;
+                let result = crate::db::write_transaction(&mut conn, |conn| {
+                    apply_player_command(self, conn, &report.player_id, &command, None)
+                        .map_err(PlayerTxnError::Service)
+                })
+                .map_err(player_txn_error)?;
                 let progress_changed = result.0.revision != previous_revision;
                 (result.0, result.1, progress_changed)
             }
@@ -1768,17 +1766,16 @@ impl App {
                         .clone()
                         .unwrap_or_else(|| "output playback failed".to_string()),
                 });
-                let result = conn
-                    .transaction(|conn| {
-                        apply_player_command(self, conn, &report.player_id, &command, None)
-                            .map_err(PlayerTxnError::Service)
-                    })
-                    .map_err(player_txn_error)?;
+                let result = crate::db::write_transaction(&mut conn, |conn| {
+                    apply_player_command(self, conn, &report.player_id, &command, None)
+                        .map_err(PlayerTxnError::Service)
+                })
+                .map_err(player_txn_error)?;
                 (result.0, result.1, false)
             }
             NodeEvent::State => {
-                let (state, progress_changed) = conn
-                    .transaction(|conn| -> Result<_, PlayerTxnError> {
+                let (state, progress_changed) =
+                    crate::db::write_transaction(&mut conn, |conn| -> Result<_, PlayerTxnError> {
                         let mut row = db(store::get_state(conn, &report.player_id))?
                             .unwrap_or_else(|| default_player_state(&report.player_id));
                         let queue = db(store::queue_items(conn, &report.player_id))?;
@@ -2081,18 +2078,17 @@ impl PlayerService for App {
         };
         let previous_revision =
             db(store::get_state(&mut conn, pid))?.map_or(0, |state| state.revision.max(0) as u64);
-        let result = conn
-            .transaction(|conn| {
-                apply_player_command(
-                    self,
-                    conn,
-                    pid,
-                    &input.command,
-                    listener_account_id.as_ref().map(Option::as_deref),
-                )
-                .map_err(PlayerTxnError::Service)
-            })
-            .map_err(player_txn_error);
+        let result = crate::db::write_transaction(&mut conn, |conn| {
+            apply_player_command(
+                self,
+                conn,
+                pid,
+                &input.command,
+                listener_account_id.as_ref().map(Option::as_deref),
+            )
+            .map_err(PlayerTxnError::Service)
+        })
+        .map_err(player_txn_error);
         let (state, directive) = match result {
             Ok(result) => result,
             Err(error) => {

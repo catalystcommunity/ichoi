@@ -45,6 +45,44 @@ pub fn establish_pool(database_url: &str) -> anyhow::Result<SqlitePool> {
     Ok(pool)
 }
 
+/// Run `f` in a transaction that takes the SQLite write lock at `BEGIN`.
+///
+/// Use this for every transaction that writes. A plain `conn.transaction` is DEFERRED: it
+/// reads first and asks for the write lock at its first write. In WAL mode, if another
+/// connection commits between those two steps, SQLite returns "database is locked" at once
+/// and `busy_timeout` does not apply. `BEGIN IMMEDIATE` waits for the lock under
+/// `busy_timeout` instead. Inside an open transaction (a caller's transaction, or the test
+/// transaction) this runs as a savepoint, because the outer transaction holds the lock.
+pub fn write_transaction<T, E, F>(conn: &mut SqliteConnection, f: F) -> Result<T, E>
+where
+    F: FnOnce(&mut SqliteConnection) -> Result<T, E>,
+    E: From<diesel::result::Error>,
+{
+    enum Failure<E> {
+        Database(diesel::result::Error),
+        Body(E),
+    }
+    impl<E> From<diesel::result::Error> for Failure<E> {
+        fn from(error: diesel::result::Error) -> Self {
+            Failure::Database(error)
+        }
+    }
+
+    let mut body = Some(f);
+    let result = conn.immediate_transaction(|conn| {
+        (body.take().expect("transaction body runs once"))(conn).map_err(Failure::Body)
+    });
+    match result {
+        ::std::result::Result::Ok(value) => ::std::result::Result::Ok(value),
+        // Diesel refuses `BEGIN IMMEDIATE` inside an open transaction before it runs the body.
+        Err(Failure::Database(diesel::result::Error::AlreadyInTransaction)) if body.is_some() => {
+            conn.transaction(body.take().expect("body did not run"))
+        }
+        Err(Failure::Database(error)) => Err(error.into()),
+        Err(Failure::Body(error)) => Err(error),
+    }
+}
+
 /// Run all pending schema migrations. Called at `serve` startup and by tests.
 pub fn run_migrations(conn: &mut SqliteConnection) -> anyhow::Result<()> {
     conn.run_pending_migrations(MIGRATIONS)

@@ -1,0 +1,12 @@
+<!-- The approved Ichoi mark (assets/brand/logos/mark-light.svg and mark-dark.svg).
+     The colors come from values/colors.xml and values-night/colors.xml. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="512" android:viewportHeight="512">
+  <path android:fillColor="#00000000" android:strokeColor="@color/ichoi_brand_ring" android:strokeWidth="24" android:pathData="M72.0,256.0a184.0,184.0 0,1 0,368.0,0a184.0,184.0 0,1 0,-368.0,0" />
+  <path android:fillColor="@color/ichoi_brand_notes" android:pathData="M198 328V196Q198 185 209 182L331 150Q346 146 346 162V296H322V190L222 216V328Z" />
+  <group android:rotation="-18" android:pivotX="185" android:pivotY="330">
+    <path android:fillColor="@color/ichoi_brand_notes" android:pathData="M147.0,330.0a38.0,28.0 0,1 0,76.0,0a38.0,28.0 0,1 0,-76.0,0" />
+  </group>
+  <group android:rotation="-18" android:pivotX="309" android:pivotY="298">
+    <path android:fillColor="@color/ichoi_brand_notes" android:pathData="M271.0,298.0a38.0,28.0 0,1 0,76.0,0a38.0,28.0 0,1 0,-76.0,0" />
+  </group>
+</vector>

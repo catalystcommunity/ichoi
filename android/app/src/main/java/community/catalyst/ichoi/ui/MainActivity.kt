@@ -194,7 +194,7 @@ class MainActivity : Activity() {
         profile = selected
         beginScreen(reset = true)
         val loadingScreen = content
-        text("Your Ichoi library", 24f)
+        brandHeader("Your Ichoi library", 24f)
         text("Server: ${selected.url}")
         text("Loading library…")
         content.addView(button("Settings") { showSettings(IchoiApi(selected, sessions.token(selected.id))) })
@@ -218,7 +218,7 @@ class MainActivity : Activity() {
     private fun showConnectionFailure(selected: ServerProfile, api: IchoiApi, error: Throwable) {
         beginScreen(reset = true)
         val needsSignIn = error is CsilServiceException && error.code == 401L
-        text(if (needsSignIn) "Sign in to your library" else "Could not load your library", 28f)
+        brandHeader(if (needsSignIn) "Sign in to your library" else "Could not load your library", 28f)
         text(selected.url.removePrefix("https://"))
         if (needsSignIn) {
             sessionInfo = null
@@ -240,7 +240,7 @@ class MainActivity : Activity() {
 
     private fun showLibrary(api: IchoiApi, libraries: LibrariesResponse) {
         beginScreen(reset = true)
-        text("Your Ichoi library", 28f)
+        brandHeader("Your Ichoi library", 28f)
         val screen=content
         val chips=LinearLayout(this).apply { gravity=android.view.Gravity.CENTER_VERTICAL;setPadding(0,dp(12),0,dp(20)) }
         fun openAlbums(kind:Library) { execute({ api.albums(kind) }, { result,error -> if(content===screen) { if(error!=null) showError(error.message?:"Could not load albums") else showAlbums(api,result!!,kind) } }) }
@@ -518,7 +518,7 @@ class MainActivity : Activity() {
         heading.addView(musicText(this,"${tracks.size} tracks",13f,true),LinearLayout.LayoutParams(0,-2,1f))
         heading.addView(iconButton(this,MusicIcon.PLAY,"Play album",true) {
             val selected=profile?:return@iconButton
-            if(RemotePlayback.target!=null) { tracks.firstOrNull()?.let { RemotePlayback.play(it) };tracks.drop(1).forEach { RemotePlayback.enqueue(it) } }
+            if(RemotePlayback.target!=null) RemotePlayback.playAll(tracks)
             else { val start=PlaybackQueue.entries.size;tracks.forEach { PlaybackQueue.enqueue(it,selected,sessions.token(selected.id)) };if(tracks.isNotEmpty()) PlaybackQueue.play(this,start) }
         },LinearLayout.LayoutParams(dp(56),dp(56)))
         content.addView(heading);tracks.forEach { addTrack(it) }
@@ -869,6 +869,16 @@ class MainActivity : Activity() {
         content.addView(TextView(this).apply {
             text = value; textSize = size; setTextColor(getColor(R.color.ichoi_text)); setPadding(0, dp(8), 0, dp(8))
             if (size >= 24f) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+    }
+    /** A screen title with the Ichoi mark to its left. */
+    private fun brandHeader(title: String, size: Float) {
+        content.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8))
+            addView(ImageView(this@MainActivity).apply { setImageResource(R.drawable.ichoi_mark); contentDescription = "Ichoi" }, LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(12) })
+            addView(TextView(this@MainActivity).apply {
+                text = title; textSize = size; setTextColor(getColor(R.color.ichoi_text)); setTypeface(typeface, android.graphics.Typeface.BOLD)
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         })
     }
     private fun button(label: String, action: () -> Unit) = appButton(this, label, action = action)

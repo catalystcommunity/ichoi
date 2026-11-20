@@ -3,6 +3,7 @@ import { type PushButton } from "@catalystcommunity/controls";
 import { askConfirm, askText } from "@catalystcommunity/containers";
 import { showNotice } from "@catalystcommunity/menus";
 import { requestErrorMessage } from "../lib/request-error.ts";
+import { icon, type IconName } from "./icons.ts";
 export { BaseComponent, askConfirm, askText };
 export type Child = Node | string | number | undefined | null | false;
 export function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, unknown> = {}, ...children: Child[]): HTMLElementTagNameMap[K] {
@@ -30,6 +31,36 @@ export function button(label: string, action: () => unknown, variant: PushButton
     } catch (error) { note(error); }
   });
   return control;
+}
+/** A native button that shows only an icon. `label` is its accessible name and its tooltip. */
+export class IconButton {
+  readonly element: HTMLButtonElement;
+  private shown?: IconName;
+  constructor(name: IconName, label: string, action: () => unknown, className = "") {
+    this.element = h("button", { type: "button", class: `icon-button ${className}`.trim() });
+    this.icon = name; this.label = label;
+    this.element.addEventListener("click", () => {
+      if (this.element.disabled) return;
+      try {
+        const result = action();
+        if (result && typeof (result as Promise<unknown>).then === "function") {
+          this.element.classList.add("is-busy");
+          void Promise.resolve(result).catch(note).finally(() => this.element.classList.remove("is-busy"));
+        }
+      } catch (error) { note(error); }
+    });
+  }
+  private svg?: SVGSVGElement;
+  set icon(name: IconName) {
+    if (name === this.shown) return;
+    const next = icon(name); this.shown = name;
+    if (this.svg) this.svg.replaceWith(next); else this.element.prepend(next);
+    this.svg = next;
+  }
+  set label(text: string) { if (this.element.getAttribute("aria-label") !== text) { this.element.setAttribute("aria-label", text); this.element.title = text; } }
+  /** `undefined` makes it a plain button; a boolean makes it a toggle button. */
+  set pressed(value: boolean | undefined) { if (value === undefined) this.element.removeAttribute("aria-pressed"); else this.element.setAttribute("aria-pressed", String(value)); }
+  set disabled(value: boolean) { this.element.disabled = value; }
 }
 export function link(label: string, href: string, className = ""): HTMLAnchorElement { return h("a", { href, class: className }, label); }
 export function field(label: string, value = "", type = "text") {

@@ -1,5 +1,5 @@
 import { ListView } from "@catalystcommunity/data-views";
-import { BaseComponent, h, button } from "./dom.ts";
+import { BaseComponent, h, IconButton } from "./dom.ts";
 import type { Track } from "../lib/schema.ts";
 import { formatDuration } from "../lib/format.ts";
 import { usePlayback } from "../stores/playback.ts";
@@ -29,10 +29,9 @@ export class TrackRows extends BaseComponent {
     const resize = new ResizeObserver(() => {
       const compact = this.clientWidth < 520;
       this.classList.toggle("compact-tracks", compact);
-      this.view.rowHeight = compact ? 116 : 76;
     });
     resize.observe(this); this.own(() => resize.disconnect());
-    this.view.rowHeight = 76;
+    this.view.rowHeight = 64;
     // Queue duplicates have separate positions. The server owns queue item identities.
     this.view.keyOf = (track, index) => this.queueMode ? index : track.id;
     this.view.itemText = track => track.title;
@@ -42,26 +41,20 @@ export class TrackRows extends BaseComponent {
       const name = h("div", { class: "track-copy" }, h("strong", {}, track.title || "Untitled track"),
         h("span", { class: "muted" }, [track.artist_name, formatDuration(track.duration_ms)].filter(Boolean).join(" · ")));
       const actions = h("div", { class: "track-actions" });
-      const play = button("Play", async () => {
+      const play = new IconButton("play", `Play ${track.title}`, async () => {
         if (this.queueMode) await pb.playIndex(index);
         else await pb.playNow(await localTracks([track], this.serverId));
       });
-      play.setAttribute("aria-label", `Play ${track.title}`);
-      actions.append(play);
+      actions.append(play.element);
       if (this.queueMode) {
-        const up = button("↑", () => this.move(index, index - 1));
-        up.setAttribute("aria-label", `Move ${track.title} up`); up.disabled = index === 0;
-        const down = button("↓", () => this.move(index, index + 1));
-        down.setAttribute("aria-label", `Move ${track.title} down`); down.disabled = index === this.tracks.length - 1;
-        const remove = button("×", () => { pb.removeAt(index); this.restoreFocus(index); });
-        remove.setAttribute("aria-label", `Remove ${track.title}`);
-        actions.append(up, down, remove);
+        const up = new IconButton("up", `Move ${track.title} up`, () => this.move(index, index - 1)); up.disabled = index === 0;
+        const down = new IconButton("down", `Move ${track.title} down`, () => this.move(index, index + 1)); down.disabled = index === this.tracks.length - 1;
+        const remove = new IconButton("close", `Remove ${track.title}`, () => { pb.removeAt(index); this.restoreFocus(index); });
+        actions.append(up.element, down.element, remove.element);
       } else {
-        const next = button("Next", async () => pb.playNext((await localTracks([track], this.serverId))[0]!));
-        next.setAttribute("aria-label", `Play ${track.title} next`);
-        const add = button("+", async () => pb.enqueue(await localTracks([track], this.serverId)));
-        add.setAttribute("aria-label", `Add ${track.title} to queue`);
-        actions.append(next, add);
+        const next = new IconButton("playNext", `Play ${track.title} next`, async () => pb.playNext((await localTracks([track], this.serverId))[0]!));
+        const add = new IconButton("add", `Add ${track.title} to queue`, async () => pb.enqueue(await localTracks([track], this.serverId)));
+        actions.append(next.element, add.element);
       }
       actions.addEventListener("keydown", event => event.stopPropagation());
       actions.addEventListener("click", event => event.stopPropagation());
@@ -73,7 +66,7 @@ export class TrackRows extends BaseComponent {
     this.listen(this.view, "list-view-activate", event => {
       if (event.detail.pointer) return;
       const index = event.detail.index;
-      if (typeof index === "number") this.view.rowElement(index)?.querySelector<HTMLElement>("push-button")?.focus();
+      if (typeof index === "number") this.view.rowElement(index)?.querySelector<HTMLElement>(".icon-button")?.focus();
     });
     this.invalidate();
   }
