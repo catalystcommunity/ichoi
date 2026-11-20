@@ -3,4 +3,5 @@
     <color name="ichoi_text">#F5F1E6</color><color name="ichoi_muted">#B5B0A3</color>
     <color name="ichoi_accent">#F4B75E</color><color name="ichoi_signal">#37D6C6</color>
     <color name="ichoi_border">#756A56</color><color name="ichoi_on_accent">#211C14</color>
+    <color name="ichoi_brand_ring">#37D6C6</color><color name="ichoi_brand_notes">#FFB454</color>
 </resources>

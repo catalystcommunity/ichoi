@@ -286,7 +286,7 @@ pub fn replace_configured_linkkeys_trust(
     conn: &mut SqliteConnection,
     identities: &[(String, Option<String>)],
 ) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         diesel::delete(
             linkkeys_trusted_identities::table
                 .filter(linkkeys_trusted_identities::source.eq("config")),
@@ -369,7 +369,7 @@ pub fn consume_linkkeys_attempt(
     conn: &mut SqliteConnection,
     attempt_sha256: &str,
 ) -> QueryResult<Option<LinkkeysLoginAttempt>> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         let row = linkkeys_login_attempts::table
             .find(attempt_sha256)
             .select(LinkkeysLoginAttempt::as_select())
@@ -394,7 +394,7 @@ pub fn consume_linkkeys_exchange(
     conn: &mut SqliteConnection,
     code_sha256: &str,
 ) -> QueryResult<Option<LinkkeysLoginExchange>> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         let row = linkkeys_login_exchanges::table
             .find(code_sha256)
             .select(LinkkeysLoginExchange::as_select())
@@ -1140,7 +1140,7 @@ pub fn set_device_access(
     enabled: bool,
     group_ids: &[String],
 ) -> QueryResult<usize> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         let changed = diesel::update(output_devices::table.find(id))
             .set(output_devices::enabled.eq(i32::from(enabled)))
             .execute(conn)?;
@@ -1225,7 +1225,7 @@ pub fn set_group_members(
     id: &str,
     account_ids: &[String],
 ) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         diesel::delete(account_access_groups::table.filter(account_access_groups::group_id.eq(id)))
             .execute(conn)?;
         for account_id in account_ids {
@@ -1282,7 +1282,7 @@ pub fn create_satellite(
     row: &SatelliteToken,
     group_ids: &[String],
 ) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         diesel::insert_into(satellite_tokens::table)
             .values(row)
             .execute(conn)?;
@@ -1394,7 +1394,7 @@ pub fn set_share_access(
     access: &str,
     account_ids: &[String],
 ) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         diesel::insert_into(player_share_access::table)
             .values((
                 player_share_access::player_id.eq(player_id),
@@ -1487,7 +1487,7 @@ pub fn set_queue_entries(
     player_id: &str,
     entries: &[(Option<i32>, String)],
 ) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         diesel::delete(
             player_queue_items::table.filter(player_queue_items::player_id.eq(player_id)),
         )
@@ -1512,7 +1512,7 @@ pub fn save_player_undo(
     state: &PlayerStateRow,
     queue: &[QueueItem],
 ) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         let saved = PlayerUndoState {
             player_id: state.player_id.clone(),
             status: state.status.clone(),
@@ -1570,7 +1570,7 @@ pub fn player_undo_queue(
 }
 
 pub fn clear_player_undo(conn: &mut SqliteConnection, player_id: &str) -> QueryResult<()> {
-    conn.transaction(|conn| {
+    crate::db::write_transaction(conn, |conn| {
         diesel::delete(
             player_undo_queue_items::table.filter(player_undo_queue_items::player_id.eq(player_id)),
         )

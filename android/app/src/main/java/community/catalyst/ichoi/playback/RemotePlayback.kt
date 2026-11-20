@@ -91,6 +91,8 @@ object RemotePlayback {
     }
     fun enqueue(track: Track) = command(PlayerCommandVariant0(CmdEnqueue("enqueue", listOf(track.id))))
     fun play(track: Track) = command(PlayerCommandVariant8(CmdReplaceAndPlay("replace-and-play", listOf(track.id))))
+    /** Replace the queue with every track in one command, as the web player does. */
+    fun playAll(tracks: List<Track>) { if (tracks.isNotEmpty()) command(PlayerCommandVariant8(CmdReplaceAndPlay("replace-and-play", tracks.map { it.id }))) }
     fun playItem(item: QueueItem) = command(PlayerCommandVariant7(CmdPlay("play", queueItemId = item.queueItemId)))
     fun remove(item: QueueItem) = command(PlayerCommandVariant3(CmdRemoveItem("remove-item", item.queueItemId)))
     fun move(index: Int, to: Int) {

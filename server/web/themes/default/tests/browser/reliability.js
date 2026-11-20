@@ -185,8 +185,8 @@ try {
   const pb = usePlayback();
   const track = { id: "one", title: "One", duration_ms: 1000, library: "music", codec: "mp3", sample_rate: 44100, channels: 2, root_relative_path: "one.mp3" };
   pb.enqueue([track, { ...track, id: "two", title: "Two" }]);
-  await until(() => text().includes("Queue · 2"));
-  [...root.querySelectorAll("button")].find(button => button.textContent === "Queue · 2").click();
+  await until(() => root.querySelector('button[aria-label="Show queue (2 tracks)"]'));
+  root.querySelector('button[aria-label="Show queue (2 tracks)"]').click();
   await until(() => root.querySelector('.queue-host[open]'));
   check(root.querySelector('input[type="search"]') === search && search.value === "kept query", "Queue opening preserves the search field and query");
   await until(() => root.querySelector('button[aria-label="Move Two up"]'));

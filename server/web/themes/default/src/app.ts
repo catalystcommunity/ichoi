@@ -88,7 +88,7 @@ export class IchoiApp extends BaseComponent {
   private toggleQueue(open: boolean): void {
     if (open === this.queueOpen) return;
     if (open) this.closeMenu();
-    this.queueOpen = open; this.classList.toggle("queue-open", open);
+    this.queueOpen = open; this.player.queueOpen = open; this.classList.toggle("queue-open", open);
     if (open) { this.opener = document.activeElement as HTMLElement; this.showQueue(); this.queueHost.querySelector<HTMLElement>("button")?.focus(); }
     else { this.queueHost.close(); if (this.opener?.isConnected) this.opener.focus(); }
   }

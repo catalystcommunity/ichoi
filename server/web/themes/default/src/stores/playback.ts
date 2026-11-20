@@ -110,6 +110,8 @@ export interface PlaybackContextValue extends Observable {
   playNext: (track: Track) => void;
   playIndex: (index: number) => Promise<void>;
   togglePlay: () => void;
+  /** Pause and return to the start of the current track. The queue stays as it is. */
+  stop: () => Promise<void>;
   next: () => Promise<void>;
   previous: () => Promise<void>;
   seek: (ms: number) => void;
@@ -873,6 +875,18 @@ export function createPlayback(): PlaybackContextValue {
     else if (current()) void openIndex(currentIndex());
   }
 
+  async function stop(): Promise<void> {
+    if (!isLocal()) {
+      if (snapshot().status === "playing") await control({ op: "pause" });
+      await control({ op: "seek", position_ms: 0 });
+      return;
+    }
+    if (!audio) return;
+    audio.pause();
+    if (audio.currentSrc) audio.currentTime = 0;
+    setSnapshot((s): PlaybackSnapshot => ({ ...s, status: s.status === "idle" ? s.status : "paused", positionMs: 0 }));
+  }
+
   async function next(): Promise<void> {
     if (!queue.length) return;
     if (!isLocal()) {
@@ -1117,6 +1131,7 @@ export function createPlayback(): PlaybackContextValue {
     playNext,
     playIndex,
     togglePlay,
+    stop,
     next,
     previous,
     seek,
