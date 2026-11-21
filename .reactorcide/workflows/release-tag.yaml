@@ -2,8 +2,9 @@ name: Ichoi Release Tag
 id: ichoi-release-tag
 description: "Calculate and push release tags after a merge."
 
-# semver-tags creates each target tag. This workflow then stamps the version file. The
-# version commit starts the image deployment workflow. The tag starts the release workflow.
+# semver-tags creates each target tag (server/vX.Y.Z, website/vX.Y.Z). This workflow then
+# stamps <target>/version/VERSION.txt. The version commit starts the server image deployment
+# or the website deployment. A server tag also starts the release workflow.
 on:
   events:
     - pull_request_merged

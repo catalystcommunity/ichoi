@@ -32,8 +32,10 @@ image.
 ## Release flow
 
 The `ichoi-release-tag` workflow runs after a pull request merges to `main`.
-It uses semver-tags to create `server/vX.Y.Z`. It then updates
-`server/version/VERSION.txt`. The version commit starts the server image deployment.
+It uses semver-tags to create `server/vX.Y.Z` and `website/vX.Y.Z`. Each tag is calculated
+from the conventional commits in that directory. It then updates
+`<target>/version/VERSION.txt`. The version commit starts the server image deployment or the
+website deployment. Do not edit a version file by hand.
 
 The `ichoi-release` workflow runs for a `server/v*` tag. It does these steps:
 
@@ -55,8 +57,9 @@ The `ichoi-pr-website` workflow checks a pull request that changes `website/`. T
 must not change the committed `website/site/`. The site must have no placeholder domain or
 contact.
 
-The `ichoi-website-deploy` workflow runs when `website/VERSION.txt` changes on `main`. A
-text change can merge without a deploy. Raise the version to release the site. The deploy
+The `ichoi-website-deploy` workflow runs when `website/version/VERSION.txt` changes on
+`main`. Only the release-tag version commit changes that file. A `fix:` or `feat:` commit in
+`website/` releases the site. Other commit types merge without a deploy. The deploy
 node builds a multi-architecture image and pushes it to
 `containers.catalystsquad.com/public/catalystcommunity/ichoi-website`. It installs the
 `catalyst-helm/pysocha-site` chart in the `ichoi-website` namespace with the chart Ingress

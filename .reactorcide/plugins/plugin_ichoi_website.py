@@ -4,7 +4,8 @@ Two jobs:
 
 - `check` runs for a pull request that touches `website/`. It builds the site, proves the
   committed `site/` matches its source, and refuses deployment placeholders.
-- `deploy` runs when `website/VERSION.txt` changes on `main`. It builds the multi-arch image,
+- `deploy` runs when `website/version/VERSION.txt` changes on `main`. The release-tag job
+  writes that file after semver-tags creates a `website/vX.Y.Z` tag. It builds the multi-arch image,
   pushes it, rolls the `catalyst-helm/pysocha-site` release, and applies the HTTPRoute.
 
 The job file picks the work with ICHOI_WEBSITE_JOB. The deploy job needs the `builder`
@@ -174,10 +175,10 @@ def _write_kubeconfig(environment: Dict[str, str]) -> None:
 
 
 def website_version(website: Path) -> str:
-    """Return the release version in website/VERSION.txt."""
-    version = (website / "VERSION.txt").read_text().strip()
+    """Return the release version in website/version/VERSION.txt."""
+    version = (website / "version" / "VERSION.txt").read_text().strip()
     if not VERSION_PATTERN.fullmatch(version):
-        raise RuntimeError(f"website/VERSION.txt must hold X.Y.Z, found {version!r}")
+        raise RuntimeError(f"website/version/VERSION.txt must hold X.Y.Z, found {version!r}")
     return version
 
 

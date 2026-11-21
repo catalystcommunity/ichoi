@@ -37,7 +37,8 @@ website_plugin = _load_website_plugin()
 class WebsiteInputsTest(unittest.TestCase):
     def _website(self, version: str, domain: str) -> Path:
         directory = Path(tempfile.mkdtemp())
-        (directory / "VERSION.txt").write_text(f"{version}\n")
+        (directory / "version").mkdir(exist_ok=True)
+        (directory / "version" / "VERSION.txt").write_text(f"{version}\n")
         (directory / "values.yaml").write_text(f"domain: {domain}\nsitefilePath: /site/root\n")
         return directory
 
@@ -86,7 +87,7 @@ class WebsiteWorkflowTest(unittest.TestCase):
         return sorted(workflow.name for workflow in selected)
 
     def test_a_version_change_on_main_deploys(self):
-        self.assertIn("Ichoi Website Deploy", self._names("push", ["website/VERSION.txt"]))
+        self.assertIn("Ichoi Website Deploy", self._names("push", ["website/version/VERSION.txt"]))
 
     def test_a_text_change_on_main_does_not_deploy(self):
         names = self._names("push", ["website/site-src/content/pages/privacy.md"])
