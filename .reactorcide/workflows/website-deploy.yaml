@@ -1,8 +1,9 @@
 name: Ichoi Website Deploy
 id: ichoi-website-deploy
-description: "Deploy the project website when website/VERSION.txt changes on main."
+description: "Deploy the project website when website/version/VERSION.txt changes on main."
 
-# A text change can merge without a deploy. A person raises website/VERSION.txt to release.
+# The release-tag workflow writes this file after semver-tags creates a website/vX.Y.Z tag.
+# Do not edit the file by hand. A conventional fix: or feat: commit in website/ releases the site.
 on:
   events:
     - push
@@ -11,7 +12,7 @@ on:
 
 paths:
   include:
-    - "website/VERSION.txt"
+    - "website/version/VERSION.txt"
 
 jobs:
   ichoi-website-check:

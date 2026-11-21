@@ -23,10 +23,18 @@ with `python3 -m http.server 4173 --directory site`.
 
 ## Deployment
 
-The site is served at `https://catalystichoi.com`. Reactorcide deploys it when
-`VERSION.txt` changes on `main`. Raise the version in the same pull request as
-the change, or in a later one. A change without a version change merges but
-does not deploy.
+The site is served at `https://catalystichoi.com`. The version comes from the
+`website/vX.Y.Z` Git tag. Do not edit `version/VERSION.txt` by hand.
+
+1. A pull request merges to `main`.
+2. semver-tags reads the conventional commits that changed `website/`. A `fix:`
+   commit makes a patch release. A `feat:` commit makes a minor release. Other
+   types, such as `docs:` or `ci:`, make no release.
+3. For a release, CI pushes the `website/vX.Y.Z` tag. Then it writes the version
+   to `version/VERSION.txt` in a separate commit.
+4. That commit starts the deployment.
+
+A merge with no `fix:` or `feat:` commit in `website/` does not deploy.
 
 `./tools.sh check-deploy` fails while a reserved `.invalid` domain or a
 `REPLACE-ME` value exists. The image build runs the same check.

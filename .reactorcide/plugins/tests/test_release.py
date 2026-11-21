@@ -315,6 +315,11 @@ class ReleaseWorkflowTest(unittest.TestCase):
         selected = evaluate_workflows(workflows, "tag_created", branch="server/v1.2.3")
         self.assertEqual([workflow.name for workflow in selected], ["Ichoi Release"])
 
+    def test_a_website_tag_does_not_start_the_server_release(self):
+        workflows = load_workflow_definitions(ROOT)
+        selected = evaluate_workflows(workflows, "tag_created", branch="website/v1.2.3")
+        self.assertEqual(selected, [])
+
     def test_all_jobs_use_the_current_runner_image(self):
         for path in (ROOT / ".reactorcide/jobs").glob("*.yaml"):
             with self.subTest(path=path.name):
@@ -563,6 +568,18 @@ class ParseSemverOutputTest(unittest.TestCase):
         self.assertEqual(
             parse_semver_output(metadata, ["server", "mobile"]),
             [Release("mobile", "2.1.0", "mobile/v2.1.0")],
+        )
+
+    def test_tags_the_server_and_the_website_as_separate_targets(self):
+        self.assertEqual(release_plugin.TARGETS, ("server", "website"))
+        metadata = {
+            "New_release_published": "false,true",
+            "New_release_version": ",0.2.0",
+            "New_release_git_tag": ",website/v0.2.0",
+        }
+        self.assertEqual(
+            parse_semver_output(metadata, release_plugin.TARGETS),
+            [Release("website", "0.2.0", "website/v0.2.0")],
         )
 
     def test_treats_a_missing_field_as_not_published(self):

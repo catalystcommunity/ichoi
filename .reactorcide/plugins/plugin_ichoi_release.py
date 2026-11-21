@@ -28,7 +28,7 @@ from src.plugins import Plugin, PluginContext, PluginPhase
 from src.workflow import workflow_vars
 
 
-TARGETS = ("server",)
+TARGETS = ("server", "website")
 
 ASSET_CACHE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "asset_cache.py"
 ASSET_CACHE_SPEC = importlib.util.spec_from_file_location("ichoi_asset_cache", ASSET_CACHE_PATH)
