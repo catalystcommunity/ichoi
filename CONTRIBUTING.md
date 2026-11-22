@@ -61,6 +61,9 @@ Everything under `generated/` is emitted by `csilgen` and **must never be edited
 
 ## Before you consider work done
 
+Use the Rust version in `server/rust-toolchain.toml`. Rustup reads this file when
+you run Cargo in `server/`. The CI jobs and the server image use the same file.
+
 Run the full local gate — it mirrors CI:
 
 ```sh

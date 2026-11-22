@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -4227,147 +4226,147 @@ public final class CsilCbor {
     }
 
     static CborValue encRole(Role v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static Role decRole(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "admin") || Objects.equals(csilVal, "member") || Objects.equals(csilVal, "guest"))) {
-            throw new CsilCborException("csil cbor: Role value " + csilVal + " is not a member of the declared enum");
+    static Role decRole(CborValue root) {
+        try {
+            return Role.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new Role(csilVal);
     }
 
     static CborValue encPlayerStatus(PlayerStatus v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static PlayerStatus decPlayerStatus(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "stopped") || Objects.equals(csilVal, "playing") || Objects.equals(csilVal, "paused"))) {
-            throw new CsilCborException("csil cbor: PlayerStatus value " + csilVal + " is not a member of the declared enum");
+    static PlayerStatus decPlayerStatus(CborValue root) {
+        try {
+            return PlayerStatus.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new PlayerStatus(csilVal);
     }
 
     static CborValue encRepeatMode(RepeatMode v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static RepeatMode decRepeatMode(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "off") || Objects.equals(csilVal, "all") || Objects.equals(csilVal, "one"))) {
-            throw new CsilCborException("csil cbor: RepeatMode value " + csilVal + " is not a member of the declared enum");
+    static RepeatMode decRepeatMode(CborValue root) {
+        try {
+            return RepeatMode.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new RepeatMode(csilVal);
     }
 
     static CborValue encNodeEvent(NodeEvent v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static NodeEvent decNodeEvent(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "ready") || Objects.equals(csilVal, "state") || Objects.equals(csilVal, "completed") || Objects.equals(csilVal, "failed"))) {
-            throw new CsilCborException("csil cbor: NodeEvent value " + csilVal + " is not a member of the declared enum");
+    static NodeEvent decNodeEvent(CborValue root) {
+        try {
+            return NodeEvent.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new NodeEvent(csilVal);
     }
 
     static CborValue encCodec(Codec v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static Codec decCodec(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "mp3") || Objects.equals(csilVal, "aac") || Objects.equals(csilVal, "vorbis") || Objects.equals(csilVal, "flac") || Objects.equals(csilVal, "alac") || Objects.equals(csilVal, "opus") || Objects.equals(csilVal, "wav") || Objects.equals(csilVal, "wma"))) {
-            throw new CsilCborException("csil cbor: Codec value " + csilVal + " is not a member of the declared enum");
+    static Codec decCodec(CborValue root) {
+        try {
+            return Codec.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new Codec(csilVal);
     }
 
     static CborValue encTranscodeCodec(TranscodeCodec v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static TranscodeCodec decTranscodeCodec(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "aac") || Objects.equals(csilVal, "mp3"))) {
-            throw new CsilCborException("csil cbor: TranscodeCodec value " + csilVal + " is not a member of the declared enum");
+    static TranscodeCodec decTranscodeCodec(CborValue root) {
+        try {
+            return TranscodeCodec.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new TranscodeCodec(csilVal);
     }
 
     static CborValue encContentReportTargetType(ContentReportTargetType v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static ContentReportTargetType decContentReportTargetType(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "playlist") || Objects.equals(csilVal, "account"))) {
-            throw new CsilCborException("csil cbor: ContentReportTargetType value " + csilVal + " is not a member of the declared enum");
+    static ContentReportTargetType decContentReportTargetType(CborValue root) {
+        try {
+            return ContentReportTargetType.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new ContentReportTargetType(csilVal);
     }
 
     static CborValue encContentReportReason(ContentReportReason v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static ContentReportReason decContentReportReason(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "objectionable-content") || Objects.equals(csilVal, "harassment") || Objects.equals(csilVal, "spam") || Objects.equals(csilVal, "other"))) {
-            throw new CsilCborException("csil cbor: ContentReportReason value " + csilVal + " is not a member of the declared enum");
+    static ContentReportReason decContentReportReason(CborValue root) {
+        try {
+            return ContentReportReason.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new ContentReportReason(csilVal);
     }
 
     static CborValue encContentReportStatus(ContentReportStatus v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static ContentReportStatus decContentReportStatus(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "open") || Objects.equals(csilVal, "resolved") || Objects.equals(csilVal, "dismissed"))) {
-            throw new CsilCborException("csil cbor: ContentReportStatus value " + csilVal + " is not a member of the declared enum");
+    static ContentReportStatus decContentReportStatus(CborValue root) {
+        try {
+            return ContentReportStatus.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new ContentReportStatus(csilVal);
     }
 
     static CborValue encLibrary(Library v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static Library decLibrary(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "music") || Objects.equals(csilVal, "audiobook"))) {
-            throw new CsilCborException("csil cbor: Library value " + csilVal + " is not a member of the declared enum");
+    static Library decLibrary(CborValue root) {
+        try {
+            return Library.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new Library(csilVal);
     }
 
     static CborValue encArtworkKind(ArtworkKind v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static ArtworkKind decArtworkKind(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "album") || Objects.equals(csilVal, "artist"))) {
-            throw new CsilCborException("csil cbor: ArtworkKind value " + csilVal + " is not a member of the declared enum");
+    static ArtworkKind decArtworkKind(CborValue root) {
+        try {
+            return ArtworkKind.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new ArtworkKind(csilVal);
     }
 
     static CborValue encPlayerKind(PlayerKind v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static PlayerKind decPlayerKind(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "shared") || Objects.equals(csilVal, "private"))) {
-            throw new CsilCborException("csil cbor: PlayerKind value " + csilVal + " is not a member of the declared enum");
+    static PlayerKind decPlayerKind(CborValue root) {
+        try {
+            return PlayerKind.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new PlayerKind(csilVal);
     }
 
     static CborValue encPlayerCommand(PlayerCommand v) {
@@ -4503,15 +4502,15 @@ public final class CsilCbor {
     }
 
     static CborValue encShareAccess(ShareAccess v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static ShareAccess decShareAccess(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "everyone") || Objects.equals(csilVal, "selected"))) {
-            throw new CsilCborException("csil cbor: ShareAccess value " + csilVal + " is not a member of the declared enum");
+    static ShareAccess decShareAccess(CborValue root) {
+        try {
+            return ShareAccess.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new ShareAccess(csilVal);
     }
 
     static CborValue encMediaControl(MediaControl v) {
@@ -4557,15 +4556,15 @@ public final class CsilCbor {
     }
 
     static CborValue encMediaEndReason(MediaEndReason v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static MediaEndReason decMediaEndReason(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "eos") || Objects.equals(csilVal, "stopped"))) {
-            throw new CsilCborException("csil cbor: MediaEndReason value " + csilVal + " is not a member of the declared enum");
+    static MediaEndReason decMediaEndReason(CborValue root) {
+        try {
+            return MediaEndReason.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new MediaEndReason(csilVal);
     }
 
     static CborValue encMediaEvent(MediaEvent v) {
@@ -4647,38 +4646,964 @@ public final class CsilCbor {
     }
 
     static CborValue encNodeKind(NodeKind v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static NodeKind decNodeKind(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "core") || Objects.equals(csilVal, "satellite") || Objects.equals(csilVal, "client"))) {
-            throw new CsilCborException("csil cbor: NodeKind value " + csilVal + " is not a member of the declared enum");
+    static NodeKind decNodeKind(CborValue root) {
+        try {
+            return NodeKind.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new NodeKind(csilVal);
     }
 
     static CborValue encAudioOutputsState(AudioOutputsState v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static AudioOutputsState decAudioOutputsState(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "none") || Objects.equals(csilVal, "some"))) {
-            throw new CsilCborException("csil cbor: AudioOutputsState value " + csilVal + " is not a member of the declared enum");
+    static AudioOutputsState decAudioOutputsState(CborValue root) {
+        try {
+            return AudioOutputsState.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new AudioOutputsState(csilVal);
     }
 
     static CborValue encChangeTopic(ChangeTopic v) {
-        return new CborText((String) v.value());
+        return new CborText(v.value());
     }
 
-    static ChangeTopic decChangeTopic(CborValue csilRoot) {
-        var csilVal = asText(csilRoot);
-        if (!(Objects.equals(csilVal, "players") || Objects.equals(csilVal, "libraries") || Objects.equals(csilVal, "playlists") || Objects.equals(csilVal, "progress") || Objects.equals(csilVal, "session") || Objects.equals(csilVal, "accounts") || Objects.equals(csilVal, "trust") || Objects.equals(csilVal, "nodes") || Objects.equals(csilVal, "groups") || Objects.equals(csilVal, "settings") || Objects.equals(csilVal, "imports"))) {
-            throw new CsilCborException("csil cbor: ChangeTopic value " + csilVal + " is not a member of the declared enum");
+    static ChangeTopic decChangeTopic(CborValue root) {
+        try {
+            return ChangeTopic.fromWire(asText(root));
+        } catch (IllegalArgumentException e) {
+            throw new CsilCborException(e.getMessage());
         }
-        return new ChangeTopic(csilVal);
+    }
+
+    public record RpcReply(String variant, byte[] payload) {}
+
+    public static final class ServiceErrorRefusal extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        public final ServiceError value;
+
+        public ServiceErrorRefusal(ServiceError value) {
+            super("ServiceError");
+            this.value = value;
+        }
+    }
+
+    public static RpcReply encodeSessionAuthenticateReply(java.util.function.Supplier<SessionInfo> handler) {
+        try {
+            SessionInfo value = handler.get();
+            return new RpcReply("SessionInfo", encode(encSessionInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeSessionWhoamiReply(java.util.function.Supplier<SessionInfo> handler) {
+        try {
+            SessionInfo value = handler.get();
+            return new RpcReply("SessionInfo", encode(encSessionInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeSessionLogoutReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeSessionDeleteAccountReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryListLibrariesReply(java.util.function.Supplier<LibrariesResponse> handler) {
+        try {
+            LibrariesResponse value = handler.get();
+            return new RpcReply("LibrariesResponse", encode(encLibrariesResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryListAlbumsReply(java.util.function.Supplier<AlbumsResponse> handler) {
+        try {
+            AlbumsResponse value = handler.get();
+            return new RpcReply("AlbumsResponse", encode(encAlbumsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryListArtistsReply(java.util.function.Supplier<ArtistsResponse> handler) {
+        try {
+            ArtistsResponse value = handler.get();
+            return new RpcReply("ArtistsResponse", encode(encArtistsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetAlbumReply(java.util.function.Supplier<AlbumDetail> handler) {
+        try {
+            AlbumDetail value = handler.get();
+            return new RpcReply("AlbumDetail", encode(encAlbumDetail(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetArtistReply(java.util.function.Supplier<ArtistDetail> handler) {
+        try {
+            ArtistDetail value = handler.get();
+            return new RpcReply("ArtistDetail", encode(encArtistDetail(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibrarySearchReply(java.util.function.Supplier<SearchResponse> handler) {
+        try {
+            SearchResponse value = handler.get();
+            return new RpcReply("SearchResponse", encode(encSearchResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryExportManifestReply(java.util.function.Supplier<ExportManifest> handler) {
+        try {
+            ExportManifest value = handler.get();
+            return new RpcReply("ExportManifest", encode(encExportManifest(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryExportChunkReply(java.util.function.Supplier<ExportChunk> handler) {
+        try {
+            ExportChunk value = handler.get();
+            return new RpcReply("ExportChunk", encode(encExportChunk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryListPlaylistsReply(java.util.function.Supplier<PlaylistsResponse> handler) {
+        try {
+            PlaylistsResponse value = handler.get();
+            return new RpcReply("PlaylistsResponse", encode(encPlaylistsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetPlaylistReply(java.util.function.Supplier<PlaylistDetail> handler) {
+        try {
+            PlaylistDetail value = handler.get();
+            return new RpcReply("PlaylistDetail", encode(encPlaylistDetail(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryDeletePlaylistReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryBlockAccountReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryUnblockAccountReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryListBlockedAccountsReply(java.util.function.Supplier<BlockedAccountsResponse> handler) {
+        try {
+            BlockedAccountsResponse value = handler.get();
+            return new RpcReply("BlockedAccountsResponse", encode(encBlockedAccountsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetCoverArtReply(java.util.function.Supplier<CoverArt> handler) {
+        try {
+            CoverArt value = handler.get();
+            return new RpcReply("CoverArt", encode(encCoverArt(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetArtworkReply(java.util.function.Supplier<CoverArt> handler) {
+        try {
+            CoverArt value = handler.get();
+            return new RpcReply("CoverArt", encode(encCoverArt(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryListArtworkCandidatesReply(java.util.function.Supplier<ArtworkCandidates> handler) {
+        try {
+            ArtworkCandidates value = handler.get();
+            return new RpcReply("ArtworkCandidates", encode(encArtworkCandidates(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetArtworkCandidateReply(java.util.function.Supplier<CoverArt> handler) {
+        try {
+            CoverArt value = handler.get();
+            return new RpcReply("CoverArt", encode(encCoverArt(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibrarySetArtworkReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryGetAudiobookProgressReply(java.util.function.Supplier<AudiobookProgressResponse> handler) {
+        try {
+            AudiobookProgressResponse value = handler.get();
+            return new RpcReply("AudiobookProgressResponse", encode(encAudiobookProgressResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryUpdateAudiobookProgressReply(java.util.function.Supplier<AudiobookProgress> handler) {
+        try {
+            AudiobookProgress value = handler.get();
+            return new RpcReply("AudiobookProgress", encode(encAudiobookProgress(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeLibraryReportContentReply(java.util.function.Supplier<ContentReport> handler) {
+        try {
+            ContentReport value = handler.get();
+            return new RpcReply("ContentReport", encode(encContentReport(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerListPlayersReply(java.util.function.Supplier<ListPlayersResponse> handler) {
+        try {
+            ListPlayersResponse value = handler.get();
+            return new RpcReply("ListPlayersResponse", encode(encListPlayersResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerGetStateReply(java.util.function.Supplier<PlayerState> handler) {
+        try {
+            PlayerState value = handler.get();
+            return new RpcReply("PlayerState", encode(encPlayerState(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerControlReply(java.util.function.Supplier<PlayerState> handler) {
+        try {
+            PlayerState value = handler.get();
+            return new RpcReply("PlayerState", encode(encPlayerState(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerEnableShareReply(java.util.function.Supplier<ShareResult> handler) {
+        try {
+            ShareResult value = handler.get();
+            return new RpcReply("ShareResult", encode(encShareResult(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerDisableShareReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerGetShareAccessReply(java.util.function.Supplier<ShareAccessInfo> handler) {
+        try {
+            ShareAccessInfo value = handler.get();
+            return new RpcReply("ShareAccessInfo", encode(encShareAccessInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodePlayerSetShareAccessReply(java.util.function.Supplier<ShareAccessInfo> handler) {
+        try {
+            ShareAccessInfo value = handler.get();
+            return new RpcReply("ShareAccessInfo", encode(encShareAccessInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeNodeRegisterReply(java.util.function.Supplier<RegisterNodeResponse> handler) {
+        try {
+            RegisterNodeResponse value = handler.get();
+            return new RpcReply("RegisterNodeResponse", encode(encRegisterNodeResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListAccountsReply(java.util.function.Supplier<ListAccountsResponse> handler) {
+        try {
+            ListAccountsResponse value = handler.get();
+            return new RpcReply("ListAccountsResponse", encode(encListAccountsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminSetRoleReply(java.util.function.Supplier<Account> handler) {
+        try {
+            Account value = handler.get();
+            return new RpcReply("Account", encode(encAccount(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminSetLibraryEditorReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminDeleteAccountReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminTrustDomainReply(java.util.function.Supplier<TrustedDomains> handler) {
+        try {
+            TrustedDomains value = handler.get();
+            return new RpcReply("TrustedDomains", encode(encTrustedDomains(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListTrustedDomainsReply(java.util.function.Supplier<TrustedDomains> handler) {
+        try {
+            TrustedDomains value = handler.get();
+            return new RpcReply("TrustedDomains", encode(encTrustedDomains(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListTrustedIdentitiesReply(java.util.function.Supplier<TrustedIdentities> handler) {
+        try {
+            TrustedIdentities value = handler.get();
+            return new RpcReply("TrustedIdentities", encode(encTrustedIdentities(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminTrustIdentityReply(java.util.function.Supplier<TrustedIdentities> handler) {
+        try {
+            TrustedIdentities value = handler.get();
+            return new RpcReply("TrustedIdentities", encode(encTrustedIdentities(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminRevokeTrustedIdentityReply(java.util.function.Supplier<TrustedIdentities> handler) {
+        try {
+            TrustedIdentities value = handler.get();
+            return new RpcReply("TrustedIdentities", encode(encTrustedIdentities(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListNodesReply(java.util.function.Supplier<ListNodesResponse> handler) {
+        try {
+            ListNodesResponse value = handler.get();
+            return new RpcReply("ListNodesResponse", encode(encListNodesResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminRenameNodeReply(java.util.function.Supplier<NodeInfo> handler) {
+        try {
+            NodeInfo value = handler.get();
+            return new RpcReply("NodeInfo", encode(encNodeInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminRenameDeviceReply(java.util.function.Supplier<DeviceInfo> handler) {
+        try {
+            DeviceInfo value = handler.get();
+            return new RpcReply("DeviceInfo", encode(encDeviceInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminSetDeviceAccessReply(java.util.function.Supplier<DeviceInfo> handler) {
+        try {
+            DeviceInfo value = handler.get();
+            return new RpcReply("DeviceInfo", encode(encDeviceInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListGroupsReply(java.util.function.Supplier<ListGroupsResponse> handler) {
+        try {
+            ListGroupsResponse value = handler.get();
+            return new RpcReply("ListGroupsResponse", encode(encListGroupsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminCreateGroupReply(java.util.function.Supplier<GroupInfo> handler) {
+        try {
+            GroupInfo value = handler.get();
+            return new RpcReply("GroupInfo", encode(encGroupInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminSetGroupMembersReply(java.util.function.Supplier<GroupInfo> handler) {
+        try {
+            GroupInfo value = handler.get();
+            return new RpcReply("GroupInfo", encode(encGroupInfo(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminDeleteGroupReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListSatelliteTokensReply(java.util.function.Supplier<ListSatelliteTokensResponse> handler) {
+        try {
+            ListSatelliteTokensResponse value = handler.get();
+            return new RpcReply("ListSatelliteTokensResponse", encode(encListSatelliteTokensResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminCreateNodeTokenReply(java.util.function.Supplier<NodeTokenResult> handler) {
+        try {
+            NodeTokenResult value = handler.get();
+            return new RpcReply("NodeTokenResult", encode(encNodeTokenResult(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminRevokeSatelliteTokenReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminImportTrackReply(java.util.function.Supplier<ImportResult> handler) {
+        try {
+            ImportResult value = handler.get();
+            return new RpcReply("ImportResult", encode(encImportResult(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminBeginImportReply(java.util.function.Supplier<BeginImportResult> handler) {
+        try {
+            BeginImportResult value = handler.get();
+            return new RpcReply("BeginImportResult", encode(encBeginImportResult(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminImportChunkReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminFinishImportReply(java.util.function.Supplier<ImportResult> handler) {
+        try {
+            ImportResult value = handler.get();
+            return new RpcReply("ImportResult", encode(encImportResult(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminCancelImportReply(java.util.function.Supplier<Ok> handler) {
+        try {
+            Ok value = handler.get();
+            return new RpcReply("Ok", encode(encOk(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminGetSettingsReply(java.util.function.Supplier<Settings> handler) {
+        try {
+            Settings value = handler.get();
+            return new RpcReply("Settings", encode(encSettings(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminSetSettingReply(java.util.function.Supplier<Settings> handler) {
+        try {
+            Settings value = handler.get();
+            return new RpcReply("Settings", encode(encSettings(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminResyncLibraryReply(java.util.function.Supplier<LibraryResyncStatus> handler) {
+        try {
+            LibraryResyncStatus value = handler.get();
+            return new RpcReply("LibraryResyncStatus", encode(encLibraryResyncStatus(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminGetResyncStatusReply(java.util.function.Supplier<LibraryResyncStatus> handler) {
+        try {
+            LibraryResyncStatus value = handler.get();
+            return new RpcReply("LibraryResyncStatus", encode(encLibraryResyncStatus(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminListContentReportsReply(java.util.function.Supplier<ListContentReportsResponse> handler) {
+        try {
+            ListContentReportsResponse value = handler.get();
+            return new RpcReply("ListContentReportsResponse", encode(encListContentReportsResponse(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static RpcReply encodeAdminUpdateContentReportStatusReply(java.util.function.Supplier<ContentReport> handler) {
+        try {
+            ContentReport value = handler.get();
+            return new RpcReply("ContentReport", encode(encContentReport(value)));
+        } catch (ServiceErrorRefusal refusal) {
+            return new RpcReply("ServiceError", encode(encServiceError(refusal.value)));
+        }
+    }
+
+    public static byte[] resolveRpcReply(String service, String op, String variant, byte[] payload) {
+        if ("SessionService".equals(service) && "authenticate".equals(op)) {
+            if ("SessionInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("SessionService".equals(service) && "whoami".equals(op)) {
+            if ("SessionInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("SessionService".equals(service) && "logout".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("SessionService".equals(service) && "delete-account".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "list-libraries".equals(op)) {
+            if ("LibrariesResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "list-albums".equals(op)) {
+            if ("AlbumsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "list-artists".equals(op)) {
+            if ("ArtistsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-album".equals(op)) {
+            if ("AlbumDetail".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-artist".equals(op)) {
+            if ("ArtistDetail".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "search".equals(op)) {
+            if ("SearchResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "export-manifest".equals(op)) {
+            if ("ExportManifest".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "export-chunk".equals(op)) {
+            if ("ExportChunk".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "list-playlists".equals(op)) {
+            if ("PlaylistsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-playlist".equals(op)) {
+            if ("PlaylistDetail".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "delete-playlist".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "block-account".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "unblock-account".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "list-blocked-accounts".equals(op)) {
+            if ("BlockedAccountsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-cover-art".equals(op)) {
+            if ("CoverArt".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-artwork".equals(op)) {
+            if ("CoverArt".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "list-artwork-candidates".equals(op)) {
+            if ("ArtworkCandidates".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-artwork-candidate".equals(op)) {
+            if ("CoverArt".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "set-artwork".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "get-audiobook-progress".equals(op)) {
+            if ("AudiobookProgressResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "update-audiobook-progress".equals(op)) {
+            if ("AudiobookProgress".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("LibraryService".equals(service) && "report-content".equals(op)) {
+            if ("ContentReport".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "list-players".equals(op)) {
+            if ("ListPlayersResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "get-state".equals(op)) {
+            if ("PlayerState".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "control".equals(op)) {
+            if ("PlayerState".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "enable-share".equals(op)) {
+            if ("ShareResult".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "disable-share".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "get-share-access".equals(op)) {
+            if ("ShareAccessInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("PlayerService".equals(service) && "set-share-access".equals(op)) {
+            if ("ShareAccessInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("NodeService".equals(service) && "register".equals(op)) {
+            if ("RegisterNodeResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-accounts".equals(op)) {
+            if ("ListAccountsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "set-role".equals(op)) {
+            if ("Account".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "set-library-editor".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "delete-account".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "trust-domain".equals(op)) {
+            if ("TrustedDomains".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-trusted-domains".equals(op)) {
+            if ("TrustedDomains".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-trusted-identities".equals(op)) {
+            if ("TrustedIdentities".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "trust-identity".equals(op)) {
+            if ("TrustedIdentities".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "revoke-trusted-identity".equals(op)) {
+            if ("TrustedIdentities".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-nodes".equals(op)) {
+            if ("ListNodesResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "rename-node".equals(op)) {
+            if ("NodeInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "rename-device".equals(op)) {
+            if ("DeviceInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "set-device-access".equals(op)) {
+            if ("DeviceInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-groups".equals(op)) {
+            if ("ListGroupsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "create-group".equals(op)) {
+            if ("GroupInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "set-group-members".equals(op)) {
+            if ("GroupInfo".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "delete-group".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-satellite-tokens".equals(op)) {
+            if ("ListSatelliteTokensResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "create-node-token".equals(op)) {
+            if ("NodeTokenResult".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "revoke-satellite-token".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "import-track".equals(op)) {
+            if ("ImportResult".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "begin-import".equals(op)) {
+            if ("BeginImportResult".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "import-chunk".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "finish-import".equals(op)) {
+            if ("ImportResult".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "cancel-import".equals(op)) {
+            if ("Ok".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "get-settings".equals(op)) {
+            if ("Settings".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "set-setting".equals(op)) {
+            if ("Settings".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "resync-library".equals(op)) {
+            if ("LibraryResyncStatus".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "get-resync-status".equals(op)) {
+            if ("LibraryResyncStatus".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "list-content-reports".equals(op)) {
+            if ("ListContentReportsResponse".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        if ("AdminService".equals(service) && "update-content-report-status".equals(op)) {
+            if ("ContentReport".equals(variant)) return payload;
+            if ("ServiceError".equals(variant)) throw new ServiceErrorRefusal(decServiceError(decode(payload)));
+            throw new CsilCborException("invalid RPC reply variant: " + variant);
+        }
+        return payload;
     }
 }

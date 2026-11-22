@@ -4790,4 +4790,1444 @@ public static class Codec
             Revision = csilField1,
         };
     }
+
+    public sealed class ServiceErrorRefusal(ServiceError value) : System.Exception("ServiceError")
+    {
+        public ServiceError Value { get; } = value;
+    }
+
+    public static (string Variant, byte[] Payload) EncodeSessionAuthenticateReply(System.Func<SessionInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("SessionInfo", Cbor.Encode(SessionInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeSessionWhoamiReply(System.Func<SessionInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("SessionInfo", Cbor.Encode(SessionInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeSessionLogoutReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeSessionDeleteAccountReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryListLibrariesReply(System.Func<LibrariesResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("LibrariesResponse", Cbor.Encode(LibrariesResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryListAlbumsReply(System.Func<AlbumsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("AlbumsResponse", Cbor.Encode(AlbumsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryListArtistsReply(System.Func<ArtistsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ArtistsResponse", Cbor.Encode(ArtistsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetAlbumReply(System.Func<AlbumDetail> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("AlbumDetail", Cbor.Encode(AlbumDetailToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetArtistReply(System.Func<ArtistDetail> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ArtistDetail", Cbor.Encode(ArtistDetailToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibrarySearchReply(System.Func<SearchResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("SearchResponse", Cbor.Encode(SearchResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryExportManifestReply(System.Func<ExportManifest> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ExportManifest", Cbor.Encode(ExportManifestToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryExportChunkReply(System.Func<ExportChunk> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ExportChunk", Cbor.Encode(ExportChunkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryListPlaylistsReply(System.Func<PlaylistsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("PlaylistsResponse", Cbor.Encode(PlaylistsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetPlaylistReply(System.Func<PlaylistDetail> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("PlaylistDetail", Cbor.Encode(PlaylistDetailToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryDeletePlaylistReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryBlockAccountReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryUnblockAccountReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryListBlockedAccountsReply(System.Func<BlockedAccountsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("BlockedAccountsResponse", Cbor.Encode(BlockedAccountsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetCoverArtReply(System.Func<CoverArt> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("CoverArt", Cbor.Encode(CoverArtToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetArtworkReply(System.Func<CoverArt> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("CoverArt", Cbor.Encode(CoverArtToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryListArtworkCandidatesReply(System.Func<ArtworkCandidates> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ArtworkCandidates", Cbor.Encode(ArtworkCandidatesToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetArtworkCandidateReply(System.Func<CoverArt> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("CoverArt", Cbor.Encode(CoverArtToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibrarySetArtworkReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryGetAudiobookProgressReply(System.Func<AudiobookProgressResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("AudiobookProgressResponse", Cbor.Encode(AudiobookProgressResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryUpdateAudiobookProgressReply(System.Func<AudiobookProgress> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("AudiobookProgress", Cbor.Encode(AudiobookProgressToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeLibraryReportContentReply(System.Func<ContentReport> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ContentReport", Cbor.Encode(ContentReportToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerListPlayersReply(System.Func<ListPlayersResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ListPlayersResponse", Cbor.Encode(ListPlayersResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerGetStateReply(System.Func<PlayerState> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("PlayerState", Cbor.Encode(PlayerStateToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerControlReply(System.Func<PlayerState> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("PlayerState", Cbor.Encode(PlayerStateToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerEnableShareReply(System.Func<ShareResult> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ShareResult", Cbor.Encode(ShareResultToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerDisableShareReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerGetShareAccessReply(System.Func<ShareAccessInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ShareAccessInfo", Cbor.Encode(ShareAccessInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodePlayerSetShareAccessReply(System.Func<ShareAccessInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ShareAccessInfo", Cbor.Encode(ShareAccessInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeNodeRegisterReply(System.Func<RegisterNodeResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("RegisterNodeResponse", Cbor.Encode(RegisterNodeResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListAccountsReply(System.Func<ListAccountsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ListAccountsResponse", Cbor.Encode(ListAccountsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminSetRoleReply(System.Func<Account> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Account", Cbor.Encode(AccountToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminSetLibraryEditorReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminDeleteAccountReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminTrustDomainReply(System.Func<TrustedDomains> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("TrustedDomains", Cbor.Encode(TrustedDomainsToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListTrustedDomainsReply(System.Func<TrustedDomains> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("TrustedDomains", Cbor.Encode(TrustedDomainsToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListTrustedIdentitiesReply(System.Func<TrustedIdentities> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("TrustedIdentities", Cbor.Encode(TrustedIdentitiesToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminTrustIdentityReply(System.Func<TrustedIdentities> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("TrustedIdentities", Cbor.Encode(TrustedIdentitiesToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminRevokeTrustedIdentityReply(System.Func<TrustedIdentities> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("TrustedIdentities", Cbor.Encode(TrustedIdentitiesToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListNodesReply(System.Func<ListNodesResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ListNodesResponse", Cbor.Encode(ListNodesResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminRenameNodeReply(System.Func<NodeInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("NodeInfo", Cbor.Encode(NodeInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminRenameDeviceReply(System.Func<DeviceInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("DeviceInfo", Cbor.Encode(DeviceInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminSetDeviceAccessReply(System.Func<DeviceInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("DeviceInfo", Cbor.Encode(DeviceInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListGroupsReply(System.Func<ListGroupsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ListGroupsResponse", Cbor.Encode(ListGroupsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminCreateGroupReply(System.Func<GroupInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("GroupInfo", Cbor.Encode(GroupInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminSetGroupMembersReply(System.Func<GroupInfo> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("GroupInfo", Cbor.Encode(GroupInfoToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminDeleteGroupReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListSatelliteTokensReply(System.Func<ListSatelliteTokensResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ListSatelliteTokensResponse", Cbor.Encode(ListSatelliteTokensResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminCreateNodeTokenReply(System.Func<NodeTokenResult> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("NodeTokenResult", Cbor.Encode(NodeTokenResultToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminRevokeSatelliteTokenReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminImportTrackReply(System.Func<ImportResult> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ImportResult", Cbor.Encode(ImportResultToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminBeginImportReply(System.Func<BeginImportResult> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("BeginImportResult", Cbor.Encode(BeginImportResultToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminImportChunkReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminFinishImportReply(System.Func<ImportResult> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ImportResult", Cbor.Encode(ImportResultToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminCancelImportReply(System.Func<Ok> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Ok", Cbor.Encode(OkToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminGetSettingsReply(System.Func<Settings> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Settings", Cbor.Encode(SettingsToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminSetSettingReply(System.Func<Settings> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("Settings", Cbor.Encode(SettingsToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminResyncLibraryReply(System.Func<LibraryResyncStatus> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("LibraryResyncStatus", Cbor.Encode(LibraryResyncStatusToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminGetResyncStatusReply(System.Func<LibraryResyncStatus> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("LibraryResyncStatus", Cbor.Encode(LibraryResyncStatusToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminListContentReportsReply(System.Func<ListContentReportsResponse> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ListContentReportsResponse", Cbor.Encode(ListContentReportsResponseToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static (string Variant, byte[] Payload) EncodeAdminUpdateContentReportStatusReply(System.Func<ContentReport> handler)
+    {
+        try
+        {
+            var value = handler();
+            return ("ContentReport", Cbor.Encode(ContentReportToCborValue(value)));
+        }
+        catch (ServiceErrorRefusal refusal)
+        {
+            return ("ServiceError", Cbor.Encode(ServiceErrorToCborValue(refusal.Value)));
+        }
+    }
+
+    public static byte[] ResolveRpcReply(string service, string op, string? variant, byte[] payload)
+    {
+        if (service == "SessionService" && op == "authenticate")
+        {
+            return variant switch
+            {
+                "SessionInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "SessionService" && op == "whoami")
+        {
+            return variant switch
+            {
+                "SessionInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "SessionService" && op == "logout")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "SessionService" && op == "delete-account")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "list-libraries")
+        {
+            return variant switch
+            {
+                "LibrariesResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "list-albums")
+        {
+            return variant switch
+            {
+                "AlbumsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "list-artists")
+        {
+            return variant switch
+            {
+                "ArtistsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-album")
+        {
+            return variant switch
+            {
+                "AlbumDetail" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-artist")
+        {
+            return variant switch
+            {
+                "ArtistDetail" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "search")
+        {
+            return variant switch
+            {
+                "SearchResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "export-manifest")
+        {
+            return variant switch
+            {
+                "ExportManifest" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "export-chunk")
+        {
+            return variant switch
+            {
+                "ExportChunk" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "list-playlists")
+        {
+            return variant switch
+            {
+                "PlaylistsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-playlist")
+        {
+            return variant switch
+            {
+                "PlaylistDetail" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "delete-playlist")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "block-account")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "unblock-account")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "list-blocked-accounts")
+        {
+            return variant switch
+            {
+                "BlockedAccountsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-cover-art")
+        {
+            return variant switch
+            {
+                "CoverArt" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-artwork")
+        {
+            return variant switch
+            {
+                "CoverArt" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "list-artwork-candidates")
+        {
+            return variant switch
+            {
+                "ArtworkCandidates" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-artwork-candidate")
+        {
+            return variant switch
+            {
+                "CoverArt" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "set-artwork")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "get-audiobook-progress")
+        {
+            return variant switch
+            {
+                "AudiobookProgressResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "update-audiobook-progress")
+        {
+            return variant switch
+            {
+                "AudiobookProgress" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "LibraryService" && op == "report-content")
+        {
+            return variant switch
+            {
+                "ContentReport" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "list-players")
+        {
+            return variant switch
+            {
+                "ListPlayersResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "get-state")
+        {
+            return variant switch
+            {
+                "PlayerState" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "control")
+        {
+            return variant switch
+            {
+                "PlayerState" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "enable-share")
+        {
+            return variant switch
+            {
+                "ShareResult" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "disable-share")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "get-share-access")
+        {
+            return variant switch
+            {
+                "ShareAccessInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "PlayerService" && op == "set-share-access")
+        {
+            return variant switch
+            {
+                "ShareAccessInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "NodeService" && op == "register")
+        {
+            return variant switch
+            {
+                "RegisterNodeResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-accounts")
+        {
+            return variant switch
+            {
+                "ListAccountsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "set-role")
+        {
+            return variant switch
+            {
+                "Account" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "set-library-editor")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "delete-account")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "trust-domain")
+        {
+            return variant switch
+            {
+                "TrustedDomains" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-trusted-domains")
+        {
+            return variant switch
+            {
+                "TrustedDomains" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-trusted-identities")
+        {
+            return variant switch
+            {
+                "TrustedIdentities" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "trust-identity")
+        {
+            return variant switch
+            {
+                "TrustedIdentities" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "revoke-trusted-identity")
+        {
+            return variant switch
+            {
+                "TrustedIdentities" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-nodes")
+        {
+            return variant switch
+            {
+                "ListNodesResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "rename-node")
+        {
+            return variant switch
+            {
+                "NodeInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "rename-device")
+        {
+            return variant switch
+            {
+                "DeviceInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "set-device-access")
+        {
+            return variant switch
+            {
+                "DeviceInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-groups")
+        {
+            return variant switch
+            {
+                "ListGroupsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "create-group")
+        {
+            return variant switch
+            {
+                "GroupInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "set-group-members")
+        {
+            return variant switch
+            {
+                "GroupInfo" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "delete-group")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-satellite-tokens")
+        {
+            return variant switch
+            {
+                "ListSatelliteTokensResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "create-node-token")
+        {
+            return variant switch
+            {
+                "NodeTokenResult" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "revoke-satellite-token")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "import-track")
+        {
+            return variant switch
+            {
+                "ImportResult" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "begin-import")
+        {
+            return variant switch
+            {
+                "BeginImportResult" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "import-chunk")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "finish-import")
+        {
+            return variant switch
+            {
+                "ImportResult" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "cancel-import")
+        {
+            return variant switch
+            {
+                "Ok" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "get-settings")
+        {
+            return variant switch
+            {
+                "Settings" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "set-setting")
+        {
+            return variant switch
+            {
+                "Settings" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "resync-library")
+        {
+            return variant switch
+            {
+                "LibraryResyncStatus" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "get-resync-status")
+        {
+            return variant switch
+            {
+                "LibraryResyncStatus" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "list-content-reports")
+        {
+            return variant switch
+            {
+                "ListContentReportsResponse" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        if (service == "AdminService" && op == "update-content-report-status")
+        {
+            return variant switch
+            {
+                "ContentReport" => payload,
+                "ServiceError" => throw new ServiceErrorRefusal(ServiceErrorFromCborValue(Cbor.Decode(payload))),
+                _ => throw new CborException("invalid RPC reply variant: " + variant),
+            };
+        }
+        return payload;
+    }
 }

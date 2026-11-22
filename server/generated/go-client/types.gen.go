@@ -37,23 +37,58 @@ type DeviceId string
 // PlayerId is a type alias
 type PlayerId string
 
-// Role is a type alias
 type Role string
 
-// PlayerStatus is a type alias
+const (
+	RoleAdmin  Role = "admin"
+	RoleMember Role = "member"
+	RoleGuest  Role = "guest"
+)
+
 type PlayerStatus string
 
-// RepeatMode is a type alias
+const (
+	PlayerStatusStopped PlayerStatus = "stopped"
+	PlayerStatusPlaying PlayerStatus = "playing"
+	PlayerStatusPaused  PlayerStatus = "paused"
+)
+
 type RepeatMode string
 
-// NodeEvent is a type alias
+const (
+	RepeatModeOff RepeatMode = "off"
+	RepeatModeAll RepeatMode = "all"
+	RepeatModeOne RepeatMode = "one"
+)
+
 type NodeEvent string
 
-// Codec is a type alias
+const (
+	NodeEventReady     NodeEvent = "ready"
+	NodeEventState     NodeEvent = "state"
+	NodeEventCompleted NodeEvent = "completed"
+	NodeEventFailed    NodeEvent = "failed"
+)
+
 type Codec string
 
-// TranscodeCodec is a type alias
+const (
+	CodecMp3    Codec = "mp3"
+	CodecAac    Codec = "aac"
+	CodecVorbis Codec = "vorbis"
+	CodecFlac   Codec = "flac"
+	CodecAlac   Codec = "alac"
+	CodecOpus   Codec = "opus"
+	CodecWav    Codec = "wav"
+	CodecWma    Codec = "wma"
+)
+
 type TranscodeCodec string
+
+const (
+	TranscodeCodecAac TranscodeCodec = "aac"
+	TranscodeCodecMp3 TranscodeCodec = "mp3"
+)
 
 // StreamPref represents a structured data type
 type StreamPref struct {
@@ -73,14 +108,29 @@ type Ok struct {
 	Ok bool `json:"ok" yaml:"ok"`
 }
 
-// ContentReportTargetType is a type alias
 type ContentReportTargetType string
 
-// ContentReportReason is a type alias
+const (
+	ContentReportTargetTypePlaylist ContentReportTargetType = "playlist"
+	ContentReportTargetTypeAccount  ContentReportTargetType = "account"
+)
+
 type ContentReportReason string
 
-// ContentReportStatus is a type alias
+const (
+	ContentReportReasonObjectionableContent ContentReportReason = "objectionable-content"
+	ContentReportReasonHarassment           ContentReportReason = "harassment"
+	ContentReportReasonSpam                 ContentReportReason = "spam"
+	ContentReportReasonOther                ContentReportReason = "other"
+)
+
 type ContentReportStatus string
+
+const (
+	ContentReportStatusOpen      ContentReportStatus = "open"
+	ContentReportStatusResolved  ContentReportStatus = "resolved"
+	ContentReportStatusDismissed ContentReportStatus = "dismissed"
+)
 
 // ContentReport represents a structured data type
 type ContentReport struct {
@@ -124,8 +174,12 @@ type DeleteAccountRequest struct {
 	ConfirmationHandle Handle `json:"confirmation_handle" yaml:"confirmation_handle"`
 }
 
-// Library is a type alias
 type Library string
+
+const (
+	LibraryMusic     Library = "music"
+	LibraryAudiobook Library = "audiobook"
+)
 
 // Track represents a structured data type
 type Track struct {
@@ -361,8 +415,12 @@ type CoverArt struct {
 	Data        []byte `json:"data" yaml:"data"`
 }
 
-// ArtworkKind is a type alias
 type ArtworkKind string
+
+const (
+	ArtworkKindAlbum  ArtworkKind = "album"
+	ArtworkKindArtist ArtworkKind = "artist"
+)
 
 // ArtworkRequest represents a structured data type
 type ArtworkRequest struct {
@@ -419,8 +477,12 @@ type ReportContentRequest struct {
 	Details    *string                 `json:"details,omitempty" yaml:"details,omitempty"`
 }
 
-// PlayerKind is a type alias
 type PlayerKind string
+
+const (
+	PlayerKindShared  PlayerKind = "shared"
+	PlayerKindPrivate PlayerKind = "private"
+)
 
 // Player represents a structured data type
 type Player struct {
@@ -626,8 +688,12 @@ type ShareResult struct {
 	Player Player `json:"player" yaml:"player"`
 }
 
-// ShareAccess is a type alias
 type ShareAccess string
+
+const (
+	ShareAccessEveryone ShareAccess = "everyone"
+	ShareAccessSelected ShareAccess = "selected"
+)
 
 // ShareAccessRequest represents a structured data type
 type ShareAccessRequest struct {
@@ -706,8 +772,12 @@ type MediaHeader struct {
 	CodecConfig      *[]byte `json:"codec_config,omitempty" yaml:"codec_config,omitempty"`
 }
 
-// MediaEndReason is a type alias
 type MediaEndReason string
+
+const (
+	MediaEndReasonEos     MediaEndReason = "eos"
+	MediaEndReasonStopped MediaEndReason = "stopped"
+)
 
 // MediaChunk represents a structured data type
 type MediaChunk struct {
@@ -875,11 +945,20 @@ type RevokeTrustedIdentityRequest struct {
 	Identity string `json:"identity" yaml:"identity"`
 }
 
-// NodeKind is a type alias
 type NodeKind string
 
-// AudioOutputsState is a type alias
+const (
+	NodeKindCore      NodeKind = "core"
+	NodeKindSatellite NodeKind = "satellite"
+	NodeKindClient    NodeKind = "client"
+)
+
 type AudioOutputsState string
+
+const (
+	AudioOutputsStateNone AudioOutputsState = "none"
+	AudioOutputsStateSome AudioOutputsState = "some"
+)
 
 // DeviceInfo represents a structured data type
 type DeviceInfo struct {
@@ -1072,8 +1151,21 @@ type UpdateContentReportStatusRequest struct {
 	Status   ContentReportStatus `json:"status" yaml:"status"`
 }
 
-// ChangeTopic is a type alias
 type ChangeTopic string
+
+const (
+	ChangeTopicPlayers   ChangeTopic = "players"
+	ChangeTopicLibraries ChangeTopic = "libraries"
+	ChangeTopicPlaylists ChangeTopic = "playlists"
+	ChangeTopicProgress  ChangeTopic = "progress"
+	ChangeTopicSession   ChangeTopic = "session"
+	ChangeTopicAccounts  ChangeTopic = "accounts"
+	ChangeTopicTrust     ChangeTopic = "trust"
+	ChangeTopicNodes     ChangeTopic = "nodes"
+	ChangeTopicGroups    ChangeTopic = "groups"
+	ChangeTopicSettings  ChangeTopic = "settings"
+	ChangeTopicImports   ChangeTopic = "imports"
+)
 
 // WatchChangesRequest represents a structured data type
 type WatchChangesRequest struct {

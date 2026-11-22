@@ -2,4 +2,21 @@
 
 package csilgen.generated;
 
-public record NodeKind(Object value) {}
+public enum NodeKind {
+    CORE("core"),
+    SATELLITE("satellite"),
+    CLIENT("client");
+
+    private final String value;
+
+    NodeKind(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static NodeKind fromWire(String value) {
+        for (NodeKind member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown NodeKind value: " + value);
+    }
+}

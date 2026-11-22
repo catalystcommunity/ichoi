@@ -2,4 +2,29 @@
 
 package csilgen.generated;
 
-public record ChangeTopic(Object value) {}
+public enum ChangeTopic {
+    PLAYERS("players"),
+    LIBRARIES("libraries"),
+    PLAYLISTS("playlists"),
+    PROGRESS("progress"),
+    SESSION("session"),
+    ACCOUNTS("accounts"),
+    TRUST("trust"),
+    NODES("nodes"),
+    GROUPS("groups"),
+    SETTINGS("settings"),
+    IMPORTS("imports");
+
+    private final String value;
+
+    ChangeTopic(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static ChangeTopic fromWire(String value) {
+        for (ChangeTopic member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown ChangeTopic value: " + value);
+    }
+}

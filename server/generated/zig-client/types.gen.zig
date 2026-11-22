@@ -1393,3 +1393,264 @@ pub const DataChange = struct {
     topic: ChangeTopic,
     revision: u64,
 };
+
+pub const SessionServiceAuthenticateReply = union(enum) {
+    session_info: SessionInfo,
+    service_error: ServiceError,
+};
+pub const SessionServiceWhoamiReply = union(enum) {
+    session_info: SessionInfo,
+    service_error: ServiceError,
+};
+pub const SessionServiceLogoutReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const SessionServiceDeleteAccountReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const LibraryServiceListLibrariesReply = union(enum) {
+    libraries_response: LibrariesResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceListAlbumsReply = union(enum) {
+    albums_response: AlbumsResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceListArtistsReply = union(enum) {
+    artists_response: ArtistsResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetAlbumReply = union(enum) {
+    album_detail: AlbumDetail,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetArtistReply = union(enum) {
+    artist_detail: ArtistDetail,
+    service_error: ServiceError,
+};
+pub const LibraryServiceSearchReply = union(enum) {
+    search_response: SearchResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceExportManifestReply = union(enum) {
+    export_manifest: ExportManifest,
+    service_error: ServiceError,
+};
+pub const LibraryServiceExportChunkReply = union(enum) {
+    export_chunk: ExportChunk,
+    service_error: ServiceError,
+};
+pub const LibraryServiceListPlaylistsReply = union(enum) {
+    playlists_response: PlaylistsResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetPlaylistReply = union(enum) {
+    playlist_detail: PlaylistDetail,
+    service_error: ServiceError,
+};
+pub const LibraryServiceDeletePlaylistReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const LibraryServiceBlockAccountReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const LibraryServiceUnblockAccountReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const LibraryServiceListBlockedAccountsReply = union(enum) {
+    blocked_accounts_response: BlockedAccountsResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetCoverArtReply = union(enum) {
+    cover_art: CoverArt,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetArtworkReply = union(enum) {
+    cover_art: CoverArt,
+    service_error: ServiceError,
+};
+pub const LibraryServiceListArtworkCandidatesReply = union(enum) {
+    artwork_candidates: ArtworkCandidates,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetArtworkCandidateReply = union(enum) {
+    cover_art: CoverArt,
+    service_error: ServiceError,
+};
+pub const LibraryServiceSetArtworkReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const LibraryServiceGetAudiobookProgressReply = union(enum) {
+    audiobook_progress_response: AudiobookProgressResponse,
+    service_error: ServiceError,
+};
+pub const LibraryServiceUpdateAudiobookProgressReply = union(enum) {
+    audiobook_progress: AudiobookProgress,
+    service_error: ServiceError,
+};
+pub const LibraryServiceReportContentReply = union(enum) {
+    content_report: ContentReport,
+    service_error: ServiceError,
+};
+pub const PlayerServiceListPlayersReply = union(enum) {
+    list_players_response: ListPlayersResponse,
+    service_error: ServiceError,
+};
+pub const PlayerServiceGetStateReply = union(enum) {
+    player_state: PlayerState,
+    service_error: ServiceError,
+};
+pub const PlayerServiceControlReply = union(enum) {
+    player_state: PlayerState,
+    service_error: ServiceError,
+};
+pub const PlayerServiceEnableShareReply = union(enum) {
+    share_result: ShareResult,
+    service_error: ServiceError,
+};
+pub const PlayerServiceDisableShareReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const PlayerServiceGetShareAccessReply = union(enum) {
+    share_access_info: ShareAccessInfo,
+    service_error: ServiceError,
+};
+pub const PlayerServiceSetShareAccessReply = union(enum) {
+    share_access_info: ShareAccessInfo,
+    service_error: ServiceError,
+};
+pub const NodeServiceRegisterReply = union(enum) {
+    register_node_response: RegisterNodeResponse,
+    service_error: ServiceError,
+};
+pub const AdminServiceListAccountsReply = union(enum) {
+    list_accounts_response: ListAccountsResponse,
+    service_error: ServiceError,
+};
+pub const AdminServiceSetRoleReply = union(enum) {
+    account: Account,
+    service_error: ServiceError,
+};
+pub const AdminServiceSetLibraryEditorReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const AdminServiceDeleteAccountReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const AdminServiceTrustDomainReply = union(enum) {
+    trusted_domains: TrustedDomains,
+    service_error: ServiceError,
+};
+pub const AdminServiceListTrustedDomainsReply = union(enum) {
+    trusted_domains: TrustedDomains,
+    service_error: ServiceError,
+};
+pub const AdminServiceListTrustedIdentitiesReply = union(enum) {
+    trusted_identities: TrustedIdentities,
+    service_error: ServiceError,
+};
+pub const AdminServiceTrustIdentityReply = union(enum) {
+    trusted_identities: TrustedIdentities,
+    service_error: ServiceError,
+};
+pub const AdminServiceRevokeTrustedIdentityReply = union(enum) {
+    trusted_identities: TrustedIdentities,
+    service_error: ServiceError,
+};
+pub const AdminServiceListNodesReply = union(enum) {
+    list_nodes_response: ListNodesResponse,
+    service_error: ServiceError,
+};
+pub const AdminServiceRenameNodeReply = union(enum) {
+    node_info: NodeInfo,
+    service_error: ServiceError,
+};
+pub const AdminServiceRenameDeviceReply = union(enum) {
+    device_info: DeviceInfo,
+    service_error: ServiceError,
+};
+pub const AdminServiceSetDeviceAccessReply = union(enum) {
+    device_info: DeviceInfo,
+    service_error: ServiceError,
+};
+pub const AdminServiceListGroupsReply = union(enum) {
+    list_groups_response: ListGroupsResponse,
+    service_error: ServiceError,
+};
+pub const AdminServiceCreateGroupReply = union(enum) {
+    group_info: GroupInfo,
+    service_error: ServiceError,
+};
+pub const AdminServiceSetGroupMembersReply = union(enum) {
+    group_info: GroupInfo,
+    service_error: ServiceError,
+};
+pub const AdminServiceDeleteGroupReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const AdminServiceListSatelliteTokensReply = union(enum) {
+    list_satellite_tokens_response: ListSatelliteTokensResponse,
+    service_error: ServiceError,
+};
+pub const AdminServiceCreateNodeTokenReply = union(enum) {
+    node_token_result: NodeTokenResult,
+    service_error: ServiceError,
+};
+pub const AdminServiceRevokeSatelliteTokenReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const AdminServiceImportTrackReply = union(enum) {
+    import_result: ImportResult,
+    service_error: ServiceError,
+};
+pub const AdminServiceBeginImportReply = union(enum) {
+    begin_import_result: BeginImportResult,
+    service_error: ServiceError,
+};
+pub const AdminServiceImportChunkReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const AdminServiceFinishImportReply = union(enum) {
+    import_result: ImportResult,
+    service_error: ServiceError,
+};
+pub const AdminServiceCancelImportReply = union(enum) {
+    ok: Ok,
+    service_error: ServiceError,
+};
+pub const AdminServiceGetSettingsReply = union(enum) {
+    settings: Settings,
+    service_error: ServiceError,
+};
+pub const AdminServiceSetSettingReply = union(enum) {
+    settings: Settings,
+    service_error: ServiceError,
+};
+pub const AdminServiceResyncLibraryReply = union(enum) {
+    library_resync_status: LibraryResyncStatus,
+    service_error: ServiceError,
+};
+pub const AdminServiceGetResyncStatusReply = union(enum) {
+    library_resync_status: LibraryResyncStatus,
+    service_error: ServiceError,
+};
+pub const AdminServiceListContentReportsReply = union(enum) {
+    list_content_reports_response: ListContentReportsResponse,
+    service_error: ServiceError,
+};
+pub const AdminServiceUpdateContentReportStatusReply = union(enum) {
+    content_report: ContentReport,
+    service_error: ServiceError,
+};

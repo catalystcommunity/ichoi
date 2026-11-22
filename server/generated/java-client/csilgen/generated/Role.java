@@ -2,4 +2,21 @@
 
 package csilgen.generated;
 
-public record Role(Object value) {}
+public enum Role {
+    ADMIN("admin"),
+    MEMBER("member"),
+    GUEST("guest");
+
+    private final String value;
+
+    Role(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static Role fromWire(String value) {
+        for (Role member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown Role value: " + value);
+    }
+}

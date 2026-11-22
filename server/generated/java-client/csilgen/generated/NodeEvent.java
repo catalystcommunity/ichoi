@@ -2,4 +2,22 @@
 
 package csilgen.generated;
 
-public record NodeEvent(Object value) {}
+public enum NodeEvent {
+    READY("ready"),
+    STATE("state"),
+    COMPLETED("completed"),
+    FAILED("failed");
+
+    private final String value;
+
+    NodeEvent(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static NodeEvent fromWire(String value) {
+        for (NodeEvent member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown NodeEvent value: " + value);
+    }
+}

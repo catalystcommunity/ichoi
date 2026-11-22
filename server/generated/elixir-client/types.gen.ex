@@ -51,39 +51,85 @@ defmodule Csilgen.Generated.PlayerId do
 end
 
 defmodule Csilgen.Generated.Role do
-  @moduledoc "Type alias for Role."
-  @type t :: String.t()
+  @type t :: :admin | :member | :guest
+  def to_wire(:admin), do: "admin"
+  def to_wire(:member), do: "member"
+  def to_wire(:guest), do: "guest"
+  def from_wire("admin"), do: :admin
+  def from_wire("member"), do: :member
+  def from_wire("guest"), do: :guest
+  def from_wire(value), do: raise(ArgumentError, "unknown Role: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.PlayerStatus do
-  @moduledoc "Type alias for PlayerStatus."
-  @type t :: String.t()
+  @type t :: :stopped | :playing | :paused
+  def to_wire(:stopped), do: "stopped"
+  def to_wire(:playing), do: "playing"
+  def to_wire(:paused), do: "paused"
+  def from_wire("stopped"), do: :stopped
+  def from_wire("playing"), do: :playing
+  def from_wire("paused"), do: :paused
+  def from_wire(value), do: raise(ArgumentError, "unknown PlayerStatus: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.RepeatMode do
-  @moduledoc "Type alias for RepeatMode."
-  @type t :: String.t()
+  @type t :: :off | :all | :one
+  def to_wire(:off), do: "off"
+  def to_wire(:all), do: "all"
+  def to_wire(:one), do: "one"
+  def from_wire("off"), do: :off
+  def from_wire("all"), do: :all
+  def from_wire("one"), do: :one
+  def from_wire(value), do: raise(ArgumentError, "unknown RepeatMode: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.NodeEvent do
-  @moduledoc "Type alias for NodeEvent."
-  @type t :: String.t()
+  @type t :: :ready | :state | :completed | :failed
+  def to_wire(:ready), do: "ready"
+  def to_wire(:state), do: "state"
+  def to_wire(:completed), do: "completed"
+  def to_wire(:failed), do: "failed"
+  def from_wire("ready"), do: :ready
+  def from_wire("state"), do: :state
+  def from_wire("completed"), do: :completed
+  def from_wire("failed"), do: :failed
+  def from_wire(value), do: raise(ArgumentError, "unknown NodeEvent: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.Codec do
-  @moduledoc "Type alias for Codec."
-  @type t :: String.t()
+  @type t :: :mp3 | :aac | :vorbis | :flac | :alac | :opus | :wav | :wma
+  def to_wire(:mp3), do: "mp3"
+  def to_wire(:aac), do: "aac"
+  def to_wire(:vorbis), do: "vorbis"
+  def to_wire(:flac), do: "flac"
+  def to_wire(:alac), do: "alac"
+  def to_wire(:opus), do: "opus"
+  def to_wire(:wav), do: "wav"
+  def to_wire(:wma), do: "wma"
+  def from_wire("mp3"), do: :mp3
+  def from_wire("aac"), do: :aac
+  def from_wire("vorbis"), do: :vorbis
+  def from_wire("flac"), do: :flac
+  def from_wire("alac"), do: :alac
+  def from_wire("opus"), do: :opus
+  def from_wire("wav"), do: :wav
+  def from_wire("wma"), do: :wma
+  def from_wire(value), do: raise(ArgumentError, "unknown Codec: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.TranscodeCodec do
-  @moduledoc "Type alias for TranscodeCodec."
-  @type t :: String.t()
+  @type t :: :aac | :mp3
+  def to_wire(:aac), do: "aac"
+  def to_wire(:mp3), do: "mp3"
+  def from_wire("aac"), do: :aac
+  def from_wire("mp3"), do: :mp3
+  def from_wire(value), do: raise(ArgumentError, "unknown TranscodeCodec: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.StreamPref do
   @moduledoc "Generated struct for the StreamPref type."
 
-  defstruct [:max_bitrate_kbps, prefer_original: false, transcode_codec: "aac"]
+  defstruct [:max_bitrate_kbps, prefer_original: false, transcode_codec: :aac]
 
   @type t :: %__MODULE__{
           max_bitrate_kbps: integer() | nil,
@@ -112,7 +158,9 @@ defmodule Csilgen.Generated.StreamPref do
          ),
          if(is_nil(v.transcode_codec),
            do: nil,
-           else: {{:text, "transcode_codec"}, {:text, v.transcode_codec}}
+           else:
+             {{:text, "transcode_codec"},
+              {:text, Csilgen.Generated.TranscodeCodec.to_wire(v.transcode_codec)}}
          ),
          if(is_nil(v.max_bitrate_kbps),
            do: nil,
@@ -140,16 +188,7 @@ defmodule Csilgen.Generated.StreamPref do
             nil
 
           csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "aac" ->
-                "aac"
-
-              "mp3" ->
-                "mp3"
-
-              csil_other ->
-                raise("csilgen: unknown TranscodeCodec literal #{inspect(csil_other)}")
-            end
+            Csilgen.Generated.TranscodeCodec.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       max_bitrate_kbps:
         case Map.get(csil_fields, {:text, "max_bitrate_kbps"}) do
@@ -271,18 +310,36 @@ defmodule Csilgen.Generated.Ok do
 end
 
 defmodule Csilgen.Generated.ContentReportTargetType do
-  @moduledoc "Type alias for ContentReportTargetType."
-  @type t :: String.t()
+  @type t :: :playlist | :account
+  def to_wire(:playlist), do: "playlist"
+  def to_wire(:account), do: "account"
+  def from_wire("playlist"), do: :playlist
+  def from_wire("account"), do: :account
+  def from_wire(value), do: raise(ArgumentError, "unknown ContentReportTargetType: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.ContentReportReason do
-  @moduledoc "Type alias for ContentReportReason."
-  @type t :: String.t()
+  @type t :: :objectionable_content | :harassment | :spam | :other
+  def to_wire(:objectionable_content), do: "objectionable-content"
+  def to_wire(:harassment), do: "harassment"
+  def to_wire(:spam), do: "spam"
+  def to_wire(:other), do: "other"
+  def from_wire("objectionable-content"), do: :objectionable_content
+  def from_wire("harassment"), do: :harassment
+  def from_wire("spam"), do: :spam
+  def from_wire("other"), do: :other
+  def from_wire(value), do: raise(ArgumentError, "unknown ContentReportReason: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.ContentReportStatus do
-  @moduledoc "Type alias for ContentReportStatus."
-  @type t :: String.t()
+  @type t :: :open | :resolved | :dismissed
+  def to_wire(:open), do: "open"
+  def to_wire(:resolved), do: "resolved"
+  def to_wire(:dismissed), do: "dismissed"
+  def from_wire("open"), do: :open
+  def from_wire("resolved"), do: :resolved
+  def from_wire("dismissed"), do: :dismissed
+  def from_wire(value), do: raise(ArgumentError, "unknown ContentReportStatus: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.ContentReport do
@@ -343,8 +400,8 @@ defmodule Csilgen.Generated.ContentReport do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "reason"}, {:text, v.reason}},
-         {{:text, "status"}, {:text, v.status}},
+         {{:text, "reason"}, {:text, Csilgen.Generated.ContentReportReason.to_wire(v.reason)}},
+         {{:text, "status"}, {:text, Csilgen.Generated.ContentReportStatus.to_wire(v.status)}},
          if(is_nil(v.details), do: nil, else: {{:text, "details"}, {:text, v.details}}),
          {{:text, "target_id"}, {:text, v.target_id}},
          {{:text, "created_at"}, {:tag, 0, {:text, DateTime.to_iso8601(v.created_at)}}},
@@ -352,7 +409,8 @@ defmodule Csilgen.Generated.ContentReport do
            do: nil,
            else: {{:text, "resolved_at"}, {:tag, 0, {:text, DateTime.to_iso8601(v.resolved_at)}}}
          ),
-         {{:text, "target_type"}, {:text, v.target_type}},
+         {{:text, "target_type"},
+          {:text, Csilgen.Generated.ContentReportTargetType.to_wire(v.target_type)}},
          {{:text, "reporter_account_id"}, {:text, v.reporter_account_id}}
        ],
        &is_nil/1
@@ -367,36 +425,13 @@ defmodule Csilgen.Generated.ContentReport do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       reason:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "reason"})) do
-          "objectionable-content" ->
-            "objectionable-content"
-
-          "harassment" ->
-            "harassment"
-
-          "spam" ->
-            "spam"
-
-          "other" ->
-            "other"
-
-          csil_other ->
-            raise("csilgen: unknown ContentReportReason literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ContentReportReason.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "reason"}))
+        ),
       status:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
-          "open" ->
-            "open"
-
-          "resolved" ->
-            "resolved"
-
-          "dismissed" ->
-            "dismissed"
-
-          csil_other ->
-            raise("csilgen: unknown ContentReportStatus literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ContentReportStatus.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"}))
+        ),
       details:
         case Map.get(csil_fields, {:text, "details"}) do
           nil -> nil
@@ -418,16 +453,9 @@ defmodule Csilgen.Generated.ContentReport do
             end
         end,
       target_type:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "target_type"})) do
-          "playlist" ->
-            "playlist"
-
-          "account" ->
-            "account"
-
-          csil_other ->
-            raise("csilgen: unknown ContentReportTargetType literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ContentReportTargetType.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "target_type"}))
+        ),
       reporter_account_id:
         Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "reporter_account_id"}))
     }
@@ -610,7 +638,7 @@ defmodule Csilgen.Generated.SessionInfo do
     {:map,
      Enum.reject(
        [
-         {{:text, "role"}, {:text, v.role}},
+         {{:text, "role"}, {:text, Csilgen.Generated.Role.to_wire(v.role)}},
          if(is_nil(v.token), do: nil, else: {{:text, "token"}, {:text, v.token}}),
          {{:text, "handle"}, {:text, v.handle}},
          {{:text, "can_admin"}, {:bool, v.can_admin}},
@@ -635,12 +663,9 @@ defmodule Csilgen.Generated.SessionInfo do
 
     %__MODULE__{
       role:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "role"})) do
-          "admin" -> "admin"
-          "member" -> "member"
-          "guest" -> "guest"
-          csil_other -> raise("csilgen: unknown Role literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.Role.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "role"}))
+        ),
       token:
         case Map.get(csil_fields, {:text, "token"}) do
           nil -> nil
@@ -719,8 +744,12 @@ defmodule Csilgen.Generated.DeleteAccountRequest do
 end
 
 defmodule Csilgen.Generated.Library do
-  @moduledoc "Type alias for Library."
-  @type t :: String.t()
+  @type t :: :music | :audiobook
+  def to_wire(:music), do: "music"
+  def to_wire(:audiobook), do: "audiobook"
+  def from_wire("music"), do: :music
+  def from_wire("audiobook"), do: :audiobook
+  def from_wire(value), do: raise(ArgumentError, "unknown Library: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.Track do
@@ -806,10 +835,10 @@ defmodule Csilgen.Generated.Track do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "codec"}, {:text, v.codec}},
+         {{:text, "codec"}, {:text, Csilgen.Generated.Codec.to_wire(v.codec)}},
          {{:text, "title"}, {:text, v.title}},
          if(is_nil(v.disc_no), do: nil, else: {{:text, "disc_no"}, {:int, v.disc_no}}),
-         {{:text, "library"}, {:text, v.library}},
+         {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}},
          if(is_nil(v.album_id), do: nil, else: {{:text, "album_id"}, {:text, v.album_id}}),
          {{:text, "channels"}, {:int, v.channels}},
          if(is_nil(v.track_no), do: nil, else: {{:text, "track_no"}, {:int, v.track_no}}),
@@ -847,17 +876,9 @@ defmodule Csilgen.Generated.Track do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       codec:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "codec"})) do
-          "mp3" -> "mp3"
-          "aac" -> "aac"
-          "vorbis" -> "vorbis"
-          "flac" -> "flac"
-          "alac" -> "alac"
-          "opus" -> "opus"
-          "wav" -> "wav"
-          "wma" -> "wma"
-          csil_other -> raise("csilgen: unknown Codec literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.Codec.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "codec"}))
+        ),
       title: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "title"})),
       disc_no:
         case Map.get(csil_fields, {:text, "disc_no"}) do
@@ -865,11 +886,9 @@ defmodule Csilgen.Generated.Track do
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
         end,
       library:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "library"})) do
-          "music" -> "music"
-          "audiobook" -> "audiobook"
-          csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.Library.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "library"}))
+        ),
       album_id:
         case Map.get(csil_fields, {:text, "album_id"}) do
           nil -> nil
@@ -1139,7 +1158,7 @@ end
 defmodule Csilgen.Generated.BrowseRequest do
   @moduledoc "Generated struct for the BrowseRequest type."
 
-  defstruct library: "music", offset: 0, limit: 100
+  defstruct library: :music, offset: 0, limit: 100
 
   @type t :: %__MODULE__{
           library: Csilgen.Generated.Library.t() | nil,
@@ -1160,7 +1179,10 @@ defmodule Csilgen.Generated.BrowseRequest do
        [
          if(is_nil(v.limit), do: nil, else: {{:text, "limit"}, {:int, v.limit}}),
          if(is_nil(v.offset), do: nil, else: {{:text, "offset"}, {:int, v.offset}}),
-         if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}})
+         if(is_nil(v.library),
+           do: nil,
+           else: {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}}
+         )
        ],
        &is_nil/1
      )}
@@ -1184,15 +1206,8 @@ defmodule Csilgen.Generated.BrowseRequest do
         end,
       library:
         case Map.get(csil_fields, {:text, "library"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "music" -> "music"
-              "audiobook" -> "audiobook"
-              csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.Library.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end
     }
   end
@@ -1227,7 +1242,7 @@ defmodule Csilgen.Generated.LibraryInfo do
     {:map,
      Enum.reject(
        [
-         {{:text, "kind"}, {:text, v.kind}}
+         {{:text, "kind"}, {:text, Csilgen.Generated.Library.to_wire(v.kind)}}
        ],
        &is_nil/1
      )}
@@ -1240,11 +1255,9 @@ defmodule Csilgen.Generated.LibraryInfo do
 
     %__MODULE__{
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "music" -> "music"
-          "audiobook" -> "audiobook"
-          csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-        end
+        Csilgen.Generated.Library.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        )
     }
   end
 
@@ -1528,7 +1541,7 @@ defmodule Csilgen.Generated.ArtistRequest do
   @moduledoc "Generated struct for the ArtistRequest type."
 
   @enforce_keys [:artist_id]
-  defstruct [:artist_id, library: "music"]
+  defstruct [:artist_id, library: :music]
 
   @type t :: %__MODULE__{
           artist_id: Csilgen.Generated.ArtistId.t(),
@@ -1546,7 +1559,10 @@ defmodule Csilgen.Generated.ArtistRequest do
     {:map,
      Enum.reject(
        [
-         if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}}),
+         if(is_nil(v.library),
+           do: nil,
+           else: {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}}
+         ),
          {{:text, "artist_id"}, {:text, v.artist_id}}
        ],
        &is_nil/1
@@ -1561,15 +1577,8 @@ defmodule Csilgen.Generated.ArtistRequest do
     %__MODULE__{
       library:
         case Map.get(csil_fields, {:text, "library"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "music" -> "music"
-              "audiobook" -> "audiobook"
-              csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.Library.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       artist_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "artist_id"}))
     }
@@ -1643,7 +1652,7 @@ defmodule Csilgen.Generated.SearchRequest do
   @moduledoc "Generated struct for the SearchRequest type."
 
   @enforce_keys [:query]
-  defstruct [:query, library: "music", limit: 50]
+  defstruct [:query, library: :music, limit: 50]
 
   @type t :: %__MODULE__{
           query: String.t(),
@@ -1664,7 +1673,10 @@ defmodule Csilgen.Generated.SearchRequest do
        [
          if(is_nil(v.limit), do: nil, else: {{:text, "limit"}, {:int, v.limit}}),
          {{:text, "query"}, {:text, v.query}},
-         if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}})
+         if(is_nil(v.library),
+           do: nil,
+           else: {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}}
+         )
        ],
        &is_nil/1
      )}
@@ -1684,15 +1696,8 @@ defmodule Csilgen.Generated.SearchRequest do
       query: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "query"})),
       library:
         case Map.get(csil_fields, {:text, "library"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "music" -> "music"
-              "audiobook" -> "audiobook"
-              csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.Library.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end
     }
   end
@@ -2827,8 +2832,12 @@ defmodule Csilgen.Generated.CoverArt do
 end
 
 defmodule Csilgen.Generated.ArtworkKind do
-  @moduledoc "Type alias for ArtworkKind."
-  @type t :: String.t()
+  @type t :: :album | :artist
+  def to_wire(:album), do: "album"
+  def to_wire(:artist), do: "artist"
+  def from_wire("album"), do: :album
+  def from_wire("artist"), do: :artist
+  def from_wire(value), do: raise(ArgumentError, "unknown ArtworkKind: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.ArtworkRequest do
@@ -2855,7 +2864,7 @@ defmodule Csilgen.Generated.ArtworkRequest do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "kind"}, {:text, v.kind}},
+         {{:text, "kind"}, {:text, Csilgen.Generated.ArtworkKind.to_wire(v.kind)}},
          if(is_nil(v.max_size), do: nil, else: {{:text, "max_size"}, {:int, v.max_size}})
        ],
        &is_nil/1
@@ -2870,11 +2879,9 @@ defmodule Csilgen.Generated.ArtworkRequest do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "album" -> "album"
-          "artist" -> "artist"
-          csil_other -> raise("csilgen: unknown ArtworkKind literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ArtworkKind.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        ),
       max_size:
         case Map.get(csil_fields, {:text, "max_size"}) do
           nil -> nil
@@ -2918,7 +2925,7 @@ defmodule Csilgen.Generated.SetArtworkRequest do
        [
          {{:text, "id"}, {:text, v.id}},
          if(is_nil(v.data), do: nil, else: {{:text, "data"}, {:bytes, v.data}}),
-         {{:text, "kind"}, {:text, v.kind}},
+         {{:text, "kind"}, {:text, Csilgen.Generated.ArtworkKind.to_wire(v.kind)}},
          if(is_nil(v.candidate_id),
            do: nil,
            else: {{:text, "candidate_id"}, {:text, v.candidate_id}}
@@ -2941,11 +2948,9 @@ defmodule Csilgen.Generated.SetArtworkRequest do
           csil_v -> Csilgen.Generated.Cbor.to_bytes(csil_v)
         end,
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "album" -> "album"
-          "artist" -> "artist"
-          csil_other -> raise("csilgen: unknown ArtworkKind literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ArtworkKind.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        ),
       candidate_id:
         case Map.get(csil_fields, {:text, "candidate_id"}) do
           nil -> nil
@@ -2988,7 +2993,7 @@ defmodule Csilgen.Generated.ArtworkCandidatesRequest do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "kind"}, {:text, v.kind}},
+         {{:text, "kind"}, {:text, Csilgen.Generated.ArtworkKind.to_wire(v.kind)}},
          if(is_nil(v.limit), do: nil, else: {{:text, "limit"}, {:int, v.limit}}),
          if(is_nil(v.offset), do: nil, else: {{:text, "offset"}, {:int, v.offset}})
        ],
@@ -3004,11 +3009,9 @@ defmodule Csilgen.Generated.ArtworkCandidatesRequest do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "album" -> "album"
-          "artist" -> "artist"
-          csil_other -> raise("csilgen: unknown ArtworkKind literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ArtworkKind.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        ),
       limit:
         case Map.get(csil_fields, {:text, "limit"}) do
           nil -> nil
@@ -3056,7 +3059,7 @@ defmodule Csilgen.Generated.ArtworkCandidateRequest do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "kind"}, {:text, v.kind}},
+         {{:text, "kind"}, {:text, Csilgen.Generated.ArtworkKind.to_wire(v.kind)}},
          if(is_nil(v.max_size), do: nil, else: {{:text, "max_size"}, {:int, v.max_size}}),
          {{:text, "candidate_id"}, {:text, v.candidate_id}}
        ],
@@ -3072,11 +3075,9 @@ defmodule Csilgen.Generated.ArtworkCandidateRequest do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "album" -> "album"
-          "artist" -> "artist"
-          csil_other -> raise("csilgen: unknown ArtworkKind literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ArtworkKind.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        ),
       max_size:
         case Map.get(csil_fields, {:text, "max_size"}) do
           nil -> nil
@@ -3252,10 +3253,11 @@ defmodule Csilgen.Generated.ReportContentRequest do
     {:map,
      Enum.reject(
        [
-         {{:text, "reason"}, {:text, v.reason}},
+         {{:text, "reason"}, {:text, Csilgen.Generated.ContentReportReason.to_wire(v.reason)}},
          if(is_nil(v.details), do: nil, else: {{:text, "details"}, {:text, v.details}}),
          {{:text, "target_id"}, {:text, v.target_id}},
-         {{:text, "target_type"}, {:text, v.target_type}}
+         {{:text, "target_type"},
+          {:text, Csilgen.Generated.ContentReportTargetType.to_wire(v.target_type)}}
        ],
        &is_nil/1
      )}
@@ -3268,22 +3270,9 @@ defmodule Csilgen.Generated.ReportContentRequest do
 
     %__MODULE__{
       reason:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "reason"})) do
-          "objectionable-content" ->
-            "objectionable-content"
-
-          "harassment" ->
-            "harassment"
-
-          "spam" ->
-            "spam"
-
-          "other" ->
-            "other"
-
-          csil_other ->
-            raise("csilgen: unknown ContentReportReason literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ContentReportReason.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "reason"}))
+        ),
       details:
         case Map.get(csil_fields, {:text, "details"}) do
           nil -> nil
@@ -3291,16 +3280,9 @@ defmodule Csilgen.Generated.ReportContentRequest do
         end,
       target_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "target_id"})),
       target_type:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "target_type"})) do
-          "playlist" ->
-            "playlist"
-
-          "account" ->
-            "account"
-
-          csil_other ->
-            raise("csilgen: unknown ContentReportTargetType literal #{inspect(csil_other)}")
-        end
+        Csilgen.Generated.ContentReportTargetType.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "target_type"}))
+        )
     }
   end
 
@@ -3314,8 +3296,12 @@ defmodule Csilgen.Generated.ReportContentRequest do
 end
 
 defmodule Csilgen.Generated.PlayerKind do
-  @moduledoc "Type alias for PlayerKind."
-  @type t :: String.t()
+  @type t :: :shared | :private
+  def to_wire(:shared), do: "shared"
+  def to_wire(:private), do: "private"
+  def from_wire("shared"), do: :shared
+  def from_wire("private"), do: :private
+  def from_wire(value), do: raise(ArgumentError, "unknown PlayerKind: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.Player do
@@ -3354,7 +3340,7 @@ defmodule Csilgen.Generated.Player do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "kind"}, {:text, v.kind}},
+         {{:text, "kind"}, {:text, Csilgen.Generated.PlayerKind.to_wire(v.kind)}},
          {{:text, "name"}, {:text, v.name}},
          if(is_nil(v.owner), do: nil, else: {{:text, "owner"}, {:text, v.owner}}),
          if(is_nil(v.node_id), do: nil, else: {{:text, "node_id"}, {:text, v.node_id}}),
@@ -3376,11 +3362,9 @@ defmodule Csilgen.Generated.Player do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "shared" -> "shared"
-          "private" -> "private"
-          csil_other -> raise("csilgen: unknown PlayerKind literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.PlayerKind.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        ),
       name: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "name"})),
       owner:
         case Map.get(csil_fields, {:text, "owner"}) do
@@ -3449,7 +3433,10 @@ defmodule Csilgen.Generated.QueueItem do
        [
          if(is_nil(v.title), do: nil, else: {{:text, "title"}, {:text, v.title}}),
          if(is_nil(v.artist), do: nil, else: {{:text, "artist"}, {:text, v.artist}}),
-         if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}}),
+         if(is_nil(v.library),
+           do: nil,
+           else: {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}}
+         ),
          {{:text, "track_id"}, {:text, v.track_id}},
          if(is_nil(v.duration_ms),
            do: nil,
@@ -3479,15 +3466,8 @@ defmodule Csilgen.Generated.QueueItem do
         end,
       library:
         case Map.get(csil_fields, {:text, "library"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "music" -> "music"
-              "audiobook" -> "audiobook"
-              csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.Library.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       track_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "track_id"})),
       duration_ms:
@@ -3571,7 +3551,7 @@ defmodule Csilgen.Generated.PlayerState do
          {{:text, "queue"},
           {:array,
            Enum.map(v.queue, fn csil_e -> Csilgen.Generated.QueueItem.to_cbor_value(csil_e) end)}},
-         {{:text, "status"}, {:text, v.status}},
+         {{:text, "status"}, {:text, Csilgen.Generated.PlayerStatus.to_wire(v.status)}},
          {{:text, "volume"}, {:int, v.volume}},
          {{:text, "shuffle"}, {:bool, v.shuffle}},
          {{:text, "can_undo"}, {:bool, v.can_undo}},
@@ -3585,7 +3565,7 @@ defmodule Csilgen.Generated.PlayerState do
            do: nil,
            else: {{:text, "position_ms"}, {:int, v.position_ms}}
          ),
-         {{:text, "repeat_mode"}, {:text, v.repeat_mode}},
+         {{:text, "repeat_mode"}, {:text, Csilgen.Generated.RepeatMode.to_wire(v.repeat_mode)}},
          if(is_nil(v.current_index),
            do: nil,
            else: {{:text, "current_index"}, {:int, v.current_index}}
@@ -3614,12 +3594,9 @@ defmodule Csilgen.Generated.PlayerState do
             end)
         end,
       status:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
-          "stopped" -> "stopped"
-          "playing" -> "playing"
-          "paused" -> "paused"
-          csil_other -> raise("csilgen: unknown PlayerStatus literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.PlayerStatus.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"}))
+        ),
       volume: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "volume"})),
       shuffle: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "shuffle"})),
       can_undo: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "can_undo"})),
@@ -3636,12 +3613,9 @@ defmodule Csilgen.Generated.PlayerState do
           csil_v -> Csilgen.Generated.Cbor.to_int(csil_v)
         end,
       repeat_mode:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "repeat_mode"})) do
-          "off" -> "off"
-          "all" -> "all"
-          "one" -> "one"
-          csil_other -> raise("csilgen: unknown RepeatMode literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.RepeatMode.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "repeat_mode"}))
+        ),
       current_index:
         case Map.get(csil_fields, {:text, "current_index"}) do
           nil -> nil
@@ -3679,7 +3653,10 @@ defmodule Csilgen.Generated.ListPlayersRequest do
     {:map,
      Enum.reject(
        [
-         if(is_nil(v.kind), do: nil, else: {{:text, "kind"}, {:text, v.kind}})
+         if(is_nil(v.kind),
+           do: nil,
+           else: {{:text, "kind"}, {:text, Csilgen.Generated.PlayerKind.to_wire(v.kind)}}
+         )
        ],
        &is_nil/1
      )}
@@ -3693,15 +3670,8 @@ defmodule Csilgen.Generated.ListPlayersRequest do
     %__MODULE__{
       kind:
         case Map.get(csil_fields, {:text, "kind"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "shared" -> "shared"
-              "private" -> "private"
-              csil_other -> raise("csilgen: unknown PlayerKind literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.PlayerKind.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end
     }
   end
@@ -4592,7 +4562,7 @@ defmodule Csilgen.Generated.CmdSetRepeat do
      Enum.reject(
        [
          {{:text, "op"}, raise("csilgen: no codec for this field shape")},
-         {{:text, "repeat_mode"}, {:text, v.repeat_mode}}
+         {{:text, "repeat_mode"}, {:text, Csilgen.Generated.RepeatMode.to_wire(v.repeat_mode)}}
        ],
        &is_nil/1
      )}
@@ -4606,12 +4576,9 @@ defmodule Csilgen.Generated.CmdSetRepeat do
     %__MODULE__{
       op: raise("csilgen: no codec for this field shape"),
       repeat_mode:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "repeat_mode"})) do
-          "off" -> "off"
-          "all" -> "all"
-          "one" -> "one"
-          csil_other -> raise("csilgen: unknown RepeatMode literal #{inspect(csil_other)}")
-        end
+        Csilgen.Generated.RepeatMode.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "repeat_mode"}))
+        )
     }
   end
 
@@ -4867,7 +4834,7 @@ defmodule Csilgen.Generated.CmdPlaybackState do
      Enum.reject(
        [
          {{:text, "op"}, raise("csilgen: no codec for this field shape")},
-         {{:text, "status"}, {:text, v.status}},
+         {{:text, "status"}, {:text, Csilgen.Generated.PlayerStatus.to_wire(v.status)}},
          {{:text, "playback_id"}, {:text, v.playback_id}},
          {{:text, "position_ms"}, {:int, v.position_ms}},
          {{:text, "queue_item_id"}, {:int, v.queue_item_id}}
@@ -4884,12 +4851,9 @@ defmodule Csilgen.Generated.CmdPlaybackState do
     %__MODULE__{
       op: raise("csilgen: no codec for this field shape"),
       status:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
-          "stopped" -> "stopped"
-          "playing" -> "playing"
-          "paused" -> "paused"
-          csil_other -> raise("csilgen: unknown PlayerStatus literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.PlayerStatus.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"}))
+        ),
       playback_id:
         Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "playback_id"})),
       position_ms: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "position_ms"})),
@@ -5194,8 +5158,12 @@ defmodule Csilgen.Generated.ShareResult do
 end
 
 defmodule Csilgen.Generated.ShareAccess do
-  @moduledoc "Type alias for ShareAccess."
-  @type t :: String.t()
+  @type t :: :everyone | :selected
+  def to_wire(:everyone), do: "everyone"
+  def to_wire(:selected), do: "selected"
+  def from_wire("everyone"), do: :everyone
+  def from_wire("selected"), do: :selected
+  def from_wire(value), do: raise(ArgumentError, "unknown ShareAccess: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.ShareAccessRequest do
@@ -5334,7 +5302,7 @@ defmodule Csilgen.Generated.ShareAccessInfo do
     {:map,
      Enum.reject(
        [
-         {{:text, "access"}, {:text, v.access}},
+         {{:text, "access"}, {:text, Csilgen.Generated.ShareAccess.to_wire(v.access)}},
          {{:text, "accounts"},
           {:array,
            Enum.map(v.accounts, fn csil_e ->
@@ -5353,11 +5321,9 @@ defmodule Csilgen.Generated.ShareAccessInfo do
 
     %__MODULE__{
       access:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "access"})) do
-          "everyone" -> "everyone"
-          "selected" -> "selected"
-          csil_other -> raise("csilgen: unknown ShareAccess literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ShareAccess.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "access"}))
+        ),
       accounts:
         case Map.fetch!(csil_fields, {:text, "accounts"}) do
           {:array, csil_xs} ->
@@ -5401,7 +5367,7 @@ defmodule Csilgen.Generated.SetShareAccessRequest do
     {:map,
      Enum.reject(
        [
-         {{:text, "access"}, {:text, v.access}},
+         {{:text, "access"}, {:text, Csilgen.Generated.ShareAccess.to_wire(v.access)}},
          {{:text, "player_id"}, {:text, v.player_id}},
          {{:text, "account_ids"},
           {:array, Enum.map(v.account_ids, fn csil_e -> {:text, csil_e} end)}}
@@ -5417,11 +5383,9 @@ defmodule Csilgen.Generated.SetShareAccessRequest do
 
     %__MODULE__{
       access:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "access"})) do
-          "everyone" -> "everyone"
-          "selected" -> "selected"
-          csil_other -> raise("csilgen: unknown ShareAccess literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ShareAccess.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "access"}))
+        ),
       player_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "player_id"})),
       account_ids:
         case Map.fetch!(csil_fields, {:text, "account_ids"}) do
@@ -5753,7 +5717,7 @@ defmodule Csilgen.Generated.MediaHeader do
      Enum.reject(
        [
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
-         {{:text, "codec"}, {:text, v.codec}},
+         {{:text, "codec"}, {:text, Csilgen.Generated.Codec.to_wire(v.codec)}},
          {{:text, "channels"}, {:int, v.channels}},
          {{:text, "stream_id"}, {:text, v.stream_id}},
          {{:text, "transcoded"}, {:bool, v.transcoded}},
@@ -5781,17 +5745,9 @@ defmodule Csilgen.Generated.MediaHeader do
     %__MODULE__{
       kind: raise("csilgen: no codec for this field shape"),
       codec:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "codec"})) do
-          "mp3" -> "mp3"
-          "aac" -> "aac"
-          "vorbis" -> "vorbis"
-          "flac" -> "flac"
-          "alac" -> "alac"
-          "opus" -> "opus"
-          "wav" -> "wav"
-          "wma" -> "wma"
-          csil_other -> raise("csilgen: unknown Codec literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.Codec.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "codec"}))
+        ),
       channels: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "channels"})),
       stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"})),
       transcoded: Csilgen.Generated.Cbor.to_bool(Map.fetch!(csil_fields, {:text, "transcoded"})),
@@ -5823,8 +5779,12 @@ defmodule Csilgen.Generated.MediaHeader do
 end
 
 defmodule Csilgen.Generated.MediaEndReason do
-  @moduledoc "Type alias for MediaEndReason."
-  @type t :: String.t()
+  @type t :: :eos | :stopped
+  def to_wire(:eos), do: "eos"
+  def to_wire(:stopped), do: "stopped"
+  def from_wire("eos"), do: :eos
+  def from_wire("stopped"), do: :stopped
+  def from_wire(value), do: raise(ArgumentError, "unknown MediaEndReason: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.MediaChunk do
@@ -5922,7 +5882,10 @@ defmodule Csilgen.Generated.MediaEnd do
      Enum.reject(
        [
          {{:text, "kind"}, raise("csilgen: no codec for this field shape")},
-         if(is_nil(v.reason), do: nil, else: {{:text, "reason"}, {:text, v.reason}}),
+         if(is_nil(v.reason),
+           do: nil,
+           else: {{:text, "reason"}, {:text, Csilgen.Generated.MediaEndReason.to_wire(v.reason)}}
+         ),
          {{:text, "stream_id"}, {:text, v.stream_id}}
        ],
        &is_nil/1
@@ -5942,16 +5905,7 @@ defmodule Csilgen.Generated.MediaEnd do
             nil
 
           csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "eos" ->
-                "eos"
-
-              "stopped" ->
-                "stopped"
-
-              csil_other ->
-                raise("csilgen: unknown MediaEndReason literal #{inspect(csil_other)}")
-            end
+            Csilgen.Generated.MediaEndReason.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       stream_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "stream_id"}))
     }
@@ -6518,7 +6472,7 @@ defmodule Csilgen.Generated.NodeReport do
     :playback_id,
     :position_ms,
     :error,
-    event: "state",
+    event: :state,
     audio_blocked: false
   ]
 
@@ -6554,8 +6508,11 @@ defmodule Csilgen.Generated.NodeReport do
      Enum.reject(
        [
          if(is_nil(v.error), do: nil, else: {{:text, "error"}, {:text, v.error}}),
-         if(is_nil(v.event), do: nil, else: {{:text, "event"}, {:text, v.event}}),
-         {{:text, "status"}, {:text, v.status}},
+         if(is_nil(v.event),
+           do: nil,
+           else: {{:text, "event"}, {:text, Csilgen.Generated.NodeEvent.to_wire(v.event)}}
+         ),
+         {{:text, "status"}, {:text, Csilgen.Generated.PlayerStatus.to_wire(v.status)}},
          {{:text, "player_id"}, {:text, v.player_id}},
          if(is_nil(v.playback_id),
            do: nil,
@@ -6591,25 +6548,13 @@ defmodule Csilgen.Generated.NodeReport do
         end,
       event:
         case Map.get(csil_fields, {:text, "event"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "ready" -> "ready"
-              "state" -> "state"
-              "completed" -> "completed"
-              "failed" -> "failed"
-              csil_other -> raise("csilgen: unknown NodeEvent literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.NodeEvent.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       status:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
-          "stopped" -> "stopped"
-          "playing" -> "playing"
-          "paused" -> "paused"
-          csil_other -> raise("csilgen: unknown PlayerStatus literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.PlayerStatus.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"}))
+        ),
       player_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "player_id"})),
       playback_id:
         case Map.get(csil_fields, {:text, "playback_id"}) do
@@ -6677,7 +6622,7 @@ defmodule Csilgen.Generated.Account do
      Enum.reject(
        [
          {{:text, "id"}, {:text, v.id}},
-         {{:text, "role"}, {:text, v.role}},
+         {{:text, "role"}, {:text, Csilgen.Generated.Role.to_wire(v.role)}},
          {{:text, "handle"}, {:text, v.handle}},
          {{:text, "created_at"}, {:tag, 0, {:text, DateTime.to_iso8601(v.created_at)}}},
          if(is_nil(v.display_name),
@@ -6701,12 +6646,9 @@ defmodule Csilgen.Generated.Account do
     %__MODULE__{
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       role:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "role"})) do
-          "admin" -> "admin"
-          "member" -> "member"
-          "guest" -> "guest"
-          csil_other -> raise("csilgen: unknown Role literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.Role.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "role"}))
+        ),
       handle: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "handle"})),
       created_at:
         case Map.fetch!(csil_fields, {:text, "created_at"}) do
@@ -6857,7 +6799,7 @@ defmodule Csilgen.Generated.SetRoleRequest do
     {:map,
      Enum.reject(
        [
-         {{:text, "role"}, {:text, v.role}},
+         {{:text, "role"}, {:text, Csilgen.Generated.Role.to_wire(v.role)}},
          {{:text, "account_id"}, {:text, v.account_id}}
        ],
        &is_nil/1
@@ -6871,12 +6813,9 @@ defmodule Csilgen.Generated.SetRoleRequest do
 
     %__MODULE__{
       role:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "role"})) do
-          "admin" -> "admin"
-          "member" -> "member"
-          "guest" -> "guest"
-          csil_other -> raise("csilgen: unknown Role literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.Role.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "role"}))
+        ),
       account_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "account_id"}))
     }
   end
@@ -7247,13 +7186,23 @@ defmodule Csilgen.Generated.RevokeTrustedIdentityRequest do
 end
 
 defmodule Csilgen.Generated.NodeKind do
-  @moduledoc "Type alias for NodeKind."
-  @type t :: String.t()
+  @type t :: :core | :satellite | :client
+  def to_wire(:core), do: "core"
+  def to_wire(:satellite), do: "satellite"
+  def to_wire(:client), do: "client"
+  def from_wire("core"), do: :core
+  def from_wire("satellite"), do: :satellite
+  def from_wire("client"), do: :client
+  def from_wire(value), do: raise(ArgumentError, "unknown NodeKind: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.AudioOutputsState do
-  @moduledoc "Type alias for AudioOutputsState."
-  @type t :: String.t()
+  @type t :: :none | :some
+  def to_wire(:none), do: "none"
+  def to_wire(:some), do: "some"
+  def from_wire("none"), do: :none
+  def from_wire("some"), do: :some
+  def from_wire(value), do: raise(ArgumentError, "unknown AudioOutputsState: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.DeviceInfo do
@@ -7391,7 +7340,7 @@ defmodule Csilgen.Generated.NodeInfo do
        [
          {{:text, "id"}, {:text, v.id}},
          {{:text, "arch"}, {:text, v.arch}},
-         {{:text, "kind"}, {:text, v.kind}},
+         {{:text, "kind"}, {:text, Csilgen.Generated.NodeKind.to_wire(v.kind)}},
          {{:text, "devices"},
           {:array,
            Enum.map(v.devices, fn csil_e ->
@@ -7403,7 +7352,8 @@ defmodule Csilgen.Generated.NodeInfo do
            do: nil,
            else: {{:text, "last_seen"}, {:tag, 0, {:text, DateTime.to_iso8601(v.last_seen)}}}
          ),
-         {{:text, "audio_outputs"}, {:text, v.audio_outputs}},
+         {{:text, "audio_outputs"},
+          {:text, Csilgen.Generated.AudioOutputsState.to_wire(v.audio_outputs)}},
          {{:text, "friendly_name"}, {:text, v.friendly_name}}
        ],
        &is_nil/1
@@ -7419,12 +7369,9 @@ defmodule Csilgen.Generated.NodeInfo do
       id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "id"})),
       arch: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "arch"})),
       kind:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"})) do
-          "core" -> "core"
-          "satellite" -> "satellite"
-          "client" -> "client"
-          csil_other -> raise("csilgen: unknown NodeKind literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.NodeKind.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "kind"}))
+        ),
       devices:
         case Map.fetch!(csil_fields, {:text, "devices"}) do
           {:array, csil_xs} ->
@@ -7445,11 +7392,9 @@ defmodule Csilgen.Generated.NodeInfo do
             end
         end,
       audio_outputs:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "audio_outputs"})) do
-          "none" -> "none"
-          "some" -> "some"
-          csil_other -> raise("csilgen: unknown AudioOutputsState literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.AudioOutputsState.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "audio_outputs"}))
+        ),
       friendly_name:
         Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "friendly_name"}))
     }
@@ -8235,7 +8180,7 @@ defmodule Csilgen.Generated.ImportTrackRequest do
   @moduledoc "Generated struct for the ImportTrackRequest type."
 
   @enforce_keys [:root_relative_path, :content_type, :data]
-  defstruct [:root_relative_path, :content_type, :content_hash, :data, library: "music"]
+  defstruct [:root_relative_path, :content_type, :content_hash, :data, library: :music]
 
   @type t :: %__MODULE__{
           library: Csilgen.Generated.Library.t() | nil,
@@ -8263,7 +8208,10 @@ defmodule Csilgen.Generated.ImportTrackRequest do
      Enum.reject(
        [
          {{:text, "data"}, {:bytes, v.data}},
-         if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}}),
+         if(is_nil(v.library),
+           do: nil,
+           else: {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}}
+         ),
          if(is_nil(v.content_hash),
            do: nil,
            else: {{:text, "content_hash"}, {:text, v.content_hash}}
@@ -8284,15 +8232,8 @@ defmodule Csilgen.Generated.ImportTrackRequest do
       data: Csilgen.Generated.Cbor.to_bytes(Map.fetch!(csil_fields, {:text, "data"})),
       library:
         case Map.get(csil_fields, {:text, "library"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "music" -> "music"
-              "audiobook" -> "audiobook"
-              csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.Library.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       content_hash:
         case Map.get(csil_fields, {:text, "content_hash"}) do
@@ -8440,7 +8381,7 @@ defmodule Csilgen.Generated.BeginImportRequest do
   @moduledoc "Generated struct for the BeginImportRequest type."
 
   @enforce_keys [:track_file_index, :files]
-  defstruct [:track_file_index, :files, library: "music"]
+  defstruct [:track_file_index, :files, library: :music]
 
   @type t :: %__MODULE__{
           library: Csilgen.Generated.Library.t() | nil,
@@ -8464,7 +8405,10 @@ defmodule Csilgen.Generated.BeginImportRequest do
            Enum.map(v.files, fn csil_e ->
              Csilgen.Generated.TransferFile.to_cbor_value(csil_e)
            end)}},
-         if(is_nil(v.library), do: nil, else: {{:text, "library"}, {:text, v.library}}),
+         if(is_nil(v.library),
+           do: nil,
+           else: {{:text, "library"}, {:text, Csilgen.Generated.Library.to_wire(v.library)}}
+         ),
          {{:text, "track_file_index"}, {:int, v.track_file_index}}
        ],
        &is_nil/1
@@ -8486,15 +8430,8 @@ defmodule Csilgen.Generated.BeginImportRequest do
         end,
       library:
         case Map.get(csil_fields, {:text, "library"}) do
-          nil ->
-            nil
-
-          csil_v ->
-            case Csilgen.Generated.Cbor.to_text(csil_v) do
-              "music" -> "music"
-              "audiobook" -> "audiobook"
-              csil_other -> raise("csilgen: unknown Library literal #{inspect(csil_other)}")
-            end
+          nil -> nil
+          csil_v -> Csilgen.Generated.Library.from_wire(Csilgen.Generated.Cbor.to_text(csil_v))
         end,
       track_file_index:
         Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "track_file_index"}))
@@ -8955,7 +8892,7 @@ defmodule Csilgen.Generated.UpdateContentReportStatusRequest do
     {:map,
      Enum.reject(
        [
-         {{:text, "status"}, {:text, v.status}},
+         {{:text, "status"}, {:text, Csilgen.Generated.ContentReportStatus.to_wire(v.status)}},
          {{:text, "report_id"}, {:text, v.report_id}}
        ],
        &is_nil/1
@@ -8969,19 +8906,9 @@ defmodule Csilgen.Generated.UpdateContentReportStatusRequest do
 
     %__MODULE__{
       status:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"})) do
-          "open" ->
-            "open"
-
-          "resolved" ->
-            "resolved"
-
-          "dismissed" ->
-            "dismissed"
-
-          csil_other ->
-            raise("csilgen: unknown ContentReportStatus literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ContentReportStatus.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "status"}))
+        ),
       report_id: Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "report_id"}))
     }
   end
@@ -8996,8 +8923,30 @@ defmodule Csilgen.Generated.UpdateContentReportStatusRequest do
 end
 
 defmodule Csilgen.Generated.ChangeTopic do
-  @moduledoc "Type alias for ChangeTopic."
-  @type t :: String.t()
+  @type t :: :players | :libraries | :playlists | :progress | :session | :accounts | :trust | :nodes | :groups | :settings | :imports
+  def to_wire(:players), do: "players"
+  def to_wire(:libraries), do: "libraries"
+  def to_wire(:playlists), do: "playlists"
+  def to_wire(:progress), do: "progress"
+  def to_wire(:session), do: "session"
+  def to_wire(:accounts), do: "accounts"
+  def to_wire(:trust), do: "trust"
+  def to_wire(:nodes), do: "nodes"
+  def to_wire(:groups), do: "groups"
+  def to_wire(:settings), do: "settings"
+  def to_wire(:imports), do: "imports"
+  def from_wire("players"), do: :players
+  def from_wire("libraries"), do: :libraries
+  def from_wire("playlists"), do: :playlists
+  def from_wire("progress"), do: :progress
+  def from_wire("session"), do: :session
+  def from_wire("accounts"), do: :accounts
+  def from_wire("trust"), do: :trust
+  def from_wire("nodes"), do: :nodes
+  def from_wire("groups"), do: :groups
+  def from_wire("settings"), do: :settings
+  def from_wire("imports"), do: :imports
+  def from_wire(value), do: raise(ArgumentError, "unknown ChangeTopic: #{inspect(value)}")
 end
 
 defmodule Csilgen.Generated.WatchChangesRequest do
@@ -9071,7 +9020,7 @@ defmodule Csilgen.Generated.DataChange do
     {:map,
      Enum.reject(
        [
-         {{:text, "topic"}, {:text, v.topic}},
+         {{:text, "topic"}, {:text, Csilgen.Generated.ChangeTopic.to_wire(v.topic)}},
          {{:text, "revision"}, {:int, v.revision}}
        ],
        &is_nil/1
@@ -9085,20 +9034,9 @@ defmodule Csilgen.Generated.DataChange do
 
     %__MODULE__{
       topic:
-        case Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "topic"})) do
-          "players" -> "players"
-          "libraries" -> "libraries"
-          "playlists" -> "playlists"
-          "progress" -> "progress"
-          "session" -> "session"
-          "accounts" -> "accounts"
-          "trust" -> "trust"
-          "nodes" -> "nodes"
-          "groups" -> "groups"
-          "settings" -> "settings"
-          "imports" -> "imports"
-          csil_other -> raise("csilgen: unknown ChangeTopic literal #{inspect(csil_other)}")
-        end,
+        Csilgen.Generated.ChangeTopic.from_wire(
+          Csilgen.Generated.Cbor.to_text(Map.fetch!(csil_fields, {:text, "topic"}))
+        ),
       revision: Csilgen.Generated.Cbor.to_int(Map.fetch!(csil_fields, {:text, "revision"}))
     }
   end

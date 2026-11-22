@@ -25,17 +25,118 @@ typedef DeviceId = String;
 
 typedef PlayerId = String;
 
-typedef Role = String;
+enum Role {
+  admin('admin'),
+  member('member'),
+  guest('guest');
 
-typedef PlayerStatus = String;
+  const Role(this.wireValue);
+  final String wireValue;
 
-typedef RepeatMode = String;
+  String toJson() => wireValue;
 
-typedef NodeEvent = String;
+  static Role fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown Role value', value);
+  }
+}
 
-typedef Codec = String;
+enum PlayerStatus {
+  stopped('stopped'),
+  playing('playing'),
+  paused('paused');
 
-typedef TranscodeCodec = String;
+  const PlayerStatus(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static PlayerStatus fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown PlayerStatus value', value);
+  }
+}
+
+enum RepeatMode {
+  off('off'),
+  all('all'),
+  one('one');
+
+  const RepeatMode(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static RepeatMode fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown RepeatMode value', value);
+  }
+}
+
+enum NodeEvent {
+  ready('ready'),
+  state('state'),
+  completed('completed'),
+  failed('failed');
+
+  const NodeEvent(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static NodeEvent fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown NodeEvent value', value);
+  }
+}
+
+enum Codec {
+  mp3('mp3'),
+  aac('aac'),
+  vorbis('vorbis'),
+  flac('flac'),
+  alac('alac'),
+  opus('opus'),
+  wav('wav'),
+  wma('wma');
+
+  const Codec(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static Codec fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown Codec value', value);
+  }
+}
+
+enum TranscodeCodec {
+  aac('aac'),
+  mp3('mp3');
+
+  const TranscodeCodec(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static TranscodeCodec fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown TranscodeCodec value', value);
+  }
+}
 
 final class StreamPref {
   final int? maxBitrateKbps;
@@ -52,7 +153,7 @@ final class StreamPref {
     final map = <String, Object?>{};
     if (maxBitrateKbps != null) map['max_bitrate_kbps'] = maxBitrateKbps;
     if (preferOriginal != null) map['prefer_original'] = preferOriginal;
-    if (transcodeCodec != null) map['transcode_codec'] = transcodeCodec;
+    if (transcodeCodec != null) map['transcode_codec'] = transcodeCodec!.wireValue;
     return map;
   }
 
@@ -60,7 +161,7 @@ final class StreamPref {
     return StreamPref(
       maxBitrateKbps: map['max_bitrate_kbps'] as int?,
       preferOriginal: map['prefer_original'] as bool?,
-      transcodeCodec: map['transcode_codec'] as TranscodeCodec?,
+      transcodeCodec: map['transcode_codec'] == null ? null : TranscodeCodec.fromWire(map['transcode_codec']),
     );
   }
 
@@ -81,7 +182,8 @@ final class StreamPref {
     final map = <String, Object?>{};
     if (maxBitrateKbps != null) map['max_bitrate_kbps'] = maxBitrateKbps!;
     if (preferOriginal != null) map['prefer_original'] = preferOriginal!;
-    if (transcodeCodec != null) map['transcode_codec'] = transcodeCodec!;
+    if (transcodeCodec != null)
+      map['transcode_codec'] = transcodeCodec!.wireValue;
     return map;
   }
 
@@ -97,10 +199,7 @@ final class StreamPref {
           : map['prefer_original'] as bool,
       transcodeCodec: map['transcode_codec'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['transcode_codec'], const [
-              'aac',
-              'mp3',
-            ]),
+          : TranscodeCodec.fromWire(map['transcode_codec']),
     );
   }
 
@@ -208,11 +307,59 @@ final class Ok {
       Ok.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef ContentReportTargetType = String;
+enum ContentReportTargetType {
+  playlist('playlist'),
+  account('account');
 
-typedef ContentReportReason = String;
+  const ContentReportTargetType(this.wireValue);
+  final String wireValue;
 
-typedef ContentReportStatus = String;
+  String toJson() => wireValue;
+
+  static ContentReportTargetType fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown ContentReportTargetType value', value);
+  }
+}
+
+enum ContentReportReason {
+  objectionableContent('objectionable-content'),
+  harassment('harassment'),
+  spam('spam'),
+  other('other');
+
+  const ContentReportReason(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static ContentReportReason fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown ContentReportReason value', value);
+  }
+}
+
+enum ContentReportStatus {
+  open('open'),
+  resolved('resolved'),
+  dismissed('dismissed');
+
+  const ContentReportStatus(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static ContentReportStatus fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown ContentReportStatus value', value);
+  }
+}
 
 final class ContentReport {
   final ContentReportId id;
@@ -241,11 +388,11 @@ final class ContentReport {
     final map = <String, Object?>{};
     map['id'] = id;
     map['reporter_account_id'] = reporterAccountId;
-    map['target_type'] = targetType;
+    map['target_type'] = targetType.wireValue;
     map['target_id'] = targetId;
-    map['reason'] = reason;
+    map['reason'] = reason.wireValue;
     if (details != null) map['details'] = details;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     map['created_at'] = createdAt;
     if (resolvedAt != null) map['resolved_at'] = resolvedAt;
     return map;
@@ -255,11 +402,11 @@ final class ContentReport {
     return ContentReport(
       id: map['id'] as ContentReportId,
       reporterAccountId: map['reporter_account_id'] as AccountId,
-      targetType: map['target_type'] as ContentReportTargetType,
+      targetType: ContentReportTargetType.fromWire(map['target_type']),
       targetId: map['target_id'] as String,
-      reason: map['reason'] as ContentReportReason,
+      reason: ContentReportReason.fromWire(map['reason']),
       details: map['details'] as String?,
-      status: map['status'] as ContentReportStatus,
+      status: ContentReportStatus.fromWire(map['status']),
       createdAt: map['created_at'] as DateTime,
       resolvedAt: map['resolved_at'] as DateTime?,
     );
@@ -297,11 +444,11 @@ final class ContentReport {
     final map = <String, Object?>{};
     map['id'] = id;
     map['reporter_account_id'] = reporterAccountId;
-    map['target_type'] = targetType;
+    map['target_type'] = targetType.wireValue;
     map['target_id'] = targetId;
-    map['reason'] = reason;
+    map['reason'] = reason.wireValue;
     if (details != null) map['details'] = details!;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     map['created_at'] = createdAt;
     if (resolvedAt != null) map['resolved_at'] = resolvedAt!;
     return map;
@@ -313,23 +460,11 @@ final class ContentReport {
     return ContentReport(
       id: map['id'] as String,
       reporterAccountId: map['reporter_account_id'] as String,
-      targetType: CsilCbor.expectOneOf<String>(map['target_type'], const [
-        'playlist',
-        'account',
-      ]),
+      targetType: ContentReportTargetType.fromWire(map['target_type']),
       targetId: map['target_id'] as String,
-      reason: CsilCbor.expectOneOf<String>(map['reason'], const [
-        'objectionable-content',
-        'harassment',
-        'spam',
-        'other',
-      ]),
+      reason: ContentReportReason.fromWire(map['reason']),
       details: map['details'] == null ? null : map['details'] as String,
-      status: CsilCbor.expectOneOf<String>(map['status'], const [
-        'open',
-        'resolved',
-        'dismissed',
-      ]),
+      status: ContentReportStatus.fromWire(map['status']),
       createdAt: map['created_at'] as DateTime,
       resolvedAt: map['resolved_at'] == null
           ? null
@@ -511,7 +646,7 @@ final class SessionInfo {
     map['account_id'] = accountId;
     map['handle'] = handle;
     if (displayName != null) map['display_name'] = displayName;
-    map['role'] = role;
+    map['role'] = role.wireValue;
     map['can_admin'] = canAdmin;
     if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary;
     if (token != null) map['token'] = token;
@@ -523,7 +658,7 @@ final class SessionInfo {
       accountId: map['account_id'] as AccountId,
       handle: map['handle'] as Handle,
       displayName: map['display_name'] as String?,
-      role: map['role'] as Role,
+      role: Role.fromWire(map['role']),
       canAdmin: map['can_admin'] as bool,
       canEditLibrary: map['can_edit_library'] as bool?,
       token: map['token'] as String?,
@@ -559,7 +694,7 @@ final class SessionInfo {
     map['account_id'] = accountId;
     map['handle'] = handle;
     if (displayName != null) map['display_name'] = displayName!;
-    map['role'] = role;
+    map['role'] = role.wireValue;
     map['can_admin'] = canAdmin;
     if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary!;
     if (token != null) map['token'] = token!;
@@ -575,11 +710,7 @@ final class SessionInfo {
       displayName: map['display_name'] == null
           ? null
           : map['display_name'] as String,
-      role: CsilCbor.expectOneOf<String>(map['role'], const [
-        'admin',
-        'member',
-        'guest',
-      ]),
+      role: Role.fromWire(map['role']),
       canAdmin: map['can_admin'] as bool,
       canEditLibrary: map['can_edit_library'] == null
           ? null
@@ -645,7 +776,22 @@ final class DeleteAccountRequest {
       DeleteAccountRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef Library = String;
+enum Library {
+  music('music'),
+  audiobook('audiobook');
+
+  const Library(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static Library fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown Library value', value);
+  }
+}
 
 final class Track {
   final TrackId id;
@@ -689,7 +835,7 @@ final class Track {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['id'] = id;
-    map['library'] = library_;
+    map['library'] = library_.wireValue;
     map['title'] = title;
     if (artistId != null) map['artist_id'] = artistId;
     if (artistName != null) map['artist_name'] = artistName;
@@ -698,7 +844,7 @@ final class Track {
     if (trackNo != null) map['track_no'] = trackNo;
     if (discNo != null) map['disc_no'] = discNo;
     map['duration_ms'] = durationMs;
-    map['codec'] = codec;
+    map['codec'] = codec.wireValue;
     if (bitrateKbps != null) map['bitrate_kbps'] = bitrateKbps;
     map['sample_rate'] = sampleRate;
     map['channels'] = channels;
@@ -711,7 +857,7 @@ final class Track {
   factory Track.fromMap(Map<String, Object?> map) {
     return Track(
       id: map['id'] as TrackId,
-      library_: map['library'] as Library,
+      library_: Library.fromWire(map['library']),
       title: map['title'] as String,
       artistId: map['artist_id'] as ArtistId?,
       artistName: map['artist_name'] as String?,
@@ -720,7 +866,7 @@ final class Track {
       trackNo: map['track_no'] as int?,
       discNo: map['disc_no'] as int?,
       durationMs: map['duration_ms'] as int,
-      codec: map['codec'] as Codec,
+      codec: Codec.fromWire(map['codec']),
       bitrateKbps: map['bitrate_kbps'] as int?,
       sampleRate: map['sample_rate'] as int,
       channels: map['channels'] as int,
@@ -777,7 +923,7 @@ final class Track {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['id'] = id;
-    map['library'] = library_;
+    map['library'] = library_.wireValue;
     map['title'] = title;
     if (artistId != null) map['artist_id'] = artistId!;
     if (artistName != null) map['artist_name'] = artistName!;
@@ -786,7 +932,7 @@ final class Track {
     if (trackNo != null) map['track_no'] = trackNo!;
     if (discNo != null) map['disc_no'] = discNo!;
     map['duration_ms'] = durationMs;
-    map['codec'] = codec;
+    map['codec'] = codec.wireValue;
     if (bitrateKbps != null) map['bitrate_kbps'] = bitrateKbps!;
     map['sample_rate'] = sampleRate;
     map['channels'] = channels;
@@ -801,10 +947,7 @@ final class Track {
     final map = cbor as Map;
     return Track(
       id: map['id'] as String,
-      library_: CsilCbor.expectOneOf<String>(map['library'], const [
-        'music',
-        'audiobook',
-      ]),
+      library_: Library.fromWire(map['library']),
       title: map['title'] as String,
       artistId: map['artist_id'] == null ? null : map['artist_id'] as String,
       artistName: map['artist_name'] == null
@@ -817,16 +960,7 @@ final class Track {
       trackNo: map['track_no'] == null ? null : map['track_no'] as int,
       discNo: map['disc_no'] == null ? null : map['disc_no'] as int,
       durationMs: map['duration_ms'] as int,
-      codec: CsilCbor.expectOneOf<String>(map['codec'], const [
-        'mp3',
-        'aac',
-        'vorbis',
-        'flac',
-        'alac',
-        'opus',
-        'wav',
-        'wma',
-      ]),
+      codec: Codec.fromWire(map['codec']),
       bitrateKbps: map['bitrate_kbps'] == null
           ? null
           : map['bitrate_kbps'] as int,
@@ -1105,7 +1239,7 @@ final class BrowseRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    if (library_ != null) map['library'] = library_;
+    if (library_ != null) map['library'] = library_!.wireValue;
     if (offset != null) map['offset'] = offset;
     if (limit != null) map['limit'] = limit;
     return map;
@@ -1113,7 +1247,7 @@ final class BrowseRequest {
 
   factory BrowseRequest.fromMap(Map<String, Object?> map) {
     return BrowseRequest(
-      library_: map['library'] as Library?,
+      library_: map['library'] == null ? null : Library.fromWire(map['library']),
       offset: map['offset'] as int?,
       limit: map['limit'] as int?,
     );
@@ -1133,7 +1267,7 @@ final class BrowseRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    if (library_ != null) map['library'] = library_!;
+    if (library_ != null) map['library'] = library_!.wireValue;
     if (offset != null) map['offset'] = offset!;
     if (limit != null) map['limit'] = limit!;
     return map;
@@ -1145,10 +1279,7 @@ final class BrowseRequest {
     return BrowseRequest(
       library_: map['library'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['library'], const [
-              'music',
-              'audiobook',
-            ]),
+          : Library.fromWire(map['library']),
       offset: map['offset'] == null ? null : map['offset'] as int,
       limit: map['limit'] == null ? null : map['limit'] as int,
     );
@@ -1169,12 +1300,12 @@ final class LibraryInfo {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     return map;
   }
 
   factory LibraryInfo.fromMap(Map<String, Object?> map) {
-    return LibraryInfo(kind: map['kind'] as Library);
+    return LibraryInfo(kind: Library.fromWire(map['kind']));
   }
 
   @override
@@ -1189,19 +1320,14 @@ final class LibraryInfo {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     return map;
   }
 
   /// Reconstruct this record from a decoded CBOR dynamic tree.
   factory LibraryInfo.fromCborValue(Object? cbor) {
     final map = cbor as Map;
-    return LibraryInfo(
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'music',
-        'audiobook',
-      ]),
-    );
+    return LibraryInfo(kind: Library.fromWire(map['kind']));
   }
 
   /// Encode this record to canonical CSIL CBOR bytes.
@@ -1487,14 +1613,14 @@ final class ArtistRequest {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['artist_id'] = artistId;
-    if (library_ != null) map['library'] = library_;
+    if (library_ != null) map['library'] = library_!.wireValue;
     return map;
   }
 
   factory ArtistRequest.fromMap(Map<String, Object?> map) {
     return ArtistRequest(
       artistId: map['artist_id'] as ArtistId,
-      library_: map['library'] as Library?,
+      library_: map['library'] == null ? null : Library.fromWire(map['library']),
     );
   }
 
@@ -1511,7 +1637,7 @@ final class ArtistRequest {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['artist_id'] = artistId;
-    if (library_ != null) map['library'] = library_!;
+    if (library_ != null) map['library'] = library_!.wireValue;
     return map;
   }
 
@@ -1522,10 +1648,7 @@ final class ArtistRequest {
       artistId: map['artist_id'] as String,
       library_: map['library'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['library'], const [
-              'music',
-              'audiobook',
-            ]),
+          : Library.fromWire(map['library']),
     );
   }
 
@@ -1604,7 +1727,7 @@ final class SearchRequest {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['query'] = query;
-    if (library_ != null) map['library'] = library_;
+    if (library_ != null) map['library'] = library_!.wireValue;
     if (limit != null) map['limit'] = limit;
     return map;
   }
@@ -1612,7 +1735,7 @@ final class SearchRequest {
   factory SearchRequest.fromMap(Map<String, Object?> map) {
     return SearchRequest(
       query: map['query'] as String,
-      library_: map['library'] as Library?,
+      library_: map['library'] == null ? null : Library.fromWire(map['library']),
       limit: map['limit'] as int?,
     );
   }
@@ -1642,7 +1765,7 @@ final class SearchRequest {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['query'] = query;
-    if (library_ != null) map['library'] = library_!;
+    if (library_ != null) map['library'] = library_!.wireValue;
     if (limit != null) map['limit'] = limit!;
     return map;
   }
@@ -1654,10 +1777,7 @@ final class SearchRequest {
       query: map['query'] as String,
       library_: map['library'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['library'], const [
-              'music',
-              'audiobook',
-            ]),
+          : Library.fromWire(map['library']),
       limit: map['limit'] == null ? null : map['limit'] as int,
     );
   }
@@ -2886,7 +3006,22 @@ final class CoverArt {
       CoverArt.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef ArtworkKind = String;
+enum ArtworkKind {
+  album('album'),
+  artist('artist');
+
+  const ArtworkKind(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static ArtworkKind fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown ArtworkKind value', value);
+  }
+}
 
 final class ArtworkRequest {
   final ArtworkKind kind;
@@ -2897,7 +3032,7 @@ final class ArtworkRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     if (maxSize != null) map['max_size'] = maxSize;
     return map;
@@ -2905,7 +3040,7 @@ final class ArtworkRequest {
 
   factory ArtworkRequest.fromMap(Map<String, Object?> map) {
     return ArtworkRequest(
-      kind: map['kind'] as ArtworkKind,
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       maxSize: map['max_size'] as int?,
     );
@@ -2923,7 +3058,7 @@ final class ArtworkRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     if (maxSize != null) map['max_size'] = maxSize!;
     return map;
@@ -2933,10 +3068,7 @@ final class ArtworkRequest {
   factory ArtworkRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return ArtworkRequest(
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'album',
-        'artist',
-      ]),
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       maxSize: map['max_size'] == null ? null : map['max_size'] as int,
     );
@@ -2965,7 +3097,7 @@ final class SetArtworkRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     if (data != null) map['data'] = data;
     if (candidateId != null) map['candidate_id'] = candidateId;
@@ -2974,7 +3106,7 @@ final class SetArtworkRequest {
 
   factory SetArtworkRequest.fromMap(Map<String, Object?> map) {
     return SetArtworkRequest(
-      kind: map['kind'] as ArtworkKind,
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       data: map['data'] as Uint8List?,
       candidateId: map['candidate_id'] as String?,
@@ -3010,7 +3142,7 @@ final class SetArtworkRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     if (data != null) map['data'] = data!;
     if (candidateId != null) map['candidate_id'] = candidateId!;
@@ -3021,10 +3153,7 @@ final class SetArtworkRequest {
   factory SetArtworkRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return SetArtworkRequest(
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'album',
-        'artist',
-      ]),
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       data: map['data'] == null ? null : map['data'] as Uint8List,
       candidateId: map['candidate_id'] == null
@@ -3056,7 +3185,7 @@ final class ArtworkCandidatesRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     if (offset != null) map['offset'] = offset;
     if (limit != null) map['limit'] = limit;
@@ -3065,7 +3194,7 @@ final class ArtworkCandidatesRequest {
 
   factory ArtworkCandidatesRequest.fromMap(Map<String, Object?> map) {
     return ArtworkCandidatesRequest(
-      kind: map['kind'] as ArtworkKind,
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       offset: map['offset'] as int?,
       limit: map['limit'] as int?,
@@ -3087,7 +3216,7 @@ final class ArtworkCandidatesRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     if (offset != null) map['offset'] = offset!;
     if (limit != null) map['limit'] = limit!;
@@ -3098,10 +3227,7 @@ final class ArtworkCandidatesRequest {
   factory ArtworkCandidatesRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return ArtworkCandidatesRequest(
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'album',
-        'artist',
-      ]),
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       offset: map['offset'] == null ? null : map['offset'] as int,
       limit: map['limit'] == null ? null : map['limit'] as int,
@@ -3131,7 +3257,7 @@ final class ArtworkCandidateRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     map['candidate_id'] = candidateId;
     if (maxSize != null) map['max_size'] = maxSize;
@@ -3140,7 +3266,7 @@ final class ArtworkCandidateRequest {
 
   factory ArtworkCandidateRequest.fromMap(Map<String, Object?> map) {
     return ArtworkCandidateRequest(
-      kind: map['kind'] as ArtworkKind,
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       candidateId: map['candidate_id'] as String,
       maxSize: map['max_size'] as int?,
@@ -3162,7 +3288,7 @@ final class ArtworkCandidateRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['id'] = id;
     map['candidate_id'] = candidateId;
     if (maxSize != null) map['max_size'] = maxSize!;
@@ -3173,10 +3299,7 @@ final class ArtworkCandidateRequest {
   factory ArtworkCandidateRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return ArtworkCandidateRequest(
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'album',
-        'artist',
-      ]),
+      kind: ArtworkKind.fromWire(map['kind']),
       id: map['id'] as String,
       candidateId: map['candidate_id'] as String,
       maxSize: map['max_size'] == null ? null : map['max_size'] as int,
@@ -3350,18 +3473,18 @@ final class ReportContentRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['target_type'] = targetType;
+    map['target_type'] = targetType.wireValue;
     map['target_id'] = targetId;
-    map['reason'] = reason;
+    map['reason'] = reason.wireValue;
     if (details != null) map['details'] = details;
     return map;
   }
 
   factory ReportContentRequest.fromMap(Map<String, Object?> map) {
     return ReportContentRequest(
-      targetType: map['target_type'] as ContentReportTargetType,
+      targetType: ContentReportTargetType.fromWire(map['target_type']),
       targetId: map['target_id'] as String,
-      reason: map['reason'] as ContentReportReason,
+      reason: ContentReportReason.fromWire(map['reason']),
       details: map['details'] as String?,
     );
   }
@@ -3381,9 +3504,9 @@ final class ReportContentRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['target_type'] = targetType;
+    map['target_type'] = targetType.wireValue;
     map['target_id'] = targetId;
-    map['reason'] = reason;
+    map['reason'] = reason.wireValue;
     if (details != null) map['details'] = details!;
     return map;
   }
@@ -3392,17 +3515,9 @@ final class ReportContentRequest {
   factory ReportContentRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return ReportContentRequest(
-      targetType: CsilCbor.expectOneOf<String>(map['target_type'], const [
-        'playlist',
-        'account',
-      ]),
+      targetType: ContentReportTargetType.fromWire(map['target_type']),
       targetId: map['target_id'] as String,
-      reason: CsilCbor.expectOneOf<String>(map['reason'], const [
-        'objectionable-content',
-        'harassment',
-        'spam',
-        'other',
-      ]),
+      reason: ContentReportReason.fromWire(map['reason']),
       details: map['details'] == null ? null : map['details'] as String,
     );
   }
@@ -3415,7 +3530,22 @@ final class ReportContentRequest {
       ReportContentRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef PlayerKind = String;
+enum PlayerKind {
+  shared('shared'),
+  private('private');
+
+  const PlayerKind(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static PlayerKind fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown PlayerKind value', value);
+  }
+}
 
 final class Player {
   final PlayerId id;
@@ -3439,7 +3569,7 @@ final class Player {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['id'] = id;
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['name'] = name;
     if (nodeId != null) map['node_id'] = nodeId;
     if (deviceId != null) map['device_id'] = deviceId;
@@ -3451,7 +3581,7 @@ final class Player {
   factory Player.fromMap(Map<String, Object?> map) {
     return Player(
       id: map['id'] as PlayerId,
-      kind: map['kind'] as PlayerKind,
+      kind: PlayerKind.fromWire(map['kind']),
       name: map['name'] as String,
       nodeId: map['node_id'] as NodeId?,
       deviceId: map['device_id'] as DeviceId?,
@@ -3480,7 +3610,7 @@ final class Player {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['id'] = id;
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['name'] = name;
     if (nodeId != null) map['node_id'] = nodeId!;
     if (deviceId != null) map['device_id'] = deviceId!;
@@ -3494,10 +3624,7 @@ final class Player {
     final map = cbor as Map;
     return Player(
       id: map['id'] as String,
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'shared',
-        'private',
-      ]),
+      kind: PlayerKind.fromWire(map['kind']),
       name: map['name'] as String,
       nodeId: map['node_id'] == null ? null : map['node_id'] as String,
       deviceId: map['device_id'] == null ? null : map['device_id'] as String,
@@ -3537,7 +3664,7 @@ final class QueueItem {
     final map = <String, Object?>{};
     map['queue_item_id'] = queueItemId;
     map['track_id'] = trackId;
-    if (library_ != null) map['library'] = library_;
+    if (library_ != null) map['library'] = library_!.wireValue;
     if (title != null) map['title'] = title;
     if (artist != null) map['artist'] = artist;
     if (durationMs != null) map['duration_ms'] = durationMs;
@@ -3548,7 +3675,7 @@ final class QueueItem {
     return QueueItem(
       queueItemId: map['queue_item_id'] as int,
       trackId: map['track_id'] as TrackId,
-      library_: map['library'] as Library?,
+      library_: map['library'] == null ? null : Library.fromWire(map['library']),
       title: map['title'] as String?,
       artist: map['artist'] as String?,
       durationMs: map['duration_ms'] as int?,
@@ -3581,7 +3708,7 @@ final class QueueItem {
     final map = <String, Object?>{};
     map['queue_item_id'] = queueItemId;
     map['track_id'] = trackId;
-    if (library_ != null) map['library'] = library_!;
+    if (library_ != null) map['library'] = library_!.wireValue;
     if (title != null) map['title'] = title!;
     if (artist != null) map['artist'] = artist!;
     if (durationMs != null) map['duration_ms'] = durationMs!;
@@ -3596,10 +3723,7 @@ final class QueueItem {
       trackId: map['track_id'] as String,
       library_: map['library'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['library'], const [
-              'music',
-              'audiobook',
-            ]),
+          : Library.fromWire(map['library']),
       title: map['title'] == null ? null : map['title'] as String,
       artist: map['artist'] == null ? null : map['artist'] as String,
       durationMs: map['duration_ms'] == null ? null : map['duration_ms'] as int,
@@ -3647,12 +3771,12 @@ final class PlayerState {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
     map['revision'] = revision;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     if (currentIndex != null) map['current_index'] = currentIndex;
     if (playbackId != null) map['playback_id'] = playbackId;
     if (positionMs != null) map['position_ms'] = positionMs;
     map['volume'] = volume;
-    map['repeat_mode'] = repeatMode;
+    map['repeat_mode'] = repeatMode.wireValue;
     map['shuffle'] = shuffle;
     if (error != null) map['error'] = error;
     map['can_undo'] = canUndo;
@@ -3664,12 +3788,12 @@ final class PlayerState {
     return PlayerState(
       playerId: map['player_id'] as PlayerId,
       revision: map['revision'] as int,
-      status: map['status'] as PlayerStatus,
+      status: PlayerStatus.fromWire(map['status']),
       currentIndex: map['current_index'] as int?,
       playbackId: map['playback_id'] as String?,
       positionMs: map['position_ms'] as int?,
       volume: map['volume'] as int,
-      repeatMode: map['repeat_mode'] as RepeatMode,
+      repeatMode: RepeatMode.fromWire(map['repeat_mode']),
       shuffle: map['shuffle'] as bool,
       error: map['error'] as String?,
       canUndo: map['can_undo'] as bool,
@@ -3722,12 +3846,12 @@ final class PlayerState {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
     map['revision'] = revision;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     if (currentIndex != null) map['current_index'] = currentIndex!;
     if (playbackId != null) map['playback_id'] = playbackId!;
     if (positionMs != null) map['position_ms'] = positionMs!;
     map['volume'] = volume;
-    map['repeat_mode'] = repeatMode;
+    map['repeat_mode'] = repeatMode.wireValue;
     map['shuffle'] = shuffle;
     if (error != null) map['error'] = error!;
     map['can_undo'] = canUndo;
@@ -3741,11 +3865,7 @@ final class PlayerState {
     return PlayerState(
       playerId: map['player_id'] as String,
       revision: map['revision'] as int,
-      status: CsilCbor.expectOneOf<String>(map['status'], const [
-        'stopped',
-        'playing',
-        'paused',
-      ]),
+      status: PlayerStatus.fromWire(map['status']),
       currentIndex: map['current_index'] == null
           ? null
           : map['current_index'] as int,
@@ -3754,11 +3874,7 @@ final class PlayerState {
           : map['playback_id'] as String,
       positionMs: map['position_ms'] == null ? null : map['position_ms'] as int,
       volume: map['volume'] as int,
-      repeatMode: CsilCbor.expectOneOf<String>(map['repeat_mode'], const [
-        'off',
-        'all',
-        'one',
-      ]),
+      repeatMode: RepeatMode.fromWire(map['repeat_mode']),
       shuffle: map['shuffle'] as bool,
       error: map['error'] == null ? null : map['error'] as String,
       canUndo: map['can_undo'] as bool,
@@ -3784,12 +3900,14 @@ final class ListPlayersRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    if (kind != null) map['kind'] = kind;
+    if (kind != null) map['kind'] = kind!.wireValue;
     return map;
   }
 
   factory ListPlayersRequest.fromMap(Map<String, Object?> map) {
-    return ListPlayersRequest(kind: map['kind'] as PlayerKind?);
+    return ListPlayersRequest(
+      kind: map['kind'] == null ? null : PlayerKind.fromWire(map['kind']),
+    );
   }
 
   @override
@@ -3804,7 +3922,7 @@ final class ListPlayersRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    if (kind != null) map['kind'] = kind!;
+    if (kind != null) map['kind'] = kind!.wireValue;
     return map;
   }
 
@@ -3812,12 +3930,7 @@ final class ListPlayersRequest {
   factory ListPlayersRequest.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return ListPlayersRequest(
-      kind: map['kind'] == null
-          ? null
-          : CsilCbor.expectOneOf<String>(map['kind'], const [
-              'shared',
-              'private',
-            ]),
+      kind: map['kind'] == null ? null : PlayerKind.fromWire(map['kind']),
     );
   }
 
@@ -4738,14 +4851,14 @@ final class CmdSetRepeat {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['op'] = op;
-    map['repeat_mode'] = repeatMode;
+    map['repeat_mode'] = repeatMode.wireValue;
     return map;
   }
 
   factory CmdSetRepeat.fromMap(Map<String, Object?> map) {
     return CmdSetRepeat(
       op: map['op'] as String,
-      repeatMode: map['repeat_mode'] as RepeatMode,
+      repeatMode: RepeatMode.fromWire(map['repeat_mode']),
     );
   }
 
@@ -4762,7 +4875,7 @@ final class CmdSetRepeat {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['op'] = 'set-repeat';
-    map['repeat_mode'] = repeatMode;
+    map['repeat_mode'] = repeatMode.wireValue;
     return map;
   }
 
@@ -4771,11 +4884,7 @@ final class CmdSetRepeat {
     final map = cbor as Map;
     return CmdSetRepeat(
       op: CsilCbor.expectLiteral(map['op'], 'set-repeat', 'set-repeat'),
-      repeatMode: CsilCbor.expectOneOf<String>(map['repeat_mode'], const [
-        'off',
-        'all',
-        'one',
-      ]),
+      repeatMode: RepeatMode.fromWire(map['repeat_mode']),
     );
   }
 
@@ -5061,7 +5170,7 @@ final class CmdPlaybackState {
     map['op'] = op;
     map['playback_id'] = playbackId;
     map['queue_item_id'] = queueItemId;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     map['position_ms'] = positionMs;
     return map;
   }
@@ -5071,7 +5180,7 @@ final class CmdPlaybackState {
       op: map['op'] as String,
       playbackId: map['playback_id'] as String,
       queueItemId: map['queue_item_id'] as int,
-      status: map['status'] as PlayerStatus,
+      status: PlayerStatus.fromWire(map['status']),
       positionMs: map['position_ms'] as int,
     );
   }
@@ -5096,7 +5205,7 @@ final class CmdPlaybackState {
     map['op'] = 'playback-state';
     map['playback_id'] = playbackId;
     map['queue_item_id'] = queueItemId;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     map['position_ms'] = positionMs;
     return map;
   }
@@ -5108,11 +5217,7 @@ final class CmdPlaybackState {
       op: CsilCbor.expectLiteral(map['op'], 'playback-state', 'playback-state'),
       playbackId: map['playback_id'] as String,
       queueItemId: map['queue_item_id'] as int,
-      status: CsilCbor.expectOneOf<String>(map['status'], const [
-        'stopped',
-        'playing',
-        'paused',
-      ]),
+      status: PlayerStatus.fromWire(map['status']),
       positionMs: map['position_ms'] as int,
     );
   }
@@ -5517,7 +5622,22 @@ final class ShareResult {
       ShareResult.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef ShareAccess = String;
+enum ShareAccess {
+  everyone('everyone'),
+  selected('selected');
+
+  const ShareAccess(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static ShareAccess fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown ShareAccess value', value);
+  }
+}
 
 final class ShareAccessRequest {
   final PlayerId playerId;
@@ -5653,7 +5773,7 @@ final class ShareAccessInfo {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
-    map['access'] = access;
+    map['access'] = access.wireValue;
     map['accounts'] = accounts;
     return map;
   }
@@ -5661,7 +5781,7 @@ final class ShareAccessInfo {
   factory ShareAccessInfo.fromMap(Map<String, Object?> map) {
     return ShareAccessInfo(
       playerId: map['player_id'] as PlayerId,
-      access: map['access'] as ShareAccess,
+      access: ShareAccess.fromWire(map['access']),
       accounts: map['accounts'] as List<ShareCandidate>,
     );
   }
@@ -5681,7 +5801,7 @@ final class ShareAccessInfo {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
-    map['access'] = access;
+    map['access'] = access.wireValue;
     map['accounts'] = accounts.map((csilE) => csilE.toCborValue()).toList();
     return map;
   }
@@ -5691,10 +5811,7 @@ final class ShareAccessInfo {
     final map = cbor as Map;
     return ShareAccessInfo(
       playerId: map['player_id'] as String,
-      access: CsilCbor.expectOneOf<String>(map['access'], const [
-        'everyone',
-        'selected',
-      ]),
+      access: ShareAccess.fromWire(map['access']),
       accounts: (map['accounts'] as List)
           .map((csilE) => ShareCandidate.fromCborValue(csilE))
           .cast<ShareCandidate>()
@@ -5724,7 +5841,7 @@ final class SetShareAccessRequest {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
-    map['access'] = access;
+    map['access'] = access.wireValue;
     map['account_ids'] = accountIds;
     return map;
   }
@@ -5732,7 +5849,7 @@ final class SetShareAccessRequest {
   factory SetShareAccessRequest.fromMap(Map<String, Object?> map) {
     return SetShareAccessRequest(
       playerId: map['player_id'] as PlayerId,
-      access: map['access'] as ShareAccess,
+      access: ShareAccess.fromWire(map['access']),
       accountIds: map['account_ids'] as List<AccountId>,
     );
   }
@@ -5752,7 +5869,7 @@ final class SetShareAccessRequest {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
-    map['access'] = access;
+    map['access'] = access.wireValue;
     map['account_ids'] = accountIds;
     return map;
   }
@@ -5762,10 +5879,7 @@ final class SetShareAccessRequest {
     final map = cbor as Map;
     return SetShareAccessRequest(
       playerId: map['player_id'] as String,
-      access: CsilCbor.expectOneOf<String>(map['access'], const [
-        'everyone',
-        'selected',
-      ]),
+      access: ShareAccess.fromWire(map['access']),
       accountIds: (map['account_ids'] as List)
           .map((csilE) => csilE as String)
           .cast<AccountId>()
@@ -6138,7 +6252,7 @@ final class MediaHeader {
     final map = <String, Object?>{};
     map['kind'] = kind;
     map['stream_id'] = streamId;
-    map['codec'] = codec;
+    map['codec'] = codec.wireValue;
     map['transcoded'] = transcoded;
     map['sample_rate'] = sampleRate;
     map['channels'] = channels;
@@ -6153,7 +6267,7 @@ final class MediaHeader {
     return MediaHeader(
       kind: map['kind'] as String,
       streamId: map['stream_id'] as String,
-      codec: map['codec'] as Codec,
+      codec: Codec.fromWire(map['codec']),
       transcoded: map['transcoded'] as bool,
       sampleRate: map['sample_rate'] as int,
       channels: map['channels'] as int,
@@ -6207,7 +6321,7 @@ final class MediaHeader {
     final map = <String, Object?>{};
     map['kind'] = 'header';
     map['stream_id'] = streamId;
-    map['codec'] = codec;
+    map['codec'] = codec.wireValue;
     map['transcoded'] = transcoded;
     map['sample_rate'] = sampleRate;
     map['channels'] = channels;
@@ -6224,16 +6338,7 @@ final class MediaHeader {
     return MediaHeader(
       kind: CsilCbor.expectLiteral(map['kind'], 'header', 'header'),
       streamId: map['stream_id'] as String,
-      codec: CsilCbor.expectOneOf<String>(map['codec'], const [
-        'mp3',
-        'aac',
-        'vorbis',
-        'flac',
-        'alac',
-        'opus',
-        'wav',
-        'wma',
-      ]),
+      codec: Codec.fromWire(map['codec']),
       transcoded: map['transcoded'] as bool,
       sampleRate: map['sample_rate'] as int,
       channels: map['channels'] as int,
@@ -6254,7 +6359,22 @@ final class MediaHeader {
       MediaHeader.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef MediaEndReason = String;
+enum MediaEndReason {
+  eos('eos'),
+  stopped('stopped');
+
+  const MediaEndReason(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static MediaEndReason fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown MediaEndReason value', value);
+  }
+}
 
 final class MediaChunk {
   final String kind;
@@ -6358,7 +6478,7 @@ final class MediaEnd {
     final map = <String, Object?>{};
     map['kind'] = kind;
     map['stream_id'] = streamId;
-    if (reason != null) map['reason'] = reason;
+    if (reason != null) map['reason'] = reason!.wireValue;
     return map;
   }
 
@@ -6366,7 +6486,7 @@ final class MediaEnd {
     return MediaEnd(
       kind: map['kind'] as String,
       streamId: map['stream_id'] as String,
-      reason: map['reason'] as MediaEndReason?,
+      reason: map['reason'] == null ? null : MediaEndReason.fromWire(map['reason']),
     );
   }
 
@@ -6386,7 +6506,7 @@ final class MediaEnd {
     final map = <String, Object?>{};
     map['kind'] = 'end';
     map['stream_id'] = streamId;
-    if (reason != null) map['reason'] = reason!;
+    if (reason != null) map['reason'] = reason!.wireValue;
     return map;
   }
 
@@ -6398,10 +6518,7 @@ final class MediaEnd {
       streamId: map['stream_id'] as String,
       reason: map['reason'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['reason'], const [
-              'eos',
-              'stopped',
-            ]),
+          : MediaEndReason.fromWire(map['reason']),
     );
   }
 
@@ -7112,8 +7229,8 @@ final class NodeReport {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
-    if (event != null) map['event'] = event;
-    map['status'] = status;
+    if (event != null) map['event'] = event!.wireValue;
+    map['status'] = status.wireValue;
     if (queueItemId != null) map['queue_item_id'] = queueItemId;
     if (playbackId != null) map['playback_id'] = playbackId;
     if (positionMs != null) map['position_ms'] = positionMs;
@@ -7125,8 +7242,8 @@ final class NodeReport {
   factory NodeReport.fromMap(Map<String, Object?> map) {
     return NodeReport(
       playerId: map['player_id'] as PlayerId,
-      event: map['event'] as NodeEvent?,
-      status: map['status'] as PlayerStatus,
+      event: map['event'] == null ? null : NodeEvent.fromWire(map['event']),
+      status: PlayerStatus.fromWire(map['status']),
       queueItemId: map['queue_item_id'] as int?,
       playbackId: map['playback_id'] as String?,
       positionMs: map['position_ms'] as int?,
@@ -7174,8 +7291,8 @@ final class NodeReport {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['player_id'] = playerId;
-    if (event != null) map['event'] = event!;
-    map['status'] = status;
+    if (event != null) map['event'] = event!.wireValue;
+    map['status'] = status.wireValue;
     if (queueItemId != null) map['queue_item_id'] = queueItemId!;
     if (playbackId != null) map['playback_id'] = playbackId!;
     if (positionMs != null) map['position_ms'] = positionMs!;
@@ -7189,19 +7306,8 @@ final class NodeReport {
     final map = cbor as Map;
     return NodeReport(
       playerId: map['player_id'] as String,
-      event: map['event'] == null
-          ? null
-          : CsilCbor.expectOneOf<String>(map['event'], const [
-              'ready',
-              'state',
-              'completed',
-              'failed',
-            ]),
-      status: CsilCbor.expectOneOf<String>(map['status'], const [
-        'stopped',
-        'playing',
-        'paused',
-      ]),
+      event: map['event'] == null ? null : NodeEvent.fromWire(map['event']),
+      status: PlayerStatus.fromWire(map['status']),
       queueItemId: map['queue_item_id'] == null
           ? null
           : map['queue_item_id'] as int,
@@ -7246,7 +7352,7 @@ final class Account {
     map['id'] = id;
     map['handle'] = handle;
     if (displayName != null) map['display_name'] = displayName;
-    map['role'] = role;
+    map['role'] = role.wireValue;
     map['created_at'] = createdAt;
     if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary;
     return map;
@@ -7257,7 +7363,7 @@ final class Account {
       id: map['id'] as AccountId,
       handle: map['handle'] as Handle,
       displayName: map['display_name'] as String?,
-      role: map['role'] as Role,
+      role: Role.fromWire(map['role']),
       createdAt: map['created_at'] as DateTime,
       canEditLibrary: map['can_edit_library'] as bool?,
     );
@@ -7290,7 +7396,7 @@ final class Account {
     map['id'] = id;
     map['handle'] = handle;
     if (displayName != null) map['display_name'] = displayName!;
-    map['role'] = role;
+    map['role'] = role.wireValue;
     map['created_at'] = createdAt;
     if (canEditLibrary != null) map['can_edit_library'] = canEditLibrary!;
     return map;
@@ -7305,11 +7411,7 @@ final class Account {
       displayName: map['display_name'] == null
           ? null
           : map['display_name'] as String,
-      role: CsilCbor.expectOneOf<String>(map['role'], const [
-        'admin',
-        'member',
-        'guest',
-      ]),
+      role: Role.fromWire(map['role']),
       createdAt: map['created_at'] as DateTime,
       canEditLibrary: map['can_edit_library'] == null
           ? null
@@ -7441,14 +7543,14 @@ final class SetRoleRequest {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['account_id'] = accountId;
-    map['role'] = role;
+    map['role'] = role.wireValue;
     return map;
   }
 
   factory SetRoleRequest.fromMap(Map<String, Object?> map) {
     return SetRoleRequest(
       accountId: map['account_id'] as AccountId,
-      role: map['role'] as Role,
+      role: Role.fromWire(map['role']),
     );
   }
 
@@ -7465,7 +7567,7 @@ final class SetRoleRequest {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['account_id'] = accountId;
-    map['role'] = role;
+    map['role'] = role.wireValue;
     return map;
   }
 
@@ -7474,11 +7576,7 @@ final class SetRoleRequest {
     final map = cbor as Map;
     return SetRoleRequest(
       accountId: map['account_id'] as String,
-      role: CsilCbor.expectOneOf<String>(map['role'], const [
-        'admin',
-        'member',
-        'guest',
-      ]),
+      role: Role.fromWire(map['role']),
     );
   }
 
@@ -7857,9 +7955,40 @@ final class RevokeTrustedIdentityRequest {
       RevokeTrustedIdentityRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef NodeKind = String;
+enum NodeKind {
+  core('core'),
+  satellite('satellite'),
+  client('client');
 
-typedef AudioOutputsState = String;
+  const NodeKind(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static NodeKind fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown NodeKind value', value);
+  }
+}
+
+enum AudioOutputsState {
+  none('none'),
+  some('some');
+
+  const AudioOutputsState(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static AudioOutputsState fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown AudioOutputsState value', value);
+  }
+}
 
 final class DeviceInfo {
   final DeviceId id;
@@ -7983,13 +8112,13 @@ final class NodeInfo {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['id'] = id;
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['hostname'] = hostname;
     map['friendly_name'] = friendlyName;
     map['platform'] = platform;
     map['arch'] = arch;
     if (lastSeen != null) map['last_seen'] = lastSeen;
-    map['audio_outputs'] = audioOutputs;
+    map['audio_outputs'] = audioOutputs.wireValue;
     map['devices'] = devices;
     return map;
   }
@@ -7997,13 +8126,13 @@ final class NodeInfo {
   factory NodeInfo.fromMap(Map<String, Object?> map) {
     return NodeInfo(
       id: map['id'] as NodeId,
-      kind: map['kind'] as NodeKind,
+      kind: NodeKind.fromWire(map['kind']),
       hostname: map['hostname'] as String,
       friendlyName: map['friendly_name'] as String,
       platform: map['platform'] as String,
       arch: map['arch'] as String,
       lastSeen: map['last_seen'] as DateTime?,
-      audioOutputs: map['audio_outputs'] as AudioOutputsState,
+      audioOutputs: AudioOutputsState.fromWire(map['audio_outputs']),
       devices: map['devices'] as List<DeviceInfo>,
     );
   }
@@ -8039,13 +8168,13 @@ final class NodeInfo {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['id'] = id;
-    map['kind'] = kind;
+    map['kind'] = kind.wireValue;
     map['hostname'] = hostname;
     map['friendly_name'] = friendlyName;
     map['platform'] = platform;
     map['arch'] = arch;
     if (lastSeen != null) map['last_seen'] = lastSeen!;
-    map['audio_outputs'] = audioOutputs;
+    map['audio_outputs'] = audioOutputs.wireValue;
     map['devices'] = devices.map((csilE) => csilE.toCborValue()).toList();
     return map;
   }
@@ -8055,20 +8184,13 @@ final class NodeInfo {
     final map = cbor as Map;
     return NodeInfo(
       id: map['id'] as String,
-      kind: CsilCbor.expectOneOf<String>(map['kind'], const [
-        'core',
-        'satellite',
-        'client',
-      ]),
+      kind: NodeKind.fromWire(map['kind']),
       hostname: map['hostname'] as String,
       friendlyName: map['friendly_name'] as String,
       platform: map['platform'] as String,
       arch: map['arch'] as String,
       lastSeen: map['last_seen'] == null ? null : map['last_seen'] as DateTime,
-      audioOutputs: CsilCbor.expectOneOf<String>(map['audio_outputs'], const [
-        'none',
-        'some',
-      ]),
+      audioOutputs: AudioOutputsState.fromWire(map['audio_outputs']),
       devices: (map['devices'] as List)
           .map((csilE) => DeviceInfo.fromCborValue(csilE))
           .cast<DeviceInfo>()
@@ -8949,7 +9071,7 @@ final class ImportTrackRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    if (library_ != null) map['library'] = library_;
+    if (library_ != null) map['library'] = library_!.wireValue;
     map['root_relative_path'] = rootRelativePath;
     map['content_type'] = contentType;
     if (contentHash != null) map['content_hash'] = contentHash;
@@ -8959,7 +9081,7 @@ final class ImportTrackRequest {
 
   factory ImportTrackRequest.fromMap(Map<String, Object?> map) {
     return ImportTrackRequest(
-      library_: map['library'] as Library?,
+      library_: map['library'] == null ? null : Library.fromWire(map['library']),
       rootRelativePath: map['root_relative_path'] as String,
       contentType: map['content_type'] as String,
       contentHash: map['content_hash'] as String?,
@@ -8998,7 +9120,7 @@ final class ImportTrackRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    if (library_ != null) map['library'] = library_!;
+    if (library_ != null) map['library'] = library_!.wireValue;
     map['root_relative_path'] = rootRelativePath;
     map['content_type'] = contentType;
     if (contentHash != null) map['content_hash'] = contentHash!;
@@ -9012,10 +9134,7 @@ final class ImportTrackRequest {
     return ImportTrackRequest(
       library_: map['library'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['library'], const [
-              'music',
-              'audiobook',
-            ]),
+          : Library.fromWire(map['library']),
       rootRelativePath: map['root_relative_path'] as String,
       contentType: map['content_type'] as String,
       contentHash: map['content_hash'] == null
@@ -9173,7 +9292,7 @@ final class BeginImportRequest {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    if (library_ != null) map['library'] = library_;
+    if (library_ != null) map['library'] = library_!.wireValue;
     map['track_file_index'] = trackFileIndex;
     map['files'] = files;
     return map;
@@ -9181,7 +9300,7 @@ final class BeginImportRequest {
 
   factory BeginImportRequest.fromMap(Map<String, Object?> map) {
     return BeginImportRequest(
-      library_: map['library'] as Library?,
+      library_: map['library'] == null ? null : Library.fromWire(map['library']),
       trackFileIndex: map['track_file_index'] as int,
       files: map['files'] as List<TransferFile>,
     );
@@ -9201,7 +9320,7 @@ final class BeginImportRequest {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    if (library_ != null) map['library'] = library_!;
+    if (library_ != null) map['library'] = library_!.wireValue;
     map['track_file_index'] = trackFileIndex;
     map['files'] = files.map((csilE) => csilE.toCborValue()).toList();
     return map;
@@ -9213,10 +9332,7 @@ final class BeginImportRequest {
     return BeginImportRequest(
       library_: map['library'] == null
           ? null
-          : CsilCbor.expectOneOf<String>(map['library'], const [
-              'music',
-              'audiobook',
-            ]),
+          : Library.fromWire(map['library']),
       trackFileIndex: map['track_file_index'] as int,
       files: (map['files'] as List)
           .map((csilE) => TransferFile.fromCborValue(csilE))
@@ -9697,14 +9813,14 @@ final class UpdateContentReportStatusRequest {
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
     map['report_id'] = reportId;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     return map;
   }
 
   factory UpdateContentReportStatusRequest.fromMap(Map<String, Object?> map) {
     return UpdateContentReportStatusRequest(
       reportId: map['report_id'] as ContentReportId,
-      status: map['status'] as ContentReportStatus,
+      status: ContentReportStatus.fromWire(map['status']),
     );
   }
 
@@ -9721,7 +9837,7 @@ final class UpdateContentReportStatusRequest {
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
     map['report_id'] = reportId;
-    map['status'] = status;
+    map['status'] = status.wireValue;
     return map;
   }
 
@@ -9730,11 +9846,7 @@ final class UpdateContentReportStatusRequest {
     final map = cbor as Map;
     return UpdateContentReportStatusRequest(
       reportId: map['report_id'] as String,
-      status: CsilCbor.expectOneOf<String>(map['status'], const [
-        'open',
-        'resolved',
-        'dismissed',
-      ]),
+      status: ContentReportStatus.fromWire(map['status']),
     );
   }
 
@@ -9746,7 +9858,31 @@ final class UpdateContentReportStatusRequest {
       UpdateContentReportStatusRequest.fromCborValue(CsilCbor.decode(bytes));
 }
 
-typedef ChangeTopic = String;
+enum ChangeTopic {
+  players('players'),
+  libraries('libraries'),
+  playlists('playlists'),
+  progress('progress'),
+  session('session'),
+  accounts('accounts'),
+  trust('trust'),
+  nodes('nodes'),
+  groups('groups'),
+  settings('settings'),
+  imports('imports');
+
+  const ChangeTopic(this.wireValue);
+  final String wireValue;
+
+  String toJson() => wireValue;
+
+  static ChangeTopic fromWire(Object? value) {
+    for (final member in values) {
+      if (member.wireValue == value) return member;
+    }
+    throw FormatException('unknown ChangeTopic value', value);
+  }
+}
 
 final class WatchChangesRequest {
   final bool? active;
@@ -9803,14 +9939,14 @@ final class DataChange {
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{};
-    map['topic'] = topic;
+    map['topic'] = topic.wireValue;
     map['revision'] = revision;
     return map;
   }
 
   factory DataChange.fromMap(Map<String, Object?> map) {
     return DataChange(
-      topic: map['topic'] as ChangeTopic,
+      topic: ChangeTopic.fromWire(map['topic']),
       revision: map['revision'] as int,
     );
   }
@@ -9827,7 +9963,7 @@ final class DataChange {
   /// The CBOR-encodable dynamic tree for this record (deep).
   Map<String, Object?> toCborValue() {
     final map = <String, Object?>{};
-    map['topic'] = topic;
+    map['topic'] = topic.wireValue;
     map['revision'] = revision;
     return map;
   }
@@ -9836,19 +9972,7 @@ final class DataChange {
   factory DataChange.fromCborValue(Object? cbor) {
     final map = cbor as Map;
     return DataChange(
-      topic: CsilCbor.expectOneOf<String>(map['topic'], const [
-        'players',
-        'libraries',
-        'playlists',
-        'progress',
-        'session',
-        'accounts',
-        'trust',
-        'nodes',
-        'groups',
-        'settings',
-        'imports',
-      ]),
+      topic: ChangeTopic.fromWire(map['topic']),
       revision: map['revision'] as int,
     );
   }
@@ -9859,4 +9983,1253 @@ final class DataChange {
   /// Decode a CSIL CBOR byte payload into this record.
   factory DataChange.fromCbor(List<int> bytes) =>
       DataChange.fromCborValue(CsilCbor.decode(bytes));
+}
+
+final class ServiceErrorRefusal implements Exception {
+  final ServiceError value;
+  const ServiceErrorRefusal(this.value);
+}
+
+(String, Uint8List) encodeSessionServiceAuthenticateReply(SessionInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('SessionInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeSessionServiceWhoamiReply(SessionInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('SessionInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeSessionServiceLogoutReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeSessionServiceDeleteAccountReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceListLibrariesReply(LibrariesResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('LibrariesResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceListAlbumsReply(AlbumsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('AlbumsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceListArtistsReply(ArtistsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ArtistsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetAlbumReply(AlbumDetail Function() handler) {
+  try {
+    final value = handler();
+    return ('AlbumDetail', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetArtistReply(ArtistDetail Function() handler) {
+  try {
+    final value = handler();
+    return ('ArtistDetail', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceSearchReply(SearchResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('SearchResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceExportManifestReply(ExportManifest Function() handler) {
+  try {
+    final value = handler();
+    return ('ExportManifest', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceExportChunkReply(ExportChunk Function() handler) {
+  try {
+    final value = handler();
+    return ('ExportChunk', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceListPlaylistsReply(PlaylistsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('PlaylistsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetPlaylistReply(PlaylistDetail Function() handler) {
+  try {
+    final value = handler();
+    return ('PlaylistDetail', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceDeletePlaylistReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceBlockAccountReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceUnblockAccountReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceListBlockedAccountsReply(BlockedAccountsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('BlockedAccountsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetCoverArtReply(CoverArt Function() handler) {
+  try {
+    final value = handler();
+    return ('CoverArt', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetArtworkReply(CoverArt Function() handler) {
+  try {
+    final value = handler();
+    return ('CoverArt', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceListArtworkCandidatesReply(ArtworkCandidates Function() handler) {
+  try {
+    final value = handler();
+    return ('ArtworkCandidates', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetArtworkCandidateReply(CoverArt Function() handler) {
+  try {
+    final value = handler();
+    return ('CoverArt', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceSetArtworkReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceGetAudiobookProgressReply(AudiobookProgressResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('AudiobookProgressResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceUpdateAudiobookProgressReply(AudiobookProgress Function() handler) {
+  try {
+    final value = handler();
+    return ('AudiobookProgress', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeLibraryServiceReportContentReply(ContentReport Function() handler) {
+  try {
+    final value = handler();
+    return ('ContentReport', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceListPlayersReply(ListPlayersResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ListPlayersResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceGetStateReply(PlayerState Function() handler) {
+  try {
+    final value = handler();
+    return ('PlayerState', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceControlReply(PlayerState Function() handler) {
+  try {
+    final value = handler();
+    return ('PlayerState', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceEnableShareReply(ShareResult Function() handler) {
+  try {
+    final value = handler();
+    return ('ShareResult', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceDisableShareReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceGetShareAccessReply(ShareAccessInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('ShareAccessInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodePlayerServiceSetShareAccessReply(ShareAccessInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('ShareAccessInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeNodeServiceRegisterReply(RegisterNodeResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('RegisterNodeResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListAccountsReply(ListAccountsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ListAccountsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceSetRoleReply(Account Function() handler) {
+  try {
+    final value = handler();
+    return ('Account', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceSetLibraryEditorReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceDeleteAccountReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceTrustDomainReply(TrustedDomains Function() handler) {
+  try {
+    final value = handler();
+    return ('TrustedDomains', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListTrustedDomainsReply(TrustedDomains Function() handler) {
+  try {
+    final value = handler();
+    return ('TrustedDomains', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListTrustedIdentitiesReply(TrustedIdentities Function() handler) {
+  try {
+    final value = handler();
+    return ('TrustedIdentities', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceTrustIdentityReply(TrustedIdentities Function() handler) {
+  try {
+    final value = handler();
+    return ('TrustedIdentities', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceRevokeTrustedIdentityReply(TrustedIdentities Function() handler) {
+  try {
+    final value = handler();
+    return ('TrustedIdentities', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListNodesReply(ListNodesResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ListNodesResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceRenameNodeReply(NodeInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('NodeInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceRenameDeviceReply(DeviceInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('DeviceInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceSetDeviceAccessReply(DeviceInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('DeviceInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListGroupsReply(ListGroupsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ListGroupsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceCreateGroupReply(GroupInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('GroupInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceSetGroupMembersReply(GroupInfo Function() handler) {
+  try {
+    final value = handler();
+    return ('GroupInfo', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceDeleteGroupReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListSatelliteTokensReply(ListSatelliteTokensResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ListSatelliteTokensResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceCreateNodeTokenReply(NodeTokenResult Function() handler) {
+  try {
+    final value = handler();
+    return ('NodeTokenResult', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceRevokeSatelliteTokenReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceImportTrackReply(ImportResult Function() handler) {
+  try {
+    final value = handler();
+    return ('ImportResult', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceBeginImportReply(BeginImportResult Function() handler) {
+  try {
+    final value = handler();
+    return ('BeginImportResult', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceImportChunkReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceFinishImportReply(ImportResult Function() handler) {
+  try {
+    final value = handler();
+    return ('ImportResult', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceCancelImportReply(Ok Function() handler) {
+  try {
+    final value = handler();
+    return ('Ok', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceGetSettingsReply(Settings Function() handler) {
+  try {
+    final value = handler();
+    return ('Settings', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceSetSettingReply(Settings Function() handler) {
+  try {
+    final value = handler();
+    return ('Settings', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceResyncLibraryReply(LibraryResyncStatus Function() handler) {
+  try {
+    final value = handler();
+    return ('LibraryResyncStatus', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceGetResyncStatusReply(LibraryResyncStatus Function() handler) {
+  try {
+    final value = handler();
+    return ('LibraryResyncStatus', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceListContentReportsReply(ListContentReportsResponse Function() handler) {
+  try {
+    final value = handler();
+    return ('ListContentReportsResponse', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+(String, Uint8List) encodeAdminServiceUpdateContentReportStatusReply(ContentReport Function() handler) {
+  try {
+    final value = handler();
+    return ('ContentReport', CsilCbor.encodeValue(value.toCborValue()));
+  } on ServiceErrorRefusal catch (refusal) {
+    return ('ServiceError', CsilCbor.encodeValue(refusal.value.toCborValue()));
+  }
+}
+
+Uint8List resolveRpcReply(
+  String service,
+  String op,
+  String? variant,
+  Uint8List payload,
+) {
+  if (service == 'SessionService' && op == 'authenticate') {
+    switch (variant) {
+      case 'SessionInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'SessionService' && op == 'whoami') {
+    switch (variant) {
+      case 'SessionInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'SessionService' && op == 'logout') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'SessionService' && op == 'delete-account') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'list-libraries') {
+    switch (variant) {
+      case 'LibrariesResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'list-albums') {
+    switch (variant) {
+      case 'AlbumsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'list-artists') {
+    switch (variant) {
+      case 'ArtistsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-album') {
+    switch (variant) {
+      case 'AlbumDetail':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-artist') {
+    switch (variant) {
+      case 'ArtistDetail':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'search') {
+    switch (variant) {
+      case 'SearchResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'export-manifest') {
+    switch (variant) {
+      case 'ExportManifest':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'export-chunk') {
+    switch (variant) {
+      case 'ExportChunk':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'list-playlists') {
+    switch (variant) {
+      case 'PlaylistsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-playlist') {
+    switch (variant) {
+      case 'PlaylistDetail':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'delete-playlist') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'block-account') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'unblock-account') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'list-blocked-accounts') {
+    switch (variant) {
+      case 'BlockedAccountsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-cover-art') {
+    switch (variant) {
+      case 'CoverArt':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-artwork') {
+    switch (variant) {
+      case 'CoverArt':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'list-artwork-candidates') {
+    switch (variant) {
+      case 'ArtworkCandidates':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-artwork-candidate') {
+    switch (variant) {
+      case 'CoverArt':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'set-artwork') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'get-audiobook-progress') {
+    switch (variant) {
+      case 'AudiobookProgressResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'update-audiobook-progress') {
+    switch (variant) {
+      case 'AudiobookProgress':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'LibraryService' && op == 'report-content') {
+    switch (variant) {
+      case 'ContentReport':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'list-players') {
+    switch (variant) {
+      case 'ListPlayersResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'get-state') {
+    switch (variant) {
+      case 'PlayerState':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'control') {
+    switch (variant) {
+      case 'PlayerState':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'enable-share') {
+    switch (variant) {
+      case 'ShareResult':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'disable-share') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'get-share-access') {
+    switch (variant) {
+      case 'ShareAccessInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'PlayerService' && op == 'set-share-access') {
+    switch (variant) {
+      case 'ShareAccessInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'NodeService' && op == 'register') {
+    switch (variant) {
+      case 'RegisterNodeResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-accounts') {
+    switch (variant) {
+      case 'ListAccountsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'set-role') {
+    switch (variant) {
+      case 'Account':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'set-library-editor') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'delete-account') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'trust-domain') {
+    switch (variant) {
+      case 'TrustedDomains':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-trusted-domains') {
+    switch (variant) {
+      case 'TrustedDomains':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-trusted-identities') {
+    switch (variant) {
+      case 'TrustedIdentities':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'trust-identity') {
+    switch (variant) {
+      case 'TrustedIdentities':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'revoke-trusted-identity') {
+    switch (variant) {
+      case 'TrustedIdentities':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-nodes') {
+    switch (variant) {
+      case 'ListNodesResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'rename-node') {
+    switch (variant) {
+      case 'NodeInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'rename-device') {
+    switch (variant) {
+      case 'DeviceInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'set-device-access') {
+    switch (variant) {
+      case 'DeviceInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-groups') {
+    switch (variant) {
+      case 'ListGroupsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'create-group') {
+    switch (variant) {
+      case 'GroupInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'set-group-members') {
+    switch (variant) {
+      case 'GroupInfo':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'delete-group') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-satellite-tokens') {
+    switch (variant) {
+      case 'ListSatelliteTokensResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'create-node-token') {
+    switch (variant) {
+      case 'NodeTokenResult':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'revoke-satellite-token') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'import-track') {
+    switch (variant) {
+      case 'ImportResult':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'begin-import') {
+    switch (variant) {
+      case 'BeginImportResult':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'import-chunk') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'finish-import') {
+    switch (variant) {
+      case 'ImportResult':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'cancel-import') {
+    switch (variant) {
+      case 'Ok':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'get-settings') {
+    switch (variant) {
+      case 'Settings':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'set-setting') {
+    switch (variant) {
+      case 'Settings':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'resync-library') {
+    switch (variant) {
+      case 'LibraryResyncStatus':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'get-resync-status') {
+    switch (variant) {
+      case 'LibraryResyncStatus':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'list-content-reports') {
+    switch (variant) {
+      case 'ListContentReportsResponse':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  if (service == 'AdminService' && op == 'update-content-report-status') {
+    switch (variant) {
+      case 'ContentReport':
+        return payload;
+      case 'ServiceError':
+        throw ServiceErrorRefusal(ServiceError.fromCborValue(CsilCbor.decode(payload)));
+      default:
+        throw FormatException('invalid RPC reply variant: $variant');
+    }
+  }
+  return payload;
 }

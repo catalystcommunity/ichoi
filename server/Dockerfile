@@ -137,6 +137,8 @@ RUN curl -fsSL https://musl.cc/aarch64-linux-musl-cross.tgz -o /tmp/aarch64-musl
 ENV PATH="/opt/aarch64-linux-musl-cross/bin:${PATH}" \
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-musl-gcc \
     CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
+WORKDIR /build
+COPY rust-toolchain.toml ./
 RUN case "$TARGETARCH" in \
       amd64) echo x86_64-unknown-linux-musl  > /tmp/triple ;; \
       arm64) echo aarch64-unknown-linux-musl > /tmp/triple ;; \
@@ -144,7 +146,6 @@ RUN case "$TARGETARCH" in \
     esac && \
     rustup target add "$(cat /tmp/triple)"
 
-WORKDIR /build
 # Build context is server/. COPY only what the build needs (the .dockerignore
 # excludes everything else).
 COPY Cargo.toml Cargo.lock ./

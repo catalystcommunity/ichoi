@@ -2,4 +2,21 @@
 
 package csilgen.generated;
 
-public record RepeatMode(Object value) {}
+public enum RepeatMode {
+    OFF("off"),
+    ALL("all"),
+    ONE("one");
+
+    private final String value;
+
+    RepeatMode(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static RepeatMode fromWire(String value) {
+        for (RepeatMode member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown RepeatMode value: " + value);
+    }
+}

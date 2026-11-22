@@ -13,175 +13,307 @@ type client = {
 let make_client ~call = { call }
 
 module Session_service = struct
-  let authenticate (c : client) (req : auth_request) : (session_info, string) result =
-    match c.call ~service:"SessionService" ~op:"authenticate" ~payload:(Codec.encode_auth_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_session_info_bytes payload)
-    | Error _ as e -> e
+  let authenticate (c : client) (req : auth_request) =
+    try
+      match c.call ~service:"SessionService" ~op:"authenticate" ~payload:(Codec.encode_session_service_authenticate_request req) with
+      | Ok bytes -> Ok (Codec.decode_session_service_authenticate_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let whoami (c : client) (req : page) : (session_info, string) result =
-    match c.call ~service:"SessionService" ~op:"whoami" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_session_info_bytes payload)
-    | Error _ as e -> e
+  let whoami (c : client) (req : page) =
+    try
+      match c.call ~service:"SessionService" ~op:"whoami" ~payload:(Codec.encode_session_service_whoami_request req) with
+      | Ok bytes -> Ok (Codec.decode_session_service_whoami_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let logout (c : client) (req : page) : (ok, string) result =
-    match c.call ~service:"SessionService" ~op:"logout" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let logout (c : client) (req : page) =
+    try
+      match c.call ~service:"SessionService" ~op:"logout" ~payload:(Codec.encode_session_service_logout_request req) with
+      | Ok bytes -> Ok (Codec.decode_session_service_logout_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let delete_account (c : client) (req : delete_account_request) : (ok, string) result =
-    match c.call ~service:"SessionService" ~op:"delete-account" ~payload:(Codec.encode_delete_account_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let delete_account (c : client) (req : delete_account_request) =
+    try
+      match c.call ~service:"SessionService" ~op:"delete-account" ~payload:(Codec.encode_session_service_delete_account_request req) with
+      | Ok bytes -> Ok (Codec.decode_session_service_delete_account_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 end
 
 module Library_service = struct
-  let list_libraries (c : client) (req : page) : (libraries_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"list-libraries" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_libraries_response_bytes payload)
-    | Error _ as e -> e
+  let list_libraries (c : client) (req : page) =
+    try
+      match c.call ~service:"LibraryService" ~op:"list-libraries" ~payload:(Codec.encode_library_service_list_libraries_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_list_libraries_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_albums (c : client) (req : browse_request) : (albums_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"list-albums" ~payload:(Codec.encode_browse_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_albums_response_bytes payload)
-    | Error _ as e -> e
+  let list_albums (c : client) (req : browse_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"list-albums" ~payload:(Codec.encode_library_service_list_albums_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_list_albums_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_artists (c : client) (req : browse_request) : (artists_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"list-artists" ~payload:(Codec.encode_browse_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_artists_response_bytes payload)
-    | Error _ as e -> e
+  let list_artists (c : client) (req : browse_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"list-artists" ~payload:(Codec.encode_library_service_list_artists_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_list_artists_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_album (c : client) (req : album_request) : (album_detail, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-album" ~payload:(Codec.encode_album_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_album_detail_bytes payload)
-    | Error _ as e -> e
+  let get_album (c : client) (req : album_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-album" ~payload:(Codec.encode_library_service_get_album_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_album_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_artist (c : client) (req : artist_request) : (artist_detail, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-artist" ~payload:(Codec.encode_artist_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_artist_detail_bytes payload)
-    | Error _ as e -> e
+  let get_artist (c : client) (req : artist_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-artist" ~payload:(Codec.encode_library_service_get_artist_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_artist_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let search (c : client) (req : search_request) : (search_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"search" ~payload:(Codec.encode_search_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_search_response_bytes payload)
-    | Error _ as e -> e
+  let search (c : client) (req : search_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"search" ~payload:(Codec.encode_library_service_search_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_search_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let export_manifest (c : client) (req : export_manifest_request) : (export_manifest, string) result =
-    match c.call ~service:"LibraryService" ~op:"export-manifest" ~payload:(Codec.encode_export_manifest_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_export_manifest_bytes payload)
-    | Error _ as e -> e
+  let export_manifest (c : client) (req : export_manifest_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"export-manifest" ~payload:(Codec.encode_library_service_export_manifest_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_export_manifest_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let export_chunk (c : client) (req : export_chunk_request) : (export_chunk, string) result =
-    match c.call ~service:"LibraryService" ~op:"export-chunk" ~payload:(Codec.encode_export_chunk_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_export_chunk_bytes payload)
-    | Error _ as e -> e
+  let export_chunk (c : client) (req : export_chunk_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"export-chunk" ~payload:(Codec.encode_library_service_export_chunk_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_export_chunk_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_playlists (c : client) (req : browse_request) : (playlists_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"list-playlists" ~payload:(Codec.encode_browse_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_playlists_response_bytes payload)
-    | Error _ as e -> e
+  let list_playlists (c : client) (req : browse_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"list-playlists" ~payload:(Codec.encode_library_service_list_playlists_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_list_playlists_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_playlist (c : client) (req : playlist_request) : (playlist_detail, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-playlist" ~payload:(Codec.encode_playlist_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_playlist_detail_bytes payload)
-    | Error _ as e -> e
+  let get_playlist (c : client) (req : playlist_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-playlist" ~payload:(Codec.encode_library_service_get_playlist_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_playlist_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let delete_playlist (c : client) (req : delete_playlist_request) : (ok, string) result =
-    match c.call ~service:"LibraryService" ~op:"delete-playlist" ~payload:(Codec.encode_delete_playlist_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let delete_playlist (c : client) (req : delete_playlist_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"delete-playlist" ~payload:(Codec.encode_library_service_delete_playlist_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_delete_playlist_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let block_account (c : client) (req : block_account_request) : (ok, string) result =
-    match c.call ~service:"LibraryService" ~op:"block-account" ~payload:(Codec.encode_block_account_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let block_account (c : client) (req : block_account_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"block-account" ~payload:(Codec.encode_library_service_block_account_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_block_account_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let unblock_account (c : client) (req : block_account_request) : (ok, string) result =
-    match c.call ~service:"LibraryService" ~op:"unblock-account" ~payload:(Codec.encode_block_account_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let unblock_account (c : client) (req : block_account_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"unblock-account" ~payload:(Codec.encode_library_service_unblock_account_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_unblock_account_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_blocked_accounts (c : client) (req : page) : (blocked_accounts_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"list-blocked-accounts" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_blocked_accounts_response_bytes payload)
-    | Error _ as e -> e
+  let list_blocked_accounts (c : client) (req : page) =
+    try
+      match c.call ~service:"LibraryService" ~op:"list-blocked-accounts" ~payload:(Codec.encode_library_service_list_blocked_accounts_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_list_blocked_accounts_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_cover_art (c : client) (req : cover_art_request) : (cover_art, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-cover-art" ~payload:(Codec.encode_cover_art_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
-    | Error _ as e -> e
+  let get_cover_art (c : client) (req : cover_art_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-cover-art" ~payload:(Codec.encode_library_service_get_cover_art_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_cover_art_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_artwork (c : client) (req : artwork_request) : (cover_art, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-artwork" ~payload:(Codec.encode_artwork_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
-    | Error _ as e -> e
+  let get_artwork (c : client) (req : artwork_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-artwork" ~payload:(Codec.encode_library_service_get_artwork_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_artwork_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_artwork_candidates (c : client) (req : artwork_candidates_request) : (artwork_candidates, string) result =
-    match c.call ~service:"LibraryService" ~op:"list-artwork-candidates" ~payload:(Codec.encode_artwork_candidates_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_artwork_candidates_bytes payload)
-    | Error _ as e -> e
+  let list_artwork_candidates (c : client) (req : artwork_candidates_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"list-artwork-candidates" ~payload:(Codec.encode_library_service_list_artwork_candidates_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_list_artwork_candidates_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_artwork_candidate (c : client) (req : artwork_candidate_request) : (cover_art, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-artwork-candidate" ~payload:(Codec.encode_artwork_candidate_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_cover_art_bytes payload)
-    | Error _ as e -> e
+  let get_artwork_candidate (c : client) (req : artwork_candidate_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-artwork-candidate" ~payload:(Codec.encode_library_service_get_artwork_candidate_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_artwork_candidate_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_artwork (c : client) (req : set_artwork_request) : (ok, string) result =
-    match c.call ~service:"LibraryService" ~op:"set-artwork" ~payload:(Codec.encode_set_artwork_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let set_artwork (c : client) (req : set_artwork_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"set-artwork" ~payload:(Codec.encode_library_service_set_artwork_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_set_artwork_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_audiobook_progress (c : client) (req : audiobook_progress_request) : (audiobook_progress_response, string) result =
-    match c.call ~service:"LibraryService" ~op:"get-audiobook-progress" ~payload:(Codec.encode_audiobook_progress_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_audiobook_progress_response_bytes payload)
-    | Error _ as e -> e
+  let get_audiobook_progress (c : client) (req : audiobook_progress_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"get-audiobook-progress" ~payload:(Codec.encode_library_service_get_audiobook_progress_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_get_audiobook_progress_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let update_audiobook_progress (c : client) (req : update_audiobook_progress_request) : (audiobook_progress, string) result =
-    match c.call ~service:"LibraryService" ~op:"update-audiobook-progress" ~payload:(Codec.encode_update_audiobook_progress_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_audiobook_progress_bytes payload)
-    | Error _ as e -> e
+  let update_audiobook_progress (c : client) (req : update_audiobook_progress_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"update-audiobook-progress" ~payload:(Codec.encode_library_service_update_audiobook_progress_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_update_audiobook_progress_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let report_content (c : client) (req : report_content_request) : (content_report, string) result =
-    match c.call ~service:"LibraryService" ~op:"report-content" ~payload:(Codec.encode_report_content_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_content_report_bytes payload)
-    | Error _ as e -> e
+  let report_content (c : client) (req : report_content_request) =
+    try
+      match c.call ~service:"LibraryService" ~op:"report-content" ~payload:(Codec.encode_library_service_report_content_request req) with
+      | Ok bytes -> Ok (Codec.decode_library_service_report_content_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 end
 
 module Player_service = struct
-  let list_players (c : client) (req : list_players_request) : (list_players_response, string) result =
-    match c.call ~service:"PlayerService" ~op:"list-players" ~payload:(Codec.encode_list_players_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_list_players_response_bytes payload)
-    | Error _ as e -> e
+  let list_players (c : client) (req : list_players_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"list-players" ~payload:(Codec.encode_player_service_list_players_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_list_players_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_state (c : client) (req : subscribe_request) : (player_state, string) result =
-    match c.call ~service:"PlayerService" ~op:"get-state" ~payload:(Codec.encode_subscribe_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_player_state_bytes payload)
-    | Error _ as e -> e
+  let get_state (c : client) (req : subscribe_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"get-state" ~payload:(Codec.encode_player_service_get_state_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_get_state_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
   (* channel operation subscribe is not part of the RPC client *)
-  let control (c : client) (req : command_request) : (player_state, string) result =
-    match c.call ~service:"PlayerService" ~op:"control" ~payload:(Codec.encode_command_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_player_state_bytes payload)
-    | Error _ as e -> e
+  let control (c : client) (req : command_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"control" ~payload:(Codec.encode_player_service_control_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_control_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let enable_share (c : client) (req : enable_share_request) : (share_result, string) result =
-    match c.call ~service:"PlayerService" ~op:"enable-share" ~payload:(Codec.encode_enable_share_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_share_result_bytes payload)
-    | Error _ as e -> e
+  let enable_share (c : client) (req : enable_share_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"enable-share" ~payload:(Codec.encode_player_service_enable_share_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_enable_share_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let disable_share (c : client) (req : disable_share_request) : (ok, string) result =
-    match c.call ~service:"PlayerService" ~op:"disable-share" ~payload:(Codec.encode_disable_share_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let disable_share (c : client) (req : disable_share_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"disable-share" ~payload:(Codec.encode_player_service_disable_share_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_disable_share_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_share_access (c : client) (req : share_access_request) : (share_access_info, string) result =
-    match c.call ~service:"PlayerService" ~op:"get-share-access" ~payload:(Codec.encode_share_access_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_share_access_info_bytes payload)
-    | Error _ as e -> e
+  let get_share_access (c : client) (req : share_access_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"get-share-access" ~payload:(Codec.encode_player_service_get_share_access_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_get_share_access_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_share_access (c : client) (req : set_share_access_request) : (share_access_info, string) result =
-    match c.call ~service:"PlayerService" ~op:"set-share-access" ~payload:(Codec.encode_set_share_access_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_share_access_info_bytes payload)
-    | Error _ as e -> e
+  let set_share_access (c : client) (req : set_share_access_request) =
+    try
+      match c.call ~service:"PlayerService" ~op:"set-share-access" ~payload:(Codec.encode_player_service_set_share_access_request req) with
+      | Ok bytes -> Ok (Codec.decode_player_service_set_share_access_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 end
 
 module Media_service = struct
@@ -189,169 +321,297 @@ module Media_service = struct
 end
 
 module Node_service = struct
-  let register (c : client) (req : register_node_request) : (register_node_response, string) result =
-    match c.call ~service:"NodeService" ~op:"register" ~payload:(Codec.encode_register_node_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_register_node_response_bytes payload)
-    | Error _ as e -> e
+  let register (c : client) (req : register_node_request) =
+    try
+      match c.call ~service:"NodeService" ~op:"register" ~payload:(Codec.encode_node_service_register_request req) with
+      | Ok bytes -> Ok (Codec.decode_node_service_register_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
   (* channel operation session is not part of the RPC client *)
 end
 
 module Admin_service = struct
-  let list_accounts (c : client) (req : page) : (list_accounts_response, string) result =
-    match c.call ~service:"AdminService" ~op:"list-accounts" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_list_accounts_response_bytes payload)
-    | Error _ as e -> e
+  let list_accounts (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-accounts" ~payload:(Codec.encode_admin_service_list_accounts_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_accounts_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_role (c : client) (req : set_role_request) : (account, string) result =
-    match c.call ~service:"AdminService" ~op:"set-role" ~payload:(Codec.encode_set_role_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_account_bytes payload)
-    | Error _ as e -> e
+  let set_role (c : client) (req : set_role_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"set-role" ~payload:(Codec.encode_admin_service_set_role_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_set_role_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_library_editor (c : client) (req : set_library_editor_request) : (ok, string) result =
-    match c.call ~service:"AdminService" ~op:"set-library-editor" ~payload:(Codec.encode_set_library_editor_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let set_library_editor (c : client) (req : set_library_editor_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"set-library-editor" ~payload:(Codec.encode_admin_service_set_library_editor_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_set_library_editor_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let delete_account (c : client) (req : admin_delete_account_request) : (ok, string) result =
-    match c.call ~service:"AdminService" ~op:"delete-account" ~payload:(Codec.encode_admin_delete_account_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let delete_account (c : client) (req : admin_delete_account_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"delete-account" ~payload:(Codec.encode_admin_service_delete_account_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_delete_account_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let trust_domain (c : client) (req : trust_domain_request) : (trusted_domains, string) result =
-    match c.call ~service:"AdminService" ~op:"trust-domain" ~payload:(Codec.encode_trust_domain_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_trusted_domains_bytes payload)
-    | Error _ as e -> e
+  let trust_domain (c : client) (req : trust_domain_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"trust-domain" ~payload:(Codec.encode_admin_service_trust_domain_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_trust_domain_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_trusted_domains (c : client) (req : page) : (trusted_domains, string) result =
-    match c.call ~service:"AdminService" ~op:"list-trusted-domains" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_trusted_domains_bytes payload)
-    | Error _ as e -> e
+  let list_trusted_domains (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-trusted-domains" ~payload:(Codec.encode_admin_service_list_trusted_domains_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_trusted_domains_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_trusted_identities (c : client) (req : page) : (trusted_identities, string) result =
-    match c.call ~service:"AdminService" ~op:"list-trusted-identities" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_trusted_identities_bytes payload)
-    | Error _ as e -> e
+  let list_trusted_identities (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-trusted-identities" ~payload:(Codec.encode_admin_service_list_trusted_identities_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_trusted_identities_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let trust_identity (c : client) (req : trust_identity_request) : (trusted_identities, string) result =
-    match c.call ~service:"AdminService" ~op:"trust-identity" ~payload:(Codec.encode_trust_identity_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_trusted_identities_bytes payload)
-    | Error _ as e -> e
+  let trust_identity (c : client) (req : trust_identity_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"trust-identity" ~payload:(Codec.encode_admin_service_trust_identity_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_trust_identity_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let revoke_trusted_identity (c : client) (req : revoke_trusted_identity_request) : (trusted_identities, string) result =
-    match c.call ~service:"AdminService" ~op:"revoke-trusted-identity" ~payload:(Codec.encode_revoke_trusted_identity_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_trusted_identities_bytes payload)
-    | Error _ as e -> e
+  let revoke_trusted_identity (c : client) (req : revoke_trusted_identity_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"revoke-trusted-identity" ~payload:(Codec.encode_admin_service_revoke_trusted_identity_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_revoke_trusted_identity_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_nodes (c : client) (req : page) : (list_nodes_response, string) result =
-    match c.call ~service:"AdminService" ~op:"list-nodes" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_list_nodes_response_bytes payload)
-    | Error _ as e -> e
+  let list_nodes (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-nodes" ~payload:(Codec.encode_admin_service_list_nodes_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_nodes_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let rename_node (c : client) (req : rename_node_request) : (node_info, string) result =
-    match c.call ~service:"AdminService" ~op:"rename-node" ~payload:(Codec.encode_rename_node_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_node_info_bytes payload)
-    | Error _ as e -> e
+  let rename_node (c : client) (req : rename_node_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"rename-node" ~payload:(Codec.encode_admin_service_rename_node_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_rename_node_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let rename_device (c : client) (req : rename_device_request) : (device_info, string) result =
-    match c.call ~service:"AdminService" ~op:"rename-device" ~payload:(Codec.encode_rename_device_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_device_info_bytes payload)
-    | Error _ as e -> e
+  let rename_device (c : client) (req : rename_device_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"rename-device" ~payload:(Codec.encode_admin_service_rename_device_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_rename_device_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_device_access (c : client) (req : set_device_access_request) : (device_info, string) result =
-    match c.call ~service:"AdminService" ~op:"set-device-access" ~payload:(Codec.encode_set_device_access_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_device_info_bytes payload)
-    | Error _ as e -> e
+  let set_device_access (c : client) (req : set_device_access_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"set-device-access" ~payload:(Codec.encode_admin_service_set_device_access_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_set_device_access_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_groups (c : client) (req : page) : (list_groups_response, string) result =
-    match c.call ~service:"AdminService" ~op:"list-groups" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_list_groups_response_bytes payload)
-    | Error _ as e -> e
+  let list_groups (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-groups" ~payload:(Codec.encode_admin_service_list_groups_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_groups_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let create_group (c : client) (req : create_group_request) : (group_info, string) result =
-    match c.call ~service:"AdminService" ~op:"create-group" ~payload:(Codec.encode_create_group_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_group_info_bytes payload)
-    | Error _ as e -> e
+  let create_group (c : client) (req : create_group_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"create-group" ~payload:(Codec.encode_admin_service_create_group_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_create_group_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_group_members (c : client) (req : set_group_members_request) : (group_info, string) result =
-    match c.call ~service:"AdminService" ~op:"set-group-members" ~payload:(Codec.encode_set_group_members_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_group_info_bytes payload)
-    | Error _ as e -> e
+  let set_group_members (c : client) (req : set_group_members_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"set-group-members" ~payload:(Codec.encode_admin_service_set_group_members_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_set_group_members_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let delete_group (c : client) (req : delete_group_request) : (ok, string) result =
-    match c.call ~service:"AdminService" ~op:"delete-group" ~payload:(Codec.encode_delete_group_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let delete_group (c : client) (req : delete_group_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"delete-group" ~payload:(Codec.encode_admin_service_delete_group_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_delete_group_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_satellite_tokens (c : client) (req : page) : (list_satellite_tokens_response, string) result =
-    match c.call ~service:"AdminService" ~op:"list-satellite-tokens" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_list_satellite_tokens_response_bytes payload)
-    | Error _ as e -> e
+  let list_satellite_tokens (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-satellite-tokens" ~payload:(Codec.encode_admin_service_list_satellite_tokens_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_satellite_tokens_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let create_node_token (c : client) (req : create_node_token_request) : (node_token_result, string) result =
-    match c.call ~service:"AdminService" ~op:"create-node-token" ~payload:(Codec.encode_create_node_token_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_node_token_result_bytes payload)
-    | Error _ as e -> e
+  let create_node_token (c : client) (req : create_node_token_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"create-node-token" ~payload:(Codec.encode_admin_service_create_node_token_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_create_node_token_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let revoke_satellite_token (c : client) (req : revoke_satellite_token_request) : (ok, string) result =
-    match c.call ~service:"AdminService" ~op:"revoke-satellite-token" ~payload:(Codec.encode_revoke_satellite_token_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let revoke_satellite_token (c : client) (req : revoke_satellite_token_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"revoke-satellite-token" ~payload:(Codec.encode_admin_service_revoke_satellite_token_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_revoke_satellite_token_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let import_track (c : client) (req : import_track_request) : (import_result, string) result =
-    match c.call ~service:"AdminService" ~op:"import-track" ~payload:(Codec.encode_import_track_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_import_result_bytes payload)
-    | Error _ as e -> e
+  let import_track (c : client) (req : import_track_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"import-track" ~payload:(Codec.encode_admin_service_import_track_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_import_track_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let begin_import (c : client) (req : begin_import_request) : (begin_import_result, string) result =
-    match c.call ~service:"AdminService" ~op:"begin-import" ~payload:(Codec.encode_begin_import_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_begin_import_result_bytes payload)
-    | Error _ as e -> e
+  let begin_import (c : client) (req : begin_import_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"begin-import" ~payload:(Codec.encode_admin_service_begin_import_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_begin_import_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let import_chunk (c : client) (req : import_chunk_request) : (ok, string) result =
-    match c.call ~service:"AdminService" ~op:"import-chunk" ~payload:(Codec.encode_import_chunk_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let import_chunk (c : client) (req : import_chunk_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"import-chunk" ~payload:(Codec.encode_admin_service_import_chunk_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_import_chunk_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let finish_import (c : client) (req : finish_import_request) : (import_result, string) result =
-    match c.call ~service:"AdminService" ~op:"finish-import" ~payload:(Codec.encode_finish_import_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_import_result_bytes payload)
-    | Error _ as e -> e
+  let finish_import (c : client) (req : finish_import_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"finish-import" ~payload:(Codec.encode_admin_service_finish_import_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_finish_import_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let cancel_import (c : client) (req : cancel_import_request) : (ok, string) result =
-    match c.call ~service:"AdminService" ~op:"cancel-import" ~payload:(Codec.encode_cancel_import_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_ok_bytes payload)
-    | Error _ as e -> e
+  let cancel_import (c : client) (req : cancel_import_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"cancel-import" ~payload:(Codec.encode_admin_service_cancel_import_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_cancel_import_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_settings (c : client) (req : page) : (settings, string) result =
-    match c.call ~service:"AdminService" ~op:"get-settings" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_settings_bytes payload)
-    | Error _ as e -> e
+  let get_settings (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"get-settings" ~payload:(Codec.encode_admin_service_get_settings_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_get_settings_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let set_setting (c : client) (req : set_setting_request) : (settings, string) result =
-    match c.call ~service:"AdminService" ~op:"set-setting" ~payload:(Codec.encode_set_setting_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_settings_bytes payload)
-    | Error _ as e -> e
+  let set_setting (c : client) (req : set_setting_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"set-setting" ~payload:(Codec.encode_admin_service_set_setting_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_set_setting_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let resync_library (c : client) (req : page) : (library_resync_status, string) result =
-    match c.call ~service:"AdminService" ~op:"resync-library" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_library_resync_status_bytes payload)
-    | Error _ as e -> e
+  let resync_library (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"resync-library" ~payload:(Codec.encode_admin_service_resync_library_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_resync_library_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let get_resync_status (c : client) (req : page) : (library_resync_status, string) result =
-    match c.call ~service:"AdminService" ~op:"get-resync-status" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_library_resync_status_bytes payload)
-    | Error _ as e -> e
+  let get_resync_status (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"get-resync-status" ~payload:(Codec.encode_admin_service_get_resync_status_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_get_resync_status_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let list_content_reports (c : client) (req : page) : (list_content_reports_response, string) result =
-    match c.call ~service:"AdminService" ~op:"list-content-reports" ~payload:(Codec.encode_page_bytes req) with
-    | Ok payload -> Ok (Codec.decode_list_content_reports_response_bytes payload)
-    | Error _ as e -> e
+  let list_content_reports (c : client) (req : page) =
+    try
+      match c.call ~service:"AdminService" ~op:"list-content-reports" ~payload:(Codec.encode_admin_service_list_content_reports_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_list_content_reports_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 
-  let update_content_report_status (c : client) (req : update_content_report_status_request) : (content_report, string) result =
-    match c.call ~service:"AdminService" ~op:"update-content-report-status" ~payload:(Codec.encode_update_content_report_status_request_bytes req) with
-    | Ok payload -> Ok (Codec.decode_content_report_bytes payload)
-    | Error _ as e -> e
+  let update_content_report_status (c : client) (req : update_content_report_status_request) =
+    try
+      match c.call ~service:"AdminService" ~op:"update-content-report-status" ~payload:(Codec.encode_admin_service_update_content_report_status_request req) with
+      | Ok bytes -> Ok (Codec.decode_admin_service_update_content_report_status_success bytes)
+      | Error e -> Error (`Transport e)
+    with
+    | Codec.Service_error_refusal value -> Error (`Service_error value)
+    | Failure e | Invalid_argument e -> Error (`Decode e)
 end
 
 module Change_service = struct

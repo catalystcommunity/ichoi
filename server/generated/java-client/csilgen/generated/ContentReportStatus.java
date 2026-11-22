@@ -2,4 +2,21 @@
 
 package csilgen.generated;
 
-public record ContentReportStatus(Object value) {}
+public enum ContentReportStatus {
+    OPEN("open"),
+    RESOLVED("resolved"),
+    DISMISSED("dismissed");
+
+    private final String value;
+
+    ContentReportStatus(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static ContentReportStatus fromWire(String value) {
+        for (ContentReportStatus member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown ContentReportStatus value: " + value);
+    }
+}

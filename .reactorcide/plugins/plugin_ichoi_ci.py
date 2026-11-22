@@ -8,7 +8,6 @@ workstation as it does on a worker.
 
 from __future__ import annotations
 
-import json
 import os
 import re
 import shlex
@@ -38,7 +37,6 @@ RUST_TARGETS = ("x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl")
 BUILD_PACKAGES = ("musl-tools",)
 AARCH64_MUSL_CROSS_URL = "https://musl.cc/aarch64-linux-musl-cross.tgz"
 CSILGEN_REPOSITORY = "https://github.com/catalystcommunity/csilgen.git"
-CSILGEN_RELEASES_API = "https://api.github.com/repos/catalystcommunity/csilgen/releases"
 RUSTUP_URL = "https://sh.rustup.rs"
 
 
@@ -96,15 +94,15 @@ def _rust_environment() -> Dict[str, str]:
     return environment
 
 
-def _ensure_cargo(environment: Dict[str, str], cwd: Path) -> None:
-    if shutil.which("cargo", path=environment["PATH"]):
+def _ensure_rustup(environment: Dict[str, str], cwd: Path) -> None:
+    if shutil.which("rustup", path=environment["PATH"]):
         return
-    log_stdout("cargo not found; installing the stable toolchain with rustup")
+    log_stdout("Installing rustup for the toolchain in server/rust-toolchain.toml")
     installer = Path("/tmp/rustup-init.sh")
     with urllib.request.urlopen(RUSTUP_URL, timeout=120) as response:
         installer.write_bytes(response.read())
     _run(
-        ["sh", str(installer), "-y", "--default-toolchain", "stable"],
+        ["sh", str(installer), "-y", "--default-toolchain", "none"],
         cwd=cwd,
         env=environment,
     )
@@ -222,7 +220,7 @@ def build(code_dir: Path) -> None:
     """Build the workspace for both release architectures as static musl binaries."""
     _apt_install(list(BUILD_PACKAGES), code_dir)
     environment = _rust_environment()
-    _ensure_cargo(environment, code_dir)
+    _ensure_rustup(environment, code_dir)
     _install_aarch64_musl_cross(environment, code_dir)
 
     server_dir = code_dir / "server"
@@ -262,7 +260,7 @@ def test_sqlite(code_dir: Path) -> None:
     """Run the workspace test suite against SQLite, the only backend (DESIGN Sec.2)."""
     _apt_install([], code_dir)
     environment = _rust_environment()
-    _ensure_cargo(environment, code_dir)
+    _ensure_rustup(environment, code_dir)
 
     log_stdout("=== Running release state-machine tests ===")
     _run_plugin_unit_tests(code_dir, environment)
@@ -285,23 +283,6 @@ def _csilgen_release(code_dir: Path) -> str:
     if not re.fullmatch(r"csilgen/v\d+\.\d+\.\d+", release):
         raise RuntimeError(f"Invalid csilgen release pin: {release}")
     return release
-
-
-def _pinned_release_list(release: str, directory: Path) -> Path:
-    """Write a one-item GitHub release list for the pinned release and return its path."""
-    url = f"{CSILGEN_RELEASES_API}/tags/{release}"
-    request = urllib.request.Request(
-        url,
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "ichoi-ci"},
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:
-        data = json.loads(response.read().decode("utf-8"))
-    if data.get("tag_name") != release or data.get("draft") or data.get("prerelease"):
-        raise RuntimeError(f"{release} is not a published csilgen release")
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / "pinned-release.json"
-    path.write_text(json.dumps([data]), encoding="utf-8")
-    return path
 
 
 def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
@@ -337,13 +318,8 @@ def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
     install_environment["CARGO_HOME"] = str(cargo_home)
     install_environment["CSILGEN_BIN_DIR"] = str(bin_dir)
     install_environment["CSILGEN_GENERATOR_DIR"] = str(generator_dir)
-    # `install-all` installs the newest release in the list that CSILGEN_GITHUB_API returns,
-    # not the release of the checkout. Give it a list that holds only the pinned release.
-    install_environment["CSILGEN_GITHUB_API"] = _pinned_release_list(
-        release, install_root
-    ).as_uri()
     installed = _run(
-        ["./tools.sh", "install-all"],
+        ["./tools.sh", "install-all", release],
         cwd=checkout,
         env=install_environment,
         capture_output=True,
@@ -352,7 +328,7 @@ def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
     if installed.stderr:
         log_stdout(installed.stderr)
     expected_marker = f"Installed GitHub Release: {release}"
-    if expected_marker not in installed.stdout:
+    if expected_marker not in installed.stdout.splitlines():
         raise RuntimeError(
             f"csilgen installer did not install the pinned release {release}"
         )
@@ -366,8 +342,7 @@ def _install_csilgen(environment: Dict[str, str], code_dir: Path) -> None:
 def csil(code_dir: Path) -> None:
     """Validate the schema and prove the checked-in generated server code matches it."""
     _apt_install(["git"], code_dir)
-    environment = _rust_environment()
-    _ensure_cargo(environment, code_dir)
+    environment = os.environ.copy()
     _install_csilgen(environment, code_dir)
 
     # tools.sh is repository-level tooling at the root; it drives the server target under

@@ -278,6 +278,32 @@ export function asLiteral<T extends CborValue>(value: CborValue, expected: T): T
 /** Validate a decoded scalar against a literal-enum's declared vocabulary, erroring
  * on an unknown value. The caller reads through `asNumber`/`asString`/`asBool`, which
  * already normalize a decoded `bigint` to `number`, so a plain membership check suffices. */
+/** CBOR orders unsigned integer keys first, then negative keys by magnitude. */
+export function enumNumberMap(entries: [bigint, CborValue][]): Map<CborValue, CborValue> {
+  return new Map(entries.sort(([a], [b]) => {
+    if (a === b) return 0;
+    if ((a < 0n) !== (b < 0n)) return a < 0n ? 1 : -1;
+    if (a < 0n) return a > b ? -1 : 1;
+    return a < b ? -1 : 1;
+  }));
+}
+
+export function enumToNumber(label: string, entries: readonly (readonly [string, bigint])[]): bigint {
+  for (const [name, number] of entries) {
+    if (name === label) return number;
+  }
+  throw new Error("unknown enum label");
+}
+
+export function enumFromNumber(value: CborValue, entries: readonly (readonly [string, bigint])[]): string {
+  if (typeof value === "bigint" || (typeof value === "number" && Number.isSafeInteger(value))) {
+    for (const [name, number] of entries) {
+      if (BigInt(value) === number) return name;
+    }
+  }
+  throw new Error("unknown enum number");
+}
+
 export function asEnumMember<T extends number | string | boolean | null>(
   value: T,
   members: readonly T[],
@@ -3894,3 +3920,1122 @@ export function fromDataChangeCbor(bytes: Uint8Array): DataChange {
   return fromDataChangeCborValue(decode(bytes));
 }
 
+export interface RpcReply { variant: string; payload: Uint8Array }
+
+export class ServiceErrorRefusal extends Error {
+  readonly value: ServiceError;
+
+  constructor(value: ServiceError) {
+    super("ServiceError");
+    this.value = value;
+  }
+}
+
+export async function encodeSessionServiceAuthenticateReply(handler: () => Promise<SessionInfo> | SessionInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "SessionInfo", payload: encodeValue(toSessionInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeSessionServiceWhoamiReply(handler: () => Promise<SessionInfo> | SessionInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "SessionInfo", payload: encodeValue(toSessionInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeSessionServiceLogoutReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeSessionServiceDeleteAccountReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceListLibrariesReply(handler: () => Promise<LibrariesResponse> | LibrariesResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "LibrariesResponse", payload: encodeValue(toLibrariesResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceListAlbumsReply(handler: () => Promise<AlbumsResponse> | AlbumsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "AlbumsResponse", payload: encodeValue(toAlbumsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceListArtistsReply(handler: () => Promise<ArtistsResponse> | ArtistsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ArtistsResponse", payload: encodeValue(toArtistsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetAlbumReply(handler: () => Promise<AlbumDetail> | AlbumDetail): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "AlbumDetail", payload: encodeValue(toAlbumDetailCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetArtistReply(handler: () => Promise<ArtistDetail> | ArtistDetail): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ArtistDetail", payload: encodeValue(toArtistDetailCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceSearchReply(handler: () => Promise<SearchResponse> | SearchResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "SearchResponse", payload: encodeValue(toSearchResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceExportManifestReply(handler: () => Promise<ExportManifest> | ExportManifest): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ExportManifest", payload: encodeValue(toExportManifestCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceExportChunkReply(handler: () => Promise<ExportChunk> | ExportChunk): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ExportChunk", payload: encodeValue(toExportChunkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceListPlaylistsReply(handler: () => Promise<PlaylistsResponse> | PlaylistsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "PlaylistsResponse", payload: encodeValue(toPlaylistsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetPlaylistReply(handler: () => Promise<PlaylistDetail> | PlaylistDetail): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "PlaylistDetail", payload: encodeValue(toPlaylistDetailCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceDeletePlaylistReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceBlockAccountReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceUnblockAccountReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceListBlockedAccountsReply(handler: () => Promise<BlockedAccountsResponse> | BlockedAccountsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "BlockedAccountsResponse", payload: encodeValue(toBlockedAccountsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetCoverArtReply(handler: () => Promise<CoverArt> | CoverArt): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "CoverArt", payload: encodeValue(toCoverArtCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetArtworkReply(handler: () => Promise<CoverArt> | CoverArt): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "CoverArt", payload: encodeValue(toCoverArtCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceListArtworkCandidatesReply(handler: () => Promise<ArtworkCandidates> | ArtworkCandidates): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ArtworkCandidates", payload: encodeValue(toArtworkCandidatesCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetArtworkCandidateReply(handler: () => Promise<CoverArt> | CoverArt): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "CoverArt", payload: encodeValue(toCoverArtCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceSetArtworkReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceGetAudiobookProgressReply(handler: () => Promise<AudiobookProgressResponse> | AudiobookProgressResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "AudiobookProgressResponse", payload: encodeValue(toAudiobookProgressResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceUpdateAudiobookProgressReply(handler: () => Promise<AudiobookProgress> | AudiobookProgress): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "AudiobookProgress", payload: encodeValue(toAudiobookProgressCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeLibraryServiceReportContentReply(handler: () => Promise<ContentReport> | ContentReport): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ContentReport", payload: encodeValue(toContentReportCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceListPlayersReply(handler: () => Promise<ListPlayersResponse> | ListPlayersResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ListPlayersResponse", payload: encodeValue(toListPlayersResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceGetStateReply(handler: () => Promise<PlayerState> | PlayerState): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "PlayerState", payload: encodeValue(toPlayerStateCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceControlReply(handler: () => Promise<PlayerState> | PlayerState): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "PlayerState", payload: encodeValue(toPlayerStateCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceEnableShareReply(handler: () => Promise<ShareResult> | ShareResult): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ShareResult", payload: encodeValue(toShareResultCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceDisableShareReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceGetShareAccessReply(handler: () => Promise<ShareAccessInfo> | ShareAccessInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ShareAccessInfo", payload: encodeValue(toShareAccessInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodePlayerServiceSetShareAccessReply(handler: () => Promise<ShareAccessInfo> | ShareAccessInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ShareAccessInfo", payload: encodeValue(toShareAccessInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeNodeServiceRegisterReply(handler: () => Promise<RegisterNodeResponse> | RegisterNodeResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "RegisterNodeResponse", payload: encodeValue(toRegisterNodeResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListAccountsReply(handler: () => Promise<ListAccountsResponse> | ListAccountsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ListAccountsResponse", payload: encodeValue(toListAccountsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceSetRoleReply(handler: () => Promise<Account> | Account): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Account", payload: encodeValue(toAccountCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceSetLibraryEditorReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceDeleteAccountReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceTrustDomainReply(handler: () => Promise<TrustedDomains> | TrustedDomains): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "TrustedDomains", payload: encodeValue(toTrustedDomainsCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListTrustedDomainsReply(handler: () => Promise<TrustedDomains> | TrustedDomains): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "TrustedDomains", payload: encodeValue(toTrustedDomainsCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListTrustedIdentitiesReply(handler: () => Promise<TrustedIdentities> | TrustedIdentities): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "TrustedIdentities", payload: encodeValue(toTrustedIdentitiesCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceTrustIdentityReply(handler: () => Promise<TrustedIdentities> | TrustedIdentities): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "TrustedIdentities", payload: encodeValue(toTrustedIdentitiesCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceRevokeTrustedIdentityReply(handler: () => Promise<TrustedIdentities> | TrustedIdentities): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "TrustedIdentities", payload: encodeValue(toTrustedIdentitiesCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListNodesReply(handler: () => Promise<ListNodesResponse> | ListNodesResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ListNodesResponse", payload: encodeValue(toListNodesResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceRenameNodeReply(handler: () => Promise<NodeInfo> | NodeInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "NodeInfo", payload: encodeValue(toNodeInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceRenameDeviceReply(handler: () => Promise<DeviceInfo> | DeviceInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "DeviceInfo", payload: encodeValue(toDeviceInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceSetDeviceAccessReply(handler: () => Promise<DeviceInfo> | DeviceInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "DeviceInfo", payload: encodeValue(toDeviceInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListGroupsReply(handler: () => Promise<ListGroupsResponse> | ListGroupsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ListGroupsResponse", payload: encodeValue(toListGroupsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceCreateGroupReply(handler: () => Promise<GroupInfo> | GroupInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "GroupInfo", payload: encodeValue(toGroupInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceSetGroupMembersReply(handler: () => Promise<GroupInfo> | GroupInfo): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "GroupInfo", payload: encodeValue(toGroupInfoCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceDeleteGroupReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListSatelliteTokensReply(handler: () => Promise<ListSatelliteTokensResponse> | ListSatelliteTokensResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ListSatelliteTokensResponse", payload: encodeValue(toListSatelliteTokensResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceCreateNodeTokenReply(handler: () => Promise<NodeTokenResult> | NodeTokenResult): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "NodeTokenResult", payload: encodeValue(toNodeTokenResultCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceRevokeSatelliteTokenReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceImportTrackReply(handler: () => Promise<ImportResult> | ImportResult): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ImportResult", payload: encodeValue(toImportResultCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceBeginImportReply(handler: () => Promise<BeginImportResult> | BeginImportResult): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "BeginImportResult", payload: encodeValue(toBeginImportResultCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceImportChunkReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceFinishImportReply(handler: () => Promise<ImportResult> | ImportResult): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ImportResult", payload: encodeValue(toImportResultCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceCancelImportReply(handler: () => Promise<Ok> | Ok): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Ok", payload: encodeValue(toOkCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceGetSettingsReply(handler: () => Promise<Settings> | Settings): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Settings", payload: encodeValue(toSettingsCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceSetSettingReply(handler: () => Promise<Settings> | Settings): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "Settings", payload: encodeValue(toSettingsCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceResyncLibraryReply(handler: () => Promise<LibraryResyncStatus> | LibraryResyncStatus): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "LibraryResyncStatus", payload: encodeValue(toLibraryResyncStatusCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceGetResyncStatusReply(handler: () => Promise<LibraryResyncStatus> | LibraryResyncStatus): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "LibraryResyncStatus", payload: encodeValue(toLibraryResyncStatusCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceListContentReportsReply(handler: () => Promise<ListContentReportsResponse> | ListContentReportsResponse): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ListContentReportsResponse", payload: encodeValue(toListContentReportsResponseCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export async function encodeAdminServiceUpdateContentReportStatusReply(handler: () => Promise<ContentReport> | ContentReport): Promise<RpcReply> {
+  try {
+    const value = await handler();
+    return { variant: "ContentReport", payload: encodeValue(toContentReportCborValue(value)) };
+  } catch (error) {
+    if (error instanceof ServiceErrorRefusal) return { variant: "ServiceError", payload: encodeValue(toServiceErrorCborValue(error.value)) };
+    throw error;
+  }
+}
+
+export function resolveRpcReply(service: string, op: string, variant: string | null | undefined, payload: Uint8Array): Uint8Array {
+  if (service === "SessionService" && op === "authenticate") {
+    switch (variant) {
+      case "SessionInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "SessionService" && op === "whoami") {
+    switch (variant) {
+      case "SessionInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "SessionService" && op === "logout") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "SessionService" && op === "delete-account") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "list-libraries") {
+    switch (variant) {
+      case "LibrariesResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "list-albums") {
+    switch (variant) {
+      case "AlbumsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "list-artists") {
+    switch (variant) {
+      case "ArtistsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-album") {
+    switch (variant) {
+      case "AlbumDetail": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-artist") {
+    switch (variant) {
+      case "ArtistDetail": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "search") {
+    switch (variant) {
+      case "SearchResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "export-manifest") {
+    switch (variant) {
+      case "ExportManifest": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "export-chunk") {
+    switch (variant) {
+      case "ExportChunk": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "list-playlists") {
+    switch (variant) {
+      case "PlaylistsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-playlist") {
+    switch (variant) {
+      case "PlaylistDetail": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "delete-playlist") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "block-account") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "unblock-account") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "list-blocked-accounts") {
+    switch (variant) {
+      case "BlockedAccountsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-cover-art") {
+    switch (variant) {
+      case "CoverArt": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-artwork") {
+    switch (variant) {
+      case "CoverArt": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "list-artwork-candidates") {
+    switch (variant) {
+      case "ArtworkCandidates": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-artwork-candidate") {
+    switch (variant) {
+      case "CoverArt": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "set-artwork") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "get-audiobook-progress") {
+    switch (variant) {
+      case "AudiobookProgressResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "update-audiobook-progress") {
+    switch (variant) {
+      case "AudiobookProgress": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "LibraryService" && op === "report-content") {
+    switch (variant) {
+      case "ContentReport": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "list-players") {
+    switch (variant) {
+      case "ListPlayersResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "get-state") {
+    switch (variant) {
+      case "PlayerState": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "control") {
+    switch (variant) {
+      case "PlayerState": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "enable-share") {
+    switch (variant) {
+      case "ShareResult": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "disable-share") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "get-share-access") {
+    switch (variant) {
+      case "ShareAccessInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "PlayerService" && op === "set-share-access") {
+    switch (variant) {
+      case "ShareAccessInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "NodeService" && op === "register") {
+    switch (variant) {
+      case "RegisterNodeResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-accounts") {
+    switch (variant) {
+      case "ListAccountsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "set-role") {
+    switch (variant) {
+      case "Account": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "set-library-editor") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "delete-account") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "trust-domain") {
+    switch (variant) {
+      case "TrustedDomains": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-trusted-domains") {
+    switch (variant) {
+      case "TrustedDomains": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-trusted-identities") {
+    switch (variant) {
+      case "TrustedIdentities": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "trust-identity") {
+    switch (variant) {
+      case "TrustedIdentities": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "revoke-trusted-identity") {
+    switch (variant) {
+      case "TrustedIdentities": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-nodes") {
+    switch (variant) {
+      case "ListNodesResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "rename-node") {
+    switch (variant) {
+      case "NodeInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "rename-device") {
+    switch (variant) {
+      case "DeviceInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "set-device-access") {
+    switch (variant) {
+      case "DeviceInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-groups") {
+    switch (variant) {
+      case "ListGroupsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "create-group") {
+    switch (variant) {
+      case "GroupInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "set-group-members") {
+    switch (variant) {
+      case "GroupInfo": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "delete-group") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-satellite-tokens") {
+    switch (variant) {
+      case "ListSatelliteTokensResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "create-node-token") {
+    switch (variant) {
+      case "NodeTokenResult": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "revoke-satellite-token") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "import-track") {
+    switch (variant) {
+      case "ImportResult": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "begin-import") {
+    switch (variant) {
+      case "BeginImportResult": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "import-chunk") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "finish-import") {
+    switch (variant) {
+      case "ImportResult": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "cancel-import") {
+    switch (variant) {
+      case "Ok": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "get-settings") {
+    switch (variant) {
+      case "Settings": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "set-setting") {
+    switch (variant) {
+      case "Settings": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "resync-library") {
+    switch (variant) {
+      case "LibraryResyncStatus": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "get-resync-status") {
+    switch (variant) {
+      case "LibraryResyncStatus": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "list-content-reports") {
+    switch (variant) {
+      case "ListContentReportsResponse": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  if (service === "AdminService" && op === "update-content-report-status") {
+    switch (variant) {
+      case "ContentReport": return payload;
+      case "ServiceError": { const tree = decode(payload); throw new ServiceErrorRefusal(fromServiceErrorCborValue(tree)); }
+      default: throw new Error(`invalid RPC reply variant ${variant}`);
+    }
+  }
+  return payload;
+}

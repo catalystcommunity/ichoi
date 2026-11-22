@@ -2,4 +2,21 @@
 
 package csilgen.generated;
 
-public record PlayerStatus(Object value) {}
+public enum PlayerStatus {
+    STOPPED("stopped"),
+    PLAYING("playing"),
+    PAUSED("paused");
+
+    private final String value;
+
+    PlayerStatus(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static PlayerStatus fromWire(String value) {
+        for (PlayerStatus member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown PlayerStatus value: " + value);
+    }
+}

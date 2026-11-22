@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record AudioOutputsState(Object value) {}
+public enum AudioOutputsState {
+    NONE("none"),
+    SOME("some");
+
+    private final String value;
+
+    AudioOutputsState(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static AudioOutputsState fromWire(String value) {
+        for (AudioOutputsState member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown AudioOutputsState value: " + value);
+    }
+}

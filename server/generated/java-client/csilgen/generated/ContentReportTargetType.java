@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record ContentReportTargetType(Object value) {}
+public enum ContentReportTargetType {
+    PLAYLIST("playlist"),
+    ACCOUNT("account");
+
+    private final String value;
+
+    ContentReportTargetType(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static ContentReportTargetType fromWire(String value) {
+        for (ContentReportTargetType member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown ContentReportTargetType value: " + value);
+    }
+}

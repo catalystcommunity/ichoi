@@ -22,16 +22,51 @@ export type DeviceId = string;
 
 export type PlayerId = string;
 
+export const Role = {
+  ADMIN: "admin",
+  MEMBER: "member",
+  GUEST: "guest",
+} as const;
 export type Role = "admin" | "member" | "guest";
 
+export const PlayerStatus = {
+  STOPPED: "stopped",
+  PLAYING: "playing",
+  PAUSED: "paused",
+} as const;
 export type PlayerStatus = "stopped" | "playing" | "paused";
 
+export const RepeatMode = {
+  OFF: "off",
+  ALL: "all",
+  ONE: "one",
+} as const;
 export type RepeatMode = "off" | "all" | "one";
 
+export const NodeEvent = {
+  READY: "ready",
+  STATE: "state",
+  COMPLETED: "completed",
+  FAILED: "failed",
+} as const;
 export type NodeEvent = "ready" | "state" | "completed" | "failed";
 
+export const Codec = {
+  MP3: "mp3",
+  AAC: "aac",
+  VORBIS: "vorbis",
+  FLAC: "flac",
+  ALAC: "alac",
+  OPUS: "opus",
+  WAV: "wav",
+  WMA: "wma",
+} as const;
 export type Codec = "mp3" | "aac" | "vorbis" | "flac" | "alac" | "opus" | "wav" | "wma";
 
+export const TranscodeCodec = {
+  AAC: "aac",
+  MP3: "mp3",
+} as const;
 export type TranscodeCodec = "aac" | "mp3";
 
 export interface StreamPref {
@@ -49,10 +84,25 @@ export interface Ok {
   ok: boolean;
 }
 
+export const ContentReportTargetType = {
+  PLAYLIST: "playlist",
+  ACCOUNT: "account",
+} as const;
 export type ContentReportTargetType = "playlist" | "account";
 
+export const ContentReportReason = {
+  OBJECTIONABLE_CONTENT: "objectionable-content",
+  HARASSMENT: "harassment",
+  SPAM: "spam",
+  OTHER: "other",
+} as const;
 export type ContentReportReason = "objectionable-content" | "harassment" | "spam" | "other";
 
+export const ContentReportStatus = {
+  OPEN: "open",
+  RESOLVED: "resolved",
+  DISMISSED: "dismissed",
+} as const;
 export type ContentReportStatus = "open" | "resolved" | "dismissed";
 
 export interface ContentReport {
@@ -92,6 +142,10 @@ export interface DeleteAccountRequest {
   confirmationHandle: Handle;
 }
 
+export const Library = {
+  MUSIC: "music",
+  AUDIOBOOK: "audiobook",
+} as const;
 export type Library = "music" | "audiobook";
 
 export interface Track {
@@ -294,6 +348,10 @@ export interface CoverArt {
   data: Uint8Array;
 }
 
+export const ArtworkKind = {
+  ALBUM: "album",
+  ARTIST: "artist",
+} as const;
 export type ArtworkKind = "album" | "artist";
 
 export interface ArtworkRequest {
@@ -344,6 +402,10 @@ export interface ReportContentRequest {
   details?: string;
 }
 
+export const PlayerKind = {
+  SHARED: "shared",
+  PRIVATE: "private",
+} as const;
 export type PlayerKind = "shared" | "private";
 
 export interface Player {
@@ -519,6 +581,10 @@ export interface ShareResult {
   player: Player;
 }
 
+export const ShareAccess = {
+  EVERYONE: "everyone",
+  SELECTED: "selected",
+} as const;
 export type ShareAccess = "everyone" | "selected";
 
 export interface ShareAccessRequest {
@@ -587,6 +653,10 @@ export interface MediaHeader {
   codecConfig?: Uint8Array;
 }
 
+export const MediaEndReason = {
+  EOS: "eos",
+  STOPPED: "stopped",
+} as const;
 export type MediaEndReason = "eos" | "stopped";
 
 export interface MediaChunk {
@@ -730,8 +800,17 @@ export interface RevokeTrustedIdentityRequest {
   identity: string;
 }
 
+export const NodeKind = {
+  CORE: "core",
+  SATELLITE: "satellite",
+  CLIENT: "client",
+} as const;
 export type NodeKind = "core" | "satellite" | "client";
 
+export const AudioOutputsState = {
+  NONE: "none",
+  SOME: "some",
+} as const;
 export type AudioOutputsState = "none" | "some";
 
 export interface DeviceInfo {
@@ -896,6 +975,19 @@ export interface UpdateContentReportStatusRequest {
   status: ContentReportStatus;
 }
 
+export const ChangeTopic = {
+  PLAYERS: "players",
+  LIBRARIES: "libraries",
+  PLAYLISTS: "playlists",
+  PROGRESS: "progress",
+  SESSION: "session",
+  ACCOUNTS: "accounts",
+  TRUST: "trust",
+  NODES: "nodes",
+  GROUPS: "groups",
+  SETTINGS: "settings",
+  IMPORTS: "imports",
+} as const;
 export type ChangeTopic = "players" | "libraries" | "playlists" | "progress" | "session" | "accounts" | "trust" | "nodes" | "groups" | "settings" | "imports";
 
 export interface WatchChangesRequest {

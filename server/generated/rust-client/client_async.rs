@@ -31,7 +31,7 @@ impl<T: AsyncTransport> SessionAsyncClient<T> {
             .transport
             .call("SessionService", "authenticate", &encode_auth_request(&req))
             .await?;
-        decode_session_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_session_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// whoami (request/response).
@@ -40,7 +40,7 @@ impl<T: AsyncTransport> SessionAsyncClient<T> {
             .transport
             .call("SessionService", "whoami", &encode_page(&req))
             .await?;
-        decode_session_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_session_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// logout (request/response).
@@ -49,7 +49,7 @@ impl<T: AsyncTransport> SessionAsyncClient<T> {
             .transport
             .call("SessionService", "logout", &encode_page(&req))
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// delete-account (request/response).
@@ -62,7 +62,7 @@ impl<T: AsyncTransport> SessionAsyncClient<T> {
                 &encode_delete_account_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 }
 
@@ -83,7 +83,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             .transport
             .call("LibraryService", "list-libraries", &encode_page(&req))
             .await?;
-        decode_libraries_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_libraries_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-albums (request/response).
@@ -96,7 +96,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_browse_request(&req),
             )
             .await?;
-        decode_albums_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_albums_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-artists (request/response).
@@ -109,7 +109,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_browse_request(&req),
             )
             .await?;
-        decode_artists_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_artists_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-album (request/response).
@@ -118,7 +118,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             .transport
             .call("LibraryService", "get-album", &encode_album_request(&req))
             .await?;
-        decode_album_detail(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_album_detail(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-artist (request/response).
@@ -127,7 +127,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             .transport
             .call("LibraryService", "get-artist", &encode_artist_request(&req))
             .await?;
-        decode_artist_detail(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_artist_detail(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// search (request/response).
@@ -136,7 +136,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             .transport
             .call("LibraryService", "search", &encode_search_request(&req))
             .await?;
-        decode_search_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_search_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// export-manifest (request/response).
@@ -152,7 +152,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_export_manifest_request(&req),
             )
             .await?;
-        decode_export_manifest(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_export_manifest(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// export-chunk (request/response).
@@ -165,7 +165,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_export_chunk_request(&req),
             )
             .await?;
-        decode_export_chunk(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_export_chunk(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-playlists (request/response).
@@ -181,7 +181,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_browse_request(&req),
             )
             .await?;
-        decode_playlists_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_playlists_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-playlist (request/response).
@@ -194,7 +194,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_playlist_request(&req),
             )
             .await?;
-        decode_playlist_detail(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_playlist_detail(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// delete-playlist (request/response).
@@ -207,7 +207,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_delete_playlist_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// block-account (request/response).
@@ -220,7 +220,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_block_account_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// unblock-account (request/response).
@@ -233,7 +233,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_block_account_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-blocked-accounts (request/response).
@@ -249,8 +249,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_page(&req),
             )
             .await?;
-        decode_blocked_accounts_response(&csil_resp)
-            .map_err(|e| ClientError::Transport(e.to_string()))
+        decode_blocked_accounts_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-cover-art (request/response).
@@ -263,7 +262,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_cover_art_request(&req),
             )
             .await?;
-        decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_cover_art(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-artwork (request/response).
@@ -276,7 +275,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_artwork_request(&req),
             )
             .await?;
-        decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_cover_art(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-artwork-candidates (request/response).
@@ -292,7 +291,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_artwork_candidates_request(&req),
             )
             .await?;
-        decode_artwork_candidates(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_artwork_candidates(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-artwork-candidate (request/response).
@@ -308,7 +307,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_artwork_candidate_request(&req),
             )
             .await?;
-        decode_cover_art(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_cover_art(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-artwork (request/response).
@@ -321,7 +320,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_set_artwork_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-audiobook-progress (request/response).
@@ -338,7 +337,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
             )
             .await?;
         decode_audiobook_progress_response(&csil_resp)
-            .map_err(|e| ClientError::Transport(e.to_string()))
+            .map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// update-audiobook-progress (request/response).
@@ -354,7 +353,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_update_audiobook_progress_request(&req),
             )
             .await?;
-        decode_audiobook_progress(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_audiobook_progress(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// report-content (request/response).
@@ -370,7 +369,7 @@ impl<T: AsyncTransport> LibraryAsyncClient<T> {
                 &encode_report_content_request(&req),
             )
             .await?;
-        decode_content_report(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_content_report(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 }
 
@@ -398,7 +397,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
                 &encode_list_players_request(&req),
             )
             .await?;
-        decode_list_players_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_list_players_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-state (request/response).
@@ -411,7 +410,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
                 &encode_subscribe_request(&req),
             )
             .await?;
-        decode_player_state(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_player_state(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     // channel operation `subscribe` is not part of the RPC client
@@ -422,7 +421,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
             .transport
             .call("PlayerService", "control", &encode_command_request(&req))
             .await?;
-        decode_player_state(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_player_state(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// enable-share (request/response).
@@ -435,7 +434,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
                 &encode_enable_share_request(&req),
             )
             .await?;
-        decode_share_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_share_result(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// disable-share (request/response).
@@ -448,7 +447,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
                 &encode_disable_share_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-share-access (request/response).
@@ -464,7 +463,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
                 &encode_share_access_request(&req),
             )
             .await?;
-        decode_share_access_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_share_access_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-share-access (request/response).
@@ -480,7 +479,7 @@ impl<T: AsyncTransport> PlayerAsyncClient<T> {
                 &encode_set_share_access_request(&req),
             )
             .await?;
-        decode_share_access_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_share_access_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 }
 
@@ -522,7 +521,7 @@ impl<T: AsyncTransport> NodeAsyncClient<T> {
                 &encode_register_node_request(&req),
             )
             .await?;
-        decode_register_node_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_register_node_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     // channel operation `session` is not part of the RPC client
@@ -545,7 +544,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "list-accounts", &encode_page(&req))
             .await?;
-        decode_list_accounts_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_list_accounts_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-role (request/response).
@@ -554,7 +553,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "set-role", &encode_set_role_request(&req))
             .await?;
-        decode_account(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_account(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-library-editor (request/response).
@@ -570,7 +569,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_set_library_editor_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// delete-account (request/response).
@@ -583,7 +582,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_admin_delete_account_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// trust-domain (request/response).
@@ -599,7 +598,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_trust_domain_request(&req),
             )
             .await?;
-        decode_trusted_domains(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_trusted_domains(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-trusted-domains (request/response).
@@ -608,7 +607,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "list-trusted-domains", &encode_page(&req))
             .await?;
-        decode_trusted_domains(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_trusted_domains(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-trusted-identities (request/response).
@@ -624,7 +623,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_page(&req),
             )
             .await?;
-        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// trust-identity (request/response).
@@ -640,7 +639,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_trust_identity_request(&req),
             )
             .await?;
-        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// revoke-trusted-identity (request/response).
@@ -656,7 +655,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_revoke_trusted_identity_request(&req),
             )
             .await?;
-        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_trusted_identities(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-nodes (request/response).
@@ -665,7 +664,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "list-nodes", &encode_page(&req))
             .await?;
-        decode_list_nodes_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_list_nodes_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// rename-node (request/response).
@@ -678,7 +677,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_rename_node_request(&req),
             )
             .await?;
-        decode_node_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_node_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// rename-device (request/response).
@@ -691,7 +690,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_rename_device_request(&req),
             )
             .await?;
-        decode_device_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_device_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-device-access (request/response).
@@ -707,7 +706,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_set_device_access_request(&req),
             )
             .await?;
-        decode_device_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_device_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-groups (request/response).
@@ -716,7 +715,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "list-groups", &encode_page(&req))
             .await?;
-        decode_list_groups_response(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_list_groups_response(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// create-group (request/response).
@@ -729,7 +728,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_create_group_request(&req),
             )
             .await?;
-        decode_group_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_group_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-group-members (request/response).
@@ -745,7 +744,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_set_group_members_request(&req),
             )
             .await?;
-        decode_group_info(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_group_info(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// delete-group (request/response).
@@ -758,7 +757,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_delete_group_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-satellite-tokens (request/response).
@@ -771,7 +770,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .call("AdminService", "list-satellite-tokens", &encode_page(&req))
             .await?;
         decode_list_satellite_tokens_response(&csil_resp)
-            .map_err(|e| ClientError::Transport(e.to_string()))
+            .map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// create-node-token (request/response).
@@ -787,7 +786,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_create_node_token_request(&req),
             )
             .await?;
-        decode_node_token_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_node_token_result(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// revoke-satellite-token (request/response).
@@ -803,7 +802,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_revoke_satellite_token_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// import-track (request/response).
@@ -816,7 +815,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_import_track_request(&req),
             )
             .await?;
-        decode_import_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_import_result(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// begin-import (request/response).
@@ -832,7 +831,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_begin_import_request(&req),
             )
             .await?;
-        decode_begin_import_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_begin_import_result(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// import-chunk (request/response).
@@ -845,7 +844,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_import_chunk_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// finish-import (request/response).
@@ -861,7 +860,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_finish_import_request(&req),
             )
             .await?;
-        decode_import_result(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_import_result(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// cancel-import (request/response).
@@ -874,7 +873,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_cancel_import_request(&req),
             )
             .await?;
-        decode_ok(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_ok(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-settings (request/response).
@@ -883,7 +882,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "get-settings", &encode_page(&req))
             .await?;
-        decode_settings(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_settings(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// set-setting (request/response).
@@ -896,7 +895,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_set_setting_request(&req),
             )
             .await?;
-        decode_settings(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_settings(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// resync-library (request/response).
@@ -905,7 +904,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "resync-library", &encode_page(&req))
             .await?;
-        decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// get-resync-status (request/response).
@@ -914,7 +913,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .transport
             .call("AdminService", "get-resync-status", &encode_page(&req))
             .await?;
-        decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_library_resync_status(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// list-content-reports (request/response).
@@ -927,7 +926,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
             .call("AdminService", "list-content-reports", &encode_page(&req))
             .await?;
         decode_list_content_reports_response(&csil_resp)
-            .map_err(|e| ClientError::Transport(e.to_string()))
+            .map_err(|e| ClientError::Decode(e.to_string()))
     }
 
     /// update-content-report-status (request/response).
@@ -943,7 +942,7 @@ impl<T: AsyncTransport> AdminAsyncClient<T> {
                 &encode_update_content_report_status_request(&req),
             )
             .await?;
-        decode_content_report(&csil_resp).map_err(|e| ClientError::Transport(e.to_string()))
+        decode_content_report(&csil_resp).map_err(|e| ClientError::Decode(e.to_string()))
     }
 }
 

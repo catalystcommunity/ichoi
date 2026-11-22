@@ -1457,4 +1457,719 @@ typedef struct DataChange {
     uint64_t revision;
 } DataChange;
 
+typedef struct SessionServiceAuthenticateReply {
+    enum {
+        SessionServiceAuthenticateReply_as_session_info,
+        SessionServiceAuthenticateReply_as_service_error,
+    } kind;
+    union {
+        SessionInfo as_session_info;
+        ServiceError as_service_error;
+    } value;
+} SessionServiceAuthenticateReply;
+
+typedef struct SessionServiceWhoamiReply {
+    enum {
+        SessionServiceWhoamiReply_as_session_info,
+        SessionServiceWhoamiReply_as_service_error,
+    } kind;
+    union {
+        SessionInfo as_session_info;
+        ServiceError as_service_error;
+    } value;
+} SessionServiceWhoamiReply;
+
+typedef struct SessionServiceLogoutReply {
+    enum {
+        SessionServiceLogoutReply_as_ok,
+        SessionServiceLogoutReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} SessionServiceLogoutReply;
+
+typedef struct SessionServiceDeleteAccountReply {
+    enum {
+        SessionServiceDeleteAccountReply_as_ok,
+        SessionServiceDeleteAccountReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} SessionServiceDeleteAccountReply;
+
+typedef struct LibraryServiceListLibrariesReply {
+    enum {
+        LibraryServiceListLibrariesReply_as_libraries_response,
+        LibraryServiceListLibrariesReply_as_service_error,
+    } kind;
+    union {
+        LibrariesResponse as_libraries_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceListLibrariesReply;
+
+typedef struct LibraryServiceListAlbumsReply {
+    enum {
+        LibraryServiceListAlbumsReply_as_albums_response,
+        LibraryServiceListAlbumsReply_as_service_error,
+    } kind;
+    union {
+        AlbumsResponse as_albums_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceListAlbumsReply;
+
+typedef struct LibraryServiceListArtistsReply {
+    enum {
+        LibraryServiceListArtistsReply_as_artists_response,
+        LibraryServiceListArtistsReply_as_service_error,
+    } kind;
+    union {
+        ArtistsResponse as_artists_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceListArtistsReply;
+
+typedef struct LibraryServiceGetAlbumReply {
+    enum {
+        LibraryServiceGetAlbumReply_as_album_detail,
+        LibraryServiceGetAlbumReply_as_service_error,
+    } kind;
+    union {
+        AlbumDetail as_album_detail;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetAlbumReply;
+
+typedef struct LibraryServiceGetArtistReply {
+    enum {
+        LibraryServiceGetArtistReply_as_artist_detail,
+        LibraryServiceGetArtistReply_as_service_error,
+    } kind;
+    union {
+        ArtistDetail as_artist_detail;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetArtistReply;
+
+typedef struct LibraryServiceSearchReply {
+    enum {
+        LibraryServiceSearchReply_as_search_response,
+        LibraryServiceSearchReply_as_service_error,
+    } kind;
+    union {
+        SearchResponse as_search_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceSearchReply;
+
+typedef struct LibraryServiceExportManifestReply {
+    enum {
+        LibraryServiceExportManifestReply_as_export_manifest,
+        LibraryServiceExportManifestReply_as_service_error,
+    } kind;
+    union {
+        ExportManifest as_export_manifest;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceExportManifestReply;
+
+typedef struct LibraryServiceExportChunkReply {
+    enum {
+        LibraryServiceExportChunkReply_as_export_chunk,
+        LibraryServiceExportChunkReply_as_service_error,
+    } kind;
+    union {
+        ExportChunk as_export_chunk;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceExportChunkReply;
+
+typedef struct LibraryServiceListPlaylistsReply {
+    enum {
+        LibraryServiceListPlaylistsReply_as_playlists_response,
+        LibraryServiceListPlaylistsReply_as_service_error,
+    } kind;
+    union {
+        PlaylistsResponse as_playlists_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceListPlaylistsReply;
+
+typedef struct LibraryServiceGetPlaylistReply {
+    enum {
+        LibraryServiceGetPlaylistReply_as_playlist_detail,
+        LibraryServiceGetPlaylistReply_as_service_error,
+    } kind;
+    union {
+        PlaylistDetail as_playlist_detail;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetPlaylistReply;
+
+typedef struct LibraryServiceDeletePlaylistReply {
+    enum {
+        LibraryServiceDeletePlaylistReply_as_ok,
+        LibraryServiceDeletePlaylistReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceDeletePlaylistReply;
+
+typedef struct LibraryServiceBlockAccountReply {
+    enum {
+        LibraryServiceBlockAccountReply_as_ok,
+        LibraryServiceBlockAccountReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceBlockAccountReply;
+
+typedef struct LibraryServiceUnblockAccountReply {
+    enum {
+        LibraryServiceUnblockAccountReply_as_ok,
+        LibraryServiceUnblockAccountReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceUnblockAccountReply;
+
+typedef struct LibraryServiceListBlockedAccountsReply {
+    enum {
+        LibraryServiceListBlockedAccountsReply_as_blocked_accounts_response,
+        LibraryServiceListBlockedAccountsReply_as_service_error,
+    } kind;
+    union {
+        BlockedAccountsResponse as_blocked_accounts_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceListBlockedAccountsReply;
+
+typedef struct LibraryServiceGetCoverArtReply {
+    enum {
+        LibraryServiceGetCoverArtReply_as_cover_art,
+        LibraryServiceGetCoverArtReply_as_service_error,
+    } kind;
+    union {
+        CoverArt as_cover_art;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetCoverArtReply;
+
+typedef struct LibraryServiceGetArtworkReply {
+    enum {
+        LibraryServiceGetArtworkReply_as_cover_art,
+        LibraryServiceGetArtworkReply_as_service_error,
+    } kind;
+    union {
+        CoverArt as_cover_art;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetArtworkReply;
+
+typedef struct LibraryServiceListArtworkCandidatesReply {
+    enum {
+        LibraryServiceListArtworkCandidatesReply_as_artwork_candidates,
+        LibraryServiceListArtworkCandidatesReply_as_service_error,
+    } kind;
+    union {
+        ArtworkCandidates as_artwork_candidates;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceListArtworkCandidatesReply;
+
+typedef struct LibraryServiceGetArtworkCandidateReply {
+    enum {
+        LibraryServiceGetArtworkCandidateReply_as_cover_art,
+        LibraryServiceGetArtworkCandidateReply_as_service_error,
+    } kind;
+    union {
+        CoverArt as_cover_art;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetArtworkCandidateReply;
+
+typedef struct LibraryServiceSetArtworkReply {
+    enum {
+        LibraryServiceSetArtworkReply_as_ok,
+        LibraryServiceSetArtworkReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceSetArtworkReply;
+
+typedef struct LibraryServiceGetAudiobookProgressReply {
+    enum {
+        LibraryServiceGetAudiobookProgressReply_as_audiobook_progress_response,
+        LibraryServiceGetAudiobookProgressReply_as_service_error,
+    } kind;
+    union {
+        AudiobookProgressResponse as_audiobook_progress_response;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceGetAudiobookProgressReply;
+
+typedef struct LibraryServiceUpdateAudiobookProgressReply {
+    enum {
+        LibraryServiceUpdateAudiobookProgressReply_as_audiobook_progress,
+        LibraryServiceUpdateAudiobookProgressReply_as_service_error,
+    } kind;
+    union {
+        AudiobookProgress as_audiobook_progress;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceUpdateAudiobookProgressReply;
+
+typedef struct LibraryServiceReportContentReply {
+    enum {
+        LibraryServiceReportContentReply_as_content_report,
+        LibraryServiceReportContentReply_as_service_error,
+    } kind;
+    union {
+        ContentReport as_content_report;
+        ServiceError as_service_error;
+    } value;
+} LibraryServiceReportContentReply;
+
+typedef struct PlayerServiceListPlayersReply {
+    enum {
+        PlayerServiceListPlayersReply_as_list_players_response,
+        PlayerServiceListPlayersReply_as_service_error,
+    } kind;
+    union {
+        ListPlayersResponse as_list_players_response;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceListPlayersReply;
+
+typedef struct PlayerServiceGetStateReply {
+    enum {
+        PlayerServiceGetStateReply_as_player_state,
+        PlayerServiceGetStateReply_as_service_error,
+    } kind;
+    union {
+        PlayerState as_player_state;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceGetStateReply;
+
+typedef struct PlayerServiceControlReply {
+    enum {
+        PlayerServiceControlReply_as_player_state,
+        PlayerServiceControlReply_as_service_error,
+    } kind;
+    union {
+        PlayerState as_player_state;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceControlReply;
+
+typedef struct PlayerServiceEnableShareReply {
+    enum {
+        PlayerServiceEnableShareReply_as_share_result,
+        PlayerServiceEnableShareReply_as_service_error,
+    } kind;
+    union {
+        ShareResult as_share_result;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceEnableShareReply;
+
+typedef struct PlayerServiceDisableShareReply {
+    enum {
+        PlayerServiceDisableShareReply_as_ok,
+        PlayerServiceDisableShareReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceDisableShareReply;
+
+typedef struct PlayerServiceGetShareAccessReply {
+    enum {
+        PlayerServiceGetShareAccessReply_as_share_access_info,
+        PlayerServiceGetShareAccessReply_as_service_error,
+    } kind;
+    union {
+        ShareAccessInfo as_share_access_info;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceGetShareAccessReply;
+
+typedef struct PlayerServiceSetShareAccessReply {
+    enum {
+        PlayerServiceSetShareAccessReply_as_share_access_info,
+        PlayerServiceSetShareAccessReply_as_service_error,
+    } kind;
+    union {
+        ShareAccessInfo as_share_access_info;
+        ServiceError as_service_error;
+    } value;
+} PlayerServiceSetShareAccessReply;
+
+typedef struct NodeServiceRegisterReply {
+    enum {
+        NodeServiceRegisterReply_as_register_node_response,
+        NodeServiceRegisterReply_as_service_error,
+    } kind;
+    union {
+        RegisterNodeResponse as_register_node_response;
+        ServiceError as_service_error;
+    } value;
+} NodeServiceRegisterReply;
+
+typedef struct AdminServiceListAccountsReply {
+    enum {
+        AdminServiceListAccountsReply_as_list_accounts_response,
+        AdminServiceListAccountsReply_as_service_error,
+    } kind;
+    union {
+        ListAccountsResponse as_list_accounts_response;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListAccountsReply;
+
+typedef struct AdminServiceSetRoleReply {
+    enum {
+        AdminServiceSetRoleReply_as_account,
+        AdminServiceSetRoleReply_as_service_error,
+    } kind;
+    union {
+        Account as_account;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceSetRoleReply;
+
+typedef struct AdminServiceSetLibraryEditorReply {
+    enum {
+        AdminServiceSetLibraryEditorReply_as_ok,
+        AdminServiceSetLibraryEditorReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceSetLibraryEditorReply;
+
+typedef struct AdminServiceDeleteAccountReply {
+    enum {
+        AdminServiceDeleteAccountReply_as_ok,
+        AdminServiceDeleteAccountReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceDeleteAccountReply;
+
+typedef struct AdminServiceTrustDomainReply {
+    enum {
+        AdminServiceTrustDomainReply_as_trusted_domains,
+        AdminServiceTrustDomainReply_as_service_error,
+    } kind;
+    union {
+        TrustedDomains as_trusted_domains;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceTrustDomainReply;
+
+typedef struct AdminServiceListTrustedDomainsReply {
+    enum {
+        AdminServiceListTrustedDomainsReply_as_trusted_domains,
+        AdminServiceListTrustedDomainsReply_as_service_error,
+    } kind;
+    union {
+        TrustedDomains as_trusted_domains;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListTrustedDomainsReply;
+
+typedef struct AdminServiceListTrustedIdentitiesReply {
+    enum {
+        AdminServiceListTrustedIdentitiesReply_as_trusted_identities,
+        AdminServiceListTrustedIdentitiesReply_as_service_error,
+    } kind;
+    union {
+        TrustedIdentities as_trusted_identities;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListTrustedIdentitiesReply;
+
+typedef struct AdminServiceTrustIdentityReply {
+    enum {
+        AdminServiceTrustIdentityReply_as_trusted_identities,
+        AdminServiceTrustIdentityReply_as_service_error,
+    } kind;
+    union {
+        TrustedIdentities as_trusted_identities;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceTrustIdentityReply;
+
+typedef struct AdminServiceRevokeTrustedIdentityReply {
+    enum {
+        AdminServiceRevokeTrustedIdentityReply_as_trusted_identities,
+        AdminServiceRevokeTrustedIdentityReply_as_service_error,
+    } kind;
+    union {
+        TrustedIdentities as_trusted_identities;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceRevokeTrustedIdentityReply;
+
+typedef struct AdminServiceListNodesReply {
+    enum {
+        AdminServiceListNodesReply_as_list_nodes_response,
+        AdminServiceListNodesReply_as_service_error,
+    } kind;
+    union {
+        ListNodesResponse as_list_nodes_response;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListNodesReply;
+
+typedef struct AdminServiceRenameNodeReply {
+    enum {
+        AdminServiceRenameNodeReply_as_node_info,
+        AdminServiceRenameNodeReply_as_service_error,
+    } kind;
+    union {
+        NodeInfo as_node_info;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceRenameNodeReply;
+
+typedef struct AdminServiceRenameDeviceReply {
+    enum {
+        AdminServiceRenameDeviceReply_as_device_info,
+        AdminServiceRenameDeviceReply_as_service_error,
+    } kind;
+    union {
+        DeviceInfo as_device_info;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceRenameDeviceReply;
+
+typedef struct AdminServiceSetDeviceAccessReply {
+    enum {
+        AdminServiceSetDeviceAccessReply_as_device_info,
+        AdminServiceSetDeviceAccessReply_as_service_error,
+    } kind;
+    union {
+        DeviceInfo as_device_info;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceSetDeviceAccessReply;
+
+typedef struct AdminServiceListGroupsReply {
+    enum {
+        AdminServiceListGroupsReply_as_list_groups_response,
+        AdminServiceListGroupsReply_as_service_error,
+    } kind;
+    union {
+        ListGroupsResponse as_list_groups_response;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListGroupsReply;
+
+typedef struct AdminServiceCreateGroupReply {
+    enum {
+        AdminServiceCreateGroupReply_as_group_info,
+        AdminServiceCreateGroupReply_as_service_error,
+    } kind;
+    union {
+        GroupInfo as_group_info;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceCreateGroupReply;
+
+typedef struct AdminServiceSetGroupMembersReply {
+    enum {
+        AdminServiceSetGroupMembersReply_as_group_info,
+        AdminServiceSetGroupMembersReply_as_service_error,
+    } kind;
+    union {
+        GroupInfo as_group_info;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceSetGroupMembersReply;
+
+typedef struct AdminServiceDeleteGroupReply {
+    enum {
+        AdminServiceDeleteGroupReply_as_ok,
+        AdminServiceDeleteGroupReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceDeleteGroupReply;
+
+typedef struct AdminServiceListSatelliteTokensReply {
+    enum {
+        AdminServiceListSatelliteTokensReply_as_list_satellite_tokens_response,
+        AdminServiceListSatelliteTokensReply_as_service_error,
+    } kind;
+    union {
+        ListSatelliteTokensResponse as_list_satellite_tokens_response;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListSatelliteTokensReply;
+
+typedef struct AdminServiceCreateNodeTokenReply {
+    enum {
+        AdminServiceCreateNodeTokenReply_as_node_token_result,
+        AdminServiceCreateNodeTokenReply_as_service_error,
+    } kind;
+    union {
+        NodeTokenResult as_node_token_result;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceCreateNodeTokenReply;
+
+typedef struct AdminServiceRevokeSatelliteTokenReply {
+    enum {
+        AdminServiceRevokeSatelliteTokenReply_as_ok,
+        AdminServiceRevokeSatelliteTokenReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceRevokeSatelliteTokenReply;
+
+typedef struct AdminServiceImportTrackReply {
+    enum {
+        AdminServiceImportTrackReply_as_import_result,
+        AdminServiceImportTrackReply_as_service_error,
+    } kind;
+    union {
+        ImportResult as_import_result;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceImportTrackReply;
+
+typedef struct AdminServiceBeginImportReply {
+    enum {
+        AdminServiceBeginImportReply_as_begin_import_result,
+        AdminServiceBeginImportReply_as_service_error,
+    } kind;
+    union {
+        BeginImportResult as_begin_import_result;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceBeginImportReply;
+
+typedef struct AdminServiceImportChunkReply {
+    enum {
+        AdminServiceImportChunkReply_as_ok,
+        AdminServiceImportChunkReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceImportChunkReply;
+
+typedef struct AdminServiceFinishImportReply {
+    enum {
+        AdminServiceFinishImportReply_as_import_result,
+        AdminServiceFinishImportReply_as_service_error,
+    } kind;
+    union {
+        ImportResult as_import_result;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceFinishImportReply;
+
+typedef struct AdminServiceCancelImportReply {
+    enum {
+        AdminServiceCancelImportReply_as_ok,
+        AdminServiceCancelImportReply_as_service_error,
+    } kind;
+    union {
+        Ok as_ok;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceCancelImportReply;
+
+typedef struct AdminServiceGetSettingsReply {
+    enum {
+        AdminServiceGetSettingsReply_as_settings,
+        AdminServiceGetSettingsReply_as_service_error,
+    } kind;
+    union {
+        Settings as_settings;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceGetSettingsReply;
+
+typedef struct AdminServiceSetSettingReply {
+    enum {
+        AdminServiceSetSettingReply_as_settings,
+        AdminServiceSetSettingReply_as_service_error,
+    } kind;
+    union {
+        Settings as_settings;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceSetSettingReply;
+
+typedef struct AdminServiceResyncLibraryReply {
+    enum {
+        AdminServiceResyncLibraryReply_as_library_resync_status,
+        AdminServiceResyncLibraryReply_as_service_error,
+    } kind;
+    union {
+        LibraryResyncStatus as_library_resync_status;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceResyncLibraryReply;
+
+typedef struct AdminServiceGetResyncStatusReply {
+    enum {
+        AdminServiceGetResyncStatusReply_as_library_resync_status,
+        AdminServiceGetResyncStatusReply_as_service_error,
+    } kind;
+    union {
+        LibraryResyncStatus as_library_resync_status;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceGetResyncStatusReply;
+
+typedef struct AdminServiceListContentReportsReply {
+    enum {
+        AdminServiceListContentReportsReply_as_list_content_reports_response,
+        AdminServiceListContentReportsReply_as_service_error,
+    } kind;
+    union {
+        ListContentReportsResponse as_list_content_reports_response;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceListContentReportsReply;
+
+typedef struct AdminServiceUpdateContentReportStatusReply {
+    enum {
+        AdminServiceUpdateContentReportStatusReply_as_content_report,
+        AdminServiceUpdateContentReportStatusReply_as_service_error,
+    } kind;
+    union {
+        ContentReport as_content_report;
+        ServiceError as_service_error;
+    } value;
+} AdminServiceUpdateContentReportStatusReply;
+
 #endif /* CSILGEN_TYPES_GEN_H */

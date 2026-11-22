@@ -2,4 +2,26 @@
 
 package csilgen.generated;
 
-public record Codec(Object value) {}
+public enum Codec {
+    MP3("mp3"),
+    AAC("aac"),
+    VORBIS("vorbis"),
+    FLAC("flac"),
+    ALAC("alac"),
+    OPUS("opus"),
+    WAV("wav"),
+    WMA("wma");
+
+    private final String value;
+
+    Codec(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static Codec fromWire(String value) {
+        for (Codec member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown Codec value: " + value);
+    }
+}
