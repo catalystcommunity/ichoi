@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record ArtworkKind(Object value) {}
+public enum ArtworkKind {
+    ALBUM("album"),
+    ARTIST("artist");
+
+    private final String value;
+
+    ArtworkKind(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static ArtworkKind fromWire(String value) {
+        for (ArtworkKind member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown ArtworkKind value: " + value);
+    }
+}

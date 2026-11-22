@@ -24,17 +24,82 @@ require "time"
 
 # PlayerId is an alias for String.
 
-# Role is an alias for String.
+class Role < String
+  ADMIN = new("admin").freeze
+  MEMBER = new("member").freeze
+  GUEST = new("guest").freeze
+  MEMBERS_BY_WIRE = [ADMIN, MEMBER, GUEST].to_h { |v| [v, v] }.freeze
+  private_class_method :new
 
-# PlayerStatus is an alias for String.
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown Role value: #{value.inspect}" }
+  end
+end
 
-# RepeatMode is an alias for String.
+class PlayerStatus < String
+  STOPPED = new("stopped").freeze
+  PLAYING = new("playing").freeze
+  PAUSED = new("paused").freeze
+  MEMBERS_BY_WIRE = [STOPPED, PLAYING, PAUSED].to_h { |v| [v, v] }.freeze
+  private_class_method :new
 
-# NodeEvent is an alias for String.
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown PlayerStatus value: #{value.inspect}" }
+  end
+end
 
-# Codec is an alias for String.
+class RepeatMode < String
+  OFF = new("off").freeze
+  ALL = new("all").freeze
+  ONE = new("one").freeze
+  MEMBERS_BY_WIRE = [OFF, ALL, ONE].to_h { |v| [v, v] }.freeze
+  private_class_method :new
 
-# TranscodeCodec is an alias for String.
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown RepeatMode value: #{value.inspect}" }
+  end
+end
+
+class NodeEvent < String
+  READY = new("ready").freeze
+  STATE = new("state").freeze
+  COMPLETED = new("completed").freeze
+  FAILED = new("failed").freeze
+  MEMBERS_BY_WIRE = [READY, STATE, COMPLETED, FAILED].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown NodeEvent value: #{value.inspect}" }
+  end
+end
+
+class Codec < String
+  MP3 = new("mp3").freeze
+  AAC = new("aac").freeze
+  VORBIS = new("vorbis").freeze
+  FLAC = new("flac").freeze
+  ALAC = new("alac").freeze
+  OPUS = new("opus").freeze
+  WAV = new("wav").freeze
+  WMA = new("wma").freeze
+  MEMBERS_BY_WIRE = [MP3, AAC, VORBIS, FLAC, ALAC, OPUS, WAV, WMA].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown Codec value: #{value.inspect}" }
+  end
+end
+
+class TranscodeCodec < String
+  AAC = new("aac").freeze
+  MP3 = new("mp3").freeze
+  MEMBERS_BY_WIRE = [AAC, MP3].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown TranscodeCodec value: #{value.inspect}" }
+  end
+end
 
 # max_bitrate_kbps [Integer]
 # prefer_original [Boolean]
@@ -56,11 +121,41 @@ end
 # ok [Boolean]
 Ok = Data.define(:ok)
 
-# ContentReportTargetType is an alias for String.
+class ContentReportTargetType < String
+  PLAYLIST = new("playlist").freeze
+  ACCOUNT = new("account").freeze
+  MEMBERS_BY_WIRE = [PLAYLIST, ACCOUNT].to_h { |v| [v, v] }.freeze
+  private_class_method :new
 
-# ContentReportReason is an alias for String.
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown ContentReportTargetType value: #{value.inspect}" }
+  end
+end
 
-# ContentReportStatus is an alias for String.
+class ContentReportReason < String
+  OBJECTIONABLE_CONTENT = new("objectionable-content").freeze
+  HARASSMENT = new("harassment").freeze
+  SPAM = new("spam").freeze
+  OTHER = new("other").freeze
+  MEMBERS_BY_WIRE = [OBJECTIONABLE_CONTENT, HARASSMENT, SPAM, OTHER].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown ContentReportReason value: #{value.inspect}" }
+  end
+end
+
+class ContentReportStatus < String
+  OPEN = new("open").freeze
+  RESOLVED = new("resolved").freeze
+  DISMISSED = new("dismissed").freeze
+  MEMBERS_BY_WIRE = [OPEN, RESOLVED, DISMISSED].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown ContentReportStatus value: #{value.inspect}" }
+  end
+end
 
 # id [ContentReportId]
 # reporter_account_id [AccountId]
@@ -106,7 +201,16 @@ end
 # confirmation_handle [Handle]
 DeleteAccountRequest = Data.define(:confirmation_handle)
 
-# Library is an alias for String.
+class Library < String
+  MUSIC = new("music").freeze
+  AUDIOBOOK = new("audiobook").freeze
+  MEMBERS_BY_WIRE = [MUSIC, AUDIOBOOK].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown Library value: #{value.inspect}" }
+  end
+end
 
 # id [TrackId]
 # library [Library]
@@ -321,7 +425,16 @@ end
 # data [String]
 CoverArt = Data.define(:content_type, :data)
 
-# ArtworkKind is an alias for String.
+class ArtworkKind < String
+  ALBUM = new("album").freeze
+  ARTIST = new("artist").freeze
+  MEMBERS_BY_WIRE = [ALBUM, ARTIST].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown ArtworkKind value: #{value.inspect}" }
+  end
+end
 
 # kind [ArtworkKind]
 # id [String]
@@ -384,7 +497,16 @@ ReportContentRequest = Data.define(:target_type, :target_id, :reason, :details) 
   end
 end
 
-# PlayerKind is an alias for String.
+class PlayerKind < String
+  SHARED = new("shared").freeze
+  PRIVATE = new("private").freeze
+  MEMBERS_BY_WIRE = [SHARED, PRIVATE].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown PlayerKind value: #{value.inspect}" }
+  end
+end
 
 # id [PlayerId]
 # kind [PlayerKind]
@@ -595,7 +717,16 @@ DisableShareRequest = Data.define(:player_id)
 # player [Player]
 ShareResult = Data.define(:player)
 
-# ShareAccess is an alias for String.
+class ShareAccess < String
+  EVERYONE = new("everyone").freeze
+  SELECTED = new("selected").freeze
+  MEMBERS_BY_WIRE = [EVERYONE, SELECTED].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown ShareAccess value: #{value.inspect}" }
+  end
+end
 
 # player_id [PlayerId]
 ShareAccessRequest = Data.define(:player_id)
@@ -661,7 +792,16 @@ MediaHeader = Data.define(:kind, :stream_id, :codec, :transcoded, :sample_rate, 
   end
 end
 
-# MediaEndReason is an alias for String.
+class MediaEndReason < String
+  EOS = new("eos").freeze
+  STOPPED = new("stopped").freeze
+  MEMBERS_BY_WIRE = [EOS, STOPPED].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown MediaEndReason value: #{value.inspect}" }
+  end
+end
 
 # kind [String]
 # stream_id [String]
@@ -822,9 +962,28 @@ TrustIdentityRequest = Data.define(:identity)
 # identity [String]
 RevokeTrustedIdentityRequest = Data.define(:identity)
 
-# NodeKind is an alias for String.
+class NodeKind < String
+  CORE = new("core").freeze
+  SATELLITE = new("satellite").freeze
+  CLIENT = new("client").freeze
+  MEMBERS_BY_WIRE = [CORE, SATELLITE, CLIENT].to_h { |v| [v, v] }.freeze
+  private_class_method :new
 
-# AudioOutputsState is an alias for String.
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown NodeKind value: #{value.inspect}" }
+  end
+end
+
+class AudioOutputsState < String
+  NONE = new("none").freeze
+  SOME = new("some").freeze
+  MEMBERS_BY_WIRE = [NONE, SOME].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown AudioOutputsState value: #{value.inspect}" }
+  end
+end
 
 # id [DeviceId]
 # os_device_id [String]
@@ -1012,7 +1171,25 @@ ListContentReportsResponse = Data.define(:reports, :total)
 # status [ContentReportStatus]
 UpdateContentReportStatusRequest = Data.define(:report_id, :status)
 
-# ChangeTopic is an alias for String.
+class ChangeTopic < String
+  PLAYERS = new("players").freeze
+  LIBRARIES = new("libraries").freeze
+  PLAYLISTS = new("playlists").freeze
+  PROGRESS = new("progress").freeze
+  SESSION = new("session").freeze
+  ACCOUNTS = new("accounts").freeze
+  TRUST = new("trust").freeze
+  NODES = new("nodes").freeze
+  GROUPS = new("groups").freeze
+  SETTINGS = new("settings").freeze
+  IMPORTS = new("imports").freeze
+  MEMBERS_BY_WIRE = [PLAYERS, LIBRARIES, PLAYLISTS, PROGRESS, SESSION, ACCOUNTS, TRUST, NODES, GROUPS, SETTINGS, IMPORTS].to_h { |v| [v, v] }.freeze
+  private_class_method :new
+
+  def self.from_wire(value)
+    MEMBERS_BY_WIRE.fetch(value) { raise ArgumentError, "unknown ChangeTopic value: #{value.inspect}" }
+  end
+end
 
 # active [Boolean]
 WatchChangesRequest = Data.define(:active) do

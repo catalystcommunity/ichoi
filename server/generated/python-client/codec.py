@@ -4544,116 +4544,1101 @@ def _decode_role_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("admin", "member", "guest"):
         raise CsilDecodeError(f"csil cbor: unknown role value {csil_v!r}")
-    return csil_v
+    return Role(csil_v)
 
 
 def _decode_player_status_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("stopped", "playing", "paused"):
         raise CsilDecodeError(f"csil cbor: unknown player_status value {csil_v!r}")
-    return csil_v
+    return PlayerStatus(csil_v)
 
 
 def _decode_repeat_mode_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("off", "all", "one"):
         raise CsilDecodeError(f"csil cbor: unknown repeat_mode value {csil_v!r}")
-    return csil_v
+    return RepeatMode(csil_v)
 
 
 def _decode_node_event_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("ready", "state", "completed", "failed"):
         raise CsilDecodeError(f"csil cbor: unknown node_event value {csil_v!r}")
-    return csil_v
+    return NodeEvent(csil_v)
 
 
 def _decode_codec_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("mp3", "aac", "vorbis", "flac", "alac", "opus", "wav", "wma"):
         raise CsilDecodeError(f"csil cbor: unknown codec value {csil_v!r}")
-    return csil_v
+    return Codec(csil_v)
 
 
 def _decode_transcode_codec_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("aac", "mp3"):
         raise CsilDecodeError(f"csil cbor: unknown transcode_codec value {csil_v!r}")
-    return csil_v
+    return TranscodeCodec(csil_v)
 
 
 def _decode_content_report_target_type_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("playlist", "account"):
         raise CsilDecodeError(f"csil cbor: unknown content_report_target_type value {csil_v!r}")
-    return csil_v
+    return ContentReportTargetType(csil_v)
 
 
 def _decode_content_report_reason_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("objectionable-content", "harassment", "spam", "other"):
         raise CsilDecodeError(f"csil cbor: unknown content_report_reason value {csil_v!r}")
-    return csil_v
+    return ContentReportReason(csil_v)
 
 
 def _decode_content_report_status_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("open", "resolved", "dismissed"):
         raise CsilDecodeError(f"csil cbor: unknown content_report_status value {csil_v!r}")
-    return csil_v
+    return ContentReportStatus(csil_v)
 
 
 def _decode_library_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("music", "audiobook"):
         raise CsilDecodeError(f"csil cbor: unknown library value {csil_v!r}")
-    return csil_v
+    return Library(csil_v)
 
 
 def _decode_artwork_kind_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("album", "artist"):
         raise CsilDecodeError(f"csil cbor: unknown artwork_kind value {csil_v!r}")
-    return csil_v
+    return ArtworkKind(csil_v)
 
 
 def _decode_player_kind_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("shared", "private"):
         raise CsilDecodeError(f"csil cbor: unknown player_kind value {csil_v!r}")
-    return csil_v
+    return PlayerKind(csil_v)
 
 
 def _decode_share_access_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("everyone", "selected"):
         raise CsilDecodeError(f"csil cbor: unknown share_access value {csil_v!r}")
-    return csil_v
+    return ShareAccess(csil_v)
 
 
 def _decode_media_end_reason_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("eos", "stopped"):
         raise CsilDecodeError(f"csil cbor: unknown media_end_reason value {csil_v!r}")
-    return csil_v
+    return MediaEndReason(csil_v)
 
 
 def _decode_node_kind_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("core", "satellite", "client"):
         raise CsilDecodeError(f"csil cbor: unknown node_kind value {csil_v!r}")
-    return csil_v
+    return NodeKind(csil_v)
 
 
 def _decode_audio_outputs_state_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("none", "some"):
         raise CsilDecodeError(f"csil cbor: unknown audio_outputs_state value {csil_v!r}")
-    return csil_v
+    return AudioOutputsState(csil_v)
 
 
 def _decode_change_topic_value(csil_v):
     csil_v = _csil_expect_text(csil_v)
     if csil_v not in ("players", "libraries", "playlists", "progress", "session", "accounts", "trust", "nodes", "groups", "settings", "imports"):
         raise CsilDecodeError(f"csil cbor: unknown change_topic value {csil_v!r}")
-    return csil_v
+    return ChangeTopic(csil_v)
+
+
+class ServiceErrorRefusal(Exception):
+    def __init__(self, value):
+        super().__init__(value)
+        self.value = value
+
+
+def encode_session_authenticate_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "SessionInfo", cbor_encode(_encode_session_info_value(value))
+
+
+def encode_session_whoami_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "SessionInfo", cbor_encode(_encode_session_info_value(value))
+
+
+def encode_session_logout_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_session_delete_account_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_library_list_libraries_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "LibrariesResponse", cbor_encode(_encode_libraries_response_value(value))
+
+
+def encode_library_list_albums_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "AlbumsResponse", cbor_encode(_encode_albums_response_value(value))
+
+
+def encode_library_list_artists_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ArtistsResponse", cbor_encode(_encode_artists_response_value(value))
+
+
+def encode_library_get_album_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "AlbumDetail", cbor_encode(_encode_album_detail_value(value))
+
+
+def encode_library_get_artist_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ArtistDetail", cbor_encode(_encode_artist_detail_value(value))
+
+
+def encode_library_search_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "SearchResponse", cbor_encode(_encode_search_response_value(value))
+
+
+def encode_library_export_manifest_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ExportManifest", cbor_encode(_encode_export_manifest_value(value))
+
+
+def encode_library_export_chunk_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ExportChunk", cbor_encode(_encode_export_chunk_value(value))
+
+
+def encode_library_list_playlists_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "PlaylistsResponse", cbor_encode(_encode_playlists_response_value(value))
+
+
+def encode_library_get_playlist_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "PlaylistDetail", cbor_encode(_encode_playlist_detail_value(value))
+
+
+def encode_library_delete_playlist_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_library_block_account_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_library_unblock_account_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_library_list_blocked_accounts_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "BlockedAccountsResponse", cbor_encode(_encode_blocked_accounts_response_value(value))
+
+
+def encode_library_get_cover_art_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "CoverArt", cbor_encode(_encode_cover_art_value(value))
+
+
+def encode_library_get_artwork_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "CoverArt", cbor_encode(_encode_cover_art_value(value))
+
+
+def encode_library_list_artwork_candidates_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ArtworkCandidates", cbor_encode(_encode_artwork_candidates_value(value))
+
+
+def encode_library_get_artwork_candidate_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "CoverArt", cbor_encode(_encode_cover_art_value(value))
+
+
+def encode_library_set_artwork_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_library_get_audiobook_progress_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "AudiobookProgressResponse", cbor_encode(_encode_audiobook_progress_response_value(value))
+
+
+def encode_library_update_audiobook_progress_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "AudiobookProgress", cbor_encode(_encode_audiobook_progress_value(value))
+
+
+def encode_library_report_content_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ContentReport", cbor_encode(_encode_content_report_value(value))
+
+
+def encode_player_list_players_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ListPlayersResponse", cbor_encode(_encode_list_players_response_value(value))
+
+
+def encode_player_get_state_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "PlayerState", cbor_encode(_encode_player_state_value(value))
+
+
+def encode_player_control_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "PlayerState", cbor_encode(_encode_player_state_value(value))
+
+
+def encode_player_enable_share_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ShareResult", cbor_encode(_encode_share_result_value(value))
+
+
+def encode_player_disable_share_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_player_get_share_access_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ShareAccessInfo", cbor_encode(_encode_share_access_info_value(value))
+
+
+def encode_player_set_share_access_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ShareAccessInfo", cbor_encode(_encode_share_access_info_value(value))
+
+
+def encode_node_register_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "RegisterNodeResponse", cbor_encode(_encode_register_node_response_value(value))
+
+
+def encode_admin_list_accounts_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ListAccountsResponse", cbor_encode(_encode_list_accounts_response_value(value))
+
+
+def encode_admin_set_role_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Account", cbor_encode(_encode_account_value(value))
+
+
+def encode_admin_set_library_editor_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_admin_delete_account_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_admin_trust_domain_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "TrustedDomains", cbor_encode(_encode_trusted_domains_value(value))
+
+
+def encode_admin_list_trusted_domains_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "TrustedDomains", cbor_encode(_encode_trusted_domains_value(value))
+
+
+def encode_admin_list_trusted_identities_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "TrustedIdentities", cbor_encode(_encode_trusted_identities_value(value))
+
+
+def encode_admin_trust_identity_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "TrustedIdentities", cbor_encode(_encode_trusted_identities_value(value))
+
+
+def encode_admin_revoke_trusted_identity_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "TrustedIdentities", cbor_encode(_encode_trusted_identities_value(value))
+
+
+def encode_admin_list_nodes_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ListNodesResponse", cbor_encode(_encode_list_nodes_response_value(value))
+
+
+def encode_admin_rename_node_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "NodeInfo", cbor_encode(_encode_node_info_value(value))
+
+
+def encode_admin_rename_device_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "DeviceInfo", cbor_encode(_encode_device_info_value(value))
+
+
+def encode_admin_set_device_access_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "DeviceInfo", cbor_encode(_encode_device_info_value(value))
+
+
+def encode_admin_list_groups_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ListGroupsResponse", cbor_encode(_encode_list_groups_response_value(value))
+
+
+def encode_admin_create_group_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "GroupInfo", cbor_encode(_encode_group_info_value(value))
+
+
+def encode_admin_set_group_members_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "GroupInfo", cbor_encode(_encode_group_info_value(value))
+
+
+def encode_admin_delete_group_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_admin_list_satellite_tokens_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ListSatelliteTokensResponse", cbor_encode(_encode_list_satellite_tokens_response_value(value))
+
+
+def encode_admin_create_node_token_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "NodeTokenResult", cbor_encode(_encode_node_token_result_value(value))
+
+
+def encode_admin_revoke_satellite_token_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_admin_import_track_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ImportResult", cbor_encode(_encode_import_result_value(value))
+
+
+def encode_admin_begin_import_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "BeginImportResult", cbor_encode(_encode_begin_import_result_value(value))
+
+
+def encode_admin_import_chunk_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_admin_finish_import_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ImportResult", cbor_encode(_encode_import_result_value(value))
+
+
+def encode_admin_cancel_import_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Ok", cbor_encode(_encode_ok_value(value))
+
+
+def encode_admin_get_settings_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Settings", cbor_encode(_encode_settings_value(value))
+
+
+def encode_admin_set_setting_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "Settings", cbor_encode(_encode_settings_value(value))
+
+
+def encode_admin_resync_library_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "LibraryResyncStatus", cbor_encode(_encode_library_resync_status_value(value))
+
+
+def encode_admin_get_resync_status_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "LibraryResyncStatus", cbor_encode(_encode_library_resync_status_value(value))
+
+
+def encode_admin_list_content_reports_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ListContentReportsResponse", cbor_encode(_encode_list_content_reports_response_value(value))
+
+
+def encode_admin_update_content_report_status_reply(handler, *args, **kwargs):
+    try:
+        value = handler(*args, **kwargs)
+    except ServiceErrorRefusal as refusal:
+        return "ServiceError", cbor_encode(_encode_service_error_value(refusal.value))
+    return "ContentReport", cbor_encode(_encode_content_report_value(value))
+
+
+def resolve_rpc_reply(service, op, variant, payload):
+    if (service, op) == ("SessionService", "authenticate"):
+        if variant == "SessionInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("SessionService", "whoami"):
+        if variant == "SessionInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("SessionService", "logout"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("SessionService", "delete-account"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "list-libraries"):
+        if variant == "LibrariesResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "list-albums"):
+        if variant == "AlbumsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "list-artists"):
+        if variant == "ArtistsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-album"):
+        if variant == "AlbumDetail":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-artist"):
+        if variant == "ArtistDetail":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "search"):
+        if variant == "SearchResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "export-manifest"):
+        if variant == "ExportManifest":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "export-chunk"):
+        if variant == "ExportChunk":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "list-playlists"):
+        if variant == "PlaylistsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-playlist"):
+        if variant == "PlaylistDetail":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "delete-playlist"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "block-account"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "unblock-account"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "list-blocked-accounts"):
+        if variant == "BlockedAccountsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-cover-art"):
+        if variant == "CoverArt":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-artwork"):
+        if variant == "CoverArt":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "list-artwork-candidates"):
+        if variant == "ArtworkCandidates":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-artwork-candidate"):
+        if variant == "CoverArt":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "set-artwork"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "get-audiobook-progress"):
+        if variant == "AudiobookProgressResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "update-audiobook-progress"):
+        if variant == "AudiobookProgress":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("LibraryService", "report-content"):
+        if variant == "ContentReport":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "list-players"):
+        if variant == "ListPlayersResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "get-state"):
+        if variant == "PlayerState":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "control"):
+        if variant == "PlayerState":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "enable-share"):
+        if variant == "ShareResult":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "disable-share"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "get-share-access"):
+        if variant == "ShareAccessInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("PlayerService", "set-share-access"):
+        if variant == "ShareAccessInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("NodeService", "register"):
+        if variant == "RegisterNodeResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-accounts"):
+        if variant == "ListAccountsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "set-role"):
+        if variant == "Account":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "set-library-editor"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "delete-account"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "trust-domain"):
+        if variant == "TrustedDomains":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-trusted-domains"):
+        if variant == "TrustedDomains":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-trusted-identities"):
+        if variant == "TrustedIdentities":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "trust-identity"):
+        if variant == "TrustedIdentities":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "revoke-trusted-identity"):
+        if variant == "TrustedIdentities":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-nodes"):
+        if variant == "ListNodesResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "rename-node"):
+        if variant == "NodeInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "rename-device"):
+        if variant == "DeviceInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "set-device-access"):
+        if variant == "DeviceInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-groups"):
+        if variant == "ListGroupsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "create-group"):
+        if variant == "GroupInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "set-group-members"):
+        if variant == "GroupInfo":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "delete-group"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-satellite-tokens"):
+        if variant == "ListSatelliteTokensResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "create-node-token"):
+        if variant == "NodeTokenResult":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "revoke-satellite-token"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "import-track"):
+        if variant == "ImportResult":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "begin-import"):
+        if variant == "BeginImportResult":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "import-chunk"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "finish-import"):
+        if variant == "ImportResult":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "cancel-import"):
+        if variant == "Ok":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "get-settings"):
+        if variant == "Settings":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "set-setting"):
+        if variant == "Settings":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "resync-library"):
+        if variant == "LibraryResyncStatus":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "get-resync-status"):
+        if variant == "LibraryResyncStatus":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "list-content-reports"):
+        if variant == "ListContentReportsResponse":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    if (service, op) == ("AdminService", "update-content-report-status"):
+        if variant == "ContentReport":
+            return payload
+        if variant == "ServiceError":
+            tree = cbor_decode(payload)
+            raise ServiceErrorRefusal(_decode_service_error_value(tree))
+        raise CsilDecodeError(f'invalid RPC reply variant {variant!r}')
+    return payload

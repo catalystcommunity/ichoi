@@ -304,6 +304,18 @@ object CsilCbor {
     fun asMap(v: CborValue): List<Pair<CborValue, CborValue>> =
         (v as? CborValue.CMap)?.entries ?: throw CborError("expected map")
 
+    fun encDate(date: java.time.LocalDate): CborValue {
+        val text = date.toString()
+        require(text.length == 10) { "date requires a four-digit year" }
+        return CborValue.CTag(1004uL, CborValue.CText(text))
+    }
+
+    fun asDate(v: CborValue): java.time.LocalDate {
+        val text = asTaggedText(v, 1004uL)
+        require(text.length == 10) { "expected YYYY-MM-DD" }
+        return java.time.LocalDate.parse(text)
+    }
+
     fun asTaggedText(v: CborValue, tag: ULong): String {
         if (v is CborValue.CTag && v.tag == tag) return asText(v.value)
         throw CborError("expected tag $tag")
@@ -4272,4 +4284,986 @@ fun csilFromCborValue(type: kotlin.reflect.KClass<*>, cbor: CborValue): Any = wh
     WatchChangesRequest::class -> watchChangesRequestFromCborValue(cbor)
     DataChange::class -> dataChangeFromCborValue(cbor)
     else -> throw CborError("no CSIL CBOR codec for $type")
+}
+data class RpcReply(val variant: String, val payload: ByteArray)
+
+class ServiceErrorRefusal(val value: ServiceError) : RuntimeException("ServiceError")
+
+fun encodeSessionAuthenticateReply(handler: () -> SessionInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("SessionInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeSessionWhoamiReply(handler: () -> SessionInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("SessionInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeSessionLogoutReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeSessionDeleteAccountReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryListLibrariesReply(handler: () -> LibrariesResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("LibrariesResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryListAlbumsReply(handler: () -> AlbumsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("AlbumsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryListArtistsReply(handler: () -> ArtistsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ArtistsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetAlbumReply(handler: () -> AlbumDetail): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("AlbumDetail", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetArtistReply(handler: () -> ArtistDetail): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ArtistDetail", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibrarySearchReply(handler: () -> SearchResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("SearchResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryExportManifestReply(handler: () -> ExportManifest): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ExportManifest", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryExportChunkReply(handler: () -> ExportChunk): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ExportChunk", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryListPlaylistsReply(handler: () -> PlaylistsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("PlaylistsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetPlaylistReply(handler: () -> PlaylistDetail): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("PlaylistDetail", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryDeletePlaylistReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryBlockAccountReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryUnblockAccountReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryListBlockedAccountsReply(handler: () -> BlockedAccountsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("BlockedAccountsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetCoverArtReply(handler: () -> CoverArt): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("CoverArt", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetArtworkReply(handler: () -> CoverArt): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("CoverArt", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryListArtworkCandidatesReply(handler: () -> ArtworkCandidates): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ArtworkCandidates", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetArtworkCandidateReply(handler: () -> CoverArt): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("CoverArt", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibrarySetArtworkReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryGetAudiobookProgressReply(handler: () -> AudiobookProgressResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("AudiobookProgressResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryUpdateAudiobookProgressReply(handler: () -> AudiobookProgress): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("AudiobookProgress", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeLibraryReportContentReply(handler: () -> ContentReport): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ContentReport", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerListPlayersReply(handler: () -> ListPlayersResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ListPlayersResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerGetStateReply(handler: () -> PlayerState): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("PlayerState", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerControlReply(handler: () -> PlayerState): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("PlayerState", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerEnableShareReply(handler: () -> ShareResult): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ShareResult", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerDisableShareReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerGetShareAccessReply(handler: () -> ShareAccessInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ShareAccessInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodePlayerSetShareAccessReply(handler: () -> ShareAccessInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ShareAccessInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeNodeRegisterReply(handler: () -> RegisterNodeResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("RegisterNodeResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListAccountsReply(handler: () -> ListAccountsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ListAccountsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminSetRoleReply(handler: () -> Account): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Account", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminSetLibraryEditorReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminDeleteAccountReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminTrustDomainReply(handler: () -> TrustedDomains): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("TrustedDomains", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListTrustedDomainsReply(handler: () -> TrustedDomains): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("TrustedDomains", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListTrustedIdentitiesReply(handler: () -> TrustedIdentities): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("TrustedIdentities", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminTrustIdentityReply(handler: () -> TrustedIdentities): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("TrustedIdentities", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminRevokeTrustedIdentityReply(handler: () -> TrustedIdentities): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("TrustedIdentities", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListNodesReply(handler: () -> ListNodesResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ListNodesResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminRenameNodeReply(handler: () -> NodeInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("NodeInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminRenameDeviceReply(handler: () -> DeviceInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("DeviceInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminSetDeviceAccessReply(handler: () -> DeviceInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("DeviceInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListGroupsReply(handler: () -> ListGroupsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ListGroupsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminCreateGroupReply(handler: () -> GroupInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("GroupInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminSetGroupMembersReply(handler: () -> GroupInfo): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("GroupInfo", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminDeleteGroupReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListSatelliteTokensReply(handler: () -> ListSatelliteTokensResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ListSatelliteTokensResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminCreateNodeTokenReply(handler: () -> NodeTokenResult): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("NodeTokenResult", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminRevokeSatelliteTokenReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminImportTrackReply(handler: () -> ImportResult): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ImportResult", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminBeginImportReply(handler: () -> BeginImportResult): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("BeginImportResult", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminImportChunkReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminFinishImportReply(handler: () -> ImportResult): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ImportResult", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminCancelImportReply(handler: () -> Ok): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminGetSettingsReply(handler: () -> Settings): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Settings", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminSetSettingReply(handler: () -> Settings): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("Settings", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminResyncLibraryReply(handler: () -> LibraryResyncStatus): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("LibraryResyncStatus", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminGetResyncStatusReply(handler: () -> LibraryResyncStatus): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("LibraryResyncStatus", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminListContentReportsReply(handler: () -> ListContentReportsResponse): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ListContentReportsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun encodeAdminUpdateContentReportStatusReply(handler: () -> ContentReport): RpcReply =
+    try {
+        val value = handler()
+        RpcReply("ContentReport", CsilCbor.encode(value.toCborValue()))
+    } catch (refusal: ServiceErrorRefusal) {
+        RpcReply("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+
+fun resolveRpcReply(service: String, op: String, variant: String?, payload: ByteArray): ByteArray {
+    if (service == "SessionService" && op == "authenticate") {
+        return when (variant) {
+            "SessionInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "SessionService" && op == "whoami") {
+        return when (variant) {
+            "SessionInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "SessionService" && op == "logout") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "SessionService" && op == "delete-account") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "list-libraries") {
+        return when (variant) {
+            "LibrariesResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "list-albums") {
+        return when (variant) {
+            "AlbumsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "list-artists") {
+        return when (variant) {
+            "ArtistsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-album") {
+        return when (variant) {
+            "AlbumDetail" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-artist") {
+        return when (variant) {
+            "ArtistDetail" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "search") {
+        return when (variant) {
+            "SearchResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "export-manifest") {
+        return when (variant) {
+            "ExportManifest" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "export-chunk") {
+        return when (variant) {
+            "ExportChunk" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "list-playlists") {
+        return when (variant) {
+            "PlaylistsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-playlist") {
+        return when (variant) {
+            "PlaylistDetail" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "delete-playlist") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "block-account") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "unblock-account") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "list-blocked-accounts") {
+        return when (variant) {
+            "BlockedAccountsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-cover-art") {
+        return when (variant) {
+            "CoverArt" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-artwork") {
+        return when (variant) {
+            "CoverArt" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "list-artwork-candidates") {
+        return when (variant) {
+            "ArtworkCandidates" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-artwork-candidate") {
+        return when (variant) {
+            "CoverArt" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "set-artwork") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "get-audiobook-progress") {
+        return when (variant) {
+            "AudiobookProgressResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "update-audiobook-progress") {
+        return when (variant) {
+            "AudiobookProgress" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "LibraryService" && op == "report-content") {
+        return when (variant) {
+            "ContentReport" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "list-players") {
+        return when (variant) {
+            "ListPlayersResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "get-state") {
+        return when (variant) {
+            "PlayerState" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "control") {
+        return when (variant) {
+            "PlayerState" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "enable-share") {
+        return when (variant) {
+            "ShareResult" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "disable-share") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "get-share-access") {
+        return when (variant) {
+            "ShareAccessInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "PlayerService" && op == "set-share-access") {
+        return when (variant) {
+            "ShareAccessInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "NodeService" && op == "register") {
+        return when (variant) {
+            "RegisterNodeResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-accounts") {
+        return when (variant) {
+            "ListAccountsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "set-role") {
+        return when (variant) {
+            "Account" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "set-library-editor") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "delete-account") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "trust-domain") {
+        return when (variant) {
+            "TrustedDomains" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-trusted-domains") {
+        return when (variant) {
+            "TrustedDomains" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-trusted-identities") {
+        return when (variant) {
+            "TrustedIdentities" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "trust-identity") {
+        return when (variant) {
+            "TrustedIdentities" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "revoke-trusted-identity") {
+        return when (variant) {
+            "TrustedIdentities" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-nodes") {
+        return when (variant) {
+            "ListNodesResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "rename-node") {
+        return when (variant) {
+            "NodeInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "rename-device") {
+        return when (variant) {
+            "DeviceInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "set-device-access") {
+        return when (variant) {
+            "DeviceInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-groups") {
+        return when (variant) {
+            "ListGroupsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "create-group") {
+        return when (variant) {
+            "GroupInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "set-group-members") {
+        return when (variant) {
+            "GroupInfo" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "delete-group") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-satellite-tokens") {
+        return when (variant) {
+            "ListSatelliteTokensResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "create-node-token") {
+        return when (variant) {
+            "NodeTokenResult" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "revoke-satellite-token") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "import-track") {
+        return when (variant) {
+            "ImportResult" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "begin-import") {
+        return when (variant) {
+            "BeginImportResult" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "import-chunk") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "finish-import") {
+        return when (variant) {
+            "ImportResult" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "cancel-import") {
+        return when (variant) {
+            "Ok" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "get-settings") {
+        return when (variant) {
+            "Settings" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "set-setting") {
+        return when (variant) {
+            "Settings" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "resync-library") {
+        return when (variant) {
+            "LibraryResyncStatus" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "get-resync-status") {
+        return when (variant) {
+            "LibraryResyncStatus" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "list-content-reports") {
+        return when (variant) {
+            "ListContentReportsResponse" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    if (service == "AdminService" && op == "update-content-report-status") {
+        return when (variant) {
+            "ContentReport" -> payload
+            "ServiceError" -> throw ServiceErrorRefusal(serviceErrorFromCborValue(CsilCbor.decode(payload)))
+            else -> throw CborError("invalid RPC reply variant: $variant")
+        }
+    }
+    return payload
 }

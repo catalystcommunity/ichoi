@@ -13,6 +13,21 @@ module CsilCbor
 
   module_function
 
+  def enc_date(value)
+    raise ArgumentError, "expected a calendar date" unless value.instance_of?(Date)
+    tag = Tag.new(1004, value.iso8601.encode(Encoding::UTF_8))
+    as_date(tag)
+    tag
+  end
+
+  def as_date(node)
+    unless node.is_a?(Tag) && node.tag == 1004 && node.value.is_a?(String) &&
+           node.value.encoding == Encoding::UTF_8 && /\A[0-9]{4}-[0-9]{2}-[0-9]{2}\z/.match?(node.value)
+      raise ArgumentError, "expected tag 1004 with YYYY-MM-DD text"
+    end
+    Date.iso8601(node.value, Date::GREGORIAN)
+  end
+
   # Canonical-CBOR encode of a Ruby value tree to a binary String.
   def encode(value)
     buf = "".b
@@ -411,12 +426,7 @@ class StreamPref
     new(
       max_bitrate_kbps: (node.key?("max_bitrate_kbps") ? node["max_bitrate_kbps"] : nil),
       prefer_original: (node.key?("prefer_original") ? node["prefer_original"] : nil),
-      transcode_codec: (node.key?("transcode_codec") ? (case (node["transcode_codec"])
-when "aac" then "aac"
-when "mp3" then "mp3"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["transcode_codec"]).inspect}"
-end) : nil)
+      transcode_codec: (node.key?("transcode_codec") ? TranscodeCodec.from_wire(node["transcode_codec"]) : nil)
     )
   end
 end
@@ -500,29 +510,11 @@ class ContentReport
     new(
       id: node["id"],
       reporter_account_id: node["reporter_account_id"],
-      target_type: (case (node["target_type"])
-when "playlist" then "playlist"
-when "account" then "account"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["target_type"]).inspect}"
-end),
+      target_type: ContentReportTargetType.from_wire(node["target_type"]),
       target_id: node["target_id"],
-      reason: (case (node["reason"])
-when "objectionable-content" then "objectionable-content"
-when "harassment" then "harassment"
-when "spam" then "spam"
-when "other" then "other"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["reason"]).inspect}"
-end),
+      reason: ContentReportReason.from_wire(node["reason"]),
       details: (node.key?("details") ? node["details"] : nil),
-      status: (case (node["status"])
-when "open" then "open"
-when "resolved" then "resolved"
-when "dismissed" then "dismissed"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
-end),
+      status: ContentReportStatus.from_wire(node["status"]),
       created_at: Time.iso8601((node["created_at"]).value),
       resolved_at: (node.key?("resolved_at") ? Time.iso8601((node["resolved_at"]).value) : nil)
     )
@@ -611,13 +603,7 @@ class SessionInfo
       account_id: node["account_id"],
       handle: node["handle"],
       display_name: (node.key?("display_name") ? node["display_name"] : nil),
-      role: (case (node["role"])
-when "admin" then "admin"
-when "member" then "member"
-when "guest" then "guest"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["role"]).inspect}"
-end),
+      role: Role.from_wire(node["role"]),
       can_admin: node["can_admin"],
       can_edit_library: (node.key?("can_edit_library") ? node["can_edit_library"] : nil),
       token: (node.key?("token") ? node["token"] : nil)
@@ -685,12 +671,7 @@ class Track
   def self.csil_from_tree(node)
     new(
       id: node["id"],
-      library: (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end),
+      library: Library.from_wire(node["library"]),
       title: node["title"],
       artist_id: (node.key?("artist_id") ? node["artist_id"] : nil),
       artist_name: (node.key?("artist_name") ? node["artist_name"] : nil),
@@ -699,18 +680,7 @@ end),
       track_no: (node.key?("track_no") ? node["track_no"] : nil),
       disc_no: (node.key?("disc_no") ? node["disc_no"] : nil),
       duration_ms: node["duration_ms"],
-      codec: (case (node["codec"])
-when "mp3" then "mp3"
-when "aac" then "aac"
-when "vorbis" then "vorbis"
-when "flac" then "flac"
-when "alac" then "alac"
-when "opus" then "opus"
-when "wav" then "wav"
-when "wma" then "wma"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["codec"]).inspect}"
-end),
+      codec: Codec.from_wire(node["codec"]),
       bitrate_kbps: (node.key?("bitrate_kbps") ? node["bitrate_kbps"] : nil),
       sample_rate: node["sample_rate"],
       channels: node["channels"],
@@ -838,12 +808,7 @@ class BrowseRequest
 
   def self.csil_from_tree(node)
     new(
-      library: (node.key?("library") ? (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end) : nil),
+      library: (node.key?("library") ? Library.from_wire(node["library"]) : nil),
       offset: (node.key?("offset") ? node["offset"] : nil),
       limit: (node.key?("limit") ? node["limit"] : nil)
     )
@@ -869,12 +834,7 @@ class LibraryInfo
 
   def self.csil_from_tree(node)
     new(
-      kind: (case (node["kind"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end)
+      kind: Library.from_wire(node["kind"])
     )
   end
 end
@@ -1026,12 +986,7 @@ class ArtistRequest
   def self.csil_from_tree(node)
     new(
       artist_id: node["artist_id"],
-      library: (node.key?("library") ? (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end) : nil)
+      library: (node.key?("library") ? Library.from_wire(node["library"]) : nil)
     )
   end
 end
@@ -1084,12 +1039,7 @@ class SearchRequest
   def self.csil_from_tree(node)
     new(
       query: node["query"],
-      library: (node.key?("library") ? (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end) : nil),
+      library: (node.key?("library") ? Library.from_wire(node["library"]) : nil),
       limit: (node.key?("limit") ? node["limit"] : nil)
     )
   end
@@ -1650,12 +1600,7 @@ class ArtworkRequest
 
   def self.csil_from_tree(node)
     new(
-      kind: (case (node["kind"])
-when "album" then "album"
-when "artist" then "artist"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end),
+      kind: ArtworkKind.from_wire(node["kind"]),
       id: node["id"],
       max_size: (node.key?("max_size") ? node["max_size"] : nil)
     )
@@ -1684,12 +1629,7 @@ class SetArtworkRequest
 
   def self.csil_from_tree(node)
     new(
-      kind: (case (node["kind"])
-when "album" then "album"
-when "artist" then "artist"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end),
+      kind: ArtworkKind.from_wire(node["kind"]),
       id: node["id"],
       data: (node.key?("data") ? node["data"] : nil),
       candidate_id: (node.key?("candidate_id") ? node["candidate_id"] : nil)
@@ -1719,12 +1659,7 @@ class ArtworkCandidatesRequest
 
   def self.csil_from_tree(node)
     new(
-      kind: (case (node["kind"])
-when "album" then "album"
-when "artist" then "artist"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end),
+      kind: ArtworkKind.from_wire(node["kind"]),
       id: node["id"],
       offset: (node.key?("offset") ? node["offset"] : nil),
       limit: (node.key?("limit") ? node["limit"] : nil)
@@ -1754,12 +1689,7 @@ class ArtworkCandidateRequest
 
   def self.csil_from_tree(node)
     new(
-      kind: (case (node["kind"])
-when "album" then "album"
-when "artist" then "artist"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end),
+      kind: ArtworkKind.from_wire(node["kind"]),
       id: node["id"],
       candidate_id: node["candidate_id"],
       max_size: (node.key?("max_size") ? node["max_size"] : nil)
@@ -1849,21 +1779,9 @@ class ReportContentRequest
 
   def self.csil_from_tree(node)
     new(
-      target_type: (case (node["target_type"])
-when "playlist" then "playlist"
-when "account" then "account"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["target_type"]).inspect}"
-end),
+      target_type: ContentReportTargetType.from_wire(node["target_type"]),
       target_id: node["target_id"],
-      reason: (case (node["reason"])
-when "objectionable-content" then "objectionable-content"
-when "harassment" then "harassment"
-when "spam" then "spam"
-when "other" then "other"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["reason"]).inspect}"
-end),
+      reason: ContentReportReason.from_wire(node["reason"]),
       details: (node.key?("details") ? node["details"] : nil)
     )
   end
@@ -1895,12 +1813,7 @@ class Player
   def self.csil_from_tree(node)
     new(
       id: node["id"],
-      kind: (case (node["kind"])
-when "shared" then "shared"
-when "private" then "private"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end),
+      kind: PlayerKind.from_wire(node["kind"]),
       name: node["name"],
       node_id: (node.key?("node_id") ? node["node_id"] : nil),
       device_id: (node.key?("device_id") ? node["device_id"] : nil),
@@ -1936,12 +1849,7 @@ class QueueItem
     new(
       queue_item_id: node["queue_item_id"],
       track_id: node["track_id"],
-      library: (node.key?("library") ? (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end) : nil),
+      library: (node.key?("library") ? Library.from_wire(node["library"]) : nil),
       title: (node.key?("title") ? node["title"] : nil),
       artist: (node.key?("artist") ? node["artist"] : nil),
       duration_ms: (node.key?("duration_ms") ? node["duration_ms"] : nil)
@@ -1981,24 +1889,12 @@ class PlayerState
     new(
       player_id: node["player_id"],
       revision: node["revision"],
-      status: (case (node["status"])
-when "stopped" then "stopped"
-when "playing" then "playing"
-when "paused" then "paused"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
-end),
+      status: PlayerStatus.from_wire(node["status"]),
       current_index: (node.key?("current_index") ? node["current_index"] : nil),
       playback_id: (node.key?("playback_id") ? node["playback_id"] : nil),
       position_ms: (node.key?("position_ms") ? node["position_ms"] : nil),
       volume: node["volume"],
-      repeat_mode: (case (node["repeat_mode"])
-when "off" then "off"
-when "all" then "all"
-when "one" then "one"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["repeat_mode"]).inspect}"
-end),
+      repeat_mode: RepeatMode.from_wire(node["repeat_mode"]),
       shuffle: node["shuffle"],
       error: (node.key?("error") ? node["error"] : nil),
       can_undo: node["can_undo"],
@@ -2026,12 +1922,7 @@ class ListPlayersRequest
 
   def self.csil_from_tree(node)
     new(
-      kind: (node.key?("kind") ? (case (node["kind"])
-when "shared" then "shared"
-when "private" then "private"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end) : nil)
+      kind: (node.key?("kind") ? PlayerKind.from_wire(node["kind"]) : nil)
     )
   end
 end
@@ -2475,13 +2366,7 @@ class CmdSetRepeat
   def self.csil_from_tree(node)
     new(
       op: node["op"],
-      repeat_mode: (case (node["repeat_mode"])
-when "off" then "off"
-when "all" then "all"
-when "one" then "one"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["repeat_mode"]).inspect}"
-end)
+      repeat_mode: RepeatMode.from_wire(node["repeat_mode"])
     )
   end
 end
@@ -2620,13 +2505,7 @@ class CmdPlaybackState
       op: node["op"],
       playback_id: node["playback_id"],
       queue_item_id: node["queue_item_id"],
-      status: (case (node["status"])
-when "stopped" then "stopped"
-when "playing" then "playing"
-when "paused" then "paused"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
-end),
+      status: PlayerStatus.from_wire(node["status"]),
       position_ms: node["position_ms"]
     )
   end
@@ -2806,12 +2685,7 @@ class ShareAccessInfo
   def self.csil_from_tree(node)
     new(
       player_id: node["player_id"],
-      access: (case (node["access"])
-when "everyone" then "everyone"
-when "selected" then "selected"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["access"]).inspect}"
-end),
+      access: ShareAccess.from_wire(node["access"]),
       accounts: (node["accounts"]).map { |csil_e| ShareCandidate.csil_from_tree(csil_e) }
     )
   end
@@ -2839,12 +2713,7 @@ class SetShareAccessRequest
   def self.csil_from_tree(node)
     new(
       player_id: node["player_id"],
-      access: (case (node["access"])
-when "everyone" then "everyone"
-when "selected" then "selected"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["access"]).inspect}"
-end),
+      access: ShareAccess.from_wire(node["access"]),
       account_ids: (node["account_ids"]).map { |csil_e| csil_e }
     )
   end
@@ -3016,18 +2885,7 @@ class MediaHeader
     new(
       kind: node["kind"],
       stream_id: node["stream_id"],
-      codec: (case (node["codec"])
-when "mp3" then "mp3"
-when "aac" then "aac"
-when "vorbis" then "vorbis"
-when "flac" then "flac"
-when "alac" then "alac"
-when "opus" then "opus"
-when "wav" then "wav"
-when "wma" then "wma"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["codec"]).inspect}"
-end),
+      codec: Codec.from_wire(node["codec"]),
       transcoded: node["transcoded"],
       sample_rate: node["sample_rate"],
       channels: node["channels"],
@@ -3094,12 +2952,7 @@ class MediaEnd
     new(
       kind: node["kind"],
       stream_id: node["stream_id"],
-      reason: (node.key?("reason") ? (case (node["reason"])
-when "eos" then "eos"
-when "stopped" then "stopped"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["reason"]).inspect}"
-end) : nil)
+      reason: (node.key?("reason") ? MediaEndReason.from_wire(node["reason"]) : nil)
     )
   end
 end
@@ -3389,21 +3242,8 @@ class NodeReport
   def self.csil_from_tree(node)
     new(
       player_id: node["player_id"],
-      event: (node.key?("event") ? (case (node["event"])
-when "ready" then "ready"
-when "state" then "state"
-when "completed" then "completed"
-when "failed" then "failed"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["event"]).inspect}"
-end) : nil),
-      status: (case (node["status"])
-when "stopped" then "stopped"
-when "playing" then "playing"
-when "paused" then "paused"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
-end),
+      event: (node.key?("event") ? NodeEvent.from_wire(node["event"]) : nil),
+      status: PlayerStatus.from_wire(node["status"]),
       queue_item_id: (node.key?("queue_item_id") ? node["queue_item_id"] : nil),
       playback_id: (node.key?("playback_id") ? node["playback_id"] : nil),
       position_ms: (node.key?("position_ms") ? node["position_ms"] : nil),
@@ -3440,13 +3280,7 @@ class Account
       id: node["id"],
       handle: node["handle"],
       display_name: (node.key?("display_name") ? node["display_name"] : nil),
-      role: (case (node["role"])
-when "admin" then "admin"
-when "member" then "member"
-when "guest" then "guest"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["role"]).inspect}"
-end),
+      role: Role.from_wire(node["role"]),
       created_at: Time.iso8601((node["created_at"]).value),
       can_edit_library: (node.key?("can_edit_library") ? node["can_edit_library"] : nil)
     )
@@ -3524,13 +3358,7 @@ class SetRoleRequest
   def self.csil_from_tree(node)
     new(
       account_id: node["account_id"],
-      role: (case (node["role"])
-when "admin" then "admin"
-when "member" then "member"
-when "guest" then "guest"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["role"]).inspect}"
-end)
+      role: Role.from_wire(node["role"])
     )
   end
 end
@@ -3773,24 +3601,13 @@ class NodeInfo
   def self.csil_from_tree(node)
     new(
       id: node["id"],
-      kind: (case (node["kind"])
-when "core" then "core"
-when "satellite" then "satellite"
-when "client" then "client"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["kind"]).inspect}"
-end),
+      kind: NodeKind.from_wire(node["kind"]),
       hostname: node["hostname"],
       friendly_name: node["friendly_name"],
       platform: node["platform"],
       arch: node["arch"],
       last_seen: (node.key?("last_seen") ? Time.iso8601((node["last_seen"]).value) : nil),
-      audio_outputs: (case (node["audio_outputs"])
-when "none" then "none"
-when "some" then "some"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["audio_outputs"]).inspect}"
-end),
+      audio_outputs: AudioOutputsState.from_wire(node["audio_outputs"]),
       devices: (node["devices"]).map { |csil_e| DeviceInfo.csil_from_tree(csil_e) }
     )
   end
@@ -4185,12 +4002,7 @@ class ImportTrackRequest
 
   def self.csil_from_tree(node)
     new(
-      library: (node.key?("library") ? (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end) : nil),
+      library: (node.key?("library") ? Library.from_wire(node["library"]) : nil),
       root_relative_path: node["root_relative_path"],
       content_type: node["content_type"],
       content_hash: (node.key?("content_hash") ? node["content_hash"] : nil),
@@ -4276,12 +4088,7 @@ class BeginImportRequest
 
   def self.csil_from_tree(node)
     new(
-      library: (node.key?("library") ? (case (node["library"])
-when "music" then "music"
-when "audiobook" then "audiobook"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["library"]).inspect}"
-end) : nil),
+      library: (node.key?("library") ? Library.from_wire(node["library"]) : nil),
       track_file_index: node["track_file_index"],
       files: (node["files"]).map { |csil_e| TransferFile.csil_from_tree(csil_e) }
     )
@@ -4515,13 +4322,7 @@ class UpdateContentReportStatusRequest
   def self.csil_from_tree(node)
     new(
       report_id: node["report_id"],
-      status: (case (node["status"])
-when "open" then "open"
-when "resolved" then "resolved"
-when "dismissed" then "dismissed"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["status"]).inspect}"
-end)
+      status: ContentReportStatus.from_wire(node["status"])
     )
   end
 end
@@ -4570,22 +4371,935 @@ class DataChange
 
   def self.csil_from_tree(node)
     new(
-      topic: (case (node["topic"])
-when "players" then "players"
-when "libraries" then "libraries"
-when "playlists" then "playlists"
-when "progress" then "progress"
-when "session" then "session"
-when "accounts" then "accounts"
-when "trust" then "trust"
-when "nodes" then "nodes"
-when "groups" then "groups"
-when "settings" then "settings"
-when "imports" then "imports"
-else
-  raise ArgumentError, "csilgen: unknown inline literal #{(node["topic"]).inspect}"
-end),
+      topic: ChangeTopic.from_wire(node["topic"]),
       revision: node["revision"]
     )
+  end
+end
+
+module CsilCbor
+  module_function
+
+  class ServiceErrorRefusal < StandardError
+    attr_reader :value
+
+    def initialize(value)
+      @value = value
+      super("ServiceError")
+    end
+  end
+
+  def encode_session_service_authenticate_reply
+    value = yield
+    ["SessionInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_session_service_whoami_reply
+    value = yield
+    ["SessionInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_session_service_logout_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_session_service_delete_account_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_list_libraries_reply
+    value = yield
+    ["LibrariesResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_list_albums_reply
+    value = yield
+    ["AlbumsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_list_artists_reply
+    value = yield
+    ["ArtistsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_album_reply
+    value = yield
+    ["AlbumDetail", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_artist_reply
+    value = yield
+    ["ArtistDetail", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_search_reply
+    value = yield
+    ["SearchResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_export_manifest_reply
+    value = yield
+    ["ExportManifest", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_export_chunk_reply
+    value = yield
+    ["ExportChunk", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_list_playlists_reply
+    value = yield
+    ["PlaylistsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_playlist_reply
+    value = yield
+    ["PlaylistDetail", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_delete_playlist_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_block_account_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_unblock_account_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_list_blocked_accounts_reply
+    value = yield
+    ["BlockedAccountsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_cover_art_reply
+    value = yield
+    ["CoverArt", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_artwork_reply
+    value = yield
+    ["CoverArt", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_list_artwork_candidates_reply
+    value = yield
+    ["ArtworkCandidates", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_artwork_candidate_reply
+    value = yield
+    ["CoverArt", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_set_artwork_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_get_audiobook_progress_reply
+    value = yield
+    ["AudiobookProgressResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_update_audiobook_progress_reply
+    value = yield
+    ["AudiobookProgress", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_library_service_report_content_reply
+    value = yield
+    ["ContentReport", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_list_players_reply
+    value = yield
+    ["ListPlayersResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_get_state_reply
+    value = yield
+    ["PlayerState", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_control_reply
+    value = yield
+    ["PlayerState", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_enable_share_reply
+    value = yield
+    ["ShareResult", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_disable_share_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_get_share_access_reply
+    value = yield
+    ["ShareAccessInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_player_service_set_share_access_reply
+    value = yield
+    ["ShareAccessInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_node_service_register_reply
+    value = yield
+    ["RegisterNodeResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_accounts_reply
+    value = yield
+    ["ListAccountsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_set_role_reply
+    value = yield
+    ["Account", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_set_library_editor_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_delete_account_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_trust_domain_reply
+    value = yield
+    ["TrustedDomains", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_trusted_domains_reply
+    value = yield
+    ["TrustedDomains", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_trusted_identities_reply
+    value = yield
+    ["TrustedIdentities", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_trust_identity_reply
+    value = yield
+    ["TrustedIdentities", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_revoke_trusted_identity_reply
+    value = yield
+    ["TrustedIdentities", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_nodes_reply
+    value = yield
+    ["ListNodesResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_rename_node_reply
+    value = yield
+    ["NodeInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_rename_device_reply
+    value = yield
+    ["DeviceInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_set_device_access_reply
+    value = yield
+    ["DeviceInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_groups_reply
+    value = yield
+    ["ListGroupsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_create_group_reply
+    value = yield
+    ["GroupInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_set_group_members_reply
+    value = yield
+    ["GroupInfo", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_delete_group_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_satellite_tokens_reply
+    value = yield
+    ["ListSatelliteTokensResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_create_node_token_reply
+    value = yield
+    ["NodeTokenResult", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_revoke_satellite_token_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_import_track_reply
+    value = yield
+    ["ImportResult", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_begin_import_reply
+    value = yield
+    ["BeginImportResult", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_import_chunk_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_finish_import_reply
+    value = yield
+    ["ImportResult", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_cancel_import_reply
+    value = yield
+    ["Ok", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_get_settings_reply
+    value = yield
+    ["Settings", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_set_setting_reply
+    value = yield
+    ["Settings", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_resync_library_reply
+    value = yield
+    ["LibraryResyncStatus", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_get_resync_status_reply
+    value = yield
+    ["LibraryResyncStatus", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_list_content_reports_reply
+    value = yield
+    ["ListContentReportsResponse", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def encode_admin_service_update_content_report_status_reply
+    value = yield
+    ["ContentReport", encode((value).csil_to_tree)]
+  rescue ServiceErrorRefusal => refusal
+    ["ServiceError", encode((refusal.value).csil_to_tree)]
+  end
+
+  def resolve_rpc_reply(service, op, variant, payload)
+    if service == "SessionService" && op == "authenticate"
+      case variant
+      when "SessionInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "SessionService" && op == "whoami"
+      case variant
+      when "SessionInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "SessionService" && op == "logout"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "SessionService" && op == "delete-account"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "list-libraries"
+      case variant
+      when "LibrariesResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "list-albums"
+      case variant
+      when "AlbumsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "list-artists"
+      case variant
+      when "ArtistsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-album"
+      case variant
+      when "AlbumDetail" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-artist"
+      case variant
+      when "ArtistDetail" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "search"
+      case variant
+      when "SearchResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "export-manifest"
+      case variant
+      when "ExportManifest" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "export-chunk"
+      case variant
+      when "ExportChunk" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "list-playlists"
+      case variant
+      when "PlaylistsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-playlist"
+      case variant
+      when "PlaylistDetail" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "delete-playlist"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "block-account"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "unblock-account"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "list-blocked-accounts"
+      case variant
+      when "BlockedAccountsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-cover-art"
+      case variant
+      when "CoverArt" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-artwork"
+      case variant
+      when "CoverArt" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "list-artwork-candidates"
+      case variant
+      when "ArtworkCandidates" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-artwork-candidate"
+      case variant
+      when "CoverArt" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "set-artwork"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "get-audiobook-progress"
+      case variant
+      when "AudiobookProgressResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "update-audiobook-progress"
+      case variant
+      when "AudiobookProgress" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "LibraryService" && op == "report-content"
+      case variant
+      when "ContentReport" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "list-players"
+      case variant
+      when "ListPlayersResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "get-state"
+      case variant
+      when "PlayerState" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "control"
+      case variant
+      when "PlayerState" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "enable-share"
+      case variant
+      when "ShareResult" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "disable-share"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "get-share-access"
+      case variant
+      when "ShareAccessInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "PlayerService" && op == "set-share-access"
+      case variant
+      when "ShareAccessInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "NodeService" && op == "register"
+      case variant
+      when "RegisterNodeResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-accounts"
+      case variant
+      when "ListAccountsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "set-role"
+      case variant
+      when "Account" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "set-library-editor"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "delete-account"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "trust-domain"
+      case variant
+      when "TrustedDomains" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-trusted-domains"
+      case variant
+      when "TrustedDomains" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-trusted-identities"
+      case variant
+      when "TrustedIdentities" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "trust-identity"
+      case variant
+      when "TrustedIdentities" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "revoke-trusted-identity"
+      case variant
+      when "TrustedIdentities" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-nodes"
+      case variant
+      when "ListNodesResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "rename-node"
+      case variant
+      when "NodeInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "rename-device"
+      case variant
+      when "DeviceInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "set-device-access"
+      case variant
+      when "DeviceInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-groups"
+      case variant
+      when "ListGroupsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "create-group"
+      case variant
+      when "GroupInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "set-group-members"
+      case variant
+      when "GroupInfo" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "delete-group"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-satellite-tokens"
+      case variant
+      when "ListSatelliteTokensResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "create-node-token"
+      case variant
+      when "NodeTokenResult" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "revoke-satellite-token"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "import-track"
+      case variant
+      when "ImportResult" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "begin-import"
+      case variant
+      when "BeginImportResult" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "import-chunk"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "finish-import"
+      case variant
+      when "ImportResult" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "cancel-import"
+      case variant
+      when "Ok" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "get-settings"
+      case variant
+      when "Settings" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "set-setting"
+      case variant
+      when "Settings" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "resync-library"
+      case variant
+      when "LibraryResyncStatus" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "get-resync-status"
+      case variant
+      when "LibraryResyncStatus" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "list-content-reports"
+      case variant
+      when "ListContentReportsResponse" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    if service == "AdminService" && op == "update-content-report-status"
+      case variant
+      when "ContentReport" then return payload
+      when "ServiceError" then raise ServiceErrorRefusal.new(ServiceError.csil_from_tree(decode(payload)))
+      else raise ArgumentError, "invalid RPC reply variant: #{variant.inspect}"
+      end
+    end
+    payload
   end
 end

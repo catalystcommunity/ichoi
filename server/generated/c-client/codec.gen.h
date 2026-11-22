@@ -590,6 +590,23 @@ static inline bool csilc_get_tagged_text(const csilc_value *v, uint64_t num, con
     return true;
 }
 
+static inline bool csilc_valid_date(const char *s) {
+    if (!s || strlen(s) != 10 || s[4] != '-' || s[7] != '-') return false;
+    for (int i = 0; i < 10; ++i)
+        if (i != 4 && i != 7 && (s[i] < '0' || s[i] > '9')) return false;
+    int year = (s[0]-'0')*1000 + (s[1]-'0')*100 + (s[2]-'0')*10 + (s[3]-'0');
+    int month = (s[5]-'0')*10 + (s[6]-'0');
+    int day = (s[8]-'0')*10 + (s[9]-'0');
+    const int days[] = {31, 28 + (year%4 == 0 && (year%100 != 0 || year%400 == 0)),
+                        31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    return month >= 1 && month <= 12 && day >= 1 && day <= days[month-1];
+}
+
+static inline bool csilc_get_date(const csilc_value *v, const char **out) {
+    return csilc_get_tagged_text(v, 1004, out) && v->as.tag.content->as.bytes.len == 10
+        && csilc_valid_date(*out);
+}
+
 static inline bool csilc_get_decimal(const csilc_value *v, int64_t *exp, int64_t *mant) {
     if (!v || v->kind != CSILC_TAG || v->as.tag.num != 4) return false;
     const csilc_value *arr = v->as.tag.content;
@@ -10488,6 +10505,1631 @@ static inline int csil_decode_DataChange(const uint8_t *in, size_t len, DataChan
     if (csilc_dec_DataChange(root, a, out)) { csil_codec_arena_free(a); return -1; }
     *owner = a;
     return 0;
+}
+
+static inline int csil_encode_SessionServiceAuthenticateReply(const SessionServiceAuthenticateReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case SessionServiceAuthenticateReply_as_session_info:
+        *variant = "SessionInfo";
+        return csil_encode_SessionInfo(&reply->value.as_session_info, payload, len);
+    case SessionServiceAuthenticateReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_SessionServiceAuthenticateReply(const char *variant, const uint8_t *payload, size_t len, SessionServiceAuthenticateReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "SessionInfo") == 0) {
+        reply->kind = SessionServiceAuthenticateReply_as_session_info;
+        return csil_decode_SessionInfo(payload, len, &reply->value.as_session_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = SessionServiceAuthenticateReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_SessionServiceWhoamiReply(const SessionServiceWhoamiReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case SessionServiceWhoamiReply_as_session_info:
+        *variant = "SessionInfo";
+        return csil_encode_SessionInfo(&reply->value.as_session_info, payload, len);
+    case SessionServiceWhoamiReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_SessionServiceWhoamiReply(const char *variant, const uint8_t *payload, size_t len, SessionServiceWhoamiReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "SessionInfo") == 0) {
+        reply->kind = SessionServiceWhoamiReply_as_session_info;
+        return csil_decode_SessionInfo(payload, len, &reply->value.as_session_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = SessionServiceWhoamiReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_SessionServiceLogoutReply(const SessionServiceLogoutReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case SessionServiceLogoutReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case SessionServiceLogoutReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_SessionServiceLogoutReply(const char *variant, const uint8_t *payload, size_t len, SessionServiceLogoutReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = SessionServiceLogoutReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = SessionServiceLogoutReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_SessionServiceDeleteAccountReply(const SessionServiceDeleteAccountReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case SessionServiceDeleteAccountReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case SessionServiceDeleteAccountReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_SessionServiceDeleteAccountReply(const char *variant, const uint8_t *payload, size_t len, SessionServiceDeleteAccountReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = SessionServiceDeleteAccountReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = SessionServiceDeleteAccountReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceListLibrariesReply(const LibraryServiceListLibrariesReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceListLibrariesReply_as_libraries_response:
+        *variant = "LibrariesResponse";
+        return csil_encode_LibrariesResponse(&reply->value.as_libraries_response, payload, len);
+    case LibraryServiceListLibrariesReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceListLibrariesReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceListLibrariesReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "LibrariesResponse") == 0) {
+        reply->kind = LibraryServiceListLibrariesReply_as_libraries_response;
+        return csil_decode_LibrariesResponse(payload, len, &reply->value.as_libraries_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceListLibrariesReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceListAlbumsReply(const LibraryServiceListAlbumsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceListAlbumsReply_as_albums_response:
+        *variant = "AlbumsResponse";
+        return csil_encode_AlbumsResponse(&reply->value.as_albums_response, payload, len);
+    case LibraryServiceListAlbumsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceListAlbumsReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceListAlbumsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "AlbumsResponse") == 0) {
+        reply->kind = LibraryServiceListAlbumsReply_as_albums_response;
+        return csil_decode_AlbumsResponse(payload, len, &reply->value.as_albums_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceListAlbumsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceListArtistsReply(const LibraryServiceListArtistsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceListArtistsReply_as_artists_response:
+        *variant = "ArtistsResponse";
+        return csil_encode_ArtistsResponse(&reply->value.as_artists_response, payload, len);
+    case LibraryServiceListArtistsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceListArtistsReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceListArtistsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ArtistsResponse") == 0) {
+        reply->kind = LibraryServiceListArtistsReply_as_artists_response;
+        return csil_decode_ArtistsResponse(payload, len, &reply->value.as_artists_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceListArtistsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetAlbumReply(const LibraryServiceGetAlbumReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetAlbumReply_as_album_detail:
+        *variant = "AlbumDetail";
+        return csil_encode_AlbumDetail(&reply->value.as_album_detail, payload, len);
+    case LibraryServiceGetAlbumReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetAlbumReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetAlbumReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "AlbumDetail") == 0) {
+        reply->kind = LibraryServiceGetAlbumReply_as_album_detail;
+        return csil_decode_AlbumDetail(payload, len, &reply->value.as_album_detail, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetAlbumReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetArtistReply(const LibraryServiceGetArtistReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetArtistReply_as_artist_detail:
+        *variant = "ArtistDetail";
+        return csil_encode_ArtistDetail(&reply->value.as_artist_detail, payload, len);
+    case LibraryServiceGetArtistReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetArtistReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetArtistReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ArtistDetail") == 0) {
+        reply->kind = LibraryServiceGetArtistReply_as_artist_detail;
+        return csil_decode_ArtistDetail(payload, len, &reply->value.as_artist_detail, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetArtistReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceSearchReply(const LibraryServiceSearchReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceSearchReply_as_search_response:
+        *variant = "SearchResponse";
+        return csil_encode_SearchResponse(&reply->value.as_search_response, payload, len);
+    case LibraryServiceSearchReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceSearchReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceSearchReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "SearchResponse") == 0) {
+        reply->kind = LibraryServiceSearchReply_as_search_response;
+        return csil_decode_SearchResponse(payload, len, &reply->value.as_search_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceSearchReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceExportManifestReply(const LibraryServiceExportManifestReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceExportManifestReply_as_export_manifest:
+        *variant = "ExportManifest";
+        return csil_encode_ExportManifest(&reply->value.as_export_manifest, payload, len);
+    case LibraryServiceExportManifestReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceExportManifestReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceExportManifestReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ExportManifest") == 0) {
+        reply->kind = LibraryServiceExportManifestReply_as_export_manifest;
+        return csil_decode_ExportManifest(payload, len, &reply->value.as_export_manifest, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceExportManifestReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceExportChunkReply(const LibraryServiceExportChunkReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceExportChunkReply_as_export_chunk:
+        *variant = "ExportChunk";
+        return csil_encode_ExportChunk(&reply->value.as_export_chunk, payload, len);
+    case LibraryServiceExportChunkReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceExportChunkReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceExportChunkReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ExportChunk") == 0) {
+        reply->kind = LibraryServiceExportChunkReply_as_export_chunk;
+        return csil_decode_ExportChunk(payload, len, &reply->value.as_export_chunk, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceExportChunkReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceListPlaylistsReply(const LibraryServiceListPlaylistsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceListPlaylistsReply_as_playlists_response:
+        *variant = "PlaylistsResponse";
+        return csil_encode_PlaylistsResponse(&reply->value.as_playlists_response, payload, len);
+    case LibraryServiceListPlaylistsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceListPlaylistsReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceListPlaylistsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "PlaylistsResponse") == 0) {
+        reply->kind = LibraryServiceListPlaylistsReply_as_playlists_response;
+        return csil_decode_PlaylistsResponse(payload, len, &reply->value.as_playlists_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceListPlaylistsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetPlaylistReply(const LibraryServiceGetPlaylistReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetPlaylistReply_as_playlist_detail:
+        *variant = "PlaylistDetail";
+        return csil_encode_PlaylistDetail(&reply->value.as_playlist_detail, payload, len);
+    case LibraryServiceGetPlaylistReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetPlaylistReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetPlaylistReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "PlaylistDetail") == 0) {
+        reply->kind = LibraryServiceGetPlaylistReply_as_playlist_detail;
+        return csil_decode_PlaylistDetail(payload, len, &reply->value.as_playlist_detail, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetPlaylistReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceDeletePlaylistReply(const LibraryServiceDeletePlaylistReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceDeletePlaylistReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case LibraryServiceDeletePlaylistReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceDeletePlaylistReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceDeletePlaylistReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = LibraryServiceDeletePlaylistReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceDeletePlaylistReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceBlockAccountReply(const LibraryServiceBlockAccountReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceBlockAccountReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case LibraryServiceBlockAccountReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceBlockAccountReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceBlockAccountReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = LibraryServiceBlockAccountReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceBlockAccountReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceUnblockAccountReply(const LibraryServiceUnblockAccountReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceUnblockAccountReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case LibraryServiceUnblockAccountReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceUnblockAccountReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceUnblockAccountReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = LibraryServiceUnblockAccountReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceUnblockAccountReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceListBlockedAccountsReply(const LibraryServiceListBlockedAccountsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceListBlockedAccountsReply_as_blocked_accounts_response:
+        *variant = "BlockedAccountsResponse";
+        return csil_encode_BlockedAccountsResponse(&reply->value.as_blocked_accounts_response, payload, len);
+    case LibraryServiceListBlockedAccountsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceListBlockedAccountsReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceListBlockedAccountsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "BlockedAccountsResponse") == 0) {
+        reply->kind = LibraryServiceListBlockedAccountsReply_as_blocked_accounts_response;
+        return csil_decode_BlockedAccountsResponse(payload, len, &reply->value.as_blocked_accounts_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceListBlockedAccountsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetCoverArtReply(const LibraryServiceGetCoverArtReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetCoverArtReply_as_cover_art:
+        *variant = "CoverArt";
+        return csil_encode_CoverArt(&reply->value.as_cover_art, payload, len);
+    case LibraryServiceGetCoverArtReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetCoverArtReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetCoverArtReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "CoverArt") == 0) {
+        reply->kind = LibraryServiceGetCoverArtReply_as_cover_art;
+        return csil_decode_CoverArt(payload, len, &reply->value.as_cover_art, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetCoverArtReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetArtworkReply(const LibraryServiceGetArtworkReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetArtworkReply_as_cover_art:
+        *variant = "CoverArt";
+        return csil_encode_CoverArt(&reply->value.as_cover_art, payload, len);
+    case LibraryServiceGetArtworkReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetArtworkReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetArtworkReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "CoverArt") == 0) {
+        reply->kind = LibraryServiceGetArtworkReply_as_cover_art;
+        return csil_decode_CoverArt(payload, len, &reply->value.as_cover_art, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetArtworkReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceListArtworkCandidatesReply(const LibraryServiceListArtworkCandidatesReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceListArtworkCandidatesReply_as_artwork_candidates:
+        *variant = "ArtworkCandidates";
+        return csil_encode_ArtworkCandidates(&reply->value.as_artwork_candidates, payload, len);
+    case LibraryServiceListArtworkCandidatesReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceListArtworkCandidatesReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceListArtworkCandidatesReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ArtworkCandidates") == 0) {
+        reply->kind = LibraryServiceListArtworkCandidatesReply_as_artwork_candidates;
+        return csil_decode_ArtworkCandidates(payload, len, &reply->value.as_artwork_candidates, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceListArtworkCandidatesReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetArtworkCandidateReply(const LibraryServiceGetArtworkCandidateReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetArtworkCandidateReply_as_cover_art:
+        *variant = "CoverArt";
+        return csil_encode_CoverArt(&reply->value.as_cover_art, payload, len);
+    case LibraryServiceGetArtworkCandidateReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetArtworkCandidateReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetArtworkCandidateReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "CoverArt") == 0) {
+        reply->kind = LibraryServiceGetArtworkCandidateReply_as_cover_art;
+        return csil_decode_CoverArt(payload, len, &reply->value.as_cover_art, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetArtworkCandidateReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceSetArtworkReply(const LibraryServiceSetArtworkReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceSetArtworkReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case LibraryServiceSetArtworkReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceSetArtworkReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceSetArtworkReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = LibraryServiceSetArtworkReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceSetArtworkReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceGetAudiobookProgressReply(const LibraryServiceGetAudiobookProgressReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceGetAudiobookProgressReply_as_audiobook_progress_response:
+        *variant = "AudiobookProgressResponse";
+        return csil_encode_AudiobookProgressResponse(&reply->value.as_audiobook_progress_response, payload, len);
+    case LibraryServiceGetAudiobookProgressReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceGetAudiobookProgressReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceGetAudiobookProgressReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "AudiobookProgressResponse") == 0) {
+        reply->kind = LibraryServiceGetAudiobookProgressReply_as_audiobook_progress_response;
+        return csil_decode_AudiobookProgressResponse(payload, len, &reply->value.as_audiobook_progress_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceGetAudiobookProgressReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceUpdateAudiobookProgressReply(const LibraryServiceUpdateAudiobookProgressReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceUpdateAudiobookProgressReply_as_audiobook_progress:
+        *variant = "AudiobookProgress";
+        return csil_encode_AudiobookProgress(&reply->value.as_audiobook_progress, payload, len);
+    case LibraryServiceUpdateAudiobookProgressReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceUpdateAudiobookProgressReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceUpdateAudiobookProgressReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "AudiobookProgress") == 0) {
+        reply->kind = LibraryServiceUpdateAudiobookProgressReply_as_audiobook_progress;
+        return csil_decode_AudiobookProgress(payload, len, &reply->value.as_audiobook_progress, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceUpdateAudiobookProgressReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_LibraryServiceReportContentReply(const LibraryServiceReportContentReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case LibraryServiceReportContentReply_as_content_report:
+        *variant = "ContentReport";
+        return csil_encode_ContentReport(&reply->value.as_content_report, payload, len);
+    case LibraryServiceReportContentReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_LibraryServiceReportContentReply(const char *variant, const uint8_t *payload, size_t len, LibraryServiceReportContentReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ContentReport") == 0) {
+        reply->kind = LibraryServiceReportContentReply_as_content_report;
+        return csil_decode_ContentReport(payload, len, &reply->value.as_content_report, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = LibraryServiceReportContentReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceListPlayersReply(const PlayerServiceListPlayersReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceListPlayersReply_as_list_players_response:
+        *variant = "ListPlayersResponse";
+        return csil_encode_ListPlayersResponse(&reply->value.as_list_players_response, payload, len);
+    case PlayerServiceListPlayersReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceListPlayersReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceListPlayersReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ListPlayersResponse") == 0) {
+        reply->kind = PlayerServiceListPlayersReply_as_list_players_response;
+        return csil_decode_ListPlayersResponse(payload, len, &reply->value.as_list_players_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceListPlayersReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceGetStateReply(const PlayerServiceGetStateReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceGetStateReply_as_player_state:
+        *variant = "PlayerState";
+        return csil_encode_PlayerState(&reply->value.as_player_state, payload, len);
+    case PlayerServiceGetStateReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceGetStateReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceGetStateReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "PlayerState") == 0) {
+        reply->kind = PlayerServiceGetStateReply_as_player_state;
+        return csil_decode_PlayerState(payload, len, &reply->value.as_player_state, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceGetStateReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceControlReply(const PlayerServiceControlReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceControlReply_as_player_state:
+        *variant = "PlayerState";
+        return csil_encode_PlayerState(&reply->value.as_player_state, payload, len);
+    case PlayerServiceControlReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceControlReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceControlReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "PlayerState") == 0) {
+        reply->kind = PlayerServiceControlReply_as_player_state;
+        return csil_decode_PlayerState(payload, len, &reply->value.as_player_state, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceControlReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceEnableShareReply(const PlayerServiceEnableShareReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceEnableShareReply_as_share_result:
+        *variant = "ShareResult";
+        return csil_encode_ShareResult(&reply->value.as_share_result, payload, len);
+    case PlayerServiceEnableShareReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceEnableShareReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceEnableShareReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ShareResult") == 0) {
+        reply->kind = PlayerServiceEnableShareReply_as_share_result;
+        return csil_decode_ShareResult(payload, len, &reply->value.as_share_result, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceEnableShareReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceDisableShareReply(const PlayerServiceDisableShareReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceDisableShareReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case PlayerServiceDisableShareReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceDisableShareReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceDisableShareReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = PlayerServiceDisableShareReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceDisableShareReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceGetShareAccessReply(const PlayerServiceGetShareAccessReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceGetShareAccessReply_as_share_access_info:
+        *variant = "ShareAccessInfo";
+        return csil_encode_ShareAccessInfo(&reply->value.as_share_access_info, payload, len);
+    case PlayerServiceGetShareAccessReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceGetShareAccessReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceGetShareAccessReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ShareAccessInfo") == 0) {
+        reply->kind = PlayerServiceGetShareAccessReply_as_share_access_info;
+        return csil_decode_ShareAccessInfo(payload, len, &reply->value.as_share_access_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceGetShareAccessReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_PlayerServiceSetShareAccessReply(const PlayerServiceSetShareAccessReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case PlayerServiceSetShareAccessReply_as_share_access_info:
+        *variant = "ShareAccessInfo";
+        return csil_encode_ShareAccessInfo(&reply->value.as_share_access_info, payload, len);
+    case PlayerServiceSetShareAccessReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_PlayerServiceSetShareAccessReply(const char *variant, const uint8_t *payload, size_t len, PlayerServiceSetShareAccessReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ShareAccessInfo") == 0) {
+        reply->kind = PlayerServiceSetShareAccessReply_as_share_access_info;
+        return csil_decode_ShareAccessInfo(payload, len, &reply->value.as_share_access_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = PlayerServiceSetShareAccessReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_NodeServiceRegisterReply(const NodeServiceRegisterReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case NodeServiceRegisterReply_as_register_node_response:
+        *variant = "RegisterNodeResponse";
+        return csil_encode_RegisterNodeResponse(&reply->value.as_register_node_response, payload, len);
+    case NodeServiceRegisterReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_NodeServiceRegisterReply(const char *variant, const uint8_t *payload, size_t len, NodeServiceRegisterReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "RegisterNodeResponse") == 0) {
+        reply->kind = NodeServiceRegisterReply_as_register_node_response;
+        return csil_decode_RegisterNodeResponse(payload, len, &reply->value.as_register_node_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = NodeServiceRegisterReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListAccountsReply(const AdminServiceListAccountsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListAccountsReply_as_list_accounts_response:
+        *variant = "ListAccountsResponse";
+        return csil_encode_ListAccountsResponse(&reply->value.as_list_accounts_response, payload, len);
+    case AdminServiceListAccountsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListAccountsReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListAccountsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ListAccountsResponse") == 0) {
+        reply->kind = AdminServiceListAccountsReply_as_list_accounts_response;
+        return csil_decode_ListAccountsResponse(payload, len, &reply->value.as_list_accounts_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListAccountsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceSetRoleReply(const AdminServiceSetRoleReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceSetRoleReply_as_account:
+        *variant = "Account";
+        return csil_encode_Account(&reply->value.as_account, payload, len);
+    case AdminServiceSetRoleReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceSetRoleReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceSetRoleReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Account") == 0) {
+        reply->kind = AdminServiceSetRoleReply_as_account;
+        return csil_decode_Account(payload, len, &reply->value.as_account, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceSetRoleReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceSetLibraryEditorReply(const AdminServiceSetLibraryEditorReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceSetLibraryEditorReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case AdminServiceSetLibraryEditorReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceSetLibraryEditorReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceSetLibraryEditorReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = AdminServiceSetLibraryEditorReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceSetLibraryEditorReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceDeleteAccountReply(const AdminServiceDeleteAccountReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceDeleteAccountReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case AdminServiceDeleteAccountReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceDeleteAccountReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceDeleteAccountReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = AdminServiceDeleteAccountReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceDeleteAccountReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceTrustDomainReply(const AdminServiceTrustDomainReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceTrustDomainReply_as_trusted_domains:
+        *variant = "TrustedDomains";
+        return csil_encode_TrustedDomains(&reply->value.as_trusted_domains, payload, len);
+    case AdminServiceTrustDomainReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceTrustDomainReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceTrustDomainReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "TrustedDomains") == 0) {
+        reply->kind = AdminServiceTrustDomainReply_as_trusted_domains;
+        return csil_decode_TrustedDomains(payload, len, &reply->value.as_trusted_domains, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceTrustDomainReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListTrustedDomainsReply(const AdminServiceListTrustedDomainsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListTrustedDomainsReply_as_trusted_domains:
+        *variant = "TrustedDomains";
+        return csil_encode_TrustedDomains(&reply->value.as_trusted_domains, payload, len);
+    case AdminServiceListTrustedDomainsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListTrustedDomainsReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListTrustedDomainsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "TrustedDomains") == 0) {
+        reply->kind = AdminServiceListTrustedDomainsReply_as_trusted_domains;
+        return csil_decode_TrustedDomains(payload, len, &reply->value.as_trusted_domains, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListTrustedDomainsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListTrustedIdentitiesReply(const AdminServiceListTrustedIdentitiesReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListTrustedIdentitiesReply_as_trusted_identities:
+        *variant = "TrustedIdentities";
+        return csil_encode_TrustedIdentities(&reply->value.as_trusted_identities, payload, len);
+    case AdminServiceListTrustedIdentitiesReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListTrustedIdentitiesReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListTrustedIdentitiesReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "TrustedIdentities") == 0) {
+        reply->kind = AdminServiceListTrustedIdentitiesReply_as_trusted_identities;
+        return csil_decode_TrustedIdentities(payload, len, &reply->value.as_trusted_identities, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListTrustedIdentitiesReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceTrustIdentityReply(const AdminServiceTrustIdentityReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceTrustIdentityReply_as_trusted_identities:
+        *variant = "TrustedIdentities";
+        return csil_encode_TrustedIdentities(&reply->value.as_trusted_identities, payload, len);
+    case AdminServiceTrustIdentityReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceTrustIdentityReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceTrustIdentityReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "TrustedIdentities") == 0) {
+        reply->kind = AdminServiceTrustIdentityReply_as_trusted_identities;
+        return csil_decode_TrustedIdentities(payload, len, &reply->value.as_trusted_identities, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceTrustIdentityReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceRevokeTrustedIdentityReply(const AdminServiceRevokeTrustedIdentityReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceRevokeTrustedIdentityReply_as_trusted_identities:
+        *variant = "TrustedIdentities";
+        return csil_encode_TrustedIdentities(&reply->value.as_trusted_identities, payload, len);
+    case AdminServiceRevokeTrustedIdentityReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceRevokeTrustedIdentityReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceRevokeTrustedIdentityReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "TrustedIdentities") == 0) {
+        reply->kind = AdminServiceRevokeTrustedIdentityReply_as_trusted_identities;
+        return csil_decode_TrustedIdentities(payload, len, &reply->value.as_trusted_identities, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceRevokeTrustedIdentityReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListNodesReply(const AdminServiceListNodesReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListNodesReply_as_list_nodes_response:
+        *variant = "ListNodesResponse";
+        return csil_encode_ListNodesResponse(&reply->value.as_list_nodes_response, payload, len);
+    case AdminServiceListNodesReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListNodesReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListNodesReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ListNodesResponse") == 0) {
+        reply->kind = AdminServiceListNodesReply_as_list_nodes_response;
+        return csil_decode_ListNodesResponse(payload, len, &reply->value.as_list_nodes_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListNodesReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceRenameNodeReply(const AdminServiceRenameNodeReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceRenameNodeReply_as_node_info:
+        *variant = "NodeInfo";
+        return csil_encode_NodeInfo(&reply->value.as_node_info, payload, len);
+    case AdminServiceRenameNodeReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceRenameNodeReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceRenameNodeReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "NodeInfo") == 0) {
+        reply->kind = AdminServiceRenameNodeReply_as_node_info;
+        return csil_decode_NodeInfo(payload, len, &reply->value.as_node_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceRenameNodeReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceRenameDeviceReply(const AdminServiceRenameDeviceReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceRenameDeviceReply_as_device_info:
+        *variant = "DeviceInfo";
+        return csil_encode_DeviceInfo(&reply->value.as_device_info, payload, len);
+    case AdminServiceRenameDeviceReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceRenameDeviceReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceRenameDeviceReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "DeviceInfo") == 0) {
+        reply->kind = AdminServiceRenameDeviceReply_as_device_info;
+        return csil_decode_DeviceInfo(payload, len, &reply->value.as_device_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceRenameDeviceReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceSetDeviceAccessReply(const AdminServiceSetDeviceAccessReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceSetDeviceAccessReply_as_device_info:
+        *variant = "DeviceInfo";
+        return csil_encode_DeviceInfo(&reply->value.as_device_info, payload, len);
+    case AdminServiceSetDeviceAccessReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceSetDeviceAccessReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceSetDeviceAccessReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "DeviceInfo") == 0) {
+        reply->kind = AdminServiceSetDeviceAccessReply_as_device_info;
+        return csil_decode_DeviceInfo(payload, len, &reply->value.as_device_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceSetDeviceAccessReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListGroupsReply(const AdminServiceListGroupsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListGroupsReply_as_list_groups_response:
+        *variant = "ListGroupsResponse";
+        return csil_encode_ListGroupsResponse(&reply->value.as_list_groups_response, payload, len);
+    case AdminServiceListGroupsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListGroupsReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListGroupsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ListGroupsResponse") == 0) {
+        reply->kind = AdminServiceListGroupsReply_as_list_groups_response;
+        return csil_decode_ListGroupsResponse(payload, len, &reply->value.as_list_groups_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListGroupsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceCreateGroupReply(const AdminServiceCreateGroupReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceCreateGroupReply_as_group_info:
+        *variant = "GroupInfo";
+        return csil_encode_GroupInfo(&reply->value.as_group_info, payload, len);
+    case AdminServiceCreateGroupReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceCreateGroupReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceCreateGroupReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "GroupInfo") == 0) {
+        reply->kind = AdminServiceCreateGroupReply_as_group_info;
+        return csil_decode_GroupInfo(payload, len, &reply->value.as_group_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceCreateGroupReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceSetGroupMembersReply(const AdminServiceSetGroupMembersReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceSetGroupMembersReply_as_group_info:
+        *variant = "GroupInfo";
+        return csil_encode_GroupInfo(&reply->value.as_group_info, payload, len);
+    case AdminServiceSetGroupMembersReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceSetGroupMembersReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceSetGroupMembersReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "GroupInfo") == 0) {
+        reply->kind = AdminServiceSetGroupMembersReply_as_group_info;
+        return csil_decode_GroupInfo(payload, len, &reply->value.as_group_info, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceSetGroupMembersReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceDeleteGroupReply(const AdminServiceDeleteGroupReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceDeleteGroupReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case AdminServiceDeleteGroupReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceDeleteGroupReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceDeleteGroupReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = AdminServiceDeleteGroupReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceDeleteGroupReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListSatelliteTokensReply(const AdminServiceListSatelliteTokensReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListSatelliteTokensReply_as_list_satellite_tokens_response:
+        *variant = "ListSatelliteTokensResponse";
+        return csil_encode_ListSatelliteTokensResponse(&reply->value.as_list_satellite_tokens_response, payload, len);
+    case AdminServiceListSatelliteTokensReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListSatelliteTokensReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListSatelliteTokensReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ListSatelliteTokensResponse") == 0) {
+        reply->kind = AdminServiceListSatelliteTokensReply_as_list_satellite_tokens_response;
+        return csil_decode_ListSatelliteTokensResponse(payload, len, &reply->value.as_list_satellite_tokens_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListSatelliteTokensReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceCreateNodeTokenReply(const AdminServiceCreateNodeTokenReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceCreateNodeTokenReply_as_node_token_result:
+        *variant = "NodeTokenResult";
+        return csil_encode_NodeTokenResult(&reply->value.as_node_token_result, payload, len);
+    case AdminServiceCreateNodeTokenReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceCreateNodeTokenReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceCreateNodeTokenReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "NodeTokenResult") == 0) {
+        reply->kind = AdminServiceCreateNodeTokenReply_as_node_token_result;
+        return csil_decode_NodeTokenResult(payload, len, &reply->value.as_node_token_result, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceCreateNodeTokenReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceRevokeSatelliteTokenReply(const AdminServiceRevokeSatelliteTokenReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceRevokeSatelliteTokenReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case AdminServiceRevokeSatelliteTokenReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceRevokeSatelliteTokenReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceRevokeSatelliteTokenReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = AdminServiceRevokeSatelliteTokenReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceRevokeSatelliteTokenReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceImportTrackReply(const AdminServiceImportTrackReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceImportTrackReply_as_import_result:
+        *variant = "ImportResult";
+        return csil_encode_ImportResult(&reply->value.as_import_result, payload, len);
+    case AdminServiceImportTrackReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceImportTrackReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceImportTrackReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ImportResult") == 0) {
+        reply->kind = AdminServiceImportTrackReply_as_import_result;
+        return csil_decode_ImportResult(payload, len, &reply->value.as_import_result, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceImportTrackReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceBeginImportReply(const AdminServiceBeginImportReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceBeginImportReply_as_begin_import_result:
+        *variant = "BeginImportResult";
+        return csil_encode_BeginImportResult(&reply->value.as_begin_import_result, payload, len);
+    case AdminServiceBeginImportReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceBeginImportReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceBeginImportReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "BeginImportResult") == 0) {
+        reply->kind = AdminServiceBeginImportReply_as_begin_import_result;
+        return csil_decode_BeginImportResult(payload, len, &reply->value.as_begin_import_result, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceBeginImportReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceImportChunkReply(const AdminServiceImportChunkReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceImportChunkReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case AdminServiceImportChunkReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceImportChunkReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceImportChunkReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = AdminServiceImportChunkReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceImportChunkReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceFinishImportReply(const AdminServiceFinishImportReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceFinishImportReply_as_import_result:
+        *variant = "ImportResult";
+        return csil_encode_ImportResult(&reply->value.as_import_result, payload, len);
+    case AdminServiceFinishImportReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceFinishImportReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceFinishImportReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ImportResult") == 0) {
+        reply->kind = AdminServiceFinishImportReply_as_import_result;
+        return csil_decode_ImportResult(payload, len, &reply->value.as_import_result, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceFinishImportReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceCancelImportReply(const AdminServiceCancelImportReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceCancelImportReply_as_ok:
+        *variant = "Ok";
+        return csil_encode_Ok(&reply->value.as_ok, payload, len);
+    case AdminServiceCancelImportReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceCancelImportReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceCancelImportReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Ok") == 0) {
+        reply->kind = AdminServiceCancelImportReply_as_ok;
+        return csil_decode_Ok(payload, len, &reply->value.as_ok, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceCancelImportReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceGetSettingsReply(const AdminServiceGetSettingsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceGetSettingsReply_as_settings:
+        *variant = "Settings";
+        return csil_encode_Settings(&reply->value.as_settings, payload, len);
+    case AdminServiceGetSettingsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceGetSettingsReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceGetSettingsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Settings") == 0) {
+        reply->kind = AdminServiceGetSettingsReply_as_settings;
+        return csil_decode_Settings(payload, len, &reply->value.as_settings, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceGetSettingsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceSetSettingReply(const AdminServiceSetSettingReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceSetSettingReply_as_settings:
+        *variant = "Settings";
+        return csil_encode_Settings(&reply->value.as_settings, payload, len);
+    case AdminServiceSetSettingReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceSetSettingReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceSetSettingReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "Settings") == 0) {
+        reply->kind = AdminServiceSetSettingReply_as_settings;
+        return csil_decode_Settings(payload, len, &reply->value.as_settings, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceSetSettingReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceResyncLibraryReply(const AdminServiceResyncLibraryReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceResyncLibraryReply_as_library_resync_status:
+        *variant = "LibraryResyncStatus";
+        return csil_encode_LibraryResyncStatus(&reply->value.as_library_resync_status, payload, len);
+    case AdminServiceResyncLibraryReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceResyncLibraryReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceResyncLibraryReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "LibraryResyncStatus") == 0) {
+        reply->kind = AdminServiceResyncLibraryReply_as_library_resync_status;
+        return csil_decode_LibraryResyncStatus(payload, len, &reply->value.as_library_resync_status, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceResyncLibraryReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceGetResyncStatusReply(const AdminServiceGetResyncStatusReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceGetResyncStatusReply_as_library_resync_status:
+        *variant = "LibraryResyncStatus";
+        return csil_encode_LibraryResyncStatus(&reply->value.as_library_resync_status, payload, len);
+    case AdminServiceGetResyncStatusReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceGetResyncStatusReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceGetResyncStatusReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "LibraryResyncStatus") == 0) {
+        reply->kind = AdminServiceGetResyncStatusReply_as_library_resync_status;
+        return csil_decode_LibraryResyncStatus(payload, len, &reply->value.as_library_resync_status, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceGetResyncStatusReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceListContentReportsReply(const AdminServiceListContentReportsReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceListContentReportsReply_as_list_content_reports_response:
+        *variant = "ListContentReportsResponse";
+        return csil_encode_ListContentReportsResponse(&reply->value.as_list_content_reports_response, payload, len);
+    case AdminServiceListContentReportsReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceListContentReportsReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceListContentReportsReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ListContentReportsResponse") == 0) {
+        reply->kind = AdminServiceListContentReportsReply_as_list_content_reports_response;
+        return csil_decode_ListContentReportsResponse(payload, len, &reply->value.as_list_content_reports_response, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceListContentReportsReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
+}
+
+static inline int csil_encode_AdminServiceUpdateContentReportStatusReply(const AdminServiceUpdateContentReportStatusReply *reply, const char **variant, uint8_t **payload, size_t *len) {
+    switch (reply->kind) {
+    case AdminServiceUpdateContentReportStatusReply_as_content_report:
+        *variant = "ContentReport";
+        return csil_encode_ContentReport(&reply->value.as_content_report, payload, len);
+    case AdminServiceUpdateContentReportStatusReply_as_service_error:
+        *variant = "ServiceError";
+        return csil_encode_ServiceError(&reply->value.as_service_error, payload, len);
+    }
+    return -1;
+}
+
+static inline int csil_decode_AdminServiceUpdateContentReportStatusReply(const char *variant, const uint8_t *payload, size_t len, AdminServiceUpdateContentReportStatusReply *reply, CsilCodecArena **owner) {
+    if (!variant) return -1;
+    if (strcmp(variant, "ContentReport") == 0) {
+        reply->kind = AdminServiceUpdateContentReportStatusReply_as_content_report;
+        return csil_decode_ContentReport(payload, len, &reply->value.as_content_report, owner);
+    }
+    if (strcmp(variant, "ServiceError") == 0) {
+        reply->kind = AdminServiceUpdateContentReportStatusReply_as_service_error;
+        return csil_decode_ServiceError(payload, len, &reply->value.as_service_error, owner);
+    }
+    return -1;
 }
 
 #endif /* CSILGEN_CODEC_GEN_H */

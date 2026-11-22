@@ -2,4 +2,22 @@
 
 package csilgen.generated;
 
-public record ContentReportReason(Object value) {}
+public enum ContentReportReason {
+    OBJECTIONABLE_CONTENT("objectionable-content"),
+    HARASSMENT("harassment"),
+    SPAM("spam"),
+    OTHER("other");
+
+    private final String value;
+
+    ContentReportReason(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static ContentReportReason fromWire(String value) {
+        for (ContentReportReason member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown ContentReportReason value: " + value);
+    }
+}

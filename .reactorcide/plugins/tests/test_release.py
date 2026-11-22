@@ -81,7 +81,7 @@ class CsilgenInstallTest(unittest.TestCase):
         self.code_dir_context = tempfile.TemporaryDirectory()
         self.code_dir = Path(self.code_dir_context.name)
         (self.code_dir / ".csilgen-release").write_text(
-            "csilgen/v0.2.7\n", encoding="utf-8"
+            "csilgen/v0.2.14\n", encoding="utf-8"
         )
 
     def tearDown(self):
@@ -90,14 +90,10 @@ class CsilgenInstallTest(unittest.TestCase):
     @unittest.mock.patch.object(
         ci_plugin.tempfile, "mkdtemp", return_value="/tmp/csilgen-install-test"
     )
-    @unittest.mock.patch.object(
-        ci_plugin, "_pinned_release_list",
-        return_value=Path("/tmp/csilgen-install-test/source/installed/pinned-release.json"),
-    )
     @unittest.mock.patch.object(ci_plugin, "_run")
-    def test_installs_generators_under_the_runtime_home_path(self, run, _pinned, _mkdtemp):
+    def test_installs_generators_under_the_runtime_home_path(self, run, _mkdtemp):
         run.return_value = unittest.mock.Mock(
-            stdout="Installed GitHub Release: csilgen/v0.2.7\n", stderr=""
+            stdout="Installed GitHub Release: csilgen/v0.2.14\n", stderr=""
         )
         environment = {"HOME": "/home/runner", "PATH": "/usr/bin"}
 
@@ -117,47 +113,19 @@ class CsilgenInstallTest(unittest.TestCase):
             )
         )
         self.assertEqual(
-            install_environment["CSILGEN_GITHUB_API"],
-            "file:///tmp/csilgen-install-test/source/installed/pinned-release.json",
+            run.call_args_list[1].args[0], ["./tools.sh", "install-all", "csilgen/v0.2.14"]
         )
-
-    def _release_response(self, payload):
-        response = unittest.mock.MagicMock()
-        response.read.return_value = json.dumps(payload).encode("utf-8")
-        response.__enter__.return_value = response
-        return response
-
-    def test_pinned_release_list_holds_only_the_pinned_release(self):
-        payload = {"tag_name": "csilgen/v0.2.7", "draft": False, "prerelease": False, "assets": []}
-        with tempfile.TemporaryDirectory() as directory, unittest.mock.patch.object(
-            ci_plugin.urllib.request, "urlopen", return_value=self._release_response(payload)
-        ) as urlopen:
-            path = ci_plugin._pinned_release_list("csilgen/v0.2.7", Path(directory))
-            self.assertEqual(json.loads(path.read_text()), [payload])
-        self.assertTrue(urlopen.call_args.args[0].full_url.endswith("/releases/tags/csilgen/v0.2.7"))
-
-    def test_pinned_release_list_rejects_another_tag(self):
-        payload = {"tag_name": "csilgen/v0.2.8", "draft": False, "prerelease": False}
-        with tempfile.TemporaryDirectory() as directory, unittest.mock.patch.object(
-            ci_plugin.urllib.request, "urlopen", return_value=self._release_response(payload)
-        ):
-            with self.assertRaisesRegex(RuntimeError, "not a published csilgen release"):
-                ci_plugin._pinned_release_list("csilgen/v0.2.7", Path(directory))
 
     @unittest.mock.patch.object(
         ci_plugin.tempfile, "mkdtemp", return_value="/tmp/csilgen-install-test"
     )
-    @unittest.mock.patch.object(
-        ci_plugin, "_pinned_release_list",
-        return_value=Path("/tmp/csilgen-install-test/source/installed/pinned-release.json"),
-    )
     @unittest.mock.patch.object(ci_plugin, "_run")
-    def test_rejects_a_release_that_does_not_match_the_pin(self, run, _pinned, _mkdtemp):
+    def test_rejects_a_release_that_does_not_match_the_pin(self, run, _mkdtemp):
         run.return_value = unittest.mock.Mock(
-            stdout="Installed GitHub Release: csilgen/v0.2.8\n", stderr=""
+            stdout="Installed GitHub Release: csilgen/v0.2.140\n", stderr=""
         )
 
-        with self.assertRaisesRegex(RuntimeError, "pinned release csilgen/v0.2.7"):
+        with self.assertRaisesRegex(RuntimeError, "pinned release csilgen/v0.2.14"):
             ci_plugin._install_csilgen(
                 {"HOME": "/home/runner", "PATH": "/usr/bin"}, self.code_dir
             )

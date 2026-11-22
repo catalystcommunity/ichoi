@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record PlayerKind(Object value) {}
+public enum PlayerKind {
+    SHARED("shared"),
+    PRIVATE("private");
+
+    private final String value;
+
+    PlayerKind(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static PlayerKind fromWire(String value) {
+        for (PlayerKind member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown PlayerKind value: " + value);
+    }
+}

@@ -4341,3 +4341,984 @@ let decode_watch_changes_request_bytes (b : bytes) : watch_changes_request =
 let encode_data_change_bytes (v : data_change) : bytes = Cbor.encode (encode_data_change v)
 let decode_data_change_bytes (b : bytes) : data_change =
   match Cbor.decode b with Ok c -> decode_data_change c | Error e -> failwith e
+
+let encode_session_service_authenticate_request value = Cbor.encode (encode_auth_request value)
+let decode_session_service_authenticate_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_auth_request root) | Error e -> failwith e
+
+let decode_session_service_authenticate_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_session_info root) | Error e -> failwith e
+
+exception Service_error_refusal of service_error
+
+let encode_session_service_authenticate_reply = function
+  | Ok value -> ("SessionInfo", Cbor.encode (encode_session_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_session_service_whoami_request value = Cbor.encode (encode_page value)
+let decode_session_service_whoami_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_session_service_whoami_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_session_info root) | Error e -> failwith e
+
+let encode_session_service_whoami_reply = function
+  | Ok value -> ("SessionInfo", Cbor.encode (encode_session_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_session_service_logout_request value = Cbor.encode (encode_page value)
+let decode_session_service_logout_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_session_service_logout_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_session_service_logout_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_session_service_delete_account_request value = Cbor.encode (encode_delete_account_request value)
+let decode_session_service_delete_account_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_delete_account_request root) | Error e -> failwith e
+
+let decode_session_service_delete_account_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_session_service_delete_account_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_list_libraries_request value = Cbor.encode (encode_page value)
+let decode_library_service_list_libraries_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_library_service_list_libraries_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_libraries_response root) | Error e -> failwith e
+
+let encode_library_service_list_libraries_reply = function
+  | Ok value -> ("LibrariesResponse", Cbor.encode (encode_libraries_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_list_albums_request value = Cbor.encode (encode_browse_request value)
+let decode_library_service_list_albums_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_browse_request root) | Error e -> failwith e
+
+let decode_library_service_list_albums_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_albums_response root) | Error e -> failwith e
+
+let encode_library_service_list_albums_reply = function
+  | Ok value -> ("AlbumsResponse", Cbor.encode (encode_albums_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_list_artists_request value = Cbor.encode (encode_browse_request value)
+let decode_library_service_list_artists_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_browse_request root) | Error e -> failwith e
+
+let decode_library_service_list_artists_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artists_response root) | Error e -> failwith e
+
+let encode_library_service_list_artists_reply = function
+  | Ok value -> ("ArtistsResponse", Cbor.encode (encode_artists_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_album_request value = Cbor.encode (encode_album_request value)
+let decode_library_service_get_album_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_album_request root) | Error e -> failwith e
+
+let decode_library_service_get_album_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_album_detail root) | Error e -> failwith e
+
+let encode_library_service_get_album_reply = function
+  | Ok value -> ("AlbumDetail", Cbor.encode (encode_album_detail value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_artist_request value = Cbor.encode (encode_artist_request value)
+let decode_library_service_get_artist_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artist_request root) | Error e -> failwith e
+
+let decode_library_service_get_artist_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artist_detail root) | Error e -> failwith e
+
+let encode_library_service_get_artist_reply = function
+  | Ok value -> ("ArtistDetail", Cbor.encode (encode_artist_detail value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_search_request value = Cbor.encode (encode_search_request value)
+let decode_library_service_search_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_search_request root) | Error e -> failwith e
+
+let decode_library_service_search_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_search_response root) | Error e -> failwith e
+
+let encode_library_service_search_reply = function
+  | Ok value -> ("SearchResponse", Cbor.encode (encode_search_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_export_manifest_request value = Cbor.encode (encode_export_manifest_request value)
+let decode_library_service_export_manifest_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_export_manifest_request root) | Error e -> failwith e
+
+let decode_library_service_export_manifest_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_export_manifest root) | Error e -> failwith e
+
+let encode_library_service_export_manifest_reply = function
+  | Ok value -> ("ExportManifest", Cbor.encode (encode_export_manifest value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_export_chunk_request value = Cbor.encode (encode_export_chunk_request value)
+let decode_library_service_export_chunk_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_export_chunk_request root) | Error e -> failwith e
+
+let decode_library_service_export_chunk_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_export_chunk root) | Error e -> failwith e
+
+let encode_library_service_export_chunk_reply = function
+  | Ok value -> ("ExportChunk", Cbor.encode (encode_export_chunk value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_list_playlists_request value = Cbor.encode (encode_browse_request value)
+let decode_library_service_list_playlists_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_browse_request root) | Error e -> failwith e
+
+let decode_library_service_list_playlists_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_playlists_response root) | Error e -> failwith e
+
+let encode_library_service_list_playlists_reply = function
+  | Ok value -> ("PlaylistsResponse", Cbor.encode (encode_playlists_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_playlist_request value = Cbor.encode (encode_playlist_request value)
+let decode_library_service_get_playlist_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_playlist_request root) | Error e -> failwith e
+
+let decode_library_service_get_playlist_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_playlist_detail root) | Error e -> failwith e
+
+let encode_library_service_get_playlist_reply = function
+  | Ok value -> ("PlaylistDetail", Cbor.encode (encode_playlist_detail value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_delete_playlist_request value = Cbor.encode (encode_delete_playlist_request value)
+let decode_library_service_delete_playlist_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_delete_playlist_request root) | Error e -> failwith e
+
+let decode_library_service_delete_playlist_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_library_service_delete_playlist_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_block_account_request value = Cbor.encode (encode_block_account_request value)
+let decode_library_service_block_account_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_block_account_request root) | Error e -> failwith e
+
+let decode_library_service_block_account_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_library_service_block_account_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_unblock_account_request value = Cbor.encode (encode_block_account_request value)
+let decode_library_service_unblock_account_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_block_account_request root) | Error e -> failwith e
+
+let decode_library_service_unblock_account_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_library_service_unblock_account_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_list_blocked_accounts_request value = Cbor.encode (encode_page value)
+let decode_library_service_list_blocked_accounts_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_library_service_list_blocked_accounts_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_blocked_accounts_response root) | Error e -> failwith e
+
+let encode_library_service_list_blocked_accounts_reply = function
+  | Ok value -> ("BlockedAccountsResponse", Cbor.encode (encode_blocked_accounts_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_cover_art_request value = Cbor.encode (encode_cover_art_request value)
+let decode_library_service_get_cover_art_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_cover_art_request root) | Error e -> failwith e
+
+let decode_library_service_get_cover_art_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_cover_art root) | Error e -> failwith e
+
+let encode_library_service_get_cover_art_reply = function
+  | Ok value -> ("CoverArt", Cbor.encode (encode_cover_art value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_artwork_request value = Cbor.encode (encode_artwork_request value)
+let decode_library_service_get_artwork_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artwork_request root) | Error e -> failwith e
+
+let decode_library_service_get_artwork_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_cover_art root) | Error e -> failwith e
+
+let encode_library_service_get_artwork_reply = function
+  | Ok value -> ("CoverArt", Cbor.encode (encode_cover_art value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_list_artwork_candidates_request value = Cbor.encode (encode_artwork_candidates_request value)
+let decode_library_service_list_artwork_candidates_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artwork_candidates_request root) | Error e -> failwith e
+
+let decode_library_service_list_artwork_candidates_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artwork_candidates root) | Error e -> failwith e
+
+let encode_library_service_list_artwork_candidates_reply = function
+  | Ok value -> ("ArtworkCandidates", Cbor.encode (encode_artwork_candidates value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_artwork_candidate_request value = Cbor.encode (encode_artwork_candidate_request value)
+let decode_library_service_get_artwork_candidate_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_artwork_candidate_request root) | Error e -> failwith e
+
+let decode_library_service_get_artwork_candidate_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_cover_art root) | Error e -> failwith e
+
+let encode_library_service_get_artwork_candidate_reply = function
+  | Ok value -> ("CoverArt", Cbor.encode (encode_cover_art value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_set_artwork_request value = Cbor.encode (encode_set_artwork_request value)
+let decode_library_service_set_artwork_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_artwork_request root) | Error e -> failwith e
+
+let decode_library_service_set_artwork_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_library_service_set_artwork_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_get_audiobook_progress_request value = Cbor.encode (encode_audiobook_progress_request value)
+let decode_library_service_get_audiobook_progress_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_audiobook_progress_request root) | Error e -> failwith e
+
+let decode_library_service_get_audiobook_progress_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_audiobook_progress_response root) | Error e -> failwith e
+
+let encode_library_service_get_audiobook_progress_reply = function
+  | Ok value -> ("AudiobookProgressResponse", Cbor.encode (encode_audiobook_progress_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_update_audiobook_progress_request value = Cbor.encode (encode_update_audiobook_progress_request value)
+let decode_library_service_update_audiobook_progress_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_update_audiobook_progress_request root) | Error e -> failwith e
+
+let decode_library_service_update_audiobook_progress_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_audiobook_progress root) | Error e -> failwith e
+
+let encode_library_service_update_audiobook_progress_reply = function
+  | Ok value -> ("AudiobookProgress", Cbor.encode (encode_audiobook_progress value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_library_service_report_content_request value = Cbor.encode (encode_report_content_request value)
+let decode_library_service_report_content_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_report_content_request root) | Error e -> failwith e
+
+let decode_library_service_report_content_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_content_report root) | Error e -> failwith e
+
+let encode_library_service_report_content_reply = function
+  | Ok value -> ("ContentReport", Cbor.encode (encode_content_report value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_list_players_request value = Cbor.encode (encode_list_players_request value)
+let decode_player_service_list_players_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_players_request root) | Error e -> failwith e
+
+let decode_player_service_list_players_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_players_response root) | Error e -> failwith e
+
+let encode_player_service_list_players_reply = function
+  | Ok value -> ("ListPlayersResponse", Cbor.encode (encode_list_players_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_get_state_request value = Cbor.encode (encode_subscribe_request value)
+let decode_player_service_get_state_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_subscribe_request root) | Error e -> failwith e
+
+let decode_player_service_get_state_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_player_state root) | Error e -> failwith e
+
+let encode_player_service_get_state_reply = function
+  | Ok value -> ("PlayerState", Cbor.encode (encode_player_state value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_control_request value = Cbor.encode (encode_command_request value)
+let decode_player_service_control_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_command_request root) | Error e -> failwith e
+
+let decode_player_service_control_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_player_state root) | Error e -> failwith e
+
+let encode_player_service_control_reply = function
+  | Ok value -> ("PlayerState", Cbor.encode (encode_player_state value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_enable_share_request value = Cbor.encode (encode_enable_share_request value)
+let decode_player_service_enable_share_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_enable_share_request root) | Error e -> failwith e
+
+let decode_player_service_enable_share_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_share_result root) | Error e -> failwith e
+
+let encode_player_service_enable_share_reply = function
+  | Ok value -> ("ShareResult", Cbor.encode (encode_share_result value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_disable_share_request value = Cbor.encode (encode_disable_share_request value)
+let decode_player_service_disable_share_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_disable_share_request root) | Error e -> failwith e
+
+let decode_player_service_disable_share_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_player_service_disable_share_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_get_share_access_request value = Cbor.encode (encode_share_access_request value)
+let decode_player_service_get_share_access_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_share_access_request root) | Error e -> failwith e
+
+let decode_player_service_get_share_access_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_share_access_info root) | Error e -> failwith e
+
+let encode_player_service_get_share_access_reply = function
+  | Ok value -> ("ShareAccessInfo", Cbor.encode (encode_share_access_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_player_service_set_share_access_request value = Cbor.encode (encode_set_share_access_request value)
+let decode_player_service_set_share_access_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_share_access_request root) | Error e -> failwith e
+
+let decode_player_service_set_share_access_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_share_access_info root) | Error e -> failwith e
+
+let encode_player_service_set_share_access_reply = function
+  | Ok value -> ("ShareAccessInfo", Cbor.encode (encode_share_access_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_node_service_register_request value = Cbor.encode (encode_register_node_request value)
+let decode_node_service_register_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_register_node_request root) | Error e -> failwith e
+
+let decode_node_service_register_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_register_node_response root) | Error e -> failwith e
+
+let encode_node_service_register_reply = function
+  | Ok value -> ("RegisterNodeResponse", Cbor.encode (encode_register_node_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_accounts_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_accounts_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_accounts_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_accounts_response root) | Error e -> failwith e
+
+let encode_admin_service_list_accounts_reply = function
+  | Ok value -> ("ListAccountsResponse", Cbor.encode (encode_list_accounts_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_set_role_request value = Cbor.encode (encode_set_role_request value)
+let decode_admin_service_set_role_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_role_request root) | Error e -> failwith e
+
+let decode_admin_service_set_role_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_account root) | Error e -> failwith e
+
+let encode_admin_service_set_role_reply = function
+  | Ok value -> ("Account", Cbor.encode (encode_account value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_set_library_editor_request value = Cbor.encode (encode_set_library_editor_request value)
+let decode_admin_service_set_library_editor_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_library_editor_request root) | Error e -> failwith e
+
+let decode_admin_service_set_library_editor_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_admin_service_set_library_editor_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_delete_account_request value = Cbor.encode (encode_admin_delete_account_request value)
+let decode_admin_service_delete_account_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_admin_delete_account_request root) | Error e -> failwith e
+
+let decode_admin_service_delete_account_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_admin_service_delete_account_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_trust_domain_request value = Cbor.encode (encode_trust_domain_request value)
+let decode_admin_service_trust_domain_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trust_domain_request root) | Error e -> failwith e
+
+let decode_admin_service_trust_domain_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trusted_domains root) | Error e -> failwith e
+
+let encode_admin_service_trust_domain_reply = function
+  | Ok value -> ("TrustedDomains", Cbor.encode (encode_trusted_domains value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_trusted_domains_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_trusted_domains_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_trusted_domains_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trusted_domains root) | Error e -> failwith e
+
+let encode_admin_service_list_trusted_domains_reply = function
+  | Ok value -> ("TrustedDomains", Cbor.encode (encode_trusted_domains value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_trusted_identities_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_trusted_identities_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_trusted_identities_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trusted_identities root) | Error e -> failwith e
+
+let encode_admin_service_list_trusted_identities_reply = function
+  | Ok value -> ("TrustedIdentities", Cbor.encode (encode_trusted_identities value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_trust_identity_request value = Cbor.encode (encode_trust_identity_request value)
+let decode_admin_service_trust_identity_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trust_identity_request root) | Error e -> failwith e
+
+let decode_admin_service_trust_identity_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trusted_identities root) | Error e -> failwith e
+
+let encode_admin_service_trust_identity_reply = function
+  | Ok value -> ("TrustedIdentities", Cbor.encode (encode_trusted_identities value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_revoke_trusted_identity_request value = Cbor.encode (encode_revoke_trusted_identity_request value)
+let decode_admin_service_revoke_trusted_identity_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_revoke_trusted_identity_request root) | Error e -> failwith e
+
+let decode_admin_service_revoke_trusted_identity_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_trusted_identities root) | Error e -> failwith e
+
+let encode_admin_service_revoke_trusted_identity_reply = function
+  | Ok value -> ("TrustedIdentities", Cbor.encode (encode_trusted_identities value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_nodes_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_nodes_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_nodes_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_nodes_response root) | Error e -> failwith e
+
+let encode_admin_service_list_nodes_reply = function
+  | Ok value -> ("ListNodesResponse", Cbor.encode (encode_list_nodes_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_rename_node_request value = Cbor.encode (encode_rename_node_request value)
+let decode_admin_service_rename_node_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_rename_node_request root) | Error e -> failwith e
+
+let decode_admin_service_rename_node_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_node_info root) | Error e -> failwith e
+
+let encode_admin_service_rename_node_reply = function
+  | Ok value -> ("NodeInfo", Cbor.encode (encode_node_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_rename_device_request value = Cbor.encode (encode_rename_device_request value)
+let decode_admin_service_rename_device_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_rename_device_request root) | Error e -> failwith e
+
+let decode_admin_service_rename_device_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_device_info root) | Error e -> failwith e
+
+let encode_admin_service_rename_device_reply = function
+  | Ok value -> ("DeviceInfo", Cbor.encode (encode_device_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_set_device_access_request value = Cbor.encode (encode_set_device_access_request value)
+let decode_admin_service_set_device_access_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_device_access_request root) | Error e -> failwith e
+
+let decode_admin_service_set_device_access_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_device_info root) | Error e -> failwith e
+
+let encode_admin_service_set_device_access_reply = function
+  | Ok value -> ("DeviceInfo", Cbor.encode (encode_device_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_groups_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_groups_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_groups_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_groups_response root) | Error e -> failwith e
+
+let encode_admin_service_list_groups_reply = function
+  | Ok value -> ("ListGroupsResponse", Cbor.encode (encode_list_groups_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_create_group_request value = Cbor.encode (encode_create_group_request value)
+let decode_admin_service_create_group_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_create_group_request root) | Error e -> failwith e
+
+let decode_admin_service_create_group_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_group_info root) | Error e -> failwith e
+
+let encode_admin_service_create_group_reply = function
+  | Ok value -> ("GroupInfo", Cbor.encode (encode_group_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_set_group_members_request value = Cbor.encode (encode_set_group_members_request value)
+let decode_admin_service_set_group_members_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_group_members_request root) | Error e -> failwith e
+
+let decode_admin_service_set_group_members_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_group_info root) | Error e -> failwith e
+
+let encode_admin_service_set_group_members_reply = function
+  | Ok value -> ("GroupInfo", Cbor.encode (encode_group_info value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_delete_group_request value = Cbor.encode (encode_delete_group_request value)
+let decode_admin_service_delete_group_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_delete_group_request root) | Error e -> failwith e
+
+let decode_admin_service_delete_group_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_admin_service_delete_group_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_satellite_tokens_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_satellite_tokens_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_satellite_tokens_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_satellite_tokens_response root) | Error e -> failwith e
+
+let encode_admin_service_list_satellite_tokens_reply = function
+  | Ok value -> ("ListSatelliteTokensResponse", Cbor.encode (encode_list_satellite_tokens_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_create_node_token_request value = Cbor.encode (encode_create_node_token_request value)
+let decode_admin_service_create_node_token_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_create_node_token_request root) | Error e -> failwith e
+
+let decode_admin_service_create_node_token_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_node_token_result root) | Error e -> failwith e
+
+let encode_admin_service_create_node_token_reply = function
+  | Ok value -> ("NodeTokenResult", Cbor.encode (encode_node_token_result value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_revoke_satellite_token_request value = Cbor.encode (encode_revoke_satellite_token_request value)
+let decode_admin_service_revoke_satellite_token_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_revoke_satellite_token_request root) | Error e -> failwith e
+
+let decode_admin_service_revoke_satellite_token_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_admin_service_revoke_satellite_token_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_import_track_request value = Cbor.encode (encode_import_track_request value)
+let decode_admin_service_import_track_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_import_track_request root) | Error e -> failwith e
+
+let decode_admin_service_import_track_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_import_result root) | Error e -> failwith e
+
+let encode_admin_service_import_track_reply = function
+  | Ok value -> ("ImportResult", Cbor.encode (encode_import_result value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_begin_import_request value = Cbor.encode (encode_begin_import_request value)
+let decode_admin_service_begin_import_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_begin_import_request root) | Error e -> failwith e
+
+let decode_admin_service_begin_import_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_begin_import_result root) | Error e -> failwith e
+
+let encode_admin_service_begin_import_reply = function
+  | Ok value -> ("BeginImportResult", Cbor.encode (encode_begin_import_result value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_import_chunk_request value = Cbor.encode (encode_import_chunk_request value)
+let decode_admin_service_import_chunk_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_import_chunk_request root) | Error e -> failwith e
+
+let decode_admin_service_import_chunk_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_admin_service_import_chunk_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_finish_import_request value = Cbor.encode (encode_finish_import_request value)
+let decode_admin_service_finish_import_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_finish_import_request root) | Error e -> failwith e
+
+let decode_admin_service_finish_import_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_import_result root) | Error e -> failwith e
+
+let encode_admin_service_finish_import_reply = function
+  | Ok value -> ("ImportResult", Cbor.encode (encode_import_result value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_cancel_import_request value = Cbor.encode (encode_cancel_import_request value)
+let decode_admin_service_cancel_import_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_cancel_import_request root) | Error e -> failwith e
+
+let decode_admin_service_cancel_import_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_ok root) | Error e -> failwith e
+
+let encode_admin_service_cancel_import_reply = function
+  | Ok value -> ("Ok", Cbor.encode (encode_ok value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_get_settings_request value = Cbor.encode (encode_page value)
+let decode_admin_service_get_settings_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_get_settings_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_settings root) | Error e -> failwith e
+
+let encode_admin_service_get_settings_reply = function
+  | Ok value -> ("Settings", Cbor.encode (encode_settings value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_set_setting_request value = Cbor.encode (encode_set_setting_request value)
+let decode_admin_service_set_setting_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_set_setting_request root) | Error e -> failwith e
+
+let decode_admin_service_set_setting_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_settings root) | Error e -> failwith e
+
+let encode_admin_service_set_setting_reply = function
+  | Ok value -> ("Settings", Cbor.encode (encode_settings value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_resync_library_request value = Cbor.encode (encode_page value)
+let decode_admin_service_resync_library_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_resync_library_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_library_resync_status root) | Error e -> failwith e
+
+let encode_admin_service_resync_library_reply = function
+  | Ok value -> ("LibraryResyncStatus", Cbor.encode (encode_library_resync_status value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_get_resync_status_request value = Cbor.encode (encode_page value)
+let decode_admin_service_get_resync_status_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_get_resync_status_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_library_resync_status root) | Error e -> failwith e
+
+let encode_admin_service_get_resync_status_reply = function
+  | Ok value -> ("LibraryResyncStatus", Cbor.encode (encode_library_resync_status value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_list_content_reports_request value = Cbor.encode (encode_page value)
+let decode_admin_service_list_content_reports_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_page root) | Error e -> failwith e
+
+let decode_admin_service_list_content_reports_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_list_content_reports_response root) | Error e -> failwith e
+
+let encode_admin_service_list_content_reports_reply = function
+  | Ok value -> ("ListContentReportsResponse", Cbor.encode (encode_list_content_reports_response value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let encode_admin_service_update_content_report_status_request value = Cbor.encode (encode_update_content_report_status_request value)
+let decode_admin_service_update_content_report_status_request bytes =
+  match Cbor.decode bytes with Ok root -> (decode_update_content_report_status_request root) | Error e -> failwith e
+
+let decode_admin_service_update_content_report_status_success bytes =
+  match Cbor.decode bytes with Ok root -> (decode_content_report root) | Error e -> failwith e
+
+let encode_admin_service_update_content_report_status_reply = function
+  | Ok value -> ("ContentReport", Cbor.encode (encode_content_report value))
+  | Error (`Service_error value) -> ("ServiceError", Cbor.encode (encode_service_error value))
+
+let resolve_rpc_reply ~service ~op ~variant payload =
+  match service, op, variant with
+  | "SessionService", "authenticate", Some "SessionInfo" -> payload
+  | "SessionService", "authenticate", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "SessionService", "authenticate", _ -> failwith "invalid RPC reply variant"
+  | "SessionService", "whoami", Some "SessionInfo" -> payload
+  | "SessionService", "whoami", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "SessionService", "whoami", _ -> failwith "invalid RPC reply variant"
+  | "SessionService", "logout", Some "Ok" -> payload
+  | "SessionService", "logout", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "SessionService", "logout", _ -> failwith "invalid RPC reply variant"
+  | "SessionService", "delete-account", Some "Ok" -> payload
+  | "SessionService", "delete-account", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "SessionService", "delete-account", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "list-libraries", Some "LibrariesResponse" -> payload
+  | "LibraryService", "list-libraries", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "list-libraries", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "list-albums", Some "AlbumsResponse" -> payload
+  | "LibraryService", "list-albums", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "list-albums", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "list-artists", Some "ArtistsResponse" -> payload
+  | "LibraryService", "list-artists", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "list-artists", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-album", Some "AlbumDetail" -> payload
+  | "LibraryService", "get-album", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-album", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-artist", Some "ArtistDetail" -> payload
+  | "LibraryService", "get-artist", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-artist", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "search", Some "SearchResponse" -> payload
+  | "LibraryService", "search", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "search", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "export-manifest", Some "ExportManifest" -> payload
+  | "LibraryService", "export-manifest", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "export-manifest", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "export-chunk", Some "ExportChunk" -> payload
+  | "LibraryService", "export-chunk", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "export-chunk", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "list-playlists", Some "PlaylistsResponse" -> payload
+  | "LibraryService", "list-playlists", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "list-playlists", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-playlist", Some "PlaylistDetail" -> payload
+  | "LibraryService", "get-playlist", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-playlist", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "delete-playlist", Some "Ok" -> payload
+  | "LibraryService", "delete-playlist", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "delete-playlist", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "block-account", Some "Ok" -> payload
+  | "LibraryService", "block-account", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "block-account", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "unblock-account", Some "Ok" -> payload
+  | "LibraryService", "unblock-account", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "unblock-account", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "list-blocked-accounts", Some "BlockedAccountsResponse" -> payload
+  | "LibraryService", "list-blocked-accounts", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "list-blocked-accounts", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-cover-art", Some "CoverArt" -> payload
+  | "LibraryService", "get-cover-art", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-cover-art", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-artwork", Some "CoverArt" -> payload
+  | "LibraryService", "get-artwork", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-artwork", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "list-artwork-candidates", Some "ArtworkCandidates" -> payload
+  | "LibraryService", "list-artwork-candidates", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "list-artwork-candidates", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-artwork-candidate", Some "CoverArt" -> payload
+  | "LibraryService", "get-artwork-candidate", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-artwork-candidate", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "set-artwork", Some "Ok" -> payload
+  | "LibraryService", "set-artwork", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "set-artwork", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "get-audiobook-progress", Some "AudiobookProgressResponse" -> payload
+  | "LibraryService", "get-audiobook-progress", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "get-audiobook-progress", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "update-audiobook-progress", Some "AudiobookProgress" -> payload
+  | "LibraryService", "update-audiobook-progress", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "update-audiobook-progress", _ -> failwith "invalid RPC reply variant"
+  | "LibraryService", "report-content", Some "ContentReport" -> payload
+  | "LibraryService", "report-content", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "LibraryService", "report-content", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "list-players", Some "ListPlayersResponse" -> payload
+  | "PlayerService", "list-players", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "list-players", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "get-state", Some "PlayerState" -> payload
+  | "PlayerService", "get-state", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "get-state", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "control", Some "PlayerState" -> payload
+  | "PlayerService", "control", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "control", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "enable-share", Some "ShareResult" -> payload
+  | "PlayerService", "enable-share", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "enable-share", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "disable-share", Some "Ok" -> payload
+  | "PlayerService", "disable-share", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "disable-share", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "get-share-access", Some "ShareAccessInfo" -> payload
+  | "PlayerService", "get-share-access", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "get-share-access", _ -> failwith "invalid RPC reply variant"
+  | "PlayerService", "set-share-access", Some "ShareAccessInfo" -> payload
+  | "PlayerService", "set-share-access", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "PlayerService", "set-share-access", _ -> failwith "invalid RPC reply variant"
+  | "NodeService", "register", Some "RegisterNodeResponse" -> payload
+  | "NodeService", "register", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "NodeService", "register", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-accounts", Some "ListAccountsResponse" -> payload
+  | "AdminService", "list-accounts", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-accounts", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "set-role", Some "Account" -> payload
+  | "AdminService", "set-role", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "set-role", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "set-library-editor", Some "Ok" -> payload
+  | "AdminService", "set-library-editor", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "set-library-editor", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "delete-account", Some "Ok" -> payload
+  | "AdminService", "delete-account", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "delete-account", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "trust-domain", Some "TrustedDomains" -> payload
+  | "AdminService", "trust-domain", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "trust-domain", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-trusted-domains", Some "TrustedDomains" -> payload
+  | "AdminService", "list-trusted-domains", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-trusted-domains", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-trusted-identities", Some "TrustedIdentities" -> payload
+  | "AdminService", "list-trusted-identities", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-trusted-identities", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "trust-identity", Some "TrustedIdentities" -> payload
+  | "AdminService", "trust-identity", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "trust-identity", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "revoke-trusted-identity", Some "TrustedIdentities" -> payload
+  | "AdminService", "revoke-trusted-identity", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "revoke-trusted-identity", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-nodes", Some "ListNodesResponse" -> payload
+  | "AdminService", "list-nodes", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-nodes", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "rename-node", Some "NodeInfo" -> payload
+  | "AdminService", "rename-node", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "rename-node", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "rename-device", Some "DeviceInfo" -> payload
+  | "AdminService", "rename-device", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "rename-device", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "set-device-access", Some "DeviceInfo" -> payload
+  | "AdminService", "set-device-access", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "set-device-access", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-groups", Some "ListGroupsResponse" -> payload
+  | "AdminService", "list-groups", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-groups", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "create-group", Some "GroupInfo" -> payload
+  | "AdminService", "create-group", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "create-group", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "set-group-members", Some "GroupInfo" -> payload
+  | "AdminService", "set-group-members", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "set-group-members", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "delete-group", Some "Ok" -> payload
+  | "AdminService", "delete-group", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "delete-group", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-satellite-tokens", Some "ListSatelliteTokensResponse" -> payload
+  | "AdminService", "list-satellite-tokens", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-satellite-tokens", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "create-node-token", Some "NodeTokenResult" -> payload
+  | "AdminService", "create-node-token", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "create-node-token", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "revoke-satellite-token", Some "Ok" -> payload
+  | "AdminService", "revoke-satellite-token", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "revoke-satellite-token", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "import-track", Some "ImportResult" -> payload
+  | "AdminService", "import-track", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "import-track", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "begin-import", Some "BeginImportResult" -> payload
+  | "AdminService", "begin-import", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "begin-import", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "import-chunk", Some "Ok" -> payload
+  | "AdminService", "import-chunk", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "import-chunk", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "finish-import", Some "ImportResult" -> payload
+  | "AdminService", "finish-import", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "finish-import", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "cancel-import", Some "Ok" -> payload
+  | "AdminService", "cancel-import", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "cancel-import", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "get-settings", Some "Settings" -> payload
+  | "AdminService", "get-settings", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "get-settings", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "set-setting", Some "Settings" -> payload
+  | "AdminService", "set-setting", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "set-setting", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "resync-library", Some "LibraryResyncStatus" -> payload
+  | "AdminService", "resync-library", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "resync-library", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "get-resync-status", Some "LibraryResyncStatus" -> payload
+  | "AdminService", "get-resync-status", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "get-resync-status", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "list-content-reports", Some "ListContentReportsResponse" -> payload
+  | "AdminService", "list-content-reports", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "list-content-reports", _ -> failwith "invalid RPC reply variant"
+  | "AdminService", "update-content-report-status", Some "ContentReport" -> payload
+  | "AdminService", "update-content-report-status", Some "ServiceError" ->
+      (match Cbor.decode payload with Ok root -> raise (Service_error_refusal ((decode_service_error root))) | Error e -> failwith e)
+  | "AdminService", "update-content-report-status", _ -> failwith "invalid RPC reply variant"
+  | _ -> payload

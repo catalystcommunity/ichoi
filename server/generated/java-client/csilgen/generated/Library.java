@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record Library(Object value) {}
+public enum Library {
+    MUSIC("music"),
+    AUDIOBOOK("audiobook");
+
+    private final String value;
+
+    Library(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static Library fromWire(String value) {
+        for (Library member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown Library value: " + value);
+    }
+}

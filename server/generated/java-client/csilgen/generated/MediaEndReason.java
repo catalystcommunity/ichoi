@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record MediaEndReason(Object value) {}
+public enum MediaEndReason {
+    EOS("eos"),
+    STOPPED("stopped");
+
+    private final String value;
+
+    MediaEndReason(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static MediaEndReason fromWire(String value) {
+        for (MediaEndReason member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown MediaEndReason value: " + value);
+    }
+}

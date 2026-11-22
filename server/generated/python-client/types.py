@@ -4,9 +4,119 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum as _Enum
 from typing import Optional, List, Dict, Any, Union
 import json
 
+
+class Role(str, _Enum):
+    __str__ = str.__str__
+    ADMIN = "admin"
+    MEMBER = "member"
+    GUEST = "guest"
+
+class PlayerStatus(str, _Enum):
+    __str__ = str.__str__
+    STOPPED = "stopped"
+    PLAYING = "playing"
+    PAUSED = "paused"
+
+class RepeatMode(str, _Enum):
+    __str__ = str.__str__
+    OFF = "off"
+    ALL = "all"
+    ONE = "one"
+
+class NodeEvent(str, _Enum):
+    __str__ = str.__str__
+    READY = "ready"
+    STATE = "state"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+class Codec(str, _Enum):
+    __str__ = str.__str__
+    MP_3 = "mp3"
+    AAC = "aac"
+    VORBIS = "vorbis"
+    FLAC = "flac"
+    ALAC = "alac"
+    OPUS = "opus"
+    WAV = "wav"
+    WMA = "wma"
+
+class TranscodeCodec(str, _Enum):
+    __str__ = str.__str__
+    AAC = "aac"
+    MP_3 = "mp3"
+
+class ContentReportTargetType(str, _Enum):
+    __str__ = str.__str__
+    PLAYLIST = "playlist"
+    ACCOUNT = "account"
+
+class ContentReportReason(str, _Enum):
+    __str__ = str.__str__
+    OBJECTIONABLE_CONTENT = "objectionable-content"
+    HARASSMENT = "harassment"
+    SPAM = "spam"
+    OTHER = "other"
+
+class ContentReportStatus(str, _Enum):
+    __str__ = str.__str__
+    OPEN = "open"
+    RESOLVED = "resolved"
+    DISMISSED = "dismissed"
+
+class Library(str, _Enum):
+    __str__ = str.__str__
+    MUSIC = "music"
+    AUDIOBOOK = "audiobook"
+
+class ArtworkKind(str, _Enum):
+    __str__ = str.__str__
+    ALBUM = "album"
+    ARTIST = "artist"
+
+class PlayerKind(str, _Enum):
+    __str__ = str.__str__
+    SHARED = "shared"
+    PRIVATE = "private"
+
+class ShareAccess(str, _Enum):
+    __str__ = str.__str__
+    EVERYONE = "everyone"
+    SELECTED = "selected"
+
+class MediaEndReason(str, _Enum):
+    __str__ = str.__str__
+    EOS = "eos"
+    STOPPED = "stopped"
+
+class NodeKind(str, _Enum):
+    __str__ = str.__str__
+    CORE = "core"
+    SATELLITE = "satellite"
+    CLIENT = "client"
+
+class AudioOutputsState(str, _Enum):
+    __str__ = str.__str__
+    NONE = "none"
+    SOME = "some"
+
+class ChangeTopic(str, _Enum):
+    __str__ = str.__str__
+    PLAYERS = "players"
+    LIBRARIES = "libraries"
+    PLAYLISTS = "playlists"
+    PROGRESS = "progress"
+    SESSION = "session"
+    ACCOUNTS = "accounts"
+    TRUST = "trust"
+    NODES = "nodes"
+    GROUPS = "groups"
+    SETTINGS = "settings"
+    IMPORTS = "imports"
 
 AccountId = str
 
@@ -28,23 +138,11 @@ DeviceId = str
 
 PlayerId = str
 
-Role = Union[str, str, str]
-
-PlayerStatus = Union[str, str, str]
-
-RepeatMode = Union[str, str, str]
-
-NodeEvent = Union[str, str, str, str]
-
-Codec = Union[str, str, str, str, str, str, str, str]
-
-TranscodeCodec = Union[str, str]
-
 @dataclass
 class StreamPref:
     max_bitrate_kbps: Optional[int] = None
     prefer_original: Optional[bool] = False
-    transcode_codec: Optional[TranscodeCodec] = "aac"
+    transcode_codec: Optional[TranscodeCodec] = TranscodeCodec.AAC
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -59,7 +157,7 @@ class StreamPref:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'StreamPref':
         """Create instance from dictionary."""
-        return cls(max_bitrate_kbps=data.get('max_bitrate_kbps'), prefer_original=data.get('prefer_original'), transcode_codec=data.get('transcode_codec'))
+        return cls(max_bitrate_kbps=data.get('max_bitrate_kbps'), prefer_original=data.get('prefer_original'), transcode_codec=(TranscodeCodec.AAC if data.get('transcode_codec') is None else TranscodeCodec(data['transcode_codec'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -124,12 +222,6 @@ class Ok:
         return cls.from_dict(json.loads(json_str))
 
 
-ContentReportTargetType = Union[str, str]
-
-ContentReportReason = Union[str, str, str, str]
-
-ContentReportStatus = Union[str, str, str]
-
 @dataclass
 class ContentReport:
     id: ContentReportId
@@ -167,7 +259,7 @@ class ContentReport:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ContentReport':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), reporter_account_id=data.get('reporter_account_id'), target_type=data.get('target_type'), target_id=data.get('target_id'), reason=data.get('reason'), details=data.get('details'), status=data.get('status'), created_at=data.get('created_at'), resolved_at=data.get('resolved_at'))
+        return cls(id=data.get('id'), reporter_account_id=data.get('reporter_account_id'), target_type=(None if data.get('target_type') is None else ContentReportTargetType(data['target_type'])), target_id=data.get('target_id'), reason=(None if data.get('reason') is None else ContentReportReason(data['reason'])), details=data.get('details'), status=(None if data.get('status') is None else ContentReportStatus(data['status'])), created_at=data.get('created_at'), resolved_at=data.get('resolved_at'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -269,7 +361,7 @@ class SessionInfo:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SessionInfo':
         """Create instance from dictionary."""
-        return cls(account_id=data.get('account_id'), handle=data.get('handle'), display_name=data.get('display_name'), role=data.get('role'), can_admin=data.get('can_admin'), can_edit_library=data.get('can_edit_library'), token=data.get('token'))
+        return cls(account_id=data.get('account_id'), handle=data.get('handle'), display_name=data.get('display_name'), role=(None if data.get('role') is None else Role(data['role'])), can_admin=data.get('can_admin'), can_edit_library=data.get('can_edit_library'), token=data.get('token'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -305,8 +397,6 @@ class DeleteAccountRequest:
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
-
-Library = Union[str, str]
 
 @dataclass
 class Track:
@@ -369,7 +459,7 @@ class Track:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Track':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), library=data.get('library'), title=data.get('title'), artist_id=data.get('artist_id'), artist_name=data.get('artist_name'), album_id=data.get('album_id'), album_title=data.get('album_title'), track_no=data.get('track_no'), disc_no=data.get('disc_no'), duration_ms=data.get('duration_ms'), codec=data.get('codec'), bitrate_kbps=data.get('bitrate_kbps'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), bit_depth=data.get('bit_depth'), root_relative_path=data.get('root_relative_path'), content_hash=data.get('content_hash'))
+        return cls(id=data.get('id'), library=(None if data.get('library') is None else Library(data['library'])), title=data.get('title'), artist_id=data.get('artist_id'), artist_name=data.get('artist_name'), album_id=data.get('album_id'), album_title=data.get('album_title'), track_no=data.get('track_no'), disc_no=data.get('disc_no'), duration_ms=data.get('duration_ms'), codec=(None if data.get('codec') is None else Codec(data['codec'])), bitrate_kbps=data.get('bitrate_kbps'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), bit_depth=data.get('bit_depth'), root_relative_path=data.get('root_relative_path'), content_hash=data.get('content_hash'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -494,7 +584,7 @@ class Playlist:
 
 @dataclass
 class BrowseRequest:
-    library: Optional[Library] = "music"
+    library: Optional[Library] = Library.MUSIC
     offset: Optional[int] = 0
     limit: Optional[int] = 100
     def to_dict(self) -> Dict[str, Any]:
@@ -511,7 +601,7 @@ class BrowseRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'BrowseRequest':
         """Create instance from dictionary."""
-        return cls(library=data.get('library'), offset=data.get('offset'), limit=data.get('limit'))
+        return cls(library=(Library.MUSIC if data.get('library') is None else Library(data['library'])), offset=data.get('offset'), limit=data.get('limit'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -536,7 +626,7 @@ class LibraryInfo:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'LibraryInfo':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'))
+        return cls(kind=(None if data.get('kind') is None else Library(data['kind'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -685,7 +775,7 @@ class AlbumDetail:
 @dataclass
 class ArtistRequest:
     artist_id: ArtistId
-    library: Optional[Library] = "music"
+    library: Optional[Library] = Library.MUSIC
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -698,7 +788,7 @@ class ArtistRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ArtistRequest':
         """Create instance from dictionary."""
-        return cls(artist_id=data.get('artist_id'), library=data.get('library'))
+        return cls(artist_id=data.get('artist_id'), library=(Library.MUSIC if data.get('library') is None else Library(data['library'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -741,7 +831,7 @@ class ArtistDetail:
 @dataclass
 class SearchRequest:
     query: str
-    library: Optional[Library] = "music"
+    library: Optional[Library] = Library.MUSIC
     limit: Optional[int] = 50
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -757,7 +847,7 @@ class SearchRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SearchRequest':
         """Create instance from dictionary."""
-        return cls(query=data.get('query'), library=data.get('library'), limit=data.get('limit'))
+        return cls(query=data.get('query'), library=(Library.MUSIC if data.get('library') is None else Library(data['library'])), limit=data.get('limit'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1362,8 +1452,6 @@ class CoverArt:
         return cls.from_dict(json.loads(json_str))
 
 
-ArtworkKind = Union[str, str]
-
 @dataclass
 class ArtworkRequest:
     kind: ArtworkKind
@@ -1383,7 +1471,7 @@ class ArtworkRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkRequest':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), id=data.get('id'), max_size=data.get('max_size'))
+        return cls(kind=(None if data.get('kind') is None else ArtworkKind(data['kind'])), id=data.get('id'), max_size=data.get('max_size'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1417,7 +1505,7 @@ class SetArtworkRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SetArtworkRequest':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), id=data.get('id'), data=data.get('data'), candidate_id=data.get('candidate_id'))
+        return cls(kind=(None if data.get('kind') is None else ArtworkKind(data['kind'])), id=data.get('id'), data=data.get('data'), candidate_id=data.get('candidate_id'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1451,7 +1539,7 @@ class ArtworkCandidatesRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkCandidatesRequest':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), id=data.get('id'), offset=data.get('offset'), limit=data.get('limit'))
+        return cls(kind=(None if data.get('kind') is None else ArtworkKind(data['kind'])), id=data.get('id'), offset=data.get('offset'), limit=data.get('limit'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1485,7 +1573,7 @@ class ArtworkCandidateRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ArtworkCandidateRequest':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), id=data.get('id'), candidate_id=data.get('candidate_id'), max_size=data.get('max_size'))
+        return cls(kind=(None if data.get('kind') is None else ArtworkKind(data['kind'])), id=data.get('id'), candidate_id=data.get('candidate_id'), max_size=data.get('max_size'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1587,7 +1675,7 @@ class ReportContentRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ReportContentRequest':
         """Create instance from dictionary."""
-        return cls(target_type=data.get('target_type'), target_id=data.get('target_id'), reason=data.get('reason'), details=data.get('details'))
+        return cls(target_type=(None if data.get('target_type') is None else ContentReportTargetType(data['target_type'])), target_id=data.get('target_id'), reason=(None if data.get('reason') is None else ContentReportReason(data['reason'])), details=data.get('details'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1598,8 +1686,6 @@ class ReportContentRequest:
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
-
-PlayerKind = Union[str, str]
 
 @dataclass
 class Player:
@@ -1632,7 +1718,7 @@ class Player:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Player':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), kind=data.get('kind'), name=data.get('name'), node_id=data.get('node_id'), device_id=data.get('device_id'), owner=data.get('owner'), audio_blocked=data.get('audio_blocked'))
+        return cls(id=data.get('id'), kind=(None if data.get('kind') is None else PlayerKind(data['kind'])), name=data.get('name'), node_id=data.get('node_id'), device_id=data.get('device_id'), owner=data.get('owner'), audio_blocked=data.get('audio_blocked'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1672,7 +1758,7 @@ class QueueItem:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'QueueItem':
         """Create instance from dictionary."""
-        return cls(queue_item_id=data.get('queue_item_id'), track_id=data.get('track_id'), library=data.get('library'), title=data.get('title'), artist=data.get('artist'), duration_ms=data.get('duration_ms'))
+        return cls(queue_item_id=data.get('queue_item_id'), track_id=data.get('track_id'), library=(None if data.get('library') is None else Library(data['library'])), title=data.get('title'), artist=data.get('artist'), duration_ms=data.get('duration_ms'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1730,7 +1816,7 @@ class PlayerState:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'PlayerState':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), revision=data.get('revision'), status=data.get('status'), current_index=data.get('current_index'), playback_id=data.get('playback_id'), position_ms=data.get('position_ms'), volume=data.get('volume'), repeat_mode=data.get('repeat_mode'), shuffle=data.get('shuffle'), error=data.get('error'), can_undo=data.get('can_undo'), queue=data.get('queue'))
+        return cls(player_id=data.get('player_id'), revision=data.get('revision'), status=(None if data.get('status') is None else PlayerStatus(data['status'])), current_index=data.get('current_index'), playback_id=data.get('playback_id'), position_ms=data.get('position_ms'), volume=data.get('volume'), repeat_mode=(None if data.get('repeat_mode') is None else RepeatMode(data['repeat_mode'])), shuffle=data.get('shuffle'), error=data.get('error'), can_undo=data.get('can_undo'), queue=data.get('queue'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -1765,7 +1851,7 @@ class ListPlayersRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ListPlayersRequest':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'))
+        return cls(kind=(None if data.get('kind') is None else PlayerKind(data['kind'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2254,7 +2340,7 @@ class CmdSetRepeat:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'CmdSetRepeat':
         """Create instance from dictionary."""
-        return cls(op=data.get('op'), repeat_mode=data.get('repeat_mode'))
+        return cls(op=data.get('op'), repeat_mode=(None if data.get('repeat_mode') is None else RepeatMode(data['repeat_mode'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2421,7 +2507,7 @@ class CmdPlaybackState:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'CmdPlaybackState':
         """Create instance from dictionary."""
-        return cls(op=data.get('op'), playback_id=data.get('playback_id'), queue_item_id=data.get('queue_item_id'), status=data.get('status'), position_ms=data.get('position_ms'))
+        return cls(op=data.get('op'), playback_id=data.get('playback_id'), queue_item_id=data.get('queue_item_id'), status=(None if data.get('status') is None else PlayerStatus(data['status'])), position_ms=data.get('position_ms'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2550,8 +2636,6 @@ class ShareResult:
         return cls.from_dict(json.loads(json_str))
 
 
-ShareAccess = Union[str, str]
-
 @dataclass
 class ShareAccessRequest:
     player_id: PlayerId
@@ -2630,7 +2714,7 @@ class ShareAccessInfo:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ShareAccessInfo':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), access=data.get('access'), accounts=data.get('accounts'))
+        return cls(player_id=data.get('player_id'), access=(None if data.get('access') is None else ShareAccess(data['access'])), accounts=data.get('accounts'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2661,7 +2745,7 @@ class SetShareAccessRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SetShareAccessRequest':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), access=data.get('access'), account_ids=data.get('account_ids'))
+        return cls(player_id=data.get('player_id'), access=(None if data.get('access') is None else ShareAccess(data['access'])), account_ids=data.get('account_ids'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2864,7 +2948,7 @@ class MediaHeader:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaHeader':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), codec=data.get('codec'), transcoded=data.get('transcoded'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), duration_ms=data.get('duration_ms'), trim_start_samples=data.get('trim_start_samples'), trim_end_samples=data.get('trim_end_samples'), codec_config=data.get('codec_config'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), codec=(None if data.get('codec') is None else Codec(data['codec'])), transcoded=data.get('transcoded'), sample_rate=data.get('sample_rate'), channels=data.get('channels'), duration_ms=data.get('duration_ms'), trim_start_samples=data.get('trim_start_samples'), trim_end_samples=data.get('trim_end_samples'), codec_config=data.get('codec_config'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -2875,8 +2959,6 @@ class MediaHeader:
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
-
-MediaEndReason = Union[str, str]
 
 @dataclass
 class MediaChunk:
@@ -2934,7 +3016,7 @@ class MediaEnd:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'MediaEnd':
         """Create instance from dictionary."""
-        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), reason=data.get('reason'))
+        return cls(kind=data.get('kind'), stream_id=data.get('stream_id'), reason=(None if data.get('reason') is None else MediaEndReason(data['reason'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -3252,7 +3334,7 @@ NodeDirective = Union[DirLoad, DirPause, DirResume, DirStop, DirVolume]
 class NodeReport:
     player_id: PlayerId
     status: PlayerStatus
-    event: Optional[NodeEvent] = "state"
+    event: Optional[NodeEvent] = NodeEvent.STATE
     queue_item_id: Optional[int] = None
     playback_id: Optional[str] = None
     position_ms: Optional[int] = None
@@ -3282,7 +3364,7 @@ class NodeReport:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'NodeReport':
         """Create instance from dictionary."""
-        return cls(player_id=data.get('player_id'), event=data.get('event'), status=data.get('status'), queue_item_id=data.get('queue_item_id'), playback_id=data.get('playback_id'), position_ms=data.get('position_ms'), error=data.get('error'), audio_blocked=data.get('audio_blocked'))
+        return cls(player_id=data.get('player_id'), event=(NodeEvent.STATE if data.get('event') is None else NodeEvent(data['event'])), status=(None if data.get('status') is None else PlayerStatus(data['status'])), queue_item_id=data.get('queue_item_id'), playback_id=data.get('playback_id'), position_ms=data.get('position_ms'), error=data.get('error'), audio_blocked=data.get('audio_blocked'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -3334,7 +3416,7 @@ class Account:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Account':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), handle=data.get('handle'), display_name=data.get('display_name'), role=data.get('role'), created_at=data.get('created_at'), can_edit_library=data.get('can_edit_library'))
+        return cls(id=data.get('id'), handle=data.get('handle'), display_name=data.get('display_name'), role=(None if data.get('role') is None else Role(data['role'])), created_at=data.get('created_at'), can_edit_library=data.get('can_edit_library'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -3415,7 +3497,7 @@ class SetRoleRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'SetRoleRequest':
         """Create instance from dictionary."""
-        return cls(account_id=data.get('account_id'), role=data.get('role'))
+        return cls(account_id=data.get('account_id'), role=(None if data.get('role') is None else Role(data['role'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -3614,10 +3696,6 @@ class RevokeTrustedIdentityRequest:
         return cls.from_dict(json.loads(json_str))
 
 
-NodeKind = Union[str, str, str]
-
-AudioOutputsState = Union[str, str]
-
 @dataclass
 class DeviceInfo:
     id: DeviceId
@@ -3695,7 +3773,7 @@ class NodeInfo:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'NodeInfo':
         """Create instance from dictionary."""
-        return cls(id=data.get('id'), kind=data.get('kind'), hostname=data.get('hostname'), friendly_name=data.get('friendly_name'), platform=data.get('platform'), arch=data.get('arch'), last_seen=data.get('last_seen'), audio_outputs=data.get('audio_outputs'), devices=data.get('devices'))
+        return cls(id=data.get('id'), kind=(None if data.get('kind') is None else NodeKind(data['kind'])), hostname=data.get('hostname'), friendly_name=data.get('friendly_name'), platform=data.get('platform'), arch=data.get('arch'), last_seen=data.get('last_seen'), audio_outputs=(None if data.get('audio_outputs') is None else AudioOutputsState(data['audio_outputs'])), devices=data.get('devices'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -4143,7 +4221,7 @@ class ImportTrackRequest:
     root_relative_path: str
     content_type: str
     data: bytes
-    library: Optional[Library] = "music"
+    library: Optional[Library] = Library.MUSIC
     content_hash: Optional[str] = None
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -4163,7 +4241,7 @@ class ImportTrackRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ImportTrackRequest':
         """Create instance from dictionary."""
-        return cls(library=data.get('library'), root_relative_path=data.get('root_relative_path'), content_type=data.get('content_type'), content_hash=data.get('content_hash'), data=data.get('data'))
+        return cls(library=(Library.MUSIC if data.get('library') is None else Library(data['library'])), root_relative_path=data.get('root_relative_path'), content_type=data.get('content_type'), content_hash=data.get('content_hash'), data=data.get('data'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -4241,7 +4319,7 @@ class MissingChunk:
 class BeginImportRequest:
     track_file_index: int
     files: List[TransferFile]
-    library: Optional[Library] = "music"
+    library: Optional[Library] = Library.MUSIC
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         result = {}
@@ -4256,7 +4334,7 @@ class BeginImportRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'BeginImportRequest':
         """Create instance from dictionary."""
-        return cls(library=data.get('library'), track_file_index=data.get('track_file_index'), files=data.get('files'))
+        return cls(library=(Library.MUSIC if data.get('library') is None else Library(data['library'])), track_file_index=data.get('track_file_index'), files=data.get('files'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -4505,7 +4583,7 @@ class UpdateContentReportStatusRequest:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'UpdateContentReportStatusRequest':
         """Create instance from dictionary."""
-        return cls(report_id=data.get('report_id'), status=data.get('status'))
+        return cls(report_id=data.get('report_id'), status=(None if data.get('status') is None else ContentReportStatus(data['status'])))
 
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -4516,8 +4594,6 @@ class UpdateContentReportStatusRequest:
         """Create instance from JSON string."""
         return cls.from_dict(json.loads(json_str))
 
-
-ChangeTopic = Union[str, str, str, str, str, str, str, str, str, str, str]
 
 @dataclass
 class WatchChangesRequest:
@@ -4560,7 +4636,7 @@ class DataChange:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'DataChange':
         """Create instance from dictionary."""
-        return cls(topic=data.get('topic'), revision=data.get('revision'))
+        return cls(topic=(None if data.get('topic') is None else ChangeTopic(data['topic'])), revision=data.get('revision'))
 
     def to_json(self) -> str:
         """Convert to JSON string."""

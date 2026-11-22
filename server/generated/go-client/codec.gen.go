@@ -4,6 +4,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -10414,4 +10415,1776 @@ func csilDecNodeDirective(csilV cborValue) (NodeDirective, error) {
 		var csilZero NodeDirective
 		return csilZero, fmt.Errorf("csil cbor: unknown NodeDirective variant %d", csilIdx)
 	}
+}
+
+// RPCDecodeError reports a malformed typed RPC reply.
+type RPCDecodeError struct{ Err error }
+
+func (e *RPCDecodeError) Error() string { return e.Err.Error() }
+func (e *RPCDecodeError) Unwrap() error { return e.Err }
+
+// RPCApplicationError carries the declared value of an application refusal.
+type RPCApplicationError[T any] struct{ Value T }
+
+func (e *RPCApplicationError[T]) Error() string { return fmt.Sprintf("application error: %v", e.Value) }
+
+func EncodeSessionAuthenticateReply(value SessionInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "SessionInfo", EncodeSessionInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeSessionWhoamiReply(value SessionInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "SessionInfo", EncodeSessionInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeSessionLogoutReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeSessionDeleteAccountReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryListLibrariesReply(value LibrariesResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "LibrariesResponse", EncodeLibrariesResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryListAlbumsReply(value AlbumsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "AlbumsResponse", EncodeAlbumsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryListArtistsReply(value ArtistsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ArtistsResponse", EncodeArtistsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetAlbumReply(value AlbumDetail, err error) (string, []byte, error) {
+	if err == nil {
+		return "AlbumDetail", EncodeAlbumDetail(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetArtistReply(value ArtistDetail, err error) (string, []byte, error) {
+	if err == nil {
+		return "ArtistDetail", EncodeArtistDetail(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibrarySearchReply(value SearchResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "SearchResponse", EncodeSearchResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryExportManifestReply(value ExportManifest, err error) (string, []byte, error) {
+	if err == nil {
+		return "ExportManifest", EncodeExportManifest(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryExportChunkReply(value ExportChunk, err error) (string, []byte, error) {
+	if err == nil {
+		return "ExportChunk", EncodeExportChunk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryListPlaylistsReply(value PlaylistsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "PlaylistsResponse", EncodePlaylistsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetPlaylistReply(value PlaylistDetail, err error) (string, []byte, error) {
+	if err == nil {
+		return "PlaylistDetail", EncodePlaylistDetail(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryDeletePlaylistReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryBlockAccountReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryUnblockAccountReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryListBlockedAccountsReply(value BlockedAccountsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "BlockedAccountsResponse", EncodeBlockedAccountsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetCoverArtReply(value CoverArt, err error) (string, []byte, error) {
+	if err == nil {
+		return "CoverArt", EncodeCoverArt(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetArtworkReply(value CoverArt, err error) (string, []byte, error) {
+	if err == nil {
+		return "CoverArt", EncodeCoverArt(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryListArtworkCandidatesReply(value ArtworkCandidates, err error) (string, []byte, error) {
+	if err == nil {
+		return "ArtworkCandidates", EncodeArtworkCandidates(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetArtworkCandidateReply(value CoverArt, err error) (string, []byte, error) {
+	if err == nil {
+		return "CoverArt", EncodeCoverArt(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibrarySetArtworkReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryGetAudiobookProgressReply(value AudiobookProgressResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "AudiobookProgressResponse", EncodeAudiobookProgressResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryUpdateAudiobookProgressReply(value AudiobookProgress, err error) (string, []byte, error) {
+	if err == nil {
+		return "AudiobookProgress", EncodeAudiobookProgress(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeLibraryReportContentReply(value ContentReport, err error) (string, []byte, error) {
+	if err == nil {
+		return "ContentReport", EncodeContentReport(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerListPlayersReply(value ListPlayersResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ListPlayersResponse", EncodeListPlayersResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerGetStateReply(value PlayerState, err error) (string, []byte, error) {
+	if err == nil {
+		return "PlayerState", EncodePlayerState(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerControlReply(value PlayerState, err error) (string, []byte, error) {
+	if err == nil {
+		return "PlayerState", EncodePlayerState(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerEnableShareReply(value ShareResult, err error) (string, []byte, error) {
+	if err == nil {
+		return "ShareResult", EncodeShareResult(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerDisableShareReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerGetShareAccessReply(value ShareAccessInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "ShareAccessInfo", EncodeShareAccessInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodePlayerSetShareAccessReply(value ShareAccessInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "ShareAccessInfo", EncodeShareAccessInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeNodeRegisterReply(value RegisterNodeResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "RegisterNodeResponse", EncodeRegisterNodeResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListAccountsReply(value ListAccountsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ListAccountsResponse", EncodeListAccountsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminSetRoleReply(value Account, err error) (string, []byte, error) {
+	if err == nil {
+		return "Account", EncodeAccount(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminSetLibraryEditorReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminDeleteAccountReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminTrustDomainReply(value TrustedDomains, err error) (string, []byte, error) {
+	if err == nil {
+		return "TrustedDomains", EncodeTrustedDomains(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListTrustedDomainsReply(value TrustedDomains, err error) (string, []byte, error) {
+	if err == nil {
+		return "TrustedDomains", EncodeTrustedDomains(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListTrustedIdentitiesReply(value TrustedIdentities, err error) (string, []byte, error) {
+	if err == nil {
+		return "TrustedIdentities", EncodeTrustedIdentities(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminTrustIdentityReply(value TrustedIdentities, err error) (string, []byte, error) {
+	if err == nil {
+		return "TrustedIdentities", EncodeTrustedIdentities(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminRevokeTrustedIdentityReply(value TrustedIdentities, err error) (string, []byte, error) {
+	if err == nil {
+		return "TrustedIdentities", EncodeTrustedIdentities(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListNodesReply(value ListNodesResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ListNodesResponse", EncodeListNodesResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminRenameNodeReply(value NodeInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "NodeInfo", EncodeNodeInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminRenameDeviceReply(value DeviceInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "DeviceInfo", EncodeDeviceInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminSetDeviceAccessReply(value DeviceInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "DeviceInfo", EncodeDeviceInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListGroupsReply(value ListGroupsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ListGroupsResponse", EncodeListGroupsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminCreateGroupReply(value GroupInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "GroupInfo", EncodeGroupInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminSetGroupMembersReply(value GroupInfo, err error) (string, []byte, error) {
+	if err == nil {
+		return "GroupInfo", EncodeGroupInfo(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminDeleteGroupReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListSatelliteTokensReply(value ListSatelliteTokensResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ListSatelliteTokensResponse", EncodeListSatelliteTokensResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminCreateNodeTokenReply(value NodeTokenResult, err error) (string, []byte, error) {
+	if err == nil {
+		return "NodeTokenResult", EncodeNodeTokenResult(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminRevokeSatelliteTokenReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminImportTrackReply(value ImportResult, err error) (string, []byte, error) {
+	if err == nil {
+		return "ImportResult", EncodeImportResult(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminBeginImportReply(value BeginImportResult, err error) (string, []byte, error) {
+	if err == nil {
+		return "BeginImportResult", EncodeBeginImportResult(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminImportChunkReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminFinishImportReply(value ImportResult, err error) (string, []byte, error) {
+	if err == nil {
+		return "ImportResult", EncodeImportResult(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminCancelImportReply(value Ok, err error) (string, []byte, error) {
+	if err == nil {
+		return "Ok", EncodeOk(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminGetSettingsReply(value Settings, err error) (string, []byte, error) {
+	if err == nil {
+		return "Settings", EncodeSettings(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminSetSettingReply(value Settings, err error) (string, []byte, error) {
+	if err == nil {
+		return "Settings", EncodeSettings(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminResyncLibraryReply(value LibraryResyncStatus, err error) (string, []byte, error) {
+	if err == nil {
+		return "LibraryResyncStatus", EncodeLibraryResyncStatus(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminGetResyncStatusReply(value LibraryResyncStatus, err error) (string, []byte, error) {
+	if err == nil {
+		return "LibraryResyncStatus", EncodeLibraryResyncStatus(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminListContentReportsReply(value ListContentReportsResponse, err error) (string, []byte, error) {
+	if err == nil {
+		return "ListContentReportsResponse", EncodeListContentReportsResponse(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func EncodeAdminUpdateContentReportStatusReply(value ContentReport, err error) (string, []byte, error) {
+	if err == nil {
+		return "ContentReport", EncodeContentReport(value), nil
+	}
+	var refusal1 *RPCApplicationError[ServiceError]
+	if errors.As(err, &refusal1) && refusal1 != nil {
+		return "ServiceError", EncodeServiceError(refusal1.Value), nil
+	}
+	return "", nil, err
+}
+
+func ResolveRPCReply(service, op string, variant *string, payload []byte) ([]byte, error) {
+	switch {
+	case service == "SessionService" && op == "authenticate":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "SessionInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "SessionService" && op == "whoami":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "SessionInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "SessionService" && op == "logout":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "SessionService" && op == "delete-account":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "list-libraries":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "LibrariesResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "list-albums":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "AlbumsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "list-artists":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ArtistsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-album":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "AlbumDetail":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-artist":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ArtistDetail":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "search":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "SearchResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "export-manifest":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ExportManifest":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "export-chunk":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ExportChunk":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "list-playlists":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "PlaylistsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-playlist":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "PlaylistDetail":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "delete-playlist":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "block-account":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "unblock-account":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "list-blocked-accounts":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "BlockedAccountsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-cover-art":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "CoverArt":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-artwork":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "CoverArt":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "list-artwork-candidates":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ArtworkCandidates":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-artwork-candidate":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "CoverArt":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "set-artwork":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "get-audiobook-progress":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "AudiobookProgressResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "update-audiobook-progress":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "AudiobookProgress":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "LibraryService" && op == "report-content":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ContentReport":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "list-players":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ListPlayersResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "get-state":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "PlayerState":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "control":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "PlayerState":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "enable-share":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ShareResult":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "disable-share":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "get-share-access":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ShareAccessInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "PlayerService" && op == "set-share-access":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ShareAccessInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "NodeService" && op == "register":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "RegisterNodeResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-accounts":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ListAccountsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "set-role":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Account":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "set-library-editor":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "delete-account":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "trust-domain":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "TrustedDomains":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-trusted-domains":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "TrustedDomains":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-trusted-identities":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "TrustedIdentities":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "trust-identity":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "TrustedIdentities":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "revoke-trusted-identity":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "TrustedIdentities":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-nodes":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ListNodesResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "rename-node":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "NodeInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "rename-device":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "DeviceInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "set-device-access":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "DeviceInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-groups":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ListGroupsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "create-group":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "GroupInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "set-group-members":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "GroupInfo":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "delete-group":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-satellite-tokens":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ListSatelliteTokensResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "create-node-token":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "NodeTokenResult":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "revoke-satellite-token":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "import-track":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ImportResult":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "begin-import":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "BeginImportResult":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "import-chunk":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "finish-import":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ImportResult":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "cancel-import":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Ok":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "get-settings":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Settings":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "set-setting":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "Settings":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "resync-library":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "LibraryResyncStatus":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "get-resync-status":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "LibraryResyncStatus":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "list-content-reports":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ListContentReportsResponse":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	case service == "AdminService" && op == "update-content-report-status":
+		if variant == nil {
+			return nil, &RPCDecodeError{fmt.Errorf("missing RPC reply variant")}
+		}
+		switch *variant {
+		case "ContentReport":
+			return payload, nil
+		case "ServiceError":
+			value, err := DecodeServiceError(payload)
+			if err != nil {
+				return nil, &RPCDecodeError{err}
+			}
+			return nil, &RPCApplicationError[ServiceError]{Value: value}
+		default:
+			return nil, &RPCDecodeError{fmt.Errorf("unknown RPC reply variant %q", *variant)}
+		}
+	}
+	return payload, nil
 }

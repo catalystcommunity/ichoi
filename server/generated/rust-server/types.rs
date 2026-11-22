@@ -1,6 +1,6 @@
 //! Generated types from CSIL specification
 
-#![allow(non_camel_case_types, clippy::large_enum_variant)]
+#![allow(clippy::large_enum_variant)]
 
 /// Returned by a generated `validate` method when a field violates one of its
 /// CSIL constraints. `field` names the offending field; `message` explains.

@@ -15,10 +15,14 @@ export interface Codec {
 }
 
 export class AdminClient {
-  constructor(private readonly t: ServiceTransport) {}
+  private readonly t: ServiceTransport;
+
+  constructor(t: ServiceTransport) {
+    this.t = t;
+  }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listAccounts(req: Page): ListAccountsResponse {
@@ -27,7 +31,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setRole(req: SetRoleRequest): Account {
@@ -36,7 +40,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setLibraryEditor(req: SetLibraryEditorRequest): Ok {
@@ -45,7 +49,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   deleteAccount(req: AdminDeleteAccountRequest): Ok {
@@ -54,7 +58,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   trustDomain(req: TrustDomainRequest): TrustedDomains {
@@ -63,7 +67,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listTrustedDomains(req: Page): TrustedDomains {
@@ -72,7 +76,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listTrustedIdentities(req: Page): TrustedIdentities {
@@ -81,7 +85,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   trustIdentity(req: TrustIdentityRequest): TrustedIdentities {
@@ -90,7 +94,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   revokeTrustedIdentity(req: RevokeTrustedIdentityRequest): TrustedIdentities {
@@ -99,7 +103,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listNodes(req: Page): ListNodesResponse {
@@ -108,7 +112,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   renameNode(req: RenameNodeRequest): NodeInfo {
@@ -117,7 +121,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   renameDevice(req: RenameDeviceRequest): DeviceInfo {
@@ -126,7 +130,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setDeviceAccess(req: SetDeviceAccessRequest): DeviceInfo {
@@ -135,7 +139,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listGroups(req: Page): ListGroupsResponse {
@@ -144,7 +148,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   createGroup(req: CreateGroupRequest): GroupInfo {
@@ -153,7 +157,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setGroupMembers(req: SetGroupMembersRequest): GroupInfo {
@@ -162,7 +166,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   deleteGroup(req: DeleteGroupRequest): Ok {
@@ -171,7 +175,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listSatelliteTokens(req: Page): ListSatelliteTokensResponse {
@@ -180,7 +184,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   createNodeToken(req: CreateNodeTokenRequest): NodeTokenResult {
@@ -189,7 +193,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   revokeSatelliteToken(req: RevokeSatelliteTokenRequest): Ok {
@@ -198,7 +202,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   importTrack(req: ImportTrackRequest): ImportResult {
@@ -207,7 +211,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   beginImport(req: BeginImportRequest): BeginImportResult {
@@ -216,7 +220,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   importChunk(req: ImportChunkRequest): Ok {
@@ -225,7 +229,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   finishImport(req: FinishImportRequest): ImportResult {
@@ -234,7 +238,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   cancelImport(req: CancelImportRequest): Ok {
@@ -243,7 +247,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getSettings(req: Page): Settings {
@@ -252,7 +256,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setSetting(req: SetSettingRequest): Settings {
@@ -261,7 +265,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   resyncLibrary(req: Page): LibraryResyncStatus {
@@ -270,7 +274,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getResyncStatus(req: Page): LibraryResyncStatus {
@@ -279,7 +283,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listContentReports(req: Page): ListContentReportsResponse {
@@ -288,7 +292,7 @@ export class AdminClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   updateContentReportStatus(req: UpdateContentReportStatusRequest): ContentReport {
@@ -331,10 +335,14 @@ export function encodeChangeWatch(codec: Codec, msg: WatchChangesRequest): { met
 }
 
 export class LibraryClient {
-  constructor(private readonly t: ServiceTransport) {}
+  private readonly t: ServiceTransport;
+
+  constructor(t: ServiceTransport) {
+    this.t = t;
+  }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listLibraries(req: Page): LibrariesResponse {
@@ -343,7 +351,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listAlbums(req: BrowseRequest): AlbumsResponse {
@@ -352,7 +360,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listArtists(req: BrowseRequest): ArtistsResponse {
@@ -361,7 +369,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getAlbum(req: AlbumRequest): AlbumDetail {
@@ -370,7 +378,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getArtist(req: ArtistRequest): ArtistDetail {
@@ -379,7 +387,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   search(req: SearchRequest): SearchResponse {
@@ -388,7 +396,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   exportManifest(req: ExportManifestRequest): ExportManifest {
@@ -397,7 +405,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   exportChunk(req: ExportChunkRequest): ExportChunk {
@@ -406,7 +414,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listPlaylists(req: BrowseRequest): PlaylistsResponse {
@@ -415,7 +423,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getPlaylist(req: PlaylistRequest): PlaylistDetail {
@@ -424,7 +432,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   deletePlaylist(req: DeletePlaylistRequest): Ok {
@@ -433,7 +441,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   blockAccount(req: BlockAccountRequest): Ok {
@@ -442,7 +450,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   unblockAccount(req: BlockAccountRequest): Ok {
@@ -451,7 +459,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listBlockedAccounts(req: Page): BlockedAccountsResponse {
@@ -460,7 +468,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getCoverArt(req: CoverArtRequest): CoverArt {
@@ -469,7 +477,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getArtwork(req: ArtworkRequest): CoverArt {
@@ -478,7 +486,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listArtworkCandidates(req: ArtworkCandidatesRequest): ArtworkCandidates {
@@ -487,7 +495,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getArtworkCandidate(req: ArtworkCandidateRequest): CoverArt {
@@ -496,7 +504,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setArtwork(req: SetArtworkRequest): Ok {
@@ -505,7 +513,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getAudiobookProgress(req: AudiobookProgressRequest): AudiobookProgressResponse {
@@ -514,7 +522,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   updateAudiobookProgress(req: UpdateAudiobookProgressRequest): AudiobookProgress {
@@ -523,7 +531,7 @@ export class LibraryClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   reportContent(req: ReportContentRequest): ContentReport {
@@ -566,10 +574,14 @@ export function encodeMediaStream(codec: Codec, msg: MediaControl): { method: st
 }
 
 export class NodeClient {
-  constructor(private readonly t: ServiceTransport) {}
+  private readonly t: ServiceTransport;
+
+  constructor(t: ServiceTransport) {
+    this.t = t;
+  }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   register(req: RegisterNodeRequest): RegisterNodeResponse {
@@ -612,10 +624,14 @@ export function encodeNodeSession(codec: Codec, msg: NodeReport): { method: stri
 }
 
 export class PlayerClient {
-  constructor(private readonly t: ServiceTransport) {}
+  private readonly t: ServiceTransport;
+
+  constructor(t: ServiceTransport) {
+    this.t = t;
+  }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   listPlayers(req: ListPlayersRequest): ListPlayersResponse {
@@ -624,7 +640,7 @@ export class PlayerClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getState(req: SubscribeRequest): PlayerState {
@@ -633,7 +649,7 @@ export class PlayerClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   control(req: CommandRequest): PlayerState {
@@ -642,7 +658,7 @@ export class PlayerClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   enableShare(req: EnableShareRequest): ShareResult {
@@ -651,7 +667,7 @@ export class PlayerClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   disableShare(req: DisableShareRequest): Ok {
@@ -660,7 +676,7 @@ export class PlayerClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   getShareAccess(req: ShareAccessRequest): ShareAccessInfo {
@@ -669,7 +685,7 @@ export class PlayerClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   setShareAccess(req: SetShareAccessRequest): ShareAccessInfo {
@@ -712,10 +728,14 @@ export function encodePlayerSubscribe(codec: Codec, msg: SubscribeRequest): { me
 }
 
 export class SessionClient {
-  constructor(private readonly t: ServiceTransport) {}
+  private readonly t: ServiceTransport;
+
+  constructor(t: ServiceTransport) {
+    this.t = t;
+  }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   authenticate(req: AuthRequest): SessionInfo {
@@ -724,7 +744,7 @@ export class SessionClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   whoami(req: Page): SessionInfo {
@@ -733,7 +753,7 @@ export class SessionClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   logout(req: Page): Ok {
@@ -742,7 +762,7 @@ export class SessionClient {
   }
 
   /**
-   * @throws {ServiceError} when the API returns an error response
+   * @throws {ServiceErrorRefusal} for the declared application error
    * @throws transport errors (network, timeout) raised by the transport
    */
   deleteAccount(req: DeleteAccountRequest): Ok {

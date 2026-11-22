@@ -3,6 +3,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum as _Enum
 from typing import Optional, List, Dict, Any, Union
 import json
 from .types import *

@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record ShareAccess(Object value) {}
+public enum ShareAccess {
+    EVERYONE("everyone"),
+    SELECTED("selected");
+
+    private final String value;
+
+    ShareAccess(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static ShareAccess fromWire(String value) {
+        for (ShareAccess member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown ShareAccess value: " + value);
+    }
+}

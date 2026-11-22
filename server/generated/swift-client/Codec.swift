@@ -271,6 +271,32 @@ public enum CsilCbor {
         throw CsilCborError.typeMismatch
     }
 
+    static func validDate(_ text: String) -> Bool {
+        let s = Array(text.utf8)
+        guard s.count == 10, s[4] == 45, s[7] == 45 else { return false }
+        for i in s.indices where i != 4 && i != 7 {
+            guard (48...57).contains(s[i]) else { return false }
+        }
+        func number(_ range: Range<Int>) -> Int {
+            s[range].reduce(0) { $0 * 10 + Int($1 - 48) }
+        }
+        let year = number(0..<4), month = number(5..<7), day = number(8..<10)
+        let leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+        let days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+        return (1...12).contains(month) && (1...days[month - 1]).contains(day)
+    }
+
+    public static func encodeDate(_ text: String) -> CsilCborValue {
+        precondition(validDate(text), "expected YYYY-MM-DD")
+        return .tag(1004, .text(text))
+    }
+
+    public static func decodeDate(_ value: CsilCborValue) throws -> String {
+        let text = try asTaggedText(value, 1004)
+        guard validDate(text) else { throw CsilCborError.typeMismatch }
+        return text
+    }
+
     public static func asTaggedText(_ v: CsilCborValue, _ num: UInt64) throws -> String {
         if case .tag(let t, let inner) = v, t == num { return try asText(inner) }
         throw CsilCborError.typeMismatch
@@ -4351,3 +4377,1051 @@ public extension DataChange {
     static func fromCbor(_ bytes: [UInt8]) throws -> DataChange { try DataChange(cborValue: CsilCbor.decode(bytes)) }
 }
 
+public struct ServiceErrorRefusal: Error {
+    public let value: ServiceError
+    public init(value: ServiceError) { self.value = value }
+}
+
+public func encodeSessionAuthenticateReply(_ handler: () throws -> SessionInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("SessionInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeSessionWhoamiReply(_ handler: () throws -> SessionInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("SessionInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeSessionLogoutReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeSessionDeleteAccountReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryListLibrariesReply(_ handler: () throws -> LibrariesResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("LibrariesResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryListAlbumsReply(_ handler: () throws -> AlbumsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("AlbumsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryListArtistsReply(_ handler: () throws -> ArtistsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ArtistsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetAlbumReply(_ handler: () throws -> AlbumDetail) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("AlbumDetail", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetArtistReply(_ handler: () throws -> ArtistDetail) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ArtistDetail", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibrarySearchReply(_ handler: () throws -> SearchResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("SearchResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryExportManifestReply(_ handler: () throws -> ExportManifest) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ExportManifest", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryExportChunkReply(_ handler: () throws -> ExportChunk) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ExportChunk", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryListPlaylistsReply(_ handler: () throws -> PlaylistsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("PlaylistsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetPlaylistReply(_ handler: () throws -> PlaylistDetail) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("PlaylistDetail", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryDeletePlaylistReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryBlockAccountReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryUnblockAccountReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryListBlockedAccountsReply(_ handler: () throws -> BlockedAccountsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("BlockedAccountsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetCoverArtReply(_ handler: () throws -> CoverArt) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("CoverArt", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetArtworkReply(_ handler: () throws -> CoverArt) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("CoverArt", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryListArtworkCandidatesReply(_ handler: () throws -> ArtworkCandidates) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ArtworkCandidates", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetArtworkCandidateReply(_ handler: () throws -> CoverArt) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("CoverArt", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibrarySetArtworkReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryGetAudiobookProgressReply(_ handler: () throws -> AudiobookProgressResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("AudiobookProgressResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryUpdateAudiobookProgressReply(_ handler: () throws -> AudiobookProgress) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("AudiobookProgress", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeLibraryReportContentReply(_ handler: () throws -> ContentReport) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ContentReport", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerListPlayersReply(_ handler: () throws -> ListPlayersResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ListPlayersResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerGetStateReply(_ handler: () throws -> PlayerState) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("PlayerState", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerControlReply(_ handler: () throws -> PlayerState) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("PlayerState", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerEnableShareReply(_ handler: () throws -> ShareResult) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ShareResult", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerDisableShareReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerGetShareAccessReply(_ handler: () throws -> ShareAccessInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ShareAccessInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodePlayerSetShareAccessReply(_ handler: () throws -> ShareAccessInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ShareAccessInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeNodeRegisterReply(_ handler: () throws -> RegisterNodeResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("RegisterNodeResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListAccountsReply(_ handler: () throws -> ListAccountsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ListAccountsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminSetRoleReply(_ handler: () throws -> Account) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Account", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminSetLibraryEditorReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminDeleteAccountReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminTrustDomainReply(_ handler: () throws -> TrustedDomains) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("TrustedDomains", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListTrustedDomainsReply(_ handler: () throws -> TrustedDomains) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("TrustedDomains", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListTrustedIdentitiesReply(_ handler: () throws -> TrustedIdentities) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("TrustedIdentities", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminTrustIdentityReply(_ handler: () throws -> TrustedIdentities) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("TrustedIdentities", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminRevokeTrustedIdentityReply(_ handler: () throws -> TrustedIdentities) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("TrustedIdentities", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListNodesReply(_ handler: () throws -> ListNodesResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ListNodesResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminRenameNodeReply(_ handler: () throws -> NodeInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("NodeInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminRenameDeviceReply(_ handler: () throws -> DeviceInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("DeviceInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminSetDeviceAccessReply(_ handler: () throws -> DeviceInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("DeviceInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListGroupsReply(_ handler: () throws -> ListGroupsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ListGroupsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminCreateGroupReply(_ handler: () throws -> GroupInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("GroupInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminSetGroupMembersReply(_ handler: () throws -> GroupInfo) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("GroupInfo", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminDeleteGroupReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListSatelliteTokensReply(_ handler: () throws -> ListSatelliteTokensResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ListSatelliteTokensResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminCreateNodeTokenReply(_ handler: () throws -> NodeTokenResult) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("NodeTokenResult", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminRevokeSatelliteTokenReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminImportTrackReply(_ handler: () throws -> ImportResult) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ImportResult", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminBeginImportReply(_ handler: () throws -> BeginImportResult) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("BeginImportResult", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminImportChunkReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminFinishImportReply(_ handler: () throws -> ImportResult) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ImportResult", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminCancelImportReply(_ handler: () throws -> Ok) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Ok", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminGetSettingsReply(_ handler: () throws -> Settings) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Settings", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminSetSettingReply(_ handler: () throws -> Settings) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("Settings", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminResyncLibraryReply(_ handler: () throws -> LibraryResyncStatus) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("LibraryResyncStatus", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminGetResyncStatusReply(_ handler: () throws -> LibraryResyncStatus) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("LibraryResyncStatus", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminListContentReportsReply(_ handler: () throws -> ListContentReportsResponse) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ListContentReportsResponse", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func encodeAdminUpdateContentReportStatusReply(_ handler: () throws -> ContentReport) throws -> (variant: String, payload: [UInt8]) {
+    do {
+        let value = try handler()
+        return ("ContentReport", CsilCbor.encode(value.toCborValue()))
+    } catch let refusal as ServiceErrorRefusal {
+        return ("ServiceError", CsilCbor.encode(refusal.value.toCborValue()))
+    }
+}
+
+public func resolveRpcReply(service: String, op: String, variant: String?, payload: [UInt8]) throws -> [UInt8] {
+    if service == "SessionService" && op == "authenticate" {
+        switch variant {
+        case "SessionInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "SessionService" && op == "whoami" {
+        switch variant {
+        case "SessionInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "SessionService" && op == "logout" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "SessionService" && op == "delete-account" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "list-libraries" {
+        switch variant {
+        case "LibrariesResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "list-albums" {
+        switch variant {
+        case "AlbumsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "list-artists" {
+        switch variant {
+        case "ArtistsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-album" {
+        switch variant {
+        case "AlbumDetail": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-artist" {
+        switch variant {
+        case "ArtistDetail": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "search" {
+        switch variant {
+        case "SearchResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "export-manifest" {
+        switch variant {
+        case "ExportManifest": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "export-chunk" {
+        switch variant {
+        case "ExportChunk": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "list-playlists" {
+        switch variant {
+        case "PlaylistsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-playlist" {
+        switch variant {
+        case "PlaylistDetail": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "delete-playlist" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "block-account" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "unblock-account" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "list-blocked-accounts" {
+        switch variant {
+        case "BlockedAccountsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-cover-art" {
+        switch variant {
+        case "CoverArt": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-artwork" {
+        switch variant {
+        case "CoverArt": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "list-artwork-candidates" {
+        switch variant {
+        case "ArtworkCandidates": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-artwork-candidate" {
+        switch variant {
+        case "CoverArt": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "set-artwork" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "get-audiobook-progress" {
+        switch variant {
+        case "AudiobookProgressResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "update-audiobook-progress" {
+        switch variant {
+        case "AudiobookProgress": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "LibraryService" && op == "report-content" {
+        switch variant {
+        case "ContentReport": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "list-players" {
+        switch variant {
+        case "ListPlayersResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "get-state" {
+        switch variant {
+        case "PlayerState": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "control" {
+        switch variant {
+        case "PlayerState": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "enable-share" {
+        switch variant {
+        case "ShareResult": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "disable-share" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "get-share-access" {
+        switch variant {
+        case "ShareAccessInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "PlayerService" && op == "set-share-access" {
+        switch variant {
+        case "ShareAccessInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "NodeService" && op == "register" {
+        switch variant {
+        case "RegisterNodeResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-accounts" {
+        switch variant {
+        case "ListAccountsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "set-role" {
+        switch variant {
+        case "Account": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "set-library-editor" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "delete-account" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "trust-domain" {
+        switch variant {
+        case "TrustedDomains": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-trusted-domains" {
+        switch variant {
+        case "TrustedDomains": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-trusted-identities" {
+        switch variant {
+        case "TrustedIdentities": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "trust-identity" {
+        switch variant {
+        case "TrustedIdentities": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "revoke-trusted-identity" {
+        switch variant {
+        case "TrustedIdentities": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-nodes" {
+        switch variant {
+        case "ListNodesResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "rename-node" {
+        switch variant {
+        case "NodeInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "rename-device" {
+        switch variant {
+        case "DeviceInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "set-device-access" {
+        switch variant {
+        case "DeviceInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-groups" {
+        switch variant {
+        case "ListGroupsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "create-group" {
+        switch variant {
+        case "GroupInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "set-group-members" {
+        switch variant {
+        case "GroupInfo": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "delete-group" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-satellite-tokens" {
+        switch variant {
+        case "ListSatelliteTokensResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "create-node-token" {
+        switch variant {
+        case "NodeTokenResult": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "revoke-satellite-token" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "import-track" {
+        switch variant {
+        case "ImportResult": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "begin-import" {
+        switch variant {
+        case "BeginImportResult": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "import-chunk" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "finish-import" {
+        switch variant {
+        case "ImportResult": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "cancel-import" {
+        switch variant {
+        case "Ok": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "get-settings" {
+        switch variant {
+        case "Settings": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "set-setting" {
+        switch variant {
+        case "Settings": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "resync-library" {
+        switch variant {
+        case "LibraryResyncStatus": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "get-resync-status" {
+        switch variant {
+        case "LibraryResyncStatus": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "list-content-reports" {
+        switch variant {
+        case "ListContentReportsResponse": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    if service == "AdminService" && op == "update-content-report-status" {
+        switch variant {
+        case "ContentReport": return payload
+        case "ServiceError": throw ServiceErrorRefusal(value: try ServiceError(cborValue: CsilCbor.decode(payload)))
+        default: throw CsilCborError.typeMismatch
+        }
+    }
+    return payload
+}

@@ -2,4 +2,20 @@
 
 package csilgen.generated;
 
-public record TranscodeCodec(Object value) {}
+public enum TranscodeCodec {
+    AAC("aac"),
+    MP3("mp3");
+
+    private final String value;
+
+    TranscodeCodec(String value) { this.value = value; }
+
+    public String value() { return value; }
+
+    public static TranscodeCodec fromWire(String value) {
+        for (TranscodeCodec member : values()) {
+            if (member.value.equals(value)) return member;
+        }
+        throw new IllegalArgumentException("unknown TranscodeCodec value: " + value);
+    }
+}

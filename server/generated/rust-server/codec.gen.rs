@@ -7324,7 +7324,7 @@ pub fn decode_data_change(csil_data: &[u8]) -> Result<DataChange, CsilCborError>
     csil_dec_data_change(&csil_root)
 }
 
-/// Encode a Role enum as its bare literal value.
+/// Encode a Role enum as its CBOR value.
 fn csil_enc_role(csil_v: &Role) -> CsilCborValue {
     match csil_v {
         Role::Admin => cbor_text("admin"),
@@ -7346,7 +7346,7 @@ fn csil_dec_role(csil_v: &CsilCborValue) -> Result<Role, CsilCborError> {
     }
 }
 
-/// Encode a PlayerStatus enum as its bare literal value.
+/// Encode a PlayerStatus enum as its CBOR value.
 fn csil_enc_player_status(csil_v: &PlayerStatus) -> CsilCborValue {
     match csil_v {
         PlayerStatus::Stopped => cbor_text("stopped"),
@@ -7368,7 +7368,7 @@ fn csil_dec_player_status(csil_v: &CsilCborValue) -> Result<PlayerStatus, CsilCb
     }
 }
 
-/// Encode a RepeatMode enum as its bare literal value.
+/// Encode a RepeatMode enum as its CBOR value.
 fn csil_enc_repeat_mode(csil_v: &RepeatMode) -> CsilCborValue {
     match csil_v {
         RepeatMode::Off => cbor_text("off"),
@@ -7390,7 +7390,7 @@ fn csil_dec_repeat_mode(csil_v: &CsilCborValue) -> Result<RepeatMode, CsilCborEr
     }
 }
 
-/// Encode a NodeEvent enum as its bare literal value.
+/// Encode a NodeEvent enum as its CBOR value.
 fn csil_enc_node_event(csil_v: &NodeEvent) -> CsilCborValue {
     match csil_v {
         NodeEvent::Ready => cbor_text("ready"),
@@ -7414,7 +7414,7 @@ fn csil_dec_node_event(csil_v: &CsilCborValue) -> Result<NodeEvent, CsilCborErro
     }
 }
 
-/// Encode a Codec enum as its bare literal value.
+/// Encode a Codec enum as its CBOR value.
 fn csil_enc_codec(csil_v: &Codec) -> CsilCborValue {
     match csil_v {
         Codec::Mp3 => cbor_text("mp3"),
@@ -7446,7 +7446,7 @@ fn csil_dec_codec(csil_v: &CsilCborValue) -> Result<Codec, CsilCborError> {
     }
 }
 
-/// Encode a TranscodeCodec enum as its bare literal value.
+/// Encode a TranscodeCodec enum as its CBOR value.
 fn csil_enc_transcode_codec(csil_v: &TranscodeCodec) -> CsilCborValue {
     match csil_v {
         TranscodeCodec::Aac => cbor_text("aac"),
@@ -7466,7 +7466,7 @@ fn csil_dec_transcode_codec(csil_v: &CsilCborValue) -> Result<TranscodeCodec, Cs
     }
 }
 
-/// Encode a ContentReportTargetType enum as its bare literal value.
+/// Encode a ContentReportTargetType enum as its CBOR value.
 fn csil_enc_content_report_target_type(csil_v: &ContentReportTargetType) -> CsilCborValue {
     match csil_v {
         ContentReportTargetType::Playlist => cbor_text("playlist"),
@@ -7488,7 +7488,7 @@ fn csil_dec_content_report_target_type(
     }
 }
 
-/// Encode a ContentReportReason enum as its bare literal value.
+/// Encode a ContentReportReason enum as its CBOR value.
 fn csil_enc_content_report_reason(csil_v: &ContentReportReason) -> CsilCborValue {
     match csil_v {
         ContentReportReason::ObjectionableContent => cbor_text("objectionable-content"),
@@ -7514,7 +7514,7 @@ fn csil_dec_content_report_reason(
     }
 }
 
-/// Encode a ContentReportStatus enum as its bare literal value.
+/// Encode a ContentReportStatus enum as its CBOR value.
 fn csil_enc_content_report_status(csil_v: &ContentReportStatus) -> CsilCborValue {
     match csil_v {
         ContentReportStatus::Open => cbor_text("open"),
@@ -7538,7 +7538,7 @@ fn csil_dec_content_report_status(
     }
 }
 
-/// Encode a Library enum as its bare literal value.
+/// Encode a Library enum as its CBOR value.
 fn csil_enc_library(csil_v: &Library) -> CsilCborValue {
     match csil_v {
         Library::Music => cbor_text("music"),
@@ -7558,7 +7558,7 @@ fn csil_dec_library(csil_v: &CsilCborValue) -> Result<Library, CsilCborError> {
     }
 }
 
-/// Encode a ArtworkKind enum as its bare literal value.
+/// Encode a ArtworkKind enum as its CBOR value.
 fn csil_enc_artwork_kind(csil_v: &ArtworkKind) -> CsilCborValue {
     match csil_v {
         ArtworkKind::Album => cbor_text("album"),
@@ -7578,7 +7578,7 @@ fn csil_dec_artwork_kind(csil_v: &CsilCborValue) -> Result<ArtworkKind, CsilCbor
     }
 }
 
-/// Encode a PlayerKind enum as its bare literal value.
+/// Encode a PlayerKind enum as its CBOR value.
 fn csil_enc_player_kind(csil_v: &PlayerKind) -> CsilCborValue {
     match csil_v {
         PlayerKind::Shared => cbor_text("shared"),
@@ -7776,7 +7776,7 @@ fn csil_dec_player_command(csil_v: &CsilCborValue) -> Result<PlayerCommand, Csil
     }
 }
 
-/// Encode a ShareAccess enum as its bare literal value.
+/// Encode a ShareAccess enum as its CBOR value.
 fn csil_enc_share_access(csil_v: &ShareAccess) -> CsilCborValue {
     match csil_v {
         ShareAccess::Everyone => cbor_text("everyone"),
@@ -7861,7 +7861,7 @@ fn csil_dec_media_control(csil_v: &CsilCborValue) -> Result<MediaControl, CsilCb
     }
 }
 
-/// Encode a MediaEndReason enum as its bare literal value.
+/// Encode a MediaEndReason enum as its CBOR value.
 fn csil_enc_media_end_reason(csil_v: &MediaEndReason) -> CsilCborValue {
     match csil_v {
         MediaEndReason::Eos => cbor_text("eos"),
@@ -8004,7 +8004,7 @@ fn csil_dec_node_directive(csil_v: &CsilCborValue) -> Result<NodeDirective, Csil
     }
 }
 
-/// Encode a NodeKind enum as its bare literal value.
+/// Encode a NodeKind enum as its CBOR value.
 fn csil_enc_node_kind(csil_v: &NodeKind) -> CsilCborValue {
     match csil_v {
         NodeKind::Core => cbor_text("core"),
@@ -8026,7 +8026,7 @@ fn csil_dec_node_kind(csil_v: &CsilCborValue) -> Result<NodeKind, CsilCborError>
     }
 }
 
-/// Encode a AudioOutputsState enum as its bare literal value.
+/// Encode a AudioOutputsState enum as its CBOR value.
 fn csil_enc_audio_outputs_state(csil_v: &AudioOutputsState) -> CsilCborValue {
     match csil_v {
         AudioOutputsState::None => cbor_text("none"),
@@ -8048,7 +8048,7 @@ fn csil_dec_audio_outputs_state(
     }
 }
 
-/// Encode a ChangeTopic enum as its bare literal value.
+/// Encode a ChangeTopic enum as its CBOR value.
 fn csil_enc_change_topic(csil_v: &ChangeTopic) -> CsilCborValue {
     match csil_v {
         ChangeTopic::Players => cbor_text("players"),
@@ -8083,5 +8083,584 @@ fn csil_dec_change_topic(csil_v: &CsilCborValue) -> Result<ChangeTopic, CsilCbor
         csil_other => Err(CsilCborError(format!(
             "csil cbor: unknown ChangeTopic value {csil_other:?}"
         ))),
+    }
+}
+
+pub fn encode_session_authenticate_reply(
+    reply: Result<SessionInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("SessionInfo", encode_session_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_session_whoami_reply(
+    reply: Result<SessionInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("SessionInfo", encode_session_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_session_logout_reply(reply: Result<Ok, ServiceError>) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_session_delete_account_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_list_libraries_reply(
+    reply: Result<LibrariesResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("LibrariesResponse", encode_libraries_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_list_albums_reply(
+    reply: Result<AlbumsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("AlbumsResponse", encode_albums_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_list_artists_reply(
+    reply: Result<ArtistsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ArtistsResponse", encode_artists_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_album_reply(
+    reply: Result<AlbumDetail, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("AlbumDetail", encode_album_detail(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_artist_reply(
+    reply: Result<ArtistDetail, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ArtistDetail", encode_artist_detail(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_search_reply(
+    reply: Result<SearchResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("SearchResponse", encode_search_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_export_manifest_reply(
+    reply: Result<ExportManifest, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ExportManifest", encode_export_manifest(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_export_chunk_reply(
+    reply: Result<ExportChunk, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ExportChunk", encode_export_chunk(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_list_playlists_reply(
+    reply: Result<PlaylistsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("PlaylistsResponse", encode_playlists_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_playlist_reply(
+    reply: Result<PlaylistDetail, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("PlaylistDetail", encode_playlist_detail(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_delete_playlist_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_block_account_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_unblock_account_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_list_blocked_accounts_reply(
+    reply: Result<BlockedAccountsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("BlockedAccountsResponse", encode_blocked_accounts_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_cover_art_reply(
+    reply: Result<CoverArt, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("CoverArt", encode_cover_art(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_artwork_reply(
+    reply: Result<CoverArt, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("CoverArt", encode_cover_art(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_list_artwork_candidates_reply(
+    reply: Result<ArtworkCandidates, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ArtworkCandidates", encode_artwork_candidates(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_artwork_candidate_reply(
+    reply: Result<CoverArt, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("CoverArt", encode_cover_art(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_set_artwork_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_get_audiobook_progress_reply(
+    reply: Result<AudiobookProgressResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("AudiobookProgressResponse", encode_audiobook_progress_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_update_audiobook_progress_reply(
+    reply: Result<AudiobookProgress, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("AudiobookProgress", encode_audiobook_progress(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_library_report_content_reply(
+    reply: Result<ContentReport, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ContentReport", encode_content_report(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_list_players_reply(
+    reply: Result<ListPlayersResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ListPlayersResponse", encode_list_players_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_get_state_reply(
+    reply: Result<PlayerState, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("PlayerState", encode_player_state(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_control_reply(
+    reply: Result<PlayerState, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("PlayerState", encode_player_state(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_enable_share_reply(
+    reply: Result<ShareResult, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ShareResult", encode_share_result(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_disable_share_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_get_share_access_reply(
+    reply: Result<ShareAccessInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ShareAccessInfo", encode_share_access_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_player_set_share_access_reply(
+    reply: Result<ShareAccessInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ShareAccessInfo", encode_share_access_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_node_register_reply(
+    reply: Result<RegisterNodeResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("RegisterNodeResponse", encode_register_node_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_accounts_reply(
+    reply: Result<ListAccountsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ListAccountsResponse", encode_list_accounts_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_set_role_reply(
+    reply: Result<Account, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Account", encode_account(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_set_library_editor_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_delete_account_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_trust_domain_reply(
+    reply: Result<TrustedDomains, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("TrustedDomains", encode_trusted_domains(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_trusted_domains_reply(
+    reply: Result<TrustedDomains, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("TrustedDomains", encode_trusted_domains(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_trusted_identities_reply(
+    reply: Result<TrustedIdentities, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("TrustedIdentities", encode_trusted_identities(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_trust_identity_reply(
+    reply: Result<TrustedIdentities, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("TrustedIdentities", encode_trusted_identities(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_revoke_trusted_identity_reply(
+    reply: Result<TrustedIdentities, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("TrustedIdentities", encode_trusted_identities(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_nodes_reply(
+    reply: Result<ListNodesResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ListNodesResponse", encode_list_nodes_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_rename_node_reply(
+    reply: Result<NodeInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("NodeInfo", encode_node_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_rename_device_reply(
+    reply: Result<DeviceInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("DeviceInfo", encode_device_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_set_device_access_reply(
+    reply: Result<DeviceInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("DeviceInfo", encode_device_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_groups_reply(
+    reply: Result<ListGroupsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ListGroupsResponse", encode_list_groups_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_create_group_reply(
+    reply: Result<GroupInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("GroupInfo", encode_group_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_set_group_members_reply(
+    reply: Result<GroupInfo, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("GroupInfo", encode_group_info(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_delete_group_reply(reply: Result<Ok, ServiceError>) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_satellite_tokens_reply(
+    reply: Result<ListSatelliteTokensResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ListSatelliteTokensResponse", encode_list_satellite_tokens_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_create_node_token_reply(
+    reply: Result<NodeTokenResult, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("NodeTokenResult", encode_node_token_result(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_revoke_satellite_token_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_import_track_reply(
+    reply: Result<ImportResult, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ImportResult", encode_import_result(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_begin_import_reply(
+    reply: Result<BeginImportResult, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("BeginImportResult", encode_begin_import_result(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_import_chunk_reply(reply: Result<Ok, ServiceError>) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_finish_import_reply(
+    reply: Result<ImportResult, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ImportResult", encode_import_result(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_cancel_import_reply(
+    reply: Result<Ok, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Ok", encode_ok(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_get_settings_reply(
+    reply: Result<Settings, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Settings", encode_settings(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_set_setting_reply(
+    reply: Result<Settings, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("Settings", encode_settings(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_resync_library_reply(
+    reply: Result<LibraryResyncStatus, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("LibraryResyncStatus", encode_library_resync_status(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_get_resync_status_reply(
+    reply: Result<LibraryResyncStatus, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("LibraryResyncStatus", encode_library_resync_status(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_list_content_reports_reply(
+    reply: Result<ListContentReportsResponse, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ListContentReportsResponse", encode_list_content_reports_response(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
+    }
+}
+
+pub fn encode_admin_update_content_report_status_reply(
+    reply: Result<ContentReport, ServiceError>,
+) -> (&'static str, Vec<u8>) {
+    match reply {
+        Ok(value) => ("ContentReport", encode_content_report(&value)),
+        Err(value) => ("ServiceError", encode_service_error(&value)),
     }
 }
